@@ -1,7 +1,7 @@
-# Database ERD + Supabase Schema (Issue #2)
+# Database ERD + Supabase Schema (Issue #2 + Issue #16)
 
 ## Purpose
-Define an MVP-ready relational schema for KaonA Agri LINE Mini App on Supabase (PostgreSQL), aligned to the approved MVP scope, workflows, entities, and role model.
+Define and harden an MVP-ready relational schema for KaonA Agri LINE Mini App on Supabase (PostgreSQL), aligned to the approved MVP scope, workflows, entities, and role model.
 
 ## ERD (Mermaid)
 ```mermaid
@@ -29,6 +29,7 @@ erDiagram
 
     members {
       uuid id PK
+      uuid auth_user_id UK_nullable
       text line_user_id UK
       text citizen_id_masked
       text full_name
@@ -46,6 +47,19 @@ erDiagram
       timestamptz created_at
     }
 
+    approvals {
+      uuid id PK
+      uuid member_id FK
+      uuid requested_by FK
+      uuid reviewed_by FK_nullable
+      text resource_type
+      uuid resource_id nullable
+      text status
+      text note
+      timestamptz created_at
+      timestamptz updated_at
+    }
+
     plots {
       uuid id PK
       uuid member_id FK
@@ -55,10 +69,21 @@ erDiagram
       numeric lng
       numeric accuracy
       text status
+      uuid created_by FK
+      text role_used
+      timestamptz timestamp
       timestamptz created_at
       timestamptz updated_at
     }
 ```
+
+## Schema Hardening Added in Issue #16
+- Added explicit status constraints across workflow tables (`members`, `approvals`, `plots`, `planting_cycles`, `seed_orders`, `no_burn_requests`, `inspections`, `notifications`).
+- Added domain/resource integrity constraints for `approvals.resource_type`.
+- Added one-primary-role uniqueness per member via partial unique index on `member_roles(member_id) where is_primary=true`.
+- Added latitude/longitude range constraints on `plots` and `photos`.
+- Added temporal consistency constraints for planting and inspection timelines.
+- Added additional workflow/read indexes to support status-based and relation-based querying.
 
 ## Design Notes
 - Uses UUID primary keys on all domain tables.
@@ -66,11 +91,14 @@ erDiagram
 - Normalizes multi-role users through `member_roles` to support farmer + leader scenarios.
 - Tracks workflow status fields on request/approval entities for lifecycle progression.
 - Preserves field/photo attribution metadata required by coding rules (`created_by`, `role_used`, `timestamp`, `uploaded_by`, geo metadata).
+- Keeps RLS policies in place from Issue #10 migration.
 
 ## Supabase/PostgreSQL DDL
-Reference SQL file: `supabase/migrations/202605060001_issue_2_schema.sql`.
+- Base schema: `supabase/migrations/202605060001_issue_2_schema.sql`
+- RLS + updated_at triggers: `supabase/migrations/202605060002_issue_10_rls_and_updated_at.sql`
+- MVP schema hardening: `supabase/migrations/202605060003_complete_mvp_sql_schema.sql`
 
-## Suggested Next Steps (non-blocking)
-1. Add Row-Level Security policies per role (`farmer`, `leader`, `inspector`, `truck_owner`, `staff`, `admin`, `service_account`).
-2. Add trigger function for `updated_at` maintenance.
-3. Add seed data for role enums and status lifecycle examples.
+## Migration Scope Notes
+1. This migration is additive only (no rewrites of previous migrations).
+2. This migration does not remove or modify existing RLS policy behavior.
+3. This migration introduces only constraint/index hardening for MVP data correctness and queryability.
