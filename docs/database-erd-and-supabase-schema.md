@@ -1,4 +1,4 @@
-# Database ERD + Supabase Schema (Issue #2 + Issue #16)
+# Database ERD + Supabase Schema (Issue #2 + Issue #16 + Issue #17)
 
 ## Purpose
 Define and harden an MVP-ready relational schema for KaonA Agri LINE Mini App on Supabase (PostgreSQL), aligned to approved MVP workflows and auditability requirements.
@@ -16,6 +16,7 @@ erDiagram
     members ||--o{ photos : uploads
     members ||--o{ notifications : receives
     members ||--o{ audit_logs : acts_on
+    members ||--o{ ocr_results : ocr_for
 
     plots ||--o{ planting_cycles : contains
     plots ||--o{ photos : documented_by
@@ -27,6 +28,7 @@ erDiagram
     no_burn_requests ||--o{ photos : evidenced_by
 
     inspections ||--o{ photos : attachment
+    photos ||--o{ ocr_results : source_for
 ```
 
 ## Issue #16 Hardening Summary
@@ -35,6 +37,16 @@ erDiagram
 - Added photo metadata columns on `photos`: `mime_type`, `file_size_bytes`, `photo_type` with controlled domain check.
 - Aligned status/channel constraints to approved Issue #16 lifecycle values.
 - Added status, soft-delete, audit, and photo-type indexes for common operational filters.
+
+
+## Issue #17 OCR + GPS Capture Summary
+- OCR results are stored in a dedicated `public.ocr_results` table (linked to member and optional source photo), not on `members`.
+- Full citizen ID plaintext must never be stored; OCR outputs are limited to masked ID and hash (`extracted_citizen_id_masked`, `citizen_id_hash`).
+- OCR review lifecycle uses `ocr_results.status` (`pending`, `accepted`, `rejected`, `manual_review`) with reviewer attribution fields.
+- GPS evidence review is modeled on `photos` using `evidence_status` and `gps_verified`, plus provenance/anti-fraud metadata (`gps_source`, `gps_provider`, `gps_is_mocked`, `gps_meta`, `gps_distance_to_plot_m`).
+- Image preprocessing metadata is stored on photos (`original_storage_path`, `processed_storage_path`, `width_px`, `height_px`, `file_size_bytes`, `processing_status`) to support resize/compress and OCR document crop pipelines.
+- Field evidence photos must not be cropped in a way that removes inspection context; context-preserving preprocessing is required.
+- MVP continues to use point `lat/lng`; polygon/geofence validation is Phase 2.
 
 ## Soft Delete Strategy
 - Domain rows are logically deleted via `deleted_at` + `deleted_by` instead of immediate hard delete.
@@ -68,6 +80,7 @@ erDiagram
 - Base schema: `supabase/migrations/202605060001_issue_2_schema.sql`
 - RLS + updated_at triggers: `supabase/migrations/202605060002_issue_10_rls_and_updated_at.sql`
 - MVP schema completion (Issue #16): `supabase/migrations/202605060003_complete_mvp_sql_schema.sql`
+- OCR + GPS capture schema prep (Issue #17): `supabase/migrations/202605060004_issue_17_ocr_and_gps_capture_schema.sql`
 
 ## Migration Scope Notes
 1. Additive-only migration (no rewrites of previous migrations).
