@@ -29,6 +29,10 @@ These rules apply to all code contributions in this repository until superseded 
 - If logic is used by more than 2 features, move it to `shared/`.
 
 ## Field Data Rules
+- OCR outputs must not store full citizen ID plaintext; keep masked values and/or irreversible hashes only.
+- OCR/manual fallback workflow must preserve review status and reviewer audit fields.
+- GPS evidence moderation must track source, verification state, and evidence review status.
+- MVP geospatial model is point coordinates only; polygon/geofence logic is Phase 2 scope.
 - Photo records must include: `lat`, `lng`, `accuracy`, `captured_at`, `uploaded_by`.
 - Field records must include: `created_by`, `role_used`, `timestamp`.
 - Citizen ID must be masked in normal UI views and only shown in full where explicitly authorized.

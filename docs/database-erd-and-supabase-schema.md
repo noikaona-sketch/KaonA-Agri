@@ -76,17 +76,18 @@ Reference SQL file: `supabase/migrations/202605060001_issue_2_schema.sql`.
 3. Add seed data for role enums and status lifecycle examples.
 
 ## OCR + GPS Extension (Issue #17)
-Reference SQL file: `supabase/migrations/202605060003_issue_17_ocr_gps_schema.sql`.
+Reference SQL file: `supabase/migrations/202605060004_issue_17_ocr_gps_schema.sql`.
 
-### Added member OCR fields
-- `members.citizen_id_ocr_text` for raw OCR result before masking/review.
-- `members.citizen_id_ocr_confidence` in range `0..1`.
-- `members.citizen_id_ocr_status` lifecycle: `not_started`, `captured`, `needs_review`, `accepted`, `rejected`, `manual_override`.
-- `members.citizen_id_ocr_payload` (JSONB) for provider metadata and extraction details.
-- `members.citizen_id_ocr_processed_at`, `members.citizen_id_verified_at` timestamps.
+### OCR data privacy + manual fallback
+- OCR results are stored in `public.ocr_results` (separate from `members`) for review workflow isolation.
+- Do **not** store full citizen ID plaintext in operational tables; store masked ID (`extracted_citizen_id_masked`) and optional hash (`citizen_id_hash`) only.
+- Manual fallback is supported through `status` (`pending`, `accepted`, `rejected`, `manual_review`) and reviewer fields (`reviewed_by`, `reviewed_at`).
 
-### Added GPS quality fields
-- `plots.gps_source`, `plots.gps_status`, `plots.gps_captured_at`, `plots.gps_verified_at`.
-- `photos.gps_source`, `photos.gps_status`, `photos.gps_verified_at`.
+### GPS evidence validation
+- `photos` includes evidence review fields: `gps_source`, `gps_verified`, `gps_distance_to_plot_m`, `evidence_status`, `reviewed_by`, `reviewed_at`.
+- GPS source and evidence lifecycle are constrained for consistent moderation and audit.
 
-These fields support MVP requirements for OCR/manual fallback and GPS evidence quality controls.
+### MVP boundary
+- MVP uses point-based `lat/lng` capture for plots and photos.
+- Polygon/geofence validation is explicitly deferred to Phase 2.
+
