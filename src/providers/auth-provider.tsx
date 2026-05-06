@@ -5,7 +5,25 @@ import type { ReactNode } from 'react';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
-import type { AppRole, AuthBootstrapResult, AuthStatus } from '@/shared/auth/auth-types';
+import type {
+  AppRole,
+  AuthBootstrapResult,
+  AuthStatus,
+  MemberStatus,
+} from '@/shared/auth/auth-types';
+
+const APP_ROLES: AppRole[] = ['admin', 'staff', 'inspector', 'leader', 'truck_owner', 'farmer'];
+const MEMBER_STATUSES: MemberStatus[] = ['pending', 'approved', 'rejected', 'suspended'];
+
+type BootstrapRpcRow = {
+  member_id: string;
+  auth_user_id: string;
+  line_user_id: string;
+  status: string;
+  is_approved: boolean;
+  effective_role: string | null;
+  roles: string[];
+};
 
 type AuthContextValue = {
   status: AuthStatus;
@@ -16,11 +34,31 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-type AppProvidersProps = {
+type AuthProviderProps = {
   children: ReactNode;
 };
 
-export function AuthProvider({ children }: AppProvidersProps) {
+function isAppRole(role: string): role is AppRole {
+  return APP_ROLES.includes(role as AppRole);
+}
+
+function isMemberStatus(status: string): status is MemberStatus {
+  return MEMBER_STATUSES.includes(status as MemberStatus);
+}
+
+function normalizeBootstrap(row: BootstrapRpcRow): AuthBootstrapResult {
+  return {
+    member_id: row.member_id,
+    auth_user_id: row.auth_user_id,
+    line_user_id: row.line_user_id,
+    status: isMemberStatus(row.status) ? row.status : 'pending',
+    is_approved: row.is_approved,
+    effective_role: row.effective_role && isAppRole(row.effective_role) ? row.effective_role : null,
+    roles: row.roles.filter(isAppRole),
+  };
+}
+
+export function AuthProvider({ children }: AuthProviderProps) {
   const [status, setStatus] = useState<AuthStatus>('loading');
   const [session, setSession] = useState<Session | null>(null);
   const [member, setMember] = useState<AuthBootstrapResult | null>(null);
@@ -48,7 +86,7 @@ export function AuthProvider({ children }: AppProvidersProps) {
         return;
       }
 
-      const bootstrapRow = Array.isArray(data) ? data[0] : null;
+      const bootstrapRow = Array.isArray(data) ? (data[0] as BootstrapRpcRow | undefined) : undefined;
 
       if (!bootstrapRow) {
         setMember(null);
@@ -56,30 +94,15 @@ export function AuthProvider({ children }: AppProvidersProps) {
         return;
       }
 
-      const bootstrapResult = bootstrapRow as AuthBootstrapResult;
+      const bootstrapResult = normalizeBootstrap(bootstrapRow);
       setMember(bootstrapResult);
 
-      if (bootstrapResult.status === 'pending') {
-        setStatus('pending_approval');
-        return;
-      }
+      if (bootstrapResult.status === 'pending') return setStatus('pending_approval');
+      if (bootstrapResult.status === 'rejected') return setStatus('rejected');
+      if (bootstrapResult.status === 'suspended') return setStatus('suspended');
+      if (!bootstrapResult.is_approved) return setStatus('access_denied');
 
-      if (bootstrapResult.status === 'rejected') {
-        setStatus('rejected');
-        return;
-      }
-
-      if (bootstrapResult.status === 'suspended') {
-        setStatus('suspended');
-        return;
-      }
-
-      if (!bootstrapResult.is_approved) {
-        setStatus('access_denied');
-        return;
-      }
-
-      setStatus('approved');
+      return setStatus('approved');
     }
 
     void supabase.auth.getSession().then(({ data, error }) => {
@@ -88,6 +111,7 @@ export function AuthProvider({ children }: AppProvidersProps) {
         setErrorMessage(error.message);
         return;
       }
+
       void bootstrapWithSession(data.session);
     });
 
@@ -97,7 +121,9 @@ export function AuthProvider({ children }: AppProvidersProps) {
       void bootstrapWithSession(updatedSession);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const value = useMemo(
@@ -110,9 +136,11 @@ export function AuthProvider({ children }: AppProvidersProps) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
+
   if (!context) {
     throw new Error('useAuth must be used within AuthProvider.');
   }
+
   return context;
 }
 
