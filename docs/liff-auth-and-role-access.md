@@ -23,9 +23,23 @@ Define the MVP authentication and authorization flow for KaonA Agri LINE Mini Ap
 4. Frontend obtains LINE ID token/profile from LIFF SDK.
 5. Frontend sends token to backend auth endpoint.
 6. Backend verifies token (issuer, audience/channel, signature, expiry).
-7. Backend upserts/links identity to `members.line_user_id`.
-8. Backend issues Supabase session (JWT) for app API access.
-9. App resolves effective role from `member_roles` and applies role-based navigation.
+7. Backend creates/links a Supabase Auth user for the LINE identity.
+8. Backend stores LINE user id in `members.line_user_id`.
+9. Backend stores Supabase Auth user id in `members.auth_user_id`.
+10. Backend issues a Supabase session (JWT) for app API access.
+11. App resolves effective role from `member_roles` and applies role-based navigation.
+
+
+## Auth Identity Mapping (Required for Current RLS)
+- LINE LIFF user id is stored in `members.line_user_id`.
+- Supabase Auth user id is stored in `members.auth_user_id`.
+- RLS resolves current member via `members.auth_user_id = auth.uid()`.
+- `line_user_id` must not be used as the RLS identity key.
+
+## Supabase Session Requirement
+- LIFF login alone is not enough for Supabase RLS-protected table access.
+- The app must establish a Supabase Auth session before accessing protected tables.
+- Protected DB access should only occur after `auth_user_id` link is confirmed.
 
 ## Role Resolution Rules
 - Role resolution source of truth is database (`member_roles`) not frontend claims.
@@ -79,11 +93,12 @@ Define the MVP authentication and authorization flow for KaonA Agri LINE Mini Ap
 
 ## Acceptance Criteria (Issue #4)
 1. LIFF sign-in is the only interactive login path for human MVP users.
-2. Backend-verified identity is linked to member record via `line_user_id`.
-3. Effective role is resolved from database and applied consistently to home/navigation.
-4. API + RLS enforce deny-by-default authorization independent from UI guards.
-5. Users without active approved roles are blocked from protected modules.
-6. Security logging exists for auth success/failure and authorization deny events.
+2. Backend-verified identity is linked to member record with both `line_user_id` and `auth_user_id` before protected DB access.
+3. RLS current-member resolution works through `auth.uid() -> members.auth_user_id -> members.id`.
+4. Effective role is resolved from database and applied consistently to home/navigation.
+5. API + RLS enforce deny-by-default authorization independent from UI guards.
+6. Users without active approved roles are blocked from protected modules.
+7. Security logging exists for auth success/failure and authorization deny events.
 
 ## Implementation Notes
 - Keep frontend role checks centralized (single role-access utility).
