@@ -1,4 +1,4 @@
-# Database ERD + Supabase Schema (Issue #2 + Issue #16)
+# Database ERD + Supabase Schema (Issue #2 + Issue #16 + Issue #17)
 
 ## Purpose
 Define and harden an MVP-ready relational schema for KaonA Agri LINE Mini App on Supabase (PostgreSQL), aligned to approved MVP workflows and auditability requirements.
@@ -36,6 +36,13 @@ erDiagram
 - Aligned status/channel constraints to approved Issue #16 lifecycle values.
 - Added status, soft-delete, audit, and photo-type indexes for common operational filters.
 
+
+## Issue #17 OCR + GPS Capture Summary
+- Added OCR traceability columns on `members` to support citizen ID extraction lifecycle: `citizen_id_ocr_status`, `citizen_id_ocr_payload`, `citizen_id_ocr_confidence`, `citizen_id_ocr_extracted_at`, `citizen_id_verified_at`, and `citizen_id_verified_by`.
+- Added validation constraints for OCR status domain (`pending`, `success`, `failed`, `manual_override`) and confidence range (`0..100`).
+- Added GPS capture provenance fields on `plots` and `photos`: `gps_provider`, `gps_is_mocked`, `gps_meta`; plus `gps_captured_at` on `plots` for registration timestamping.
+- Added controlled GPS provider domain (`gps`, `network`, `passive`, `fused`, `manual`, `unknown`) and indexing for OCR/GPS operational filtering.
+
 ## Soft Delete Strategy
 - Domain rows are logically deleted via `deleted_at` + `deleted_by` instead of immediate hard delete.
 - `deleted_by` references `public.members(id)` for accountability.
@@ -68,6 +75,7 @@ erDiagram
 - Base schema: `supabase/migrations/202605060001_issue_2_schema.sql`
 - RLS + updated_at triggers: `supabase/migrations/202605060002_issue_10_rls_and_updated_at.sql`
 - MVP schema completion (Issue #16): `supabase/migrations/202605060003_complete_mvp_sql_schema.sql`
+- OCR + GPS capture schema prep (Issue #17): `supabase/migrations/202605060004_issue_17_ocr_and_gps_capture_schema.sql`
 
 ## Migration Scope Notes
 1. Additive-only migration (no rewrites of previous migrations).
