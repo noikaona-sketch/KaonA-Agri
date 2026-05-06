@@ -20,8 +20,10 @@ Provide business and technical context needed for safe execution.
 - [ ] Do not modify unrelated source files.
 - [ ] Do not introduce schema migrations unless explicitly requested.
 - [ ] Do not create app pages/views unless explicitly requested.
-- [ ] Respect repository coding and import rules.
-- [ ] Respect file size rules and split output appropriately.
+- [ ] Respect repository file size rules (Page <= 150, Component <= 200, Hook <= 100, API route <= 80, Type <= 150/domain, SQL migration <= 300).
+- [ ] Respect import rules and import direction boundaries (`shared/` vs `features/`).
+- [ ] Respect KaonA Agri role model (farmer, leader, inspector, truck_owner, staff, admin, service_account).
+- [ ] Respect field data rules (required photo metadata, record attribution metadata, Citizen ID masking).
 
 ## Acceptance Criteria
 - [ ] Criteria 1

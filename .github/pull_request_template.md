@@ -35,9 +35,11 @@ Commands run:
 ```
 
 ## Governance Checklist
-- [ ] File size rules respected (or justified exceptions documented).
+- [ ] File size rules respected (Page <= 150, Component <= 200, Hook <= 100, API route <= 80, Type <= 150/domain, SQL migration <= 300).
 - [ ] Import rules respected (ordering, unused removal, no unnecessary wildcard imports).
-- [ ] Role/permission impacts reviewed (if applicable).
+- [ ] Import direction rules respected (`shared/` !-> `features/`, no feature-to-feature imports, shared extraction when reused by >2 features).
+- [ ] Field data rules respected (photo metadata, field attribution metadata, Citizen ID masking).
+- [ ] KaonA Agri role/permission impacts reviewed (farmer, leader, inspector, truck_owner, staff, admin, service_account).
 - [ ] Documentation updated for behavior or policy changes.
 
 ## Screenshots / Evidence (if UI changes)

@@ -1,38 +1,44 @@
 # User Roles and Permissions
 
 ## Purpose
-Define baseline role definitions and permission principles for product and engineering alignment.
+Define KaonA Agri role definitions and permission principles for product and engineering alignment.
 
 ## Role Definitions
 
-### 1) Platform Owner
-- Full administrative access across organization settings and business data.
-- Can manage billing, integrations, environments, and user role assignments.
-- Can view audit history and export governance reports.
+### 1) farmer
+- Creates and updates their own farm and field activity records.
+- Uploads field photos and progress data for assigned farms.
+- Can view only records within their permitted scope.
 
-### 2) Organization Admin
-- Administrative access within a specific organization/workspace.
-- Can invite/remove users, assign project-level roles, and manage org settings.
-- Cannot change platform-wide billing or super-admin controls.
+### 2) leader
+- Oversees farmer operations across assigned groups/areas.
+- Reviews and approves/rejects submitted field records where workflow requires it.
+- Can view aggregated reporting for assigned operational scope.
 
-### 3) Manager
-- Can create and manage operational entities (teams, projects, workflows, assignments).
-- Can approve/reject workflows and view team-level reporting.
-- Cannot manage organization security/billing settings.
+### 3) inspector
+- Performs verification and compliance checks on field submissions.
+- Can add inspection findings, verification notes, and status outcomes.
+- Access is limited to inspection-assigned records and required metadata.
 
-### 4) Contributor
-- Can create and edit records they own or are assigned to.
-- Can collaborate on shared tasks and update workflow states as allowed.
-- Cannot manage user roles or restricted settings.
+### 4) truck_owner
+- Manages transport-related records tied to logistics operations.
+- Updates shipment/transport status and required transport documentation.
+- Cannot alter unrelated farm governance or user administration settings.
 
-### 5) Viewer
-- Read-only access to permitted data and dashboards.
-- Cannot create, edit, delete, or approve operational records.
+### 5) staff
+- Supports internal operations, data updates, and coordination workflows.
+- Access is task-scoped and limited to assigned operational functions.
+- Cannot grant roles or access beyond delegated authority.
 
-### 6) Service Account (Non-Human)
-- API/system role for automation with least-privilege scoped access.
-- Permissions must be explicitly granted per integration use case.
-- Must be auditable and revocable.
+### 6) admin
+- Manages users, role assignments, operational settings, and policy controls.
+- Can access cross-functional reporting and audit views as authorized.
+- Responsible for enforcing access policies and operational guardrails.
+
+### 7) service_account
+- Non-human API/system identity for automation and integrations.
+- Must be granted explicit least-privilege scopes per integration use case.
+- Must be auditable, time-bounded where possible, and revocable.
 
 ## Permission Principles
 - **Least Privilege:** Grant only the minimum access needed to perform required tasks.
@@ -41,17 +47,23 @@ Define baseline role definitions and permission principles for product and engin
 - **Explicit Deny by Default:** Access should be denied unless explicitly allowed.
 - **Auditability:** Sensitive actions (role change, delete, approval, export) must be loggable.
 - **Revocability:** Access must be removable quickly when a user changes role or leaves.
-- **Scoped Access:** Permissions should be bounded by tenant/org/project where supported.
+- **Scoped Access:** Permissions should be bounded by tenant/org/project/area where supported.
+
+## Field Data Permission Rules
+- Field and photo records must preserve attribution metadata (`created_by`, `role_used`, `timestamp`, `uploaded_by`).
+- Verification-related roles (leader/inspector/admin) may review required compliance metadata.
+- Citizen ID values must remain masked in normal UI access paths unless explicit privileged authorization exists.
 
 ## Permission Model Guidance
-- Prefer **role-based access control (RBAC)** with optional attribute checks for fine-grained constraints.
-- Document permissions as action verbs on resources (e.g., `project.read`, `task.update`, `user.invite`).
+- Prefer role-based access control (RBAC) with optional attribute checks for fine-grained constraints.
+- Document permissions as action verbs on resources (e.g., `field_record.create`, `photo.upload`, `inspection.verify`).
 - Avoid hard-coding role checks throughout UI/business logic; centralize authorization logic.
 
 ## Minimum Baseline Matrix (Conceptual)
-- **Platform Owner:** full read/write/admin across all resources.
-- **Organization Admin:** admin on org-scoped resources, no platform super-admin.
-- **Manager:** read/write on team/project operations + approval capabilities.
-- **Contributor:** read/write limited to assigned/owned operations.
-- **Viewer:** read-only.
-- **Service Account:** explicitly scoped integration permissions only.
+- **farmer:** create/update own field data; read scoped records.
+- **leader:** operational oversight, approvals, and scoped reporting.
+- **inspector:** verification workflows and compliance status updates.
+- **truck_owner:** logistics/transport record management within scope.
+- **staff:** assigned operational support workflows.
+- **admin:** administrative control and governance oversight.
+- **service_account:** explicit integration scopes only.

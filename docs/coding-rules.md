@@ -4,18 +4,15 @@
 These rules apply to all code contributions in this repository until superseded by a future governance update.
 
 ## File Size Rules
-- **Target file size:** Keep files under **300 lines** where practical.
-- **Soft limit:** Files over **500 lines** should be refactored when touched.
-- **Hard limit:** Do not introduce new files over **800 lines** unless explicitly approved in the PR description.
-- Split large modules by feature/domain responsibility instead of by arbitrary naming.
-
-## Function & Component Size Rules
-- Prefer functions under **60 lines**.
-- If a function exceeds **100 lines**, extract helper functions.
-- UI components should be focused and ideally under **200 lines** (excluding formatting-only markup when unavoidable).
+- **Page file:** must be **<= 150 lines**.
+- **Component file:** must be **<= 200 lines**.
+- **Hook file:** must be **<= 100 lines**.
+- **API route file:** must be **<= 80 lines**.
+- **Type file:** must be **<= 150 lines per domain**.
+- **SQL migration file:** must be **<= 300 lines**; split into multiple migrations if larger.
 
 ## Import Rules
-- Use **absolute imports** via project aliases when configured; avoid deep relative traversal such as `../../../../`.
+- Use absolute imports via project aliases when configured; avoid deep relative traversal such as `../../../../`.
 - Group imports in this order, with a blank line between groups:
   1. External libraries
   2. Internal modules (aliases)
@@ -24,6 +21,17 @@ These rules apply to all code contributions in this repository until superseded 
 - Remove unused imports before submitting a PR.
 - Avoid circular dependencies between modules.
 - Do not use wildcard imports (`*`) unless required by framework convention.
+
+## Import Direction Rules
+- `shared/` **must not** import from `features/`.
+- `features/` **may** import from `shared/`.
+- One feature **must not** import another feature directly.
+- If logic is used by more than 2 features, move it to `shared/`.
+
+## Field Data Rules
+- Photo records must include: `lat`, `lng`, `accuracy`, `captured_at`, `uploaded_by`.
+- Field records must include: `created_by`, `role_used`, `timestamp`.
+- Citizen ID must be masked in normal UI views and only shown in full where explicitly authorized.
 
 ## General Code Quality Rules
 - Keep modules single-purpose and domain-oriented.
