@@ -3,8 +3,8 @@
 -- Auth mapping assumption for LINE LIFF + Supabase Auth:
 -- 1) LINE LIFF identifies users via `members.line_user_id` (LINE identity reference).
 -- 2) Supabase Auth identifies users via `auth.uid()`.
--- 3) Each authenticated user must be linked by setting `members.auth_user_id = auth.uid()`.
--- 4) Domain ownership checks in RLS use `members.id` resolved from `auth.uid()`.
+-- 3) Supabase Auth user id is stored in `members.auth_user_id`.
+-- 4) RLS checks use domain member ownership (`members.id`) resolved from `auth.uid()` via `auth_user_id`.
 
 alter table public.members
 add column if not exists auth_user_id uuid;
@@ -71,38 +71,31 @@ end;
 $$;
 
 drop trigger if exists trg_members_set_updated_at on public.members;
-create trigger trg_members_set_updated_at
-before update on public.members
+create trigger trg_members_set_updated_at before update on public.members
 for each row execute function public.set_updated_at();
 
 drop trigger if exists trg_approvals_set_updated_at on public.approvals;
-create trigger trg_approvals_set_updated_at
-before update on public.approvals
+create trigger trg_approvals_set_updated_at before update on public.approvals
 for each row execute function public.set_updated_at();
 
 drop trigger if exists trg_plots_set_updated_at on public.plots;
-create trigger trg_plots_set_updated_at
-before update on public.plots
+create trigger trg_plots_set_updated_at before update on public.plots
 for each row execute function public.set_updated_at();
 
 drop trigger if exists trg_planting_cycles_set_updated_at on public.planting_cycles;
-create trigger trg_planting_cycles_set_updated_at
-before update on public.planting_cycles
+create trigger trg_planting_cycles_set_updated_at before update on public.planting_cycles
 for each row execute function public.set_updated_at();
 
 drop trigger if exists trg_seed_orders_set_updated_at on public.seed_orders;
-create trigger trg_seed_orders_set_updated_at
-before update on public.seed_orders
+create trigger trg_seed_orders_set_updated_at before update on public.seed_orders
 for each row execute function public.set_updated_at();
 
 drop trigger if exists trg_no_burn_requests_set_updated_at on public.no_burn_requests;
-create trigger trg_no_burn_requests_set_updated_at
-before update on public.no_burn_requests
+create trigger trg_no_burn_requests_set_updated_at before update on public.no_burn_requests
 for each row execute function public.set_updated_at();
 
 drop trigger if exists trg_inspections_set_updated_at on public.inspections;
-create trigger trg_inspections_set_updated_at
-before update on public.inspections
+create trigger trg_inspections_set_updated_at before update on public.inspections
 for each row execute function public.set_updated_at();
 
 alter table public.members enable row level security;
@@ -195,11 +188,22 @@ with check (
   or public.current_member_is_admin_or_staff()
 );
 
-create policy inspections_read_assigned_or_admin_staff
+create policy inspections_select_assigned_owner_or_admin_staff
 on public.inspections for select
 using (
   inspector_member_id = public.current_member_id()
   or public.current_member_is_admin_or_staff()
+  or exists (
+    select 1 from public.plots p
+    where p.id = inspections.plot_id
+      and p.member_id = public.current_member_id()
+  )
+  or exists (
+    select 1
+    from public.no_burn_requests nbr
+    where nbr.id = inspections.no_burn_request_id
+      and nbr.member_id = public.current_member_id()
+  )
 );
 
 create policy inspections_modify_assigned_or_admin_staff
@@ -224,9 +228,9 @@ with check (
   and (uploaded_by = public.current_member_id() or public.current_member_is_admin_or_staff())
 );
 
-create policy notifications_read_own_or_admin_staff
+create policy notifications_read_own
 on public.notifications for select
-using (public.can_access_member(member_id));
+using (member_id = public.current_member_id());
 
 create policy notifications_insert_admin_staff
 on public.notifications for insert
