@@ -1,95 +1,103 @@
-# MVP Scope — KaonA Agri
+# MVP Scope — KaonA Agri LINE Mini App
 
 ## 1) MVP objective
-Define and deliver a first usable product release that enables core agricultural operations to be captured, tracked, and reviewed by authorized users with clear accountability and minimal process overhead.
+Deliver a usable LINE Mini App MVP for KaonA Agri that enables member onboarding, plot and planting registration, seed booking, no-burn evidence submission, and inspection/status tracking across farmer, staff/admin, leader, truck_owner, and inspector roles.
 
 ## 2) MVP / Phase 2 / Phase 3 table
 
 | Area | MVP (Issue #1 scope) | Phase 2 | Phase 3 |
 |---|---|---|---|
-| Farm setup | Basic farm, field/block, and season setup | Multi-farm hierarchy and templates | Cross-tenant benchmarking and portfolio views |
-| Crop planning | Create and manage seasonal crop plans | Scenario planning and what-if comparisons | AI-assisted planning recommendations |
-| Activity logging | Record key field activities (e.g., planting, input application, harvest events) | Bulk import and mobile offline capture | Automation integrations from external devices/IoT |
-| Input tracking | Track products/inputs used and quantities | Cost allocation by field/activity | Advanced compliance and sustainability scoring |
-| Harvest tracking | Capture harvest records by field/date/crop | Quality grading and lot tracking | End-to-end traceability with external partners |
-| Reporting | Basic operational dashboards and exports | Configurable KPI dashboards | Predictive analytics and anomaly detection |
-| Access control | Role-based access for core internal roles | Fine-grained permissions and audit trails | Delegated admin and policy-based controls |
+| Identity & access | LINE LIFF sign in, role-based access, basic onboarding | Enhanced account recovery and delegated role admin | Cross-organization role federation and SSO extensions |
+| Member lifecycle | Member registration, citizen ID OCR + manual fallback, approval workflow | Bulk/member import and profile enrichment | Advanced KYC risk scoring and automation |
+| Land & season operations | Plot registration with GPS, planting cycle records | Geofence validation and batch plot tools | Satellite/map intelligence integration |
+| Seed workflow | Seed booking request + review + status tracking | Partial fulfillment and schedule coordination | Full supply chain integration |
+| No-burn compliance | No-burn registration with photo/GPS evidence | Rule-configurable compliance checks | Automated policy routing and escalations |
+| Inspection operations | Inspector tasking, visit submission, result status | SLA tracking and workload balancing | Predictive inspection prioritization |
+| Notifications & status | In-app status updates for key flows | Multi-channel notifications (SMS/email) | Personalized proactive recommendations |
 
 ## 3) In-scope MVP modules
-1. **Organization & farm structure**: farm, field/block, and season definitions.
-2. **Crop plan management**: create, update, and review seasonal crop plans.
-3. **Field activity records**: log core activities with date, field, crop, and notes.
-4. **Input usage records**: record input/product usage and quantities per activity.
-5. **Harvest records**: capture harvest entries tied to crop and field.
-6. **Basic reporting**: summary views and downloadable tabular exports.
-7. **User and role access (basic)**: enforce access by defined user roles.
+1. **LINE LIFF login**.
+2. **Farmer registration**.
+3. **Citizen ID capture via OCR with manual fallback**.
+4. **Member approval workflow (staff/admin)**.
+5. **Plot registration with GPS coordinates**.
+6. **Planting cycle creation and updates**.
+7. **Seed booking request and review flow**.
+8. **Field photo upload with GPS metadata**.
+9. **Inspection workflow (assignment, visit, result submission)**.
+10. **No-burn registration and evidence submission**.
+11. **Status tracking in LINE Mini App across member requests**.
 
 ## 4) Out-of-scope items (for MVP)
-- Financial accounting, invoicing, and payment workflows.
-- Procurement/vendor management workflows.
-- Native mobile apps and offline-first synchronization.
-- Hardware/IoT integrations.
-- Advanced analytics, forecasting, or optimization models.
-- Complex workflow engines and approval chains.
-- External partner portals (buyers, suppliers, regulators).
-- Multi-language localization and enterprise SSO.
+- Full POS capability.
+- Stock management.
+- Finance/accounting modules.
+- Full truck booking operations.
+- Dashboard analytics.
+- AI image analysis.
+- IoT integrations.
+- Offline-first synchronization.
 
 ## 5) User roles involved
-- **Owner/Admin**: manages setup, users, and full operational visibility.
-- **Farm Manager**: plans crops, oversees operations, reviews reports.
-- **Field Staff/Operator**: records field activities, input usage, and harvest entries.
-- **Viewer/Analyst**: read-only access for operational monitoring and reporting.
+- **farmer**: registers as member, manages plot/cycle data, submits bookings and no-burn requests, checks status.
+- **leader**: supports member verification/coordination at community level and monitors local request progress.
+- **inspector**: receives inspection assignments, visits plots, submits inspection outcomes.
+- **truck_owner**: visibility into relevant booking/operation status where assigned (without full booking operations in MVP).
+- **staff**: reviews registrations/bookings/requests and processes approvals.
+- **admin**: manages approvals, oversight, and role-governed operational control.
 
 ## 6) Main workflows
-1. **Season setup workflow**: create season, define farms/fields/blocks, assign responsible users.
-2. **Crop planning workflow**: create and adjust crop plans, then confirm plan for execution.
-3. **Execution logging workflow**: record field activities and input usage, then manager review.
-4. **Harvest workflow**: record harvest events and review cumulative seasonal output.
-5. **Operational review workflow**: review dashboards/reports and export data as needed.
+1. **LINE login → register member → staff/admin approval**.
+2. **Register plot → create planting cycle → upload field photos**.
+3. **Seed booking → staff/admin review → booking status**.
+4. **No-burn registration → photo/GPS evidence → inspection**.
+5. **Inspector receives job → visits plot → submits inspection result**.
+6. **Farmer checks status in LINE Mini App**.
 
 ## 7) Screen list
-1. Sign in
-2. Dashboard (operational summary)
-3. Farms & fields management
-4. Seasons management
-5. Crop plans list/detail
-6. Activity log list/create/edit
-7. Input usage entry/list
-8. Harvest entry/list
-9. Reports/export
-10. User & role management (basic)
+1. LIFF sign in / onboarding
+2. Role-based home
+3. Member registration
+4. Member profile/status
+5. Plot list/detail
+6. Planting cycle detail
+7. Seed booking
+8. No-burn registration
+9. Inspection task list
+10. Inspection form
+11. Photo upload
+12. Admin approval queue
 
 ## 8) Data entity list
-- User
-- Role
-- Farm
-- Field/Block
-- Season
-- Crop
-- Crop Plan
-- Activity Record
-- Input/Product
-- Input Usage Record
-- Harvest Record
-- Report Export Job (or equivalent export metadata)
+- member
+- member_role
+- plot
+- planting_cycle
+- seed_order
+- no_burn_request
+- inspection
+- photo
+- approval
+- notification
 
 ## 9) Acceptance criteria
-1. MVP scope boundaries are explicitly documented and distinguish MVP vs later phases.
-2. Stakeholders can identify included modules and excluded capabilities without ambiguity.
-3. Core roles are defined and mapped to MVP use.
-4. End-to-end operational workflows (plan → execute → harvest → review) are documented.
-5. Required MVP screens and core data entities are listed and aligned to workflows.
-6. This scope document can be used as the baseline for backlog refinement and delivery planning.
+1. Scope explicitly maps MVP to KaonA Agri **LINE Mini App** workflows and excludes non-MVP capabilities.
+2. MVP modules include all required registration, approval, GPS/photo evidence, inspection, and status-tracking capabilities.
+3. Role definitions are limited to: farmer, leader, inspector, truck_owner, staff, admin.
+4. Workflow definitions exactly cover the six required end-to-end operational flows.
+5. Screen list and data entities align with defined workflows/modules.
+6. Generic farm SaaS constructs outside this scope are excluded from the MVP definition.
 
 ## 10) Open questions / assumptions
 ### Open questions
-1. Which reports are mandatory at launch versus optional in MVP?
-2. Are there regulatory data fields that must be captured from day one?
-3. Is single-organization tenancy sufficient for MVP, or is multi-organization support required?
-4. What level of auditability is required for activity and harvest edits?
+1. What minimum OCR accuracy threshold is acceptable before mandatory manual fallback?
+2. Which member fields are required for approval versus optional for later completion?
+3. What GPS precision tolerance is acceptable for plot registration and photo evidence?
+4. Should leader role approvals be advisory only, or can they gate staff/admin decisions?
+5. What notification timing/SLA is expected for approval and inspection updates in LINE?
 
 ### Assumptions
-1. MVP targets a limited set of internal users before broader rollout.
-2. Initial deployment prioritizes web access over native mobile.
-3. Data import needs are minimal at launch and can be manual.
-4. Advanced integrations and analytics are intentionally deferred to later phases.
+1. LINE account is the primary identity entry point for all MVP users.
+2. Staff/admin are the final approvers for membership and request decisions in MVP.
+3. Inspector assignment and result submission are managed within the app (no external system dependency).
+4. Truck_owner role visibility is limited in MVP and does not require full truck booking features.
