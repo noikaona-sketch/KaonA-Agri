@@ -40,11 +40,13 @@ erDiagram
 
 
 ## Issue #17 OCR + GPS Capture Summary
-- Added separate `public.ocr_results` table for OCR lifecycle tracking, linked to `members` (subject) and optionally `photos` (source image).
-- Stored only privacy-safe ID outputs in OCR records (`citizen_id_masked`, `citizen_id_hash`) and explicitly avoided raw OCR payload/full citizen ID on `members`.
-- Added OCR constraints and review fields: status domain, confidence range (`0..100`), reviewer attribution, and soft-delete fields.
-- Added GPS evidence and image preprocessing metadata on `photos`: `gps_provider`, `gps_captured_at`, `gps_is_mocked`, `gps_meta`, `image_preprocess_meta`.
-- Added controlled GPS provider domain (`gps`, `network`, `passive`, `fused`, `manual`, `unknown`) and indexes for OCR/GPS operational filtering.
+- OCR results are stored in a dedicated `public.ocr_results` table (linked to member and optional source photo), not on `members`.
+- Full citizen ID plaintext must never be stored; OCR outputs are limited to masked ID and hash (`extracted_citizen_id_masked`, `citizen_id_hash`).
+- OCR review lifecycle uses `ocr_results.status` (`pending`, `accepted`, `rejected`, `manual_review`) with reviewer attribution fields.
+- GPS evidence review is modeled on `photos` using `evidence_status` and `gps_verified`, plus provenance/anti-fraud metadata (`gps_source`, `gps_provider`, `gps_is_mocked`, `gps_meta`, `gps_distance_to_plot_m`).
+- Image preprocessing metadata is stored on photos (`original_storage_path`, `processed_storage_path`, `width_px`, `height_px`, `file_size_bytes`, `processing_status`) to support resize/compress and OCR document crop pipelines.
+- Field evidence photos must not be cropped in a way that removes inspection context; context-preserving preprocessing is required.
+- MVP continues to use point `lat/lng`; polygon/geofence validation is Phase 2.
 
 ## Soft Delete Strategy
 - Domain rows are logically deleted via `deleted_at` + `deleted_by` instead of immediate hard delete.
