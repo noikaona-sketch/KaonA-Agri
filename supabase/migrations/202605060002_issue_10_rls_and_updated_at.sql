@@ -206,8 +206,15 @@ using (
   )
 );
 
-create policy inspections_modify_assigned_or_admin_staff
-on public.inspections for all
+create policy inspections_insert_assigned_or_admin_staff
+on public.inspections for insert
+with check (
+  inspector_member_id = public.current_member_id()
+  or public.current_member_is_admin_or_staff()
+);
+
+create policy inspections_update_assigned_or_admin_staff
+on public.inspections for update
 using (
   inspector_member_id = public.current_member_id()
   or public.current_member_is_admin_or_staff()
