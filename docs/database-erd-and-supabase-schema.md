@@ -91,3 +91,21 @@ Reference SQL file: `supabase/migrations/202605060004_issue_17_ocr_gps_schema.sq
 - MVP uses point-based `lat/lng` capture for plots and photos.
 - Polygon/geofence validation is explicitly deferred to Phase 2.
 
+
+### Image preprocessing requirements (OCR + evidence photos)
+- Resize/compress large uploads before storage to reduce bandwidth and storage cost while preserving enough quality for OCR and inspection review.
+- Store an optimized image for normal app usage; do not store oversized originals unless explicitly required for audit/legal reasons.
+- For OCR images, crop document/card region before OCR where feasible and remove unnecessary borders/background.
+- For field evidence images, avoid cropping that removes critical context (plot surroundings, GPS-relevant cues, or inspection evidence).
+
+### Image metadata + storage traceability
+- Preserve capture metadata through processing: `captured_at`, `lat`, `lng`, `accuracy`, `uploaded_by`.
+- Track processed image properties: `width_px`, `height_px`, and `file_size_bytes`.
+- Persist processing lifecycle in `processing_status` (`pending`, `processed`, `failed`, `skipped`).
+- If original files are retained, store in `original_storage_path` and processed in `processed_storage_path`.
+- If originals are not retained, store only processed image path plus processing metadata.
+
+### Privacy + retention requirements
+- OCR/ID card images must be minimized and retained only as required by policy.
+- OCR metadata must never store full citizen ID plaintext.
+- Prefer masked OCR values and optional hashes in operational workflows.

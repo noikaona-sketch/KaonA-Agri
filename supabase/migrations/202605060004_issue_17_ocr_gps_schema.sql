@@ -29,7 +29,14 @@ add column if not exists gps_distance_to_plot_m numeric,
 add column if not exists evidence_status text not null default 'submitted'
   check (evidence_status in ('submitted', 'accepted', 'rejected', 'needs_review')),
 add column if not exists reviewed_by uuid references public.members(id),
-add column if not exists reviewed_at timestamptz;
+add column if not exists reviewed_at timestamptz,
+add column if not exists original_storage_path text,
+add column if not exists processed_storage_path text,
+add column if not exists width_px integer,
+add column if not exists height_px integer,
+add column if not exists file_size_bytes bigint,
+add column if not exists processing_status text not null default 'pending'
+  check (processing_status in ('pending', 'processed', 'failed', 'skipped'));
 
 create index if not exists idx_ocr_results_member_status
 on public.ocr_results(member_id, status);
