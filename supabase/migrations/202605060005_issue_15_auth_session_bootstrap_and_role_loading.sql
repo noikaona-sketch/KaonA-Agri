@@ -1,5 +1,7 @@
 -- Issue #15: Auth session bootstrap + role loading helpers
 -- Provides deterministic effective-role resolution from DB after Supabase session is established.
+-- service_account is system-only and must not be selected as a LIFF active role.
+-- Protected modules require is_approved = true.
 
 create or replace function public.role_priority(role_name text)
 returns int
@@ -27,6 +29,7 @@ as $$
   from public.member_roles mr
   join public.members m on m.id = mr.member_id
   where m.auth_user_id = auth.uid()
+    and mr.role <> 'service_account'
   order by
     mr.is_primary desc,
     public.role_priority(mr.role),
@@ -41,6 +44,7 @@ returns table (
   auth_user_id uuid,
   line_user_id text,
   status text,
+  is_approved boolean,
   effective_role text,
   roles text[]
 )
@@ -56,12 +60,14 @@ as $$
     select mr.member_id, mr.role, mr.is_primary, mr.created_at, mr.id
     from public.member_roles mr
     join me on me.id = mr.member_id
+    where mr.role <> 'service_account'
   )
   select
     me.id as member_id,
     me.auth_user_id,
     me.line_user_id,
     me.status,
+    (me.status = 'approved') as is_approved,
     (
       select rr.role
       from role_rows rr
