@@ -1,7 +1,13 @@
 import { MobileAppShell } from '@/shared/components/mobile-app-shell';
+import { ProtectedRoute } from '@/shared/components/protected-route';
 
 export default function HomePage() {
   return (
-    <MobileAppShell title="KaonA Agri" subtitle="Scaffold ready for feature implementation." />
+    <ProtectedRoute>
+      <MobileAppShell
+        title="KaonA Agri"
+        subtitle="Authenticated session ready for protected module implementation."
+      />
+    </ProtectedRoute>
   );
 }
