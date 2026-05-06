@@ -1,13 +1,51 @@
-import liff from '@line/liff';
+const LIFF_SDK_URL = 'https://static.line-scdn.net/liff/edge/2/sdk.js';
+
+type LiffInstance = {
+  init: (params: { liffId: string }) => Promise<void>;
+};
+
+declare global {
+  interface Window {
+    liff?: LiffInstance;
+  }
+}
 
 const liffId = process.env.NEXT_PUBLIC_LIFF_ID;
 
+let loadPromise: Promise<LiffInstance> | null = null;
 let isInitialized = false;
 
-export async function initLiff(): Promise<typeof liff | null> {
-  if (!liffId || typeof window === 'undefined') {
+async function loadLiffSdk(): Promise<LiffInstance> {
+  if (window.liff) {
+    return window.liff;
+  }
+
+  if (!loadPromise) {
+    loadPromise = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = LIFF_SDK_URL;
+      script.async = true;
+      script.onload = () => {
+        if (window.liff) {
+          resolve(window.liff);
+          return;
+        }
+        reject(new Error('LIFF SDK loaded but window.liff is unavailable.'));
+      };
+      script.onerror = () => reject(new Error('Failed to load LIFF SDK script.'));
+      document.head.appendChild(script);
+    });
+  }
+
+  return loadPromise;
+}
+
+export async function initLiff(): Promise<LiffInstance | null> {
+  if (typeof window === 'undefined' || !liffId) {
     return null;
   }
+
+  const liff = await loadLiffSdk();
 
   if (!isInitialized) {
     await liff.init({ liffId });
