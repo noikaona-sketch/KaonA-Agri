@@ -16,6 +16,7 @@ erDiagram
     members ||--o{ photos : uploads
     members ||--o{ notifications : receives
     members ||--o{ audit_logs : acts_on
+    members ||--o{ ocr_results : ocr_for
 
     plots ||--o{ planting_cycles : contains
     plots ||--o{ photos : documented_by
@@ -27,6 +28,7 @@ erDiagram
     no_burn_requests ||--o{ photos : evidenced_by
 
     inspections ||--o{ photos : attachment
+    photos ||--o{ ocr_results : source_for
 ```
 
 ## Issue #16 Hardening Summary
@@ -38,10 +40,11 @@ erDiagram
 
 
 ## Issue #17 OCR + GPS Capture Summary
-- Added OCR traceability columns on `members` to support citizen ID extraction lifecycle: `citizen_id_ocr_status`, `citizen_id_ocr_payload`, `citizen_id_ocr_confidence`, `citizen_id_ocr_extracted_at`, `citizen_id_verified_at`, and `citizen_id_verified_by`.
-- Added validation constraints for OCR status domain (`pending`, `success`, `failed`, `manual_override`) and confidence range (`0..100`).
-- Added GPS capture provenance fields on `plots` and `photos`: `gps_provider`, `gps_is_mocked`, `gps_meta`; plus `gps_captured_at` on `plots` for registration timestamping.
-- Added controlled GPS provider domain (`gps`, `network`, `passive`, `fused`, `manual`, `unknown`) and indexing for OCR/GPS operational filtering.
+- Added separate `public.ocr_results` table for OCR lifecycle tracking, linked to `members` (subject) and optionally `photos` (source image).
+- Stored only privacy-safe ID outputs in OCR records (`citizen_id_masked`, `citizen_id_hash`) and explicitly avoided raw OCR payload/full citizen ID on `members`.
+- Added OCR constraints and review fields: status domain, confidence range (`0..100`), reviewer attribution, and soft-delete fields.
+- Added GPS evidence and image preprocessing metadata on `photos`: `gps_provider`, `gps_captured_at`, `gps_is_mocked`, `gps_meta`, `image_preprocess_meta`.
+- Added controlled GPS provider domain (`gps`, `network`, `passive`, `fused`, `manual`, `unknown`) and indexes for OCR/GPS operational filtering.
 
 ## Soft Delete Strategy
 - Domain rows are logically deleted via `deleted_at` + `deleted_by` instead of immediate hard delete.
