@@ -40,6 +40,7 @@ async function loadLiffSdk(): Promise<LiffInstance> {
   return loadPromise;
 }
 
+// Fallback strategy: load LIFF from LINE CDN at runtime to avoid npm dependency install issues.
 export async function initLiff(): Promise<LiffInstance | null> {
   if (typeof window === 'undefined' || !liffId) {
     return null;
