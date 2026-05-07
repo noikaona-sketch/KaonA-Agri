@@ -17,24 +17,16 @@ type PlantingCycleOption = {
   status: string;
 };
 
+type WorkflowStatus = 'pending' | 'reviewed' | 'approved' | 'rejected';
+
 type NoBurnRequestRow = {
   id: string;
-  status: string;
+  status: WorkflowStatus;
   submitted_at: string;
   created_at: string;
   reviewed_by: string | null;
   planting_cycle_id: string | null;
 };
-
-
-type WorkflowStatus = 'pending' | 'reviewed' | 'approved' | 'rejected';
-
-function toWorkflowStatus(rawStatus: string): WorkflowStatus {
-  if (rawStatus === 'approved') return 'approved';
-  if (rawStatus === 'rejected') return 'rejected';
-  if (rawStatus === 'under_review' || rawStatus === 'reviewed' || rawStatus === 'completed') return 'reviewed';
-  return 'pending';
-}
 
 function toChipStatus(status: WorkflowStatus) {
   if (status === 'pending') return 'submitted' as const;
@@ -90,7 +82,10 @@ export function NoBurnParticipationWorkflow() {
 
     setSubmitting(true);
     const supabase = createSupabaseBrowserClient();
-    const { error: insertError } = await supabase.from('no_burn_requests').insert({ planting_cycle_id: selectedCycleId });
+    const { error: insertError } = await supabase.from('no_burn_requests').insert({
+      planting_cycle_id: selectedCycleId,
+      status: 'pending',
+    });
     setSubmitting(false);
 
     if (insertError) return setError(insertError.message);
@@ -101,7 +96,7 @@ export function NoBurnParticipationWorkflow() {
     await refreshData();
   }
 
-  async function updateReviewStatus(requestId: string, nextStatus: 'under_review' | 'approved' | 'rejected') {
+  async function updateReviewStatus(requestId: string, nextStatus: 'reviewed' | 'approved' | 'rejected') {
     setError(null);
     setUpdatingReviewId(requestId);
 
@@ -155,13 +150,13 @@ export function NoBurnParticipationWorkflow() {
           <p>
             <strong>Request:</strong> {request.id.slice(0, 8)}...
           </p>
-          <StatusChip status={toChipStatus(toWorkflowStatus(request.status))} />
+          <StatusChip status={toChipStatus(request.status)} />
           <p>Submitted: {new Date(request.submitted_at || request.created_at).toLocaleString()}</p>
           <p>Timeline: Pending → Reviewed → Approved/Rejected</p>
           {isReviewer ? (
             <div>
-              <UIButton type="button" onClick={() => updateReviewStatus(request.id, 'under_review')} disabled={updatingReviewId === request.id}>
-                Mark under review
+              <UIButton type="button" onClick={() => updateReviewStatus(request.id, 'reviewed')} disabled={updatingReviewId === request.id}>
+                Mark reviewed
               </UIButton>{' '}
               <UIButton type="button" onClick={() => updateReviewStatus(request.id, 'approved')} disabled={updatingReviewId === request.id}>
                 Approve
