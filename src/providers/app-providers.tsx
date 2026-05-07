@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { useEffect } from 'react';
 
 import { initLiff } from '@/lib/liff/init-liff';
+import { AuthProvider } from '@/providers/auth-provider';
 
 type AppProvidersProps = {
   children: ReactNode;
@@ -16,5 +17,5 @@ export function AppProviders({ children }: AppProvidersProps) {
     });
   }, []);
 
-  return <>{children}</>;
+  return <AuthProvider>{children}</AuthProvider>;
 }
