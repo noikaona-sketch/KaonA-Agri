@@ -33,7 +33,7 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 16px 16px calc(24px + env(safe-area-inset-bottom));
+  padding: calc(12px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom));
   gap: 12px;
 }
 
@@ -41,11 +41,12 @@ body {
   width: 100%;
   max-width: 480px;
   margin: 0 auto;
-  border-radius: 12px;
+  border-radius: 16px;
   background: var(--surface);
   box-shadow: var(--shadow-1);
   border: 1px solid var(--border);
   padding: 20px;
+  overflow: hidden;
 }
 
 .mobile-shell__header {
@@ -89,9 +90,11 @@ body {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 16px;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   padding: 8px;
+  z-index: 2;
 }
 
 .mobile-bottom-nav__item { min-height: 44px; border: 0; background: transparent; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--text-secondary); }
