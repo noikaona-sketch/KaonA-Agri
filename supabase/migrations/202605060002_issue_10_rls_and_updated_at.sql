@@ -42,6 +42,8 @@ returns boolean
 language sql
 stable
 as $$
+  -- Includes service_account so backend automation and seeded test service users
+  -- can validate cross-member RLS behavior without weakening end-user policies.
   select exists (
     select 1
     from public.member_roles mr

@@ -1,3 +1,5 @@
+import { getOptionalPublicLiffId } from '@/lib/env/public-env';
+
 const LIFF_SDK_URL = 'https://static.line-scdn.net/liff/edge/2/sdk.js';
 
 type LiffInstance = {
@@ -10,7 +12,7 @@ declare global {
   }
 }
 
-const liffId = process.env.NEXT_PUBLIC_LIFF_ID;
+const liffId = getOptionalPublicLiffId();
 
 let loadPromise: Promise<LiffInstance> | null = null;
 let isInitialized = false;
