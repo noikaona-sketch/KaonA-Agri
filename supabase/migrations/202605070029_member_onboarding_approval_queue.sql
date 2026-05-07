@@ -4,6 +4,31 @@ create unique index if not exists uq_approvals_member_pending
 on public.approvals(member_id, resource_type, resource_id)
 where status = 'pending';
 
+
+create or replace function public.create_member_onboarding_approval()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if new.status = 'pending' then
+    insert into public.approvals (member_id, requested_by, resource_type, resource_id, status, note)
+    values (new.id, new.id, 'member', new.id, 'pending', 'Member onboarding request')
+    on conflict do nothing;
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_create_member_onboarding_approval on public.members;
+
+create trigger trg_create_member_onboarding_approval
+after insert on public.members
+for each row
+execute function public.create_member_onboarding_approval();
+
 create or replace function public.list_member_onboarding_queue()
 returns table (
   approval_id uuid,
