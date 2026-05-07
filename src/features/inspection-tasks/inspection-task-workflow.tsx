@@ -22,6 +22,7 @@ export function InspectionTaskWorkflow() {
 
   const isStaffOrAdmin = useMemo(() => roles.includes('staff') || roles.includes('admin'), [roles]);
   const isInspector = useMemo(() => roles.includes('inspector'), [roles]);
+  const canUpdate = isInspector || isStaffOrAdmin;
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -119,7 +120,7 @@ export function InspectionTaskWorkflow() {
 
   return (
     <MobileAppShell title="งานตรวจแปลง" subtitle="ติดตามคิว ตรวจผล และแนบหลักฐาน" roleBadge={effectiveRole ?? 'farmer'}>
-      <SectionHeader title="รายการงานตรวจ" subtitle="ระบบจะแสดงตามสิทธิ์และ RLS" />
+      <SectionHeader title="รายการงานตรวจ" subtitle="ระบบจะแสดงตามสิทธิ์และ RLS (เกษตรกรเป็นโหมดอ่านอย่างเดียว)" />
       {isStaffOrAdmin ? (
         <ResultForm
           loading={loading}
@@ -138,9 +139,9 @@ export function InspectionTaskWorkflow() {
 
       {loading ? <LoadingState label="กำลังโหลดงานตรวจ" /> : null}
       {!loading && tasks.length === 0 ? <EmptyState title="ไม่พบงานตรวจ" detail="ยังไม่มีงานตรวจในสิทธิ์ที่คุณเข้าถึงได้" /> : null}
-      {!loading ? tasks.map((task) => <TaskCard key={task.id} task={task} canUpdate={isInspector || isStaffOrAdmin} updating={updatingId === task.id} onSelect={setSelectedTaskId} onUpdate={updateTaskStatus} />) : null}
+      {!loading ? tasks.map((task) => <TaskCard key={task.id} task={task} canUpdate={canUpdate} updating={updatingId === task.id} onSelect={setSelectedTaskId} onUpdate={updateTaskStatus} />) : null}
 
-      {selectedTask ? <TaskDetail task={selectedTask} note={resultNote} submitting={updatingId === selectedTask.id} onNoteChange={setResultNote} onSubmit={() => updateTaskStatus(selectedTask.id, selectedTask.result_status)} /> : null}
+      {selectedTask ? <TaskDetail task={selectedTask} note={resultNote} submitting={updatingId === selectedTask.id} onNoteChange={setResultNote} onSubmit={() => updateTaskStatus(selectedTask.id, selectedTask.result_status)} canUpdate={canUpdate} /> : null}
 
       {error ? <ErrorState title="เกิดข้อผิดพลาดในงานตรวจ" detail={error} /> : null}
       {message ? <p>{message}</p> : null}
