@@ -1,85 +1,39 @@
 import { EmptyState } from '@/shared/components/empty-state';
+import { FormSheet } from '@/shared/components/form-sheet';
 import { InfoCard } from '@/shared/components/info-card';
 import { MobileAppShell } from '@/shared/components/mobile-app-shell';
+import { PhotoUploadPlaceholder } from '@/shared/components/photo-upload-placeholder';
 import { ProgressBadge } from '@/shared/components/progress-badge';
 import { SectionHeader } from '@/shared/components/section-header';
+import { StepList } from '@/shared/components/step-list';
 import { StatusChip } from '@/shared/components/status-chip';
 import { UIButton } from '@/shared/components/ui-button';
 import { ProtectedRoute } from '@/shared/components/protected-route';
 
-type MemberApprovalItem = {
-  id: string;
-  fullName: string;
-  citizenIdMasked: string;
-  village: string;
-  requestedAt: string;
-  requestedBy: 'self' | 'leader';
-};
-
-const pendingMemberApprovals: MemberApprovalItem[] = [
-  {
-    id: 'APP-240521-001',
-    fullName: 'Nattapon S.',
-    citizenIdMasked: '1-2345-XXXXX-12-3',
-    village: 'Ban Nong Khun',
-    requestedAt: '2026-05-06 08:15',
-    requestedBy: 'self',
-  },
-  {
-    id: 'APP-240521-002',
-    fullName: 'Siriporn T.',
-    citizenIdMasked: '1-9584-XXXXX-44-8',
-    village: 'Ban Na Klang',
-    requestedAt: '2026-05-06 09:44',
-    requestedBy: 'leader',
-  },
-  {
-    id: 'APP-240521-003',
-    fullName: 'Wichai K.',
-    citizenIdMasked: '3-1048-XXXXX-99-6',
-    village: 'Ban Huai Sai',
-    requestedAt: '2026-05-06 13:21',
-    requestedBy: 'self',
-  },
-];
-
 export default function HomePage() {
   return (
-    <ProtectedRoute allowedRoles={['admin']}>
+    <ProtectedRoute>
       <MobileAppShell
-        title="Admin approval queue"
-        subtitle="Review pending member onboarding requests"
-        roleBadge="Admin"
+        title="KaonA Agri"
+        subtitle="Shared mobile UI baseline ready for feature implementation."
+        roleBadge="Viewer"
       >
         <SectionHeader
-          title="Member onboarding approvals"
-          subtitle="Approve or reject pending member registrations"
-          action={<ProgressBadge current={pendingMemberApprovals.length} total={20} />}
+          title="Shared UI preview"
+          subtitle="Reusable scaffold components"
+          action={<ProgressBadge current={1} total={3} />}
         />
-
-        {pendingMemberApprovals.length === 0 ? (
-          <EmptyState
-            title="Approval queue is clear"
-            detail="No pending member onboarding requests at this time."
-          />
-        ) : (
-          pendingMemberApprovals.map((approval) => (
-            <InfoCard
-              key={approval.id}
-              title={approval.fullName}
-              subtitle={`${approval.village} • ${approval.citizenIdMasked} • ${approval.requestedAt} • ${approval.requestedBy === 'leader' ? 'Leader submitted' : 'Self submitted'}`}
-              meta={<StatusChip status="submitted" />}
-              action={
-                <div style={{ display: 'grid', gap: 8 }}>
-                  <UIButton fullWidth variant="secondary">
-                    Reject
-                  </UIButton>
-                  <UIButton fullWidth>Approve</UIButton>
-                </div>
-              }
-            />
-          ))
-        )}
+        <InfoCard
+          title="Shared UI preview"
+          subtitle="Display-only examples"
+          meta={<StatusChip status="submitted" />}
+          action={<UIButton fullWidth>Primary action</UIButton>}
+        />
+        <FormSheet title="FormSheet">
+          <StepList steps={[{ title: 'Step one', done: true }, { title: 'Step two' }]} />
+          <PhotoUploadPlaceholder />
+        </FormSheet>
+        <EmptyState title="EmptyState" detail="No items to show." />
       </MobileAppShell>
     </ProtectedRoute>
   );
