@@ -4,7 +4,7 @@ import type { Session } from '@supabase/supabase-js';
 import type { ReactNode } from 'react';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
-import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import { tryCreateSupabaseBrowserClient } from '@/lib/supabase/client';
 import type {
   AppRole,
   AuthBootstrapResult,
@@ -65,7 +65,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    const supabase = createSupabaseBrowserClient();
+    const supabase = tryCreateSupabaseBrowserClient();
+
+    if (!supabase) {
+      setMember(null);
+      setSession(null);
+      setStatus('error');
+      setErrorMessage('Configuration error: missing Supabase public environment variables.');
+      return;
+    }
+
+    const supabaseClient = supabase;
 
     async function bootstrapWithSession(currentSession: Session | null) {
       setSession(currentSession);
@@ -77,7 +87,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return;
       }
 
-      const { data, error } = await supabase.rpc('bootstrap_auth_session');
+      const { data, error } = await supabaseClient.rpc('bootstrap_auth_session');
 
       if (error) {
         setMember(null);
@@ -105,19 +115,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
       return setStatus('approved');
     }
 
-    void supabase.auth.getSession().then(({ data, error }) => {
-      if (error) {
-        setStatus('error');
-        setErrorMessage(error.message);
-        return;
-      }
+    void supabaseClient.auth
+      .getSession()
+      .then(({ data, error }) => {
+        if (error) {
+          setStatus('error');
+          setErrorMessage(error.message);
+          return;
+        }
 
-      void bootstrapWithSession(data.session);
-    });
+        void bootstrapWithSession(data.session);
+      })
+      .catch((error: unknown) => {
+        setStatus('error');
+        setErrorMessage(error instanceof Error ? error.message : 'Unexpected authentication error.');
+      });
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, updatedSession) => {
+    } = supabaseClient.auth.onAuthStateChange((_event, updatedSession) => {
       void bootstrapWithSession(updatedSession);
     });
 

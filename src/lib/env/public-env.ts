@@ -15,11 +15,28 @@ function readEnv(key: PublicEnvKey): string {
   return value;
 }
 
+function tryReadEnv(key: PublicEnvKey): string | null {
+  const value = process.env[key]?.trim();
+
+  return value || null;
+}
+
 export function getRequiredPublicEnv() {
   return {
     supabaseUrl: readEnv('NEXT_PUBLIC_SUPABASE_URL'),
     supabaseAnonKey: readEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY'),
   };
+}
+
+export function getPublicEnvIfConfigured() {
+  const supabaseUrl = tryReadEnv('NEXT_PUBLIC_SUPABASE_URL');
+  const supabaseAnonKey = tryReadEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY');
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return null;
+  }
+
+  return { supabaseUrl, supabaseAnonKey };
 }
 
 export function getOptionalPublicLiffId() {
