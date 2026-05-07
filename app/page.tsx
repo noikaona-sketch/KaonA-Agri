@@ -3,6 +3,7 @@
 import { MemberRegistrationMVP } from '@/features/member-registration-mvp';
 import { PlotRegistrationMVP } from '@/features/plot-registration-mvp';
 import { NoBurnParticipationWorkflow } from '@/features/no-burn-participation-workflow';
+import { InspectionTaskWorkflow } from '@/features/inspection-task-workflow';
 import { useAuth } from '@/providers/auth-provider';
 import { EmptyState } from '@/shared/components/empty-state';
 import { ErrorState } from '@/shared/components/error-state';
@@ -58,7 +59,7 @@ export default function HomePage() {
   return (
     <ProtectedRoute fallbackNoMember={<NoMemberFallback />}>
       <MobileAppShell title="KaonA Agri" subtitle="Shared mobile UI baseline ready for feature implementation." roleBadge="Viewer">
-        <SectionHeader title="MVP forms" subtitle="Registration + field capture" action={<ProgressBadge current={4} total={4} />} />
+        <SectionHeader title="MVP forms" subtitle="Registration + field capture" action={<ProgressBadge current={5} total={5} />} />
         <InfoCard
           title="Shared UI preview"
           subtitle="Display-only examples"
@@ -67,6 +68,7 @@ export default function HomePage() {
         />
         <PlotRegistrationMVP />
         <NoBurnParticipationWorkflow />
+        <InspectionTaskWorkflow />
         <FormSheet title="FormSheet">
           <StepList steps={[{ title: 'Step one', done: true }, { title: 'Step two' }]} />
           <PhotoUploadPlaceholder label="Field photo + GPS evidence foundation" />
