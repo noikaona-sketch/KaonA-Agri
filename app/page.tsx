@@ -57,7 +57,7 @@ function NoMemberFallback() {
 export default function HomePage() {
   return (
     <ProtectedRoute fallbackNoMember={<NoMemberFallback />}>
-      <MobileAppShell title="KaonA Agri" subtitle="Shared mobile UI baseline ready for feature implementation." roleBadge="Viewer">
+      <MobileAppShell title="KaonA Agri" subtitle="Polished mobile baseline tuned for LINE in-app preview." roleBadge="Viewer">
         <SectionHeader title="MVP forms" subtitle="Registration + field capture" action={<ProgressBadge current={4} total={4} />} />
         <InfoCard
           title="Shared UI preview"
