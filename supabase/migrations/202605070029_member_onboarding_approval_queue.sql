@@ -1,61 +1,8 @@
 -- Issue #29: Admin approval queue for member onboarding
 
-create or replace function public.register_member_mvp(
-  p_line_user_id text,
-  p_full_name text,
-  p_phone text,
-  p_citizen_id_masked text
-)
-returns uuid
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  v_member_id uuid;
-  v_auth_user_id uuid;
-begin
-  v_auth_user_id := auth.uid();
-
-  if v_auth_user_id is null then
-    raise exception 'Authentication required';
-  end if;
-
-  if coalesce(trim(p_line_user_id), '') = '' then
-    raise exception 'line_user_id is required';
-  end if;
-
-  if coalesce(trim(p_full_name), '') = '' then
-    raise exception 'full_name is required';
-  end if;
-
-  if coalesce(trim(p_citizen_id_masked), '') = '' then
-    raise exception 'citizen_id_masked is required';
-  end if;
-
-  select m.id into v_member_id from public.members m where m.auth_user_id = v_auth_user_id limit 1;
-
-  if v_member_id is not null then
-    return v_member_id;
-  end if;
-
-  insert into public.members (auth_user_id, line_user_id, full_name, phone, citizen_id_masked, status)
-  values (v_auth_user_id, p_line_user_id, p_full_name, p_phone, p_citizen_id_masked, 'pending')
-  returning id into v_member_id;
-
-  insert into public.member_roles (member_id, role, is_primary)
-  values (v_member_id, 'farmer', true)
-  on conflict (member_id, role) do nothing;
-
-  insert into public.approvals (member_id, requested_by, resource_type, resource_id, status, note)
-  values (v_member_id, v_member_id, 'member', v_member_id, 'pending', 'Member onboarding request')
-  on conflict do nothing;
-
-  return v_member_id;
-end;
-$$;
-
-grant execute on function public.register_member_mvp(text, text, text, text) to authenticated;
+create unique index if not exists uq_approvals_member_pending
+on public.approvals(member_id, resource_type, resource_id)
+where status = 'pending';
 
 create or replace function public.list_member_onboarding_queue()
 returns table (
@@ -94,13 +41,19 @@ set search_path = public
 as $$
 declare
   v_reviewer_member_id uuid;
+  v_reviewer_role text := 'admin/staff';
   v_target_member_id uuid;
+  v_old_approval_status text;
+  v_old_member_status text;
 begin
   if p_decision not in ('approved', 'rejected') then
     raise exception 'decision must be approved or rejected';
   end if;
 
-  select id into v_reviewer_member_id from public.members where auth_user_id = auth.uid() limit 1;
+  select m.id into v_reviewer_member_id
+  from public.members m
+  where m.auth_user_id = auth.uid()
+  limit 1;
 
   if v_reviewer_member_id is null then
     raise exception 'member context required';
@@ -113,8 +66,16 @@ begin
     raise exception 'admin or staff role required';
   end if;
 
-  select a.member_id into v_target_member_id
+  select role into v_reviewer_role
+  from public.member_roles
+  where member_id = v_reviewer_member_id and role in ('admin', 'staff')
+  order by case when role = 'admin' then 0 else 1 end
+  limit 1;
+
+  select a.member_id, a.status, m.status
+    into v_target_member_id, v_old_approval_status, v_old_member_status
   from public.approvals a
+  join public.members m on m.id = a.member_id
   where a.id = p_approval_id
     and a.resource_type = 'member'
     and a.status = 'pending'
@@ -134,6 +95,25 @@ begin
   set status = p_decision,
       updated_at = now()
   where id = v_target_member_id;
+
+  insert into public.audit_logs (
+    actor_member_id,
+    actor_role,
+    action,
+    resource_type,
+    resource_id,
+    old_data,
+    new_data
+  )
+  values (
+    v_reviewer_member_id,
+    coalesce(v_reviewer_role, 'admin/staff'),
+    case when p_decision = 'approved' then 'member.approve' else 'member.reject' end,
+    'member',
+    v_target_member_id,
+    jsonb_build_object('approval_status', v_old_approval_status, 'member_status', v_old_member_status),
+    jsonb_build_object('approval_status', p_decision, 'member_status', p_decision)
+  );
 end;
 $$;
 

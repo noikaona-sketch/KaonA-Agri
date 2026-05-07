@@ -1,8 +1,7 @@
 'use client';
 
-import { MemberApprovalQueue } from '@/features/member-approval-queue';
 import { MemberRegistrationMVP } from '@/features/member-registration-mvp';
-import { useAuth, useEffectiveRole } from '@/providers/auth-provider';
+import { useAuth } from '@/providers/auth-provider';
 import { EmptyState } from '@/shared/components/empty-state';
 import { ErrorState } from '@/shared/components/error-state';
 import { FormSheet } from '@/shared/components/form-sheet';
@@ -53,41 +52,23 @@ function NoMemberFallback() {
   );
 }
 
-
-function RoleLanding() {
-  const role = useEffectiveRole();
-
-  if (role === 'admin' || role === 'staff') {
-    return (
-      <MobileAppShell title="KaonA Agri" subtitle="Admin / staff workspace" roleBadge={role}>
-        <SectionHeader title="Approvals" subtitle="Review pending member onboarding requests" />
-        <MemberApprovalQueue />
-      </MobileAppShell>
-    );
-  }
-
-  return (
-    <MobileAppShell title="KaonA Agri" subtitle="Shared mobile UI baseline ready for feature implementation." roleBadge="Viewer">
-      <SectionHeader title="Shared UI preview" subtitle="Reusable scaffold components" action={<ProgressBadge current={2} total={3} />} />
-      <InfoCard
-        title="Shared UI preview"
-        subtitle="Display-only examples"
-        meta={<StatusChip status="submitted" />}
-        action={<UIButton fullWidth>Primary action</UIButton>}
-      />
-      <FormSheet title="FormSheet">
-        <StepList steps={[{ title: 'Step one', done: true }, { title: 'Step two' }]} />
-        <PhotoUploadPlaceholder label="Field photo + GPS evidence foundation" />
-      </FormSheet>
-      <EmptyState title="EmptyState" detail="No items to show." />
-    </MobileAppShell>
-  );
-}
-
 export default function HomePage() {
   return (
     <ProtectedRoute fallbackNoMember={<NoMemberFallback />}>
-      <RoleLanding />
+      <MobileAppShell title="KaonA Agri" subtitle="Shared mobile UI baseline ready for feature implementation." roleBadge="Viewer">
+        <SectionHeader title="Shared UI preview" subtitle="Reusable scaffold components" action={<ProgressBadge current={2} total={3} />} />
+        <InfoCard
+          title="Shared UI preview"
+          subtitle="Display-only examples"
+          meta={<StatusChip status="submitted" />}
+          action={<UIButton fullWidth>Primary action</UIButton>}
+        />
+        <FormSheet title="FormSheet">
+          <StepList steps={[{ title: 'Step one', done: true }, { title: 'Step two' }]} />
+          <PhotoUploadPlaceholder label="Field photo + GPS evidence foundation" />
+        </FormSheet>
+        <EmptyState title="EmptyState" detail="No items to show." />
+      </MobileAppShell>
     </ProtectedRoute>
   );
 }
