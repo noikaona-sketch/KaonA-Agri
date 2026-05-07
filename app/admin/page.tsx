@@ -9,7 +9,7 @@ export default function AdminOperationalDashboardPage() {
   return (
     <ProtectedRoute allowedRoles={['admin', 'staff']}>
       <MobileAppShell title="KaonA Agri" subtitle="Admin / staff workspace" roleBadge="Admin/Staff">
-        <SectionHeader title="Operations" subtitle="Operational queues and actions overview" />
+        <SectionHeader title="ภาพรวมงานปฏิบัติการ" subtitle="สรุปคิวงานและสถานะสำหรับแอดมิน/เจ้าหน้าที่" />
         <AdminOperationalDashboard />
       </MobileAppShell>
     </ProtectedRoute>
