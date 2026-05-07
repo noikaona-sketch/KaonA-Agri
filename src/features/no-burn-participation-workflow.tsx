@@ -19,15 +19,26 @@ type PlantingCycleOption = {
 
 type NoBurnRequestRow = {
   id: string;
-  status: 'submitted' | 'under_review' | 'approved' | 'rejected' | 'inspection_required' | 'completed';
+  status: string;
   submitted_at: string;
   created_at: string;
   reviewed_by: string | null;
   planting_cycle_id: string | null;
 };
 
-function toChipStatus(status: NoBurnRequestRow['status']) {
-  if (status === 'inspection_required') return 'needs_update';
+
+type WorkflowStatus = 'pending' | 'reviewed' | 'approved' | 'rejected';
+
+function toWorkflowStatus(rawStatus: string): WorkflowStatus {
+  if (rawStatus === 'approved') return 'approved';
+  if (rawStatus === 'rejected') return 'rejected';
+  if (rawStatus === 'under_review' || rawStatus === 'reviewed' || rawStatus === 'completed') return 'reviewed';
+  return 'pending';
+}
+
+function toChipStatus(status: WorkflowStatus) {
+  if (status === 'pending') return 'submitted' as const;
+  if (status === 'reviewed') return 'under_review' as const;
   return status;
 }
 
@@ -144,9 +155,9 @@ export function NoBurnParticipationWorkflow() {
           <p>
             <strong>Request:</strong> {request.id.slice(0, 8)}...
           </p>
-          <StatusChip status={toChipStatus(request.status)} />
+          <StatusChip status={toChipStatus(toWorkflowStatus(request.status))} />
           <p>Submitted: {new Date(request.submitted_at || request.created_at).toLocaleString()}</p>
-          <p>Timeline: Submitted → Under review → Approved/Rejected → Completed</p>
+          <p>Timeline: Pending → Reviewed → Approved/Rejected</p>
           {isReviewer ? (
             <div>
               <UIButton type="button" onClick={() => updateReviewStatus(request.id, 'under_review')} disabled={updatingReviewId === request.id}>
