@@ -40,7 +40,6 @@ export function NoBurnParticipationWorkflow() {
   const [requests, setRequests] = useState<NoBurnRequestRow[]>([]);
   const [selectedCycleId, setSelectedCycleId] = useState<string>('');
   const [agreementAccepted, setAgreementAccepted] = useState(false);
-  const [memberNote, setMemberNote] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [updatingReviewId, setUpdatingReviewId] = useState<string | null>(null);
@@ -87,7 +86,6 @@ export function NoBurnParticipationWorkflow() {
 
     setSelectedCycleId('');
     setAgreementAccepted(false);
-    setMemberNote('');
     setDoneMessage('No-burn participation request submitted successfully.');
     await refreshData();
   }
@@ -135,17 +133,6 @@ export function NoBurnParticipationWorkflow() {
           disabled={submitting || loading}
         />{' '}
         I agree to participate in no-burn farming and allow inspection if required.
-      </label>
-
-      <label>
-        Member note (not persisted yet)
-        <textarea
-          value={memberNote}
-          onChange={(event) => setMemberNote(event.target.value)}
-          rows={3}
-          placeholder="This note is UI-only until schema supports member note field."
-          disabled={submitting}
-        />
       </label>
 
       <PhotoUploadPlaceholder label="No-burn evidence photo" />
