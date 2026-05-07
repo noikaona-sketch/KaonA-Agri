@@ -18,10 +18,10 @@ export default function HomePage() {
         subtitle="Shared mobile UI baseline ready for feature implementation."
         roleBadge="Viewer"
       >
-        <SectionHeader 
-          title="Shared UI preview" 
-          subtitle="Reusable scaffold components" 
-          action={<ProgressBadge current={1} total={3} />} 
+        <SectionHeader
+          title="Shared UI preview"
+          subtitle="Reusable scaffold components"
+          action={<ProgressBadge current={1} total={3} />}
         />
         <InfoCard
           title="Shared UI preview"
