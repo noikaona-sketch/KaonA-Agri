@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
-import { useCurrentMember, useEffectiveRole } from '@/providers/auth-provider';
+import { useEffectiveRole } from '@/providers/auth-provider';
 import { EmptyState } from '@/shared/components/empty-state';
 import { ErrorState } from '@/shared/components/error-state';
 import { FormSheet } from '@/shared/components/form-sheet';
@@ -35,7 +35,6 @@ const statusToChip: Record<PlantingCycleRow['status'], 'under_review' | 'approve
 };
 
 export function PlantingCycleManagementScreen() {
-  const member = useCurrentMember();
   const effectiveRole = useEffectiveRole();
   const [plots, setPlots] = useState<PlotOption[]>([]);
   const [cycles, setCycles] = useState<PlantingCycleRow[]>([]);
@@ -50,17 +49,14 @@ export function PlantingCycleManagementScreen() {
   const [expectedHarvestAt, setExpectedHarvestAt] = useState('');
 
   async function loadData() {
-    if (!member) return;
     setLoading(true);
     setError(null);
     const supabase = createSupabaseBrowserClient();
     const [{ data: plotsData, error: plotsError }, { data: cyclesData, error: cyclesError }] = await Promise.all([
-      supabase.from('plots').select('id,name').eq('member_id', member.member_id).is('deleted_at', null).order('created_at', { ascending: false }),
+      supabase.from('plots').select('id,name').order('created_at', { ascending: false }),
       supabase
         .from('planting_cycles')
         .select('id,crop_name,season_year,planted_at,expected_harvest_at,status,created_at,plot:plots(name)')
-        .eq('member_id', member.member_id)
-        .is('deleted_at', null)
         .order('created_at', { ascending: false }),
     ]);
     setLoading(false);
@@ -77,12 +73,11 @@ export function PlantingCycleManagementScreen() {
   useEffect(() => {
     void loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [member?.member_id]);
+  }, []);
 
   async function createCycle() {
     setError(null);
     setSuccessMessage(null);
-    if (!member) return setError('Member not found. Please sign in again.');
     if (!plotId) return setError('Please select a plot.');
     if (!cropName.trim()) return setError('Crop name is required.');
     const parsedSeasonYear = Number(seasonYear);
@@ -92,14 +87,11 @@ export function PlantingCycleManagementScreen() {
     const supabase = createSupabaseBrowserClient();
     const { error: insertError } = await supabase.from('planting_cycles').insert({
       plot_id: plotId,
-      member_id: member.member_id,
       crop_name: cropName.trim(),
       season_year: parsedSeasonYear,
       planted_at: plantedAt || null,
       expected_harvest_at: expectedHarvestAt || null,
       status: 'planned',
-      created_by: member.member_id,
-      role_used: effectiveRole ?? 'farmer',
     });
     setSubmitting(false);
     if (insertError) return setError(insertError.message);
