@@ -1,125 +1,181 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
-import { useCurrentMember } from '@/providers/auth-provider';
+import { useCurrentMember, useCurrentRoles } from '@/providers/auth-provider';
 import { ErrorState } from '@/shared/components/error-state';
 import { FormSheet } from '@/shared/components/form-sheet';
+import { PhotoUploadPlaceholder } from '@/shared/components/photo-upload-placeholder';
+import { StatusChip } from '@/shared/components/status-chip';
 import { UIButton } from '@/shared/components/ui-button';
 
 type PlantingCycleOption = {
   id: string;
-  crop_name: string;
+  crop_type: string;
   season_year: number;
   status: string;
 };
 
+type NoBurnRequestRow = {
+  id: string;
+  status: 'submitted' | 'under_review' | 'approved' | 'rejected' | 'inspection_required' | 'completed';
+  submitted_at: string;
+  created_at: string;
+  reviewed_by: string | null;
+  planting_cycle_id: string | null;
+};
+
+function toChipStatus(status: NoBurnRequestRow['status']) {
+  if (status === 'inspection_required') return 'needs_update';
+  return status;
+}
+
 export function NoBurnParticipationWorkflow() {
   const member = useCurrentMember();
+  const roles = useCurrentRoles();
+  const isReviewer = useMemo(() => roles.includes('staff') || roles.includes('admin'), [roles]);
 
   const [cycles, setCycles] = useState<PlantingCycleOption[]>([]);
+  const [requests, setRequests] = useState<NoBurnRequestRow[]>([]);
   const [selectedCycleId, setSelectedCycleId] = useState<string>('');
-  const [note, setNote] = useState('');
-  const [loadingCycles, setLoadingCycles] = useState(true);
+  const [agreementAccepted, setAgreementAccepted] = useState(false);
+  const [memberNote, setMemberNote] = useState('');
+  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [updatingReviewId, setUpdatingReviewId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [doneMessage, setDoneMessage] = useState<string | null>(null);
 
-  useEffect(() => {
+  async function refreshData() {
     const supabase = createSupabaseBrowserClient();
+    setLoading(true);
+    setError(null);
 
-    async function loadCycles() {
-      setLoadingCycles(true);
+    const [cycleResult, requestResult] = await Promise.all([
+      supabase.from('planting_cycles').select('id, crop_type, season_year, status').order('created_at', { ascending: false }).limit(20),
+      supabase.from('no_burn_requests').select('id, status, submitted_at, created_at, reviewed_by, planting_cycle_id').order('created_at', { ascending: false }).limit(20),
+    ]);
 
-      const { data, error: queryError } = await supabase
-        .from('planting_cycles')
-        .select('id, crop_name, season_year, status')
-        .order('created_at', { ascending: false })
-        .limit(20);
+    setLoading(false);
 
-      setLoadingCycles(false);
+    if (cycleResult.error) return setError(cycleResult.error.message);
+    if (requestResult.error) return setError(requestResult.error.message);
 
-      if (queryError) {
-        setError(queryError.message);
-        return;
-      }
+    setCycles((cycleResult.data ?? []) as PlantingCycleOption[]);
+    setRequests((requestResult.data ?? []) as NoBurnRequestRow[]);
+  }
 
-      setCycles((data ?? []) as PlantingCycleOption[]);
-    }
-
-    void loadCycles();
+  useEffect(() => {
+    void refreshData();
   }, []);
 
   async function submitRequest() {
     setError(null);
     setDoneMessage(null);
 
-    if (!member?.is_approved || member.status !== 'approved') {
-      return setError('Only approved members can submit no-burn participation requests.');
-    }
+    if (!member?.is_approved || member.status !== 'approved') return setError('Only approved members can submit no-burn participation requests.');
+    if (!selectedCycleId) return setError('Please choose a planting cycle.');
+    if (!agreementAccepted) return setError('Please accept the no-burn agreement before submission.');
 
     setSubmitting(true);
     const supabase = createSupabaseBrowserClient();
-
-    const { data, error: insertError } = await supabase
-      .from('no_burn_requests')
-      .insert({
-        planting_cycle_id: selectedCycleId || null,
-      })
-      .select('id')
-      .single();
-
-    if (insertError) {
-      setSubmitting(false);
-      setError(insertError.message);
-      return;
-    }
-
-    if (note.trim()) {
-      const { error: updateError } = await supabase
-        .from('no_burn_requests')
-        .update({ review_note: note.trim() })
-        .eq('id', data.id);
-
-      if (updateError) {
-        setSubmitting(false);
-        setError(updateError.message);
-        return;
-      }
-    }
-
+    const { error: insertError } = await supabase.from('no_burn_requests').insert({ planting_cycle_id: selectedCycleId });
     setSubmitting(false);
+
+    if (insertError) return setError(insertError.message);
+
     setSelectedCycleId('');
-    setNote('');
+    setAgreementAccepted(false);
+    setMemberNote('');
     setDoneMessage('No-burn participation request submitted successfully.');
+    await refreshData();
+  }
+
+  async function updateReviewStatus(requestId: string, nextStatus: 'under_review' | 'approved' | 'rejected') {
+    setError(null);
+    setUpdatingReviewId(requestId);
+
+    const supabase = createSupabaseBrowserClient();
+    const { error: updateError } = await supabase.from('no_burn_requests').update({ status: nextStatus }).eq('id', requestId);
+
+    setUpdatingReviewId(null);
+    if (updateError) return setError(updateError.message);
+
+    await refreshData();
   }
 
   return (
     <FormSheet
       title="No-burn participation"
       footer={
-        <UIButton onClick={submitRequest} loading={submitting} disabled={submitting || loadingCycles} fullWidth>
+        <UIButton onClick={submitRequest} loading={submitting} disabled={submitting || loading} fullWidth>
           Submit no-burn request
         </UIButton>
       }
     >
-      <p>Submit your no-burn participation request for the current planting cycle.</p>
+      <p>Submit no-burn participation by selecting a planting cycle, agreeing to the commitment, and attaching evidence photo.</p>
       <label>
-        Planting cycle (optional)
-        <select value={selectedCycleId} onChange={(event) => setSelectedCycleId(event.target.value)} disabled={submitting || loadingCycles}>
-          <option value="">No cycle selected</option>
+        Planting cycle <strong>*</strong>
+        <select value={selectedCycleId} onChange={(event) => setSelectedCycleId(event.target.value)} disabled={submitting || loading}>
+          <option value="">Select planting cycle</option>
           {cycles.map((cycle) => (
             <option key={cycle.id} value={cycle.id}>
-              {cycle.crop_name} / {cycle.season_year} ({cycle.status})
+              {cycle.crop_type} / {cycle.season_year} ({cycle.status})
             </option>
           ))}
         </select>
       </label>
+
       <label>
-        Request note (optional)
-        <textarea value={note} onChange={(event) => setNote(event.target.value)} rows={3} disabled={submitting} />
+        <input
+          type="checkbox"
+          checked={agreementAccepted}
+          onChange={(event) => setAgreementAccepted(event.target.checked)}
+          disabled={submitting || loading}
+        />{' '}
+        I agree to participate in no-burn farming and allow inspection if required.
       </label>
+
+      <label>
+        Member note (not persisted yet)
+        <textarea
+          value={memberNote}
+          onChange={(event) => setMemberNote(event.target.value)}
+          rows={3}
+          placeholder="This note is UI-only until schema supports member note field."
+          disabled={submitting}
+        />
+      </label>
+
+      <PhotoUploadPlaceholder label="No-burn evidence photo" />
+
+      <h4>Request status & timeline</h4>
+      {requests.length === 0 ? <p>No no-burn requests yet.</p> : null}
+      {requests.map((request) => (
+        <div key={request.id}>
+          <p>
+            <strong>Request:</strong> {request.id.slice(0, 8)}...
+          </p>
+          <StatusChip status={toChipStatus(request.status)} />
+          <p>Submitted: {new Date(request.submitted_at || request.created_at).toLocaleString()}</p>
+          <p>Timeline: Submitted → Under review → Approved/Rejected → Completed</p>
+          {isReviewer ? (
+            <div>
+              <UIButton type="button" onClick={() => updateReviewStatus(request.id, 'under_review')} disabled={updatingReviewId === request.id}>
+                Mark under review
+              </UIButton>{' '}
+              <UIButton type="button" onClick={() => updateReviewStatus(request.id, 'approved')} disabled={updatingReviewId === request.id}>
+                Approve
+              </UIButton>{' '}
+              <UIButton type="button" onClick={() => updateReviewStatus(request.id, 'rejected')} disabled={updatingReviewId === request.id}>
+                Reject
+              </UIButton>
+            </div>
+          ) : null}
+        </div>
+      ))}
+
       {error ? <ErrorState title="No-burn request failed" detail={error} /> : null}
       {doneMessage ? <p>{doneMessage}</p> : null}
     </FormSheet>
