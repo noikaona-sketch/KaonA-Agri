@@ -56,7 +56,7 @@ export default function HomePage() {
   return (
     <ProtectedRoute fallbackNoMember={<NoMemberFallback />}>
       <MobileAppShell title="KaonA Agri" subtitle="Shared mobile UI baseline ready for feature implementation." roleBadge="Viewer">
-        <SectionHeader title="Shared UI preview" subtitle="Reusable scaffold components" action={<ProgressBadge current={1} total={3} />} />
+        <SectionHeader title="Shared UI preview" subtitle="Reusable scaffold components" action={<ProgressBadge current={2} total={3} />} />
         <InfoCard
           title="Shared UI preview"
           subtitle="Display-only examples"
@@ -65,7 +65,7 @@ export default function HomePage() {
         />
         <FormSheet title="FormSheet">
           <StepList steps={[{ title: 'Step one', done: true }, { title: 'Step two' }]} />
-          <PhotoUploadPlaceholder />
+          <PhotoUploadPlaceholder label="Field photo + GPS evidence foundation" />
         </FormSheet>
         <EmptyState title="EmptyState" detail="No items to show." />
       </MobileAppShell>
