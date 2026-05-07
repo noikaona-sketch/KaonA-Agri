@@ -2,9 +2,10 @@ const tabs = ['Home', 'Tasks', 'Records', 'Profile'] as const;
 
 type MobileBottomNavProps = {
   activeTab?: (typeof tabs)[number];
+  onTabChange?: (tab: (typeof tabs)[number]) => void;
 };
 
-export function MobileBottomNav({ activeTab = 'Home' }: MobileBottomNavProps) {
+export function MobileBottomNav({ activeTab = 'Home', onTabChange }: MobileBottomNavProps) {
   return (
     <nav className="mobile-bottom-nav" aria-label="Primary">
       {tabs.map((tab) => (
@@ -18,6 +19,7 @@ export function MobileBottomNav({ activeTab = 'Home' }: MobileBottomNavProps) {
             .filter(Boolean)
             .join(' ')}
           aria-current={activeTab === tab ? 'page' : undefined}
+          onClick={onTabChange ? () => onTabChange(tab) : undefined}
         >
           {tab}
         </button>

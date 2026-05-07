@@ -97,3 +97,40 @@ body {
 
 .mobile-bottom-nav__item { min-height: 44px; border: 0; background: transparent; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--text-secondary); }
 .mobile-bottom-nav__item--active { color: var(--primary); background: #e8f5e9; }
+
+.role-badge { padding: 4px 8px; border-radius: 999px; background: #e8f5e9; color: var(--primary); font-size: 12px; font-weight: 600; }
+
+.section-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
+.section-header__title { margin: 0; font-size: 18px; }
+.section-header__subtitle { margin: 4px 0 0; font-size: 14px; color: var(--text-secondary); }
+.progress-badge { padding: 4px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; background: #eef5ee; color: var(--primary); }
+
+.form-sheet { margin-top: 12px; border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+.form-sheet__title { margin: 0 0 12px; font-size: 16px; }
+.form-sheet__body { display: grid; gap: 12px; }
+
+.step-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+.step-list__item { display: flex; gap: 8px; align-items: flex-start; }
+.step-list__dot { width: 24px; height: 24px; border-radius: 999px; display: inline-flex; justify-content: center; align-items: center; font-size: 12px; background: #eceff1; color: #455a64; }
+.step-list__dot--done { background: #e8f5e9; color: var(--success); }
+.step-list__title { margin: 2px 0 0; font-size: 14px; }
+.step-list__detail { margin: 2px 0 0; font-size: 12px; color: var(--text-secondary); }
+
+.photo-upload-placeholder { min-height: 120px; border-radius: 12px; border: 1px dashed var(--border); display: grid; place-content: center; text-align: center; }
+.photo-upload-placeholder__icon { font-size: 24px; }
+.photo-upload-placeholder__label { margin: 6px 0 0; color: var(--text-secondary); font-size: 12px; }
+
+.state-block { border: 1px solid var(--border); border-radius: 12px; padding: 12px; text-align: center; margin-top: 12px; }
+.state-block--empty { background: #fafbfa; }
+.state-block--error { border-color: #ffcdd2; background: #ffebee; }
+.state-block__title { margin: 0; font-weight: 600; }
+.state-block__detail { margin: 4px 0 0; font-size: 13px; color: var(--text-secondary); }
+.loading-spinner { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 999px; display: inline-block; animation: spin 1s linear infinite; }
+
+.confirm-dialog { position: fixed; inset: 0; background: rgba(0,0,0,.3); display: grid; place-items: center; padding: 16px; }
+.confirm-dialog__panel { width: min(100%, 360px); background: var(--surface); border-radius: 16px; padding: 16px; }
+.confirm-dialog__title { margin: 0 0 4px; }
+.confirm-dialog__message { margin: 0 0 12px; color: var(--text-secondary); }
+.confirm-dialog__actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
