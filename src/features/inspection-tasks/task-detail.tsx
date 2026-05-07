@@ -1,7 +1,7 @@
 import { FormSheet } from '@/shared/components/form-sheet';
-import { PhotoUploadPlaceholder } from '@/shared/components/photo-upload-placeholder';
 import { UIButton } from '@/shared/components/ui-button';
 
+import { EvidenceUploader } from './evidence-uploader';
 import type { InspectionTaskRow } from './types';
 
 type TaskDetailProps = {
@@ -21,7 +21,7 @@ export function TaskDetail({ task, note, submitting, onNoteChange, onSubmit }: T
         <textarea rows={3} value={note} onChange={(e) => onNoteChange(e.target.value)} disabled={submitting} />
       </label>
       <UIButton fullWidth loading={submitting} disabled={submitting} onClick={onSubmit}>บันทึกผลตรวจ</UIButton>
-      <PhotoUploadPlaceholder label="แนบรูปหลักฐาน + GPS" />
+      <EvidenceUploader inspectionId={task.id} />
     </FormSheet>
   );
 }

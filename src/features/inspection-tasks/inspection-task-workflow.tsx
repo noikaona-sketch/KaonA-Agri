@@ -48,10 +48,18 @@ export function InspectionTaskWorkflow() {
     setError(null);
 
     const supabase = createSupabaseBrowserClient();
+    const inspectionQuery = supabase
+      .from('inspections')
+      .select('id,no_burn_request_id,plot_id,inspector_member_id,assigned_at,visited_at,result_status,result_note,created_at')
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    const scopedInspectionQuery = isInspector && !isStaffOrAdmin ? inspectionQuery.eq('inspector_member_id', member.member_id) : inspectionQuery;
+
     const [{ data: requestData, error: requestError }, { data: plotData, error: plotError }, { data: taskData, error: taskError }] = await Promise.all([
       supabase.from('no_burn_requests').select('id,status').order('created_at', { ascending: false }).limit(30),
       supabase.from('plots').select('id,plot_name,name').order('created_at', { ascending: false }).limit(100),
-      supabase.from('inspections').select('id,no_burn_request_id,plot_id,inspector_member_id,assigned_at,visited_at,result_status,result_note,created_at').order('created_at', { ascending: false }).limit(50),
+      scopedInspectionQuery,
     ]);
 
     setLoading(false);
@@ -60,12 +68,9 @@ export function InspectionTaskWorkflow() {
       return;
     }
 
-    const allTasks = (taskData ?? []) as InspectionTaskRow[];
-    const visibleTasks = isInspector && !isStaffOrAdmin ? allTasks.filter((task) => task.inspector_member_id === member.member_id) : allTasks;
-
     setNoBurnRequests((requestData ?? []) as NoBurnRequestOption[]);
     setPlots((plotData ?? []) as PlotOption[]);
-    setTasks(visibleTasks);
+    setTasks((taskData ?? []) as InspectionTaskRow[]);
   }
 
   useEffect(() => {
