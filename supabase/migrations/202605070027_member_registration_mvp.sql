@@ -1,8 +1,10 @@
 -- Issue #27: Member registration MVP flow
--- Allow authenticated users without member records to register themselves as pending farmer.
+-- Security notes:
+-- 1) This function is SECURITY DEFINER to allow safe inserts for authenticated users who do not yet match existing RLS ownership checks.
+-- 2) The function identity source is auth.uid(); client must not provide auth_user_id.
+-- 3) line_user_id must come from verified LIFF/auth exchange metadata, not from a local fallback value.
 
 create or replace function public.register_member_mvp(
-  p_auth_user_id uuid,
   p_line_user_id text,
   p_full_name text,
   p_phone text,
@@ -15,13 +17,16 @@ set search_path = public
 as $$
 declare
   v_member_id uuid;
+  v_auth_user_id uuid;
 begin
-  if auth.uid() is null then
+  v_auth_user_id := auth.uid();
+
+  if v_auth_user_id is null then
     raise exception 'Authentication required';
   end if;
 
-  if auth.uid() <> p_auth_user_id then
-    raise exception 'auth_user_id mismatch';
+  if coalesce(trim(p_line_user_id), '') = '' then
+    raise exception 'line_user_id is required';
   end if;
 
   if coalesce(trim(p_full_name), '') = '' then
@@ -34,7 +39,7 @@ begin
 
   select m.id into v_member_id
   from public.members m
-  where m.auth_user_id = p_auth_user_id
+  where m.auth_user_id = v_auth_user_id
   limit 1;
 
   if v_member_id is not null then
@@ -42,7 +47,7 @@ begin
   end if;
 
   insert into public.members (auth_user_id, line_user_id, full_name, phone, citizen_id_masked, status)
-  values (p_auth_user_id, p_line_user_id, p_full_name, p_phone, p_citizen_id_masked, 'pending')
+  values (v_auth_user_id, p_line_user_id, p_full_name, p_phone, p_citizen_id_masked, 'pending')
   returning id into v_member_id;
 
   insert into public.member_roles (member_id, role, is_primary)
@@ -53,4 +58,4 @@ begin
 end;
 $$;
 
-grant execute on function public.register_member_mvp(uuid, text, text, text, text) to authenticated;
+grant execute on function public.register_member_mvp(text, text, text, text) to authenticated;
