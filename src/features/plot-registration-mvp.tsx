@@ -3,7 +3,7 @@
 import { useState } from 'react';
 
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
-import { useCurrentMember, useEffectiveRole } from '@/providers/auth-provider';
+import { useCurrentMember } from '@/providers/auth-provider';
 import { ErrorState } from '@/shared/components/error-state';
 import { FormSheet } from '@/shared/components/form-sheet';
 import { UIButton } from '@/shared/components/ui-button';
@@ -12,13 +12,19 @@ type GeoLocation = {
   latitude: number;
   longitude: number;
   accuracy: number;
+  capturedAt: string;
 };
+
+const GOOD_GPS_ACCURACY_METERS = 30;
+
+function resolvePlotStatus(geo: GeoLocation) {
+  return geo.accuracy <= GOOD_GPS_ACCURACY_METERS ? 'active' : 'pending_review';
+}
 
 export function PlotRegistrationMVP() {
   const member = useCurrentMember();
-  const effectiveRole = useEffectiveRole();
 
-  const [name, setName] = useState('');
+  const [plotName, setPlotName] = useState('');
   const [areaRai, setAreaRai] = useState('');
   const [geo, setGeo] = useState<GeoLocation | null>(null);
   const [capturingGeo, setCapturingGeo] = useState(false);
@@ -41,6 +47,7 @@ export function PlotRegistrationMVP() {
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
           accuracy: position.coords.accuracy,
+          capturedAt: new Date(position.timestamp).toISOString(),
         });
         setCapturingGeo(false);
       },
@@ -56,8 +63,10 @@ export function PlotRegistrationMVP() {
     setError(null);
     setDoneMessage(null);
 
-    if (!member) return setError('Member profile is unavailable. Please sign in again.');
-    if (!name.trim()) return setError('Please provide a plot name.');
+    if (!member?.is_approved || member.status !== 'approved') {
+      return setError('Only approved members can register plots.');
+    }
+    if (!plotName.trim()) return setError('Please provide a plot name.');
 
     const parsedArea = Number(areaRai);
     if (!Number.isFinite(parsedArea) || parsedArea <= 0) {
@@ -70,14 +79,13 @@ export function PlotRegistrationMVP() {
     const supabase = createSupabaseBrowserClient();
 
     const { error: insertError } = await supabase.from('plots').insert({
-      member_id: member.member_id,
-      name: name.trim(),
+      plot_name: plotName.trim(),
       area_rai: parsedArea,
       lat: geo.latitude,
       lng: geo.longitude,
       accuracy: geo.accuracy,
-      created_by: member.member_id,
-      role_used: effectiveRole ?? 'farmer',
+      gps_captured_at: geo.capturedAt,
+      status: resolvePlotStatus(geo),
     });
 
     setSubmitting(false);
@@ -88,7 +96,7 @@ export function PlotRegistrationMVP() {
     }
 
     setDoneMessage('Plot registered successfully.');
-    setName('');
+    setPlotName('');
     setAreaRai('');
     setGeo(null);
   }
@@ -105,7 +113,7 @@ export function PlotRegistrationMVP() {
       <p>Register a farm plot with GPS coordinates for field operations.</p>
       <label>
         Plot name
-        <input value={name} onChange={(event) => setName(event.target.value)} disabled={submitting} />
+        <input value={plotName} onChange={(event) => setPlotName(event.target.value)} disabled={submitting} />
       </label>
       <label>
         Area (rai)
