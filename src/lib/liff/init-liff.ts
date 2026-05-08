@@ -22,6 +22,9 @@ let loadPromise: Promise<LiffInstance> | null = null;
 let isInitialized = false;
 
 const diagnostics: LiffBridgeDiagnostics = {
+  supabaseUrlPresent: false,
+  supabaseAnonKeyPresent: false,
+  supabaseClientCreated: false,
   liffConfigPresent: Boolean(liffId),
   liffSdkLoad: 'not_attempted',
   liffInitAttempted: false,
@@ -136,6 +139,12 @@ export async function initLiff(): Promise<LiffInstance | null> {
     diagnostics.liffInitSuccess = true;
     diagnostics.liffInitError = null;
     setLiffSessionDiagnostics(liff);
+
+    if (!liff.isLoggedIn()) {
+      diagnostics.bridgeErrorMessage = 'LIFF login is required';
+      liff.login({ redirectUri: window.location.href });
+      return null;
+    }
 
     return liff;
   } catch (error: unknown) {
