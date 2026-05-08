@@ -92,15 +92,37 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [bridgeDiagnostics, setBridgeDiagnostics] = useState<LiffBridgeDiagnostics>(INITIAL_BRIDGE_DIAGNOSTICS);
 
   useEffect(() => {
+    let isCancelled = false;
+
     const supabase = tryCreateSupabaseBrowserClient();
 
     if (!supabase) {
-      setMember(null);
-      setSession(null);
-      setStatus('error');
-      setErrorMessage('Supabase session not available');
-      setBridgeDiagnostics(withBridgeMessage('Supabase session not available'));
-      return;
+      void getLiffBridgeSnapshot()
+        .then((snapshot) => {
+          if (isCancelled) return;
+
+          setMember(null);
+          setSession(null);
+          setStatus('error');
+          setErrorMessage('Supabase session not available');
+          setBridgeDiagnostics({
+            ...snapshot,
+            bridgeErrorMessage: 'Supabase session not available',
+          });
+        })
+        .catch(() => {
+          if (isCancelled) return;
+
+          setMember(null);
+          setSession(null);
+          setStatus('error');
+          setErrorMessage('Supabase session not available');
+          setBridgeDiagnostics(withBridgeMessage('Supabase session not available'));
+        });
+
+      return () => {
+        isCancelled = true;
+      };
     }
 
     const supabaseClient = supabase;
@@ -234,6 +256,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     });
 
     return () => {
+      isCancelled = true;
       subscription.unsubscribe();
     };
   }, []);
