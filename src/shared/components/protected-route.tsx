@@ -36,6 +36,9 @@ function yesNo(value: boolean) {
 
 function formatBridgeDiagnostics(diagnostics: LiffBridgeDiagnostics) {
   return [
+    `Supabase URL present: ${yesNo(diagnostics.supabaseUrlPresent)}`,
+    `Supabase anon key present: ${yesNo(diagnostics.supabaseAnonKeyPresent)}`,
+    `Supabase client created: ${yesNo(diagnostics.supabaseClientCreated)}`,
     `LIFF config present: ${yesNo(diagnostics.liffConfigPresent)}`,
     `LIFF SDK load: ${diagnostics.liffSdkLoad}`,
     `LIFF window present: ${yesNo(diagnostics.liffWindowPresent)}`,
