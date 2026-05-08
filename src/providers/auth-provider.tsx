@@ -4,7 +4,7 @@ import type { Session } from '@supabase/supabase-js';
 import type { ReactNode } from 'react';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
-import { ensureLiffIdToken, getLiffBridgeDiagnostics, getLiffBridgeSnapshot } from '@/lib/liff/init-liff';
+import { getLiffBridgeDiagnostics, getLiffBridgeSnapshot } from '@/lib/liff/init-liff';
 import { getSupabaseClientDiagnostics, tryCreateSupabaseBrowserClient } from '@/lib/supabase/client';
 import type {
   AppRole,
@@ -140,32 +140,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     const supabaseClient = supabase;
 
-    async function bridgeLiffToSupabaseSession() {
+    async function startLineOAuth() {
       const snapshot = await getLiffBridgeSnapshot();
       setBridgeDiagnostics({
         ...snapshot,
         ...getSupabaseClientDiagnostics(),
         bridgeAttempted: true,
         bridgeSuccess: false,
-        bridgeErrorMessage: null,
+        bridgeErrorMessage: 'Supabase LINE OAuth redirect required',
       });
 
-      const idToken = await ensureLiffIdToken();
-
-      if (!idToken) {
-        setBridgeDiagnostics((previous) => ({
-          ...previous,
-          ...getCombinedDiagnostics(),
-          bridgeAttempted: true,
-          bridgeSuccess: false,
-          bridgeErrorMessage: 'LIFF login is required',
-        }));
-        return null;
-      }
-
-      type SignInWithIdTokenParams = Parameters<typeof supabaseClient.auth.signInWithIdToken>[0];
-      const params = { provider: 'line', token: idToken } as SignInWithIdTokenParams;
-      const { data, error } = await supabaseClient.auth.signInWithIdToken(params);
+      const { error } = await supabaseClient.auth.signInWithOAuth({
+        provider: 'line',
+        options: {
+          redirectTo: window.location.origin,
+        },
+      });
 
       if (error) {
         setBridgeDiagnostics((previous) => ({
@@ -173,20 +163,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
           ...getCombinedDiagnostics(),
           bridgeAttempted: true,
           bridgeSuccess: false,
-          bridgeErrorMessage: 'Supabase LINE session exchange failed',
+          bridgeErrorMessage: 'Supabase LINE OAuth redirect failed',
         }));
-        throw new Error('Supabase LINE session exchange failed');
+        throw new Error('Supabase LINE OAuth redirect failed');
       }
-
-      setBridgeDiagnostics((previous) => ({
-        ...previous,
-        ...getCombinedDiagnostics(),
-        bridgeAttempted: true,
-        bridgeSuccess: true,
-        bridgeErrorMessage: null,
-      }));
-
-      return data.session;
     }
 
     async function bootstrapWithSession(currentSession: Session | null) {
@@ -237,30 +217,31 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     async function resolveInitialSession() {
       try {
-        const { data } = await supabaseClient.auth.getSession();
+        const { data, error } = await supabaseClient.auth.getSession();
+
+        if (error) {
+          setStatus('error');
+          setErrorMessage('Supabase session not available');
+          setBridgeDiagnostics(withBridgeMessage('Supabase session not available'));
+          return;
+        }
 
         if (data.session) {
           await bootstrapWithSession(data.session);
           return;
         }
 
-        const bridgedSession = await bridgeLiffToSupabaseSession();
-        await bootstrapWithSession(bridgedSession);
+        await startLineOAuth();
       } catch {
-        try {
-          const bridgedSession = await bridgeLiffToSupabaseSession();
-          await bootstrapWithSession(bridgedSession);
-        } catch {
-          setStatus('error');
-          setErrorMessage('Supabase LINE session exchange failed');
-          setBridgeDiagnostics((previous) => ({
-            ...previous,
-            ...getCombinedDiagnostics(),
-            bridgeAttempted: true,
-            bridgeSuccess: false,
-            bridgeErrorMessage: 'Supabase LINE session exchange failed',
-          }));
-        }
+        setStatus('error');
+        setErrorMessage('Supabase LINE OAuth redirect failed');
+        setBridgeDiagnostics((previous) => ({
+          ...previous,
+          ...getCombinedDiagnostics(),
+          bridgeAttempted: true,
+          bridgeSuccess: false,
+          bridgeErrorMessage: 'Supabase LINE OAuth redirect failed',
+        }));
       }
     }
 
