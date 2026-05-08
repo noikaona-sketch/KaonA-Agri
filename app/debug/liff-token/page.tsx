@@ -2,8 +2,6 @@
 
 import { useEffect, useState } from 'react';
 
-import liff from '@line/liff';
-
 import { initLiff } from '@/lib/liff/init-liff';
 
 type TokenState = {
@@ -13,6 +11,13 @@ type TokenState = {
   accessTokenPresent: boolean;
   decodedIdTokenPresent: boolean;
   safeError: string | null;
+};
+
+type LiffTokenRuntime = {
+  isLoggedIn: () => boolean;
+  getIDToken: () => string | null;
+  getAccessToken?: () => string | null;
+  getDecodedIDToken?: () => unknown;
 };
 
 const initialState: TokenState = {
@@ -36,13 +41,22 @@ export default function DebugLiffTokenPage() {
 
     async function run() {
       try {
-        await initLiff();
+        const liff = (await initLiff()) as LiffTokenRuntime | null;
+
+        if (!liff) {
+          if (!cancelled) {
+            setState({
+              ...initialState,
+              safeError: 'LIFF runtime unavailable',
+            });
+          }
+          return;
+        }
 
         const loggedIn = liff.isLoggedIn();
-
         const idToken = liff.getIDToken();
-        const accessToken = liff.getAccessToken();
-        const decodedIdToken = liff.getDecodedIDToken();
+        const accessToken = liff.getAccessToken?.() ?? null;
+        const decodedIdToken = liff.getDecodedIDToken?.() ?? null;
 
         if (!cancelled) {
           setState({
