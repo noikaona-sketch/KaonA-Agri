@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react';
 
 import { useAuth, useCurrentMember, useEffectiveRole } from '@/providers/auth-provider';
-import type { AppRole } from '@/shared/auth/auth-types';
+import type { AppRole, LiffBridgeDiagnostics } from '@/shared/auth/auth-types';
 
 type ProtectedRouteProps = {
   allowedRoles?: AppRole[];
@@ -30,6 +30,27 @@ function StateView({ title, subtitle }: { title: string; subtitle: string }) {
   );
 }
 
+function yesNo(value: boolean) {
+  return value ? 'yes' : 'no';
+}
+
+function formatBridgeDiagnostics(diagnostics: LiffBridgeDiagnostics) {
+  return [
+    `LIFF config present: ${yesNo(diagnostics.liffConfigPresent)}`,
+    `LIFF SDK load: ${diagnostics.liffSdkLoad}`,
+    `LIFF window present: ${yesNo(diagnostics.liffWindowPresent)}`,
+    `LIFF init attempted: ${yesNo(diagnostics.liffInitAttempted)}`,
+    `LIFF init success: ${yesNo(diagnostics.liffInitSuccess)}`,
+    `LIFF init error: ${diagnostics.liffInitError ?? 'none'}`,
+    `Runtime mode: ${diagnostics.runtimeMode}`,
+    `LIFF initialized: ${yesNo(diagnostics.liffInitialized)}`,
+    `LIFF logged in: ${yesNo(diagnostics.liffLoggedIn)}`,
+    `ID token present: ${yesNo(diagnostics.idTokenPresent)}`,
+    `Supabase bridge: ${diagnostics.bridgeSuccess ? 'success' : diagnostics.bridgeAttempted ? 'failed' : 'not attempted'}`,
+    `Bridge message: ${diagnostics.bridgeErrorMessage ?? 'none'}`,
+  ].join(' · ');
+}
+
 export function ProtectedRoute({ allowedRoles, children, ...fallbacks }: ProtectedRouteProps) {
   const { status, session, errorMessage, bridgeDiagnostics } = useAuth();
   const member = useCurrentMember();
@@ -39,10 +60,7 @@ export function ProtectedRoute({ allowedRoles, children, ...fallbacks }: Protect
   if (!session)
     return (
       fallbacks.fallbackUnauthenticated ?? (
-        <StateView
-          title="Authentication bridge required"
-          subtitle={`LIFF initialized: ${bridgeDiagnostics.liffInitialized ? 'yes' : 'no'} · LIFF logged in: ${bridgeDiagnostics.liffLoggedIn ? 'yes' : 'no'} · ID token present: ${bridgeDiagnostics.idTokenPresent ? 'yes' : 'no'} · Supabase bridge: ${bridgeDiagnostics.bridgeSuccess ? 'success' : bridgeDiagnostics.bridgeAttempted ? 'failed' : 'not attempted'}${bridgeDiagnostics.bridgeErrorMessage ? ` · Error: ${bridgeDiagnostics.bridgeErrorMessage}` : ''}`}
-        />
+        <StateView title="Authentication bridge required" subtitle={formatBridgeDiagnostics(bridgeDiagnostics)} />
       )
     );
   if (!member || status === 'no_member') return fallbacks.fallbackNoMember ?? <StateView title="No member profile" subtitle="Your account is not linked to a member profile." />;
