@@ -26,6 +26,9 @@ export type AuthBootstrapResult = {
 export type LiffRuntimeMode = 'production' | 'preview' | 'direct';
 
 export type LiffBridgeDiagnostics = {
+  supabaseUrlPresent: boolean;
+  supabaseAnonKeyPresent: boolean;
+  supabaseClientCreated: boolean;
   liffConfigPresent: boolean;
   liffSdkLoad: 'success' | 'failed' | 'not_attempted';
   liffInitAttempted: boolean;
