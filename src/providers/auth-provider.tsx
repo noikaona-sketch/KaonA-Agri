@@ -78,41 +78,47 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const supabaseClient = supabase;
 
     async function bootstrapWithSession(currentSession: Session | null) {
-      setSession(currentSession);
-      setErrorMessage(null);
+      try {
+        setSession(currentSession);
+        setErrorMessage(null);
 
-      if (!currentSession) {
-        setMember(null);
-        setStatus('unauthenticated');
-        return;
-      }
+        if (!currentSession) {
+          setMember(null);
+          setStatus('unauthenticated');
+          return;
+        }
 
-      const { data, error } = await supabaseClient.rpc('bootstrap_auth_session');
+        const { data, error } = await supabaseClient.rpc('bootstrap_auth_session');
 
-      if (error) {
+        if (error) {
+          setMember(null);
+          setStatus('error');
+          setErrorMessage(error.message);
+          return;
+        }
+
+        const bootstrapRow = Array.isArray(data) ? (data[0] as BootstrapRpcRow | undefined) : undefined;
+
+        if (!bootstrapRow) {
+          setMember(null);
+          setStatus('no_member');
+          return;
+        }
+
+        const bootstrapResult = normalizeBootstrap(bootstrapRow);
+        setMember(bootstrapResult);
+
+        if (bootstrapResult.status === 'pending') return setStatus('pending_approval');
+        if (bootstrapResult.status === 'rejected') return setStatus('rejected');
+        if (bootstrapResult.status === 'suspended') return setStatus('suspended');
+        if (!bootstrapResult.is_approved) return setStatus('access_denied');
+
+        return setStatus('approved');
+      } catch (error: unknown) {
         setMember(null);
         setStatus('error');
-        setErrorMessage(error.message);
-        return;
+        setErrorMessage(error instanceof Error ? error.message : 'Unexpected authentication error.');
       }
-
-      const bootstrapRow = Array.isArray(data) ? (data[0] as BootstrapRpcRow | undefined) : undefined;
-
-      if (!bootstrapRow) {
-        setMember(null);
-        setStatus('no_member');
-        return;
-      }
-
-      const bootstrapResult = normalizeBootstrap(bootstrapRow);
-      setMember(bootstrapResult);
-
-      if (bootstrapResult.status === 'pending') return setStatus('pending_approval');
-      if (bootstrapResult.status === 'rejected') return setStatus('rejected');
-      if (bootstrapResult.status === 'suspended') return setStatus('suspended');
-      if (!bootstrapResult.is_approved) return setStatus('access_denied');
-
-      return setStatus('approved');
     }
 
     void supabaseClient.auth
@@ -134,7 +140,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const {
       data: { subscription },
     } = supabaseClient.auth.onAuthStateChange((_event, updatedSession) => {
-      void bootstrapWithSession(updatedSession);
+      void bootstrapWithSession(updatedSession).catch((error: unknown) => {
+        setMember(null);
+        setStatus('error');
+        setErrorMessage(error instanceof Error ? error.message : 'Unexpected authentication error.');
+      });
     });
 
     return () => {
