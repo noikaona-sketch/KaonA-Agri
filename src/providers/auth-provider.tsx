@@ -164,7 +164,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
 
       type SignInWithIdTokenParams = Parameters<typeof supabaseClient.auth.signInWithIdToken>[0];
-      const params = { provider: 'custom:line', token: idToken } as SignInWithIdTokenParams;
+      const params = { provider: 'line', token: idToken } as SignInWithIdTokenParams;
       const { data, error } = await supabaseClient.auth.signInWithIdToken(params);
 
       if (error) {
