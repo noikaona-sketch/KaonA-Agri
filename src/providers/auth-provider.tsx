@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
 import { tryCreateSupabaseBrowserClient } from '@/lib/supabase/client';
+import { getLiffDiagnostics } from '@/lib/liff/init-liff';
 import type {
   AppRole,
   AuthBootstrapResult,
@@ -58,6 +59,11 @@ function normalizeBootstrap(row: BootstrapRpcRow): AuthBootstrapResult {
   };
 }
 
+function buildSafeDiagnostics(reason: string) {
+  const diagnostics = getLiffDiagnostics();
+  return `${reason} (LIFF config present: ${diagnostics.configPresent ? 'yes' : 'no'}; LIFF SDK load: ${diagnostics.sdkLoad}; LIFF init error: ${diagnostics.initError ?? 'none'}; mode: ${diagnostics.runtimeMode})`;
+}
+
 export function AuthProvider({ children }: AuthProviderProps) {
   const [status, setStatus] = useState<AuthStatus>('loading');
   const [session, setSession] = useState<Session | null>(null);
@@ -71,7 +77,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setMember(null);
       setSession(null);
       setStatus('error');
-      setErrorMessage('Configuration error: missing Supabase public environment variables.');
+      setErrorMessage(buildSafeDiagnostics('Supabase LINE session exchange failed'));
       return;
     }
 
@@ -93,7 +99,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         if (error) {
           setMember(null);
           setStatus('error');
-          setErrorMessage(error.message);
+          setErrorMessage(buildSafeDiagnostics('Supabase LINE session exchange failed'));
           return;
         }
 
@@ -117,7 +123,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       } catch (error: unknown) {
         setMember(null);
         setStatus('error');
-        setErrorMessage(error instanceof Error ? error.message : 'Unexpected authentication error.');
+        setErrorMessage(buildSafeDiagnostics('Supabase LINE session exchange failed'));
       }
     }
 
@@ -126,7 +132,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       .then(({ data, error }) => {
         if (error) {
           setStatus('error');
-          setErrorMessage(error.message);
+          setErrorMessage(buildSafeDiagnostics('Supabase session not available'));
           return;
         }
 
@@ -134,7 +140,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       })
       .catch((error: unknown) => {
         setStatus('error');
-        setErrorMessage(error instanceof Error ? error.message : 'Unexpected authentication error.');
+        setErrorMessage(buildSafeDiagnostics('Supabase session not available'));
       });
 
     const {
@@ -143,7 +149,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       void bootstrapWithSession(updatedSession).catch((error: unknown) => {
         setMember(null);
         setStatus('error');
-        setErrorMessage(error instanceof Error ? error.message : 'Unexpected authentication error.');
+        setErrorMessage(buildSafeDiagnostics('Supabase LINE session exchange failed'));
       });
     });
 
