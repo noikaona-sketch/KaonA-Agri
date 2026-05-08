@@ -87,9 +87,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       type SignInWithIdTokenParams = Parameters<typeof supabaseClient.auth.signInWithIdToken>[0];
 
-      // Supabase LINE is configured as an external OIDC provider in dashboard settings,
-      // but current supabase-js provider typings may not include the literal `line` yet.
-      const params = { provider: 'line', token: idToken } as SignInWithIdTokenParams;
+      // Supabase custom OIDC providers use the `custom:<provider-id>` identifier.
+      // For LINE configured as custom provider id `line`, use `custom:line`.
+      const params = { provider: 'custom:line', token: idToken } as SignInWithIdTokenParams;
 
       const { data, error } = await supabaseClient.auth.signInWithIdToken(params);
 
