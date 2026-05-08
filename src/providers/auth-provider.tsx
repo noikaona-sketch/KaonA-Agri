@@ -18,6 +18,9 @@ const APP_ROLES: AppRole[] = ['admin', 'staff', 'inspector', 'leader', 'truck_ow
 const MEMBER_STATUSES: MemberStatus[] = ['pending', 'approved', 'rejected', 'suspended'];
 
 const INITIAL_BRIDGE_DIAGNOSTICS: LiffBridgeDiagnostics = {
+  supabaseUrlPresent: false,
+  supabaseAnonKeyPresent: false,
+  supabaseClientCreated: false,
   liffConfigPresent: false,
   liffSdkLoad: 'not_attempted',
   liffInitAttempted: false,
@@ -114,8 +117,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
           if (isCancelled) return;
 
           setMember(null);
-          setSession(null);
           setStatus('error');
+          setSession(null);
           setErrorMessage('Supabase session not available');
           setBridgeDiagnostics(withBridgeMessage('Supabase session not available'));
         });
@@ -146,8 +149,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       type SignInWithIdTokenParams = Parameters<typeof supabaseClient.auth.signInWithIdToken>[0];
 
-      // Supabase custom OIDC providers use the `custom:<provider-id>` identifier.
-      // For LINE configured as custom provider id `line`, use `custom:line`.
       const params = { provider: 'custom:line', token: idToken } as SignInWithIdTokenParams;
 
       const { data, error } = await supabaseClient.auth.signInWithIdToken(params);
