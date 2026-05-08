@@ -10,6 +10,18 @@ Set these public environment variables in local `.env.local` and in your deploym
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` (required)
 - `NEXT_PUBLIC_LIFF_ID` (optional; LIFF bootstrap is skipped when missing)
 
+## Supabase LINE provider setup (required for LIFF session bridge)
+
+The LIFF entry flow exchanges a LINE ID token into a Supabase Auth session using `signInWithIdToken`. For this to work, configure LINE in Supabase Auth first:
+
+1. Open **Supabase Dashboard → Authentication → Providers**.
+2. Enable the **LINE** provider (OIDC).
+3. Set the LINE **Channel ID** and **Channel Secret** from LINE Developers Console.
+4. Confirm the LIFF app/channel used by `NEXT_PUBLIC_LIFF_ID` belongs to the same LINE channel configured in Supabase.
+5. Save provider settings and test login in the deployed URL using LIFF webview.
+
+If LINE provider is not enabled or channel values do not match, LIFF can be logged in but Supabase session exchange will fail and app access remains unauthenticated.
+
 The app now fails fast with a clear error message when required public variables are missing, which helps prevent unstable deployments caused by partially configured environments.
 
 ## Demo seed accounts + RLS validation
