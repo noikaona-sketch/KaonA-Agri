@@ -150,12 +150,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
         bridgeErrorMessage: 'Supabase LINE OAuth redirect required',
       });
 
-      const { error } = await supabaseClient.auth.signInWithOAuth({
+      type SignInWithOAuthParams = Parameters<typeof supabaseClient.auth.signInWithOAuth>[0];
+      const params = {
         provider: 'line',
         options: {
           redirectTo: window.location.origin,
         },
-      });
+      } as SignInWithOAuthParams;
+
+      const { error } = await supabaseClient.auth.signInWithOAuth(params);
 
       if (error) {
         setBridgeDiagnostics((previous) => ({
