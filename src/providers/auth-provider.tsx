@@ -4,6 +4,7 @@ import type { Session } from '@supabase/supabase-js';
 import type { ReactNode } from 'react';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
+import { ensureLiffIdToken } from '@/lib/liff/init-liff';
 import { tryCreateSupabaseBrowserClient } from '@/lib/supabase/client';
 import type {
   AppRole,
@@ -77,6 +78,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     const supabaseClient = supabase;
 
+    async function bridgeLiffToSupabaseSession() {
+      const idToken = await ensureLiffIdToken();
+
+      if (!idToken) {
+        return null;
+      }
+
+      const { data, error } = await supabaseClient.auth.signInWithIdToken({
+        provider: 'line' as never,
+        token: idToken,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      return data.session;
+    }
+
     async function bootstrapWithSession(currentSession: Session | null) {
       try {
         setSession(currentSession);
@@ -123,14 +143,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     void supabaseClient.auth
       .getSession()
-      .then(({ data, error }) => {
+      .then(async ({ data, error }) => {
         if (error) {
           setStatus('error');
           setErrorMessage(error.message);
           return;
         }
 
-        void bootstrapWithSession(data.session);
+        if (data.session) {
+          await bootstrapWithSession(data.session);
+          return;
+        }
+
+        const bridgedSession = await bridgeLiffToSupabaseSession();
+        await bootstrapWithSession(bridgedSession);
       })
       .catch((error: unknown) => {
         setStatus('error');

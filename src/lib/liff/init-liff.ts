@@ -4,6 +4,9 @@ const LIFF_SDK_URL = 'https://static.line-scdn.net/liff/edge/2/sdk.js';
 
 type LiffInstance = {
   init: (params: { liffId: string }) => Promise<void>;
+  isLoggedIn: () => boolean;
+  login: () => void;
+  getIDToken: () => string | null;
 };
 
 declare global {
@@ -56,4 +59,19 @@ export async function initLiff(): Promise<LiffInstance | null> {
   }
 
   return liff;
+}
+
+export async function ensureLiffIdToken(): Promise<string | null> {
+  const liff = await initLiff();
+
+  if (!liff) {
+    return null;
+  }
+
+  if (!liff.isLoggedIn()) {
+    liff.login();
+    return null;
+  }
+
+  return liff.getIDToken();
 }
