@@ -22,6 +22,9 @@ let loadPromise: Promise<LiffInstance> | null = null;
 let isInitialized = false;
 
 const diagnostics: LiffBridgeDiagnostics = {
+  supabaseUrlPresent: false,
+  supabaseAnonKeyPresent: false,
+  supabaseClientCreated: false,
   liffConfigPresent: Boolean(liffId),
   liffSdkLoad: 'not_attempted',
   liffInitAttempted: false,
