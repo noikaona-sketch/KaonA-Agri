@@ -80,10 +80,16 @@ function normalizeBootstrap(row: BootstrapRpcRow): AuthBootstrapResult {
   };
 }
 
+function getCombinedDiagnostics(): LiffBridgeDiagnostics {
+  return {
+    ...getLiffBridgeDiagnostics(),
+    ...getSupabaseClientDiagnostics(),
+  };
+}
+
 function withBridgeMessage(message: string): LiffBridgeDiagnostics {
   return {
-    ...getSupabaseClientDiagnostics(),
-    ...getLiffBridgeDiagnostics(),
+    ...getCombinedDiagnostics(),
     bridgeErrorMessage: message,
   };
 }
@@ -98,8 +104,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
   useEffect(() => {
     let isCancelled = false;
 
+    setBridgeDiagnostics(getCombinedDiagnostics());
+
     const supabase = tryCreateSupabaseBrowserClient();
-    const supabaseDiagnostics = getSupabaseClientDiagnostics();
 
     if (!supabase) {
       void getLiffBridgeSnapshot()
@@ -111,8 +118,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
           setStatus('error');
           setErrorMessage('Supabase session not available');
           setBridgeDiagnostics({
-            ...supabaseDiagnostics,
             ...snapshot,
+            ...getSupabaseClientDiagnostics(),
             bridgeErrorMessage: 'Supabase session not available',
           });
         })
@@ -136,8 +143,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     async function bridgeLiffToSupabaseSession() {
       const snapshot = await getLiffBridgeSnapshot();
       setBridgeDiagnostics({
-        ...supabaseDiagnostics,
         ...snapshot,
+        ...getSupabaseClientDiagnostics(),
       });
 
       const idToken = await ensureLiffIdToken();
@@ -145,8 +152,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (!idToken) {
         setBridgeDiagnostics((previous) => ({
           ...previous,
-          ...supabaseDiagnostics,
-          ...getLiffBridgeDiagnostics(),
+          ...getCombinedDiagnostics(),
           bridgeAttempted: true,
           bridgeSuccess: false,
           bridgeErrorMessage: 'LIFF login is required',
@@ -163,8 +169,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (error) {
         setBridgeDiagnostics((previous) => ({
           ...previous,
-          ...supabaseDiagnostics,
-          ...getLiffBridgeDiagnostics(),
+          ...getCombinedDiagnostics(),
           bridgeAttempted: true,
           bridgeSuccess: false,
           bridgeErrorMessage: 'Supabase LINE session exchange failed',
@@ -174,8 +179,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       setBridgeDiagnostics((previous) => ({
         ...previous,
-        ...supabaseDiagnostics,
-        ...getLiffBridgeDiagnostics(),
+        ...getCombinedDiagnostics(),
         bridgeAttempted: true,
         bridgeSuccess: true,
         bridgeErrorMessage: null,
