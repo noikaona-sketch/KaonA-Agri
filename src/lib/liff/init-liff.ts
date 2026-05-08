@@ -6,6 +6,17 @@ type LiffInstance = {
   init: (params: { liffId: string }) => Promise<void>;
   isLoggedIn: () => boolean;
   login: (params?: { redirectUri?: string }) => void;
+  getIDToken: () => string | null;
+};
+
+export type LiffSdkLoadStatus = 'not_attempted' | 'success' | 'failed';
+export type RuntimeMode = 'production' | 'preview' | 'direct';
+
+export type LiffRuntimeDiagnostics = {
+  liffConfigPresent: boolean;
+  sdkLoad: LiffSdkLoadStatus;
+  liffInitError: string | null;
+  runtimeMode: RuntimeMode;
 };
 
 declare global {
@@ -18,6 +29,15 @@ const liffId = getOptionalPublicLiffId();
 
 let loadPromise: Promise<LiffInstance> | null = null;
 let isInitialized = false;
+let sdkLoadStatus: LiffSdkLoadStatus = 'not_attempted';
+let liffInitErrorMessage: string | null = null;
+
+function resolveRuntimeMode(): RuntimeMode {
+  if (typeof window === 'undefined') return 'direct';
+  if (window.location.hostname.endsWith('.vercel.app')) return 'preview';
+  if (window.location.hostname === 'localhost') return 'direct';
+  return 'production';
+}
 
 async function loadLiffSdk(): Promise<LiffInstance> {
   if (window.liff) {
@@ -31,12 +51,17 @@ async function loadLiffSdk(): Promise<LiffInstance> {
       script.async = true;
       script.onload = () => {
         if (window.liff) {
+          sdkLoadStatus = 'success';
           resolve(window.liff);
           return;
         }
+        sdkLoadStatus = 'failed';
         reject(new Error('LIFF SDK loaded but window.liff is unavailable.'));
       };
-      script.onerror = () => reject(new Error('Failed to load LIFF SDK script.'));
+      script.onerror = () => {
+        sdkLoadStatus = 'failed';
+        reject(new Error('Failed to load LIFF SDK script.'));
+      };
       document.head.appendChild(script);
     });
   }
@@ -53,8 +78,14 @@ export async function initLiff(): Promise<LiffInstance | null> {
   const liff = await loadLiffSdk();
 
   if (!isInitialized) {
-    await liff.init({ liffId });
-    isInitialized = true;
+    try {
+      await liff.init({ liffId });
+      isInitialized = true;
+      liffInitErrorMessage = null;
+    } catch {
+      liffInitErrorMessage = 'LIFF initialization failed.';
+      throw new Error('LIFF initialization failed.');
+    }
   }
 
   return liff;
@@ -68,4 +99,23 @@ export async function ensureLiffSignedIn(): Promise<void> {
   }
 
   liff.login({ redirectUri: window.location.href });
+}
+
+export function getLiffRuntimeDiagnostics(): LiffRuntimeDiagnostics {
+  return {
+    liffConfigPresent: Boolean(liffId),
+    sdkLoad: sdkLoadStatus,
+    liffInitError: liffInitErrorMessage,
+    runtimeMode: resolveRuntimeMode(),
+  };
+}
+
+export async function ensureLiffIdToken(): Promise<string | null> {
+  const liff = await initLiff();
+  if (!liff) return null;
+  if (!liff.isLoggedIn()) {
+    liff.login({ redirectUri: window.location.href });
+    return null;
+  }
+  return liff.getIDToken();
 }

@@ -12,8 +12,8 @@ type AppProvidersProps = {
 
 export function AppProviders({ children }: AppProvidersProps) {
   useEffect(() => {
-    void ensureLiffSignedIn().catch((error: unknown) => {
-      console.warn('LIFF initialization skipped or failed.', error);
+    void ensureLiffSignedIn().catch(() => {
+      console.warn('LIFF initialization skipped or failed.');
     });
   }, []);
 

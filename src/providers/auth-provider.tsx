@@ -4,6 +4,7 @@ import type { Session } from '@supabase/supabase-js';
 import type { ReactNode } from 'react';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
+import { ensureLiffIdToken, getLiffRuntimeDiagnostics } from '@/lib/liff/init-liff';
 import { tryCreateSupabaseBrowserClient } from '@/lib/supabase/client';
 import type {
   AppRole,
@@ -76,6 +77,28 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
 
     const supabaseClient = supabase;
+    let bridgeState: 'not_attempted' | 'attempted' | 'success' | 'failed' = 'not_attempted';
+
+    async function ensureSupabaseSessionFromLiff() {
+      bridgeState = 'attempted';
+
+      try {
+        const idToken = await ensureLiffIdToken();
+
+        if (!idToken) {
+          return;
+        }
+
+        const { error } = await supabaseClient.auth.signInWithIdToken({
+          provider: 'custom:line',
+          token: idToken,
+        });
+
+        bridgeState = error ? 'failed' : 'success';
+      } catch {
+        bridgeState = 'failed';
+      }
+    }
 
     async function bootstrapWithSession(currentSession: Session | null) {
       try {
@@ -93,7 +116,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         if (error) {
           setMember(null);
           setStatus('error');
-          setErrorMessage(error.message);
+          setErrorMessage('Unable to load member access profile. Please retry.');
           return;
         }
 
@@ -114,27 +137,31 @@ export function AuthProvider({ children }: AuthProviderProps) {
         if (!bootstrapResult.is_approved) return setStatus('access_denied');
 
         return setStatus('approved');
-      } catch (error: unknown) {
+      } catch {
         setMember(null);
         setStatus('error');
-        setErrorMessage(error instanceof Error ? error.message : 'Unexpected authentication error.');
+        setErrorMessage('Unexpected authentication error.');
       }
     }
 
-    void supabaseClient.auth
-      .getSession()
+    void ensureSupabaseSessionFromLiff()
+      .then(() => supabaseClient.auth.getSession())
       .then(({ data, error }) => {
         if (error) {
           setStatus('error');
-          setErrorMessage(error.message);
+          setErrorMessage('Authentication session is currently unavailable. Please try again.');
           return;
         }
 
         void bootstrapWithSession(data.session);
       })
-      .catch((error: unknown) => {
+      .catch(() => {
+        const diagnostics = getLiffRuntimeDiagnostics();
+        const bridgeDetail = bridgeState === 'failed' ? 'LIFF bridge failed.' : 'LIFF bridge incomplete.';
         setStatus('error');
-        setErrorMessage(error instanceof Error ? error.message : 'Unexpected authentication error.');
+        setErrorMessage(
+          `Authentication error. ${bridgeDetail} LIFF config present: ${diagnostics.liffConfigPresent ? 'yes' : 'no'}, SDK load: ${diagnostics.sdkLoad}, runtime mode: ${diagnostics.runtimeMode}${diagnostics.liffInitError ? `, LIFF init error: ${diagnostics.liffInitError}` : ''}.`
+        );
       });
 
     const {
@@ -143,7 +170,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       void bootstrapWithSession(updatedSession).catch((error: unknown) => {
         setMember(null);
         setStatus('error');
-        setErrorMessage(error instanceof Error ? error.message : 'Unexpected authentication error.');
+        setErrorMessage('Unexpected authentication error.');
       });
     });
 
