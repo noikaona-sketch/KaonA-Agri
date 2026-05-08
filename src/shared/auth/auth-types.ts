@@ -22,3 +22,21 @@ export type AuthBootstrapResult = {
   effective_role: AppRole | null;
   roles: AppRole[];
 };
+
+export type LiffRuntimeMode = 'production' | 'preview' | 'direct';
+
+export type LiffBridgeDiagnostics = {
+  liffConfigPresent: boolean;
+  liffSdkLoad: 'success' | 'failed' | 'not_attempted';
+  liffInitAttempted: boolean;
+  liffInitSuccess: boolean;
+  liffInitError: string | null;
+  liffWindowPresent: boolean;
+  runtimeMode: LiffRuntimeMode;
+  liffInitialized: boolean;
+  liffLoggedIn: boolean;
+  idTokenPresent: boolean;
+  bridgeAttempted: boolean;
+  bridgeSuccess: boolean;
+  bridgeErrorMessage: string | null;
+};
