@@ -22,3 +22,12 @@ export type AuthBootstrapResult = {
   effective_role: AppRole | null;
   roles: AppRole[];
 };
+
+export type LiffBridgeDiagnostics = {
+  liffInitialized: boolean;
+  liffLoggedIn: boolean;
+  idTokenPresent: boolean;
+  bridgeAttempted: boolean;
+  bridgeSuccess: boolean;
+  bridgeErrorMessage: string | null;
+};

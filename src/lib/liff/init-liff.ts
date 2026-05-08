@@ -75,3 +75,24 @@ export async function ensureLiffIdToken(): Promise<string | null> {
 
   return liff.getIDToken();
 }
+
+export async function getLiffBridgeSnapshot() {
+  const liff = await initLiff();
+
+  if (!liff) {
+    return {
+      liffInitialized: false,
+      liffLoggedIn: false,
+      idTokenPresent: false,
+    };
+  }
+
+  const liffLoggedIn = liff.isLoggedIn();
+  const idToken = liffLoggedIn ? liff.getIDToken() : null;
+
+  return {
+    liffInitialized: true,
+    liffLoggedIn,
+    idTokenPresent: Boolean(idToken),
+  };
+}

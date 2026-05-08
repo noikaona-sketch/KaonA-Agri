@@ -31,12 +31,20 @@ function StateView({ title, subtitle }: { title: string; subtitle: string }) {
 }
 
 export function ProtectedRoute({ allowedRoles, children, ...fallbacks }: ProtectedRouteProps) {
-  const { status, session, errorMessage } = useAuth();
+  const { status, session, errorMessage, bridgeDiagnostics } = useAuth();
   const member = useCurrentMember();
   const effectiveRole = useEffectiveRole();
 
   if (status === 'loading') return fallbacks.fallbackLoading ?? <StateView title="Checking session" subtitle="Confirming your authentication state." />;
-  if (!session) return fallbacks.fallbackUnauthenticated ?? <StateView title="Sign-in required" subtitle="Please authenticate with LIFF to continue." />;
+  if (!session)
+    return (
+      fallbacks.fallbackUnauthenticated ?? (
+        <StateView
+          title="Authentication bridge required"
+          subtitle={`LIFF initialized: ${bridgeDiagnostics.liffInitialized ? 'yes' : 'no'} · LIFF logged in: ${bridgeDiagnostics.liffLoggedIn ? 'yes' : 'no'} · ID token present: ${bridgeDiagnostics.idTokenPresent ? 'yes' : 'no'} · Supabase bridge: ${bridgeDiagnostics.bridgeSuccess ? 'success' : bridgeDiagnostics.bridgeAttempted ? 'failed' : 'not attempted'}${bridgeDiagnostics.bridgeErrorMessage ? ` · Error: ${bridgeDiagnostics.bridgeErrorMessage}` : ''}`}
+        />
+      )
+    );
   if (!member || status === 'no_member') return fallbacks.fallbackNoMember ?? <StateView title="No member profile" subtitle="Your account is not linked to a member profile." />;
   if (status === 'pending_approval') return fallbacks.fallbackPendingApproval ?? <StateView title="Pending approval" subtitle="Your account is awaiting approval." />;
   if (status === 'rejected') return fallbacks.fallbackRejected ?? <StateView title="Access rejected" subtitle="Your member access request was rejected." />;

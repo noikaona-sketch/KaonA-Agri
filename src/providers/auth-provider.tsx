@@ -4,12 +4,13 @@ import type { Session } from '@supabase/supabase-js';
 import type { ReactNode } from 'react';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
-import { ensureLiffIdToken } from '@/lib/liff/init-liff';
+import { ensureLiffIdToken, getLiffBridgeSnapshot } from '@/lib/liff/init-liff';
 import { tryCreateSupabaseBrowserClient } from '@/lib/supabase/client';
 import type {
   AppRole,
   AuthBootstrapResult,
   AuthStatus,
+  LiffBridgeDiagnostics,
   MemberStatus,
 } from '@/shared/auth/auth-types';
 
@@ -31,6 +32,7 @@ type AuthContextValue = {
   session: Session | null;
   member: AuthBootstrapResult | null;
   errorMessage: string | null;
+  bridgeDiagnostics: LiffBridgeDiagnostics;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -64,6 +66,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [session, setSession] = useState<Session | null>(null);
   const [member, setMember] = useState<AuthBootstrapResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [bridgeDiagnostics, setBridgeDiagnostics] = useState<LiffBridgeDiagnostics>({
+    liffInitialized: false,
+    liffLoggedIn: false,
+    idTokenPresent: false,
+    bridgeAttempted: false,
+    bridgeSuccess: false,
+    bridgeErrorMessage: null,
+  });
 
   useEffect(() => {
     const supabase = tryCreateSupabaseBrowserClient();
@@ -79,9 +89,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const supabaseClient = supabase;
 
     async function bridgeLiffToSupabaseSession() {
+      const snapshot = await getLiffBridgeSnapshot();
+      setBridgeDiagnostics((previous) => ({
+        ...previous,
+        ...snapshot,
+      }));
+
       const idToken = await ensureLiffIdToken();
 
       if (!idToken) {
+        setBridgeDiagnostics((previous) => ({
+          ...previous,
+          bridgeAttempted: true,
+          bridgeSuccess: false,
+          bridgeErrorMessage: 'LIFF login is required before creating a Supabase session.',
+        }));
         return null;
       }
 
@@ -94,8 +116,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const { data, error } = await supabaseClient.auth.signInWithIdToken(params);
 
       if (error) {
+        setBridgeDiagnostics((previous) => ({
+          ...previous,
+          bridgeAttempted: true,
+          bridgeSuccess: false,
+          bridgeErrorMessage: error.message,
+        }));
         throw error;
       }
+
+      setBridgeDiagnostics((previous) => ({
+        ...previous,
+        bridgeAttempted: true,
+        bridgeSuccess: true,
+        bridgeErrorMessage: null,
+      }));
 
       return data.session;
     }
@@ -182,8 +217,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, []);
 
   const value = useMemo(
-    () => ({ status, session, member, errorMessage }),
-    [status, session, member, errorMessage]
+    () => ({ status, session, member, errorMessage, bridgeDiagnostics }),
+    [status, session, member, errorMessage, bridgeDiagnostics]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
