@@ -145,6 +145,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setBridgeDiagnostics({
         ...snapshot,
         ...getSupabaseClientDiagnostics(),
+        bridgeAttempted: true,
+        bridgeSuccess: false,
+        bridgeErrorMessage: null,
       });
 
       const idToken = await ensureLiffIdToken();
@@ -161,9 +164,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
 
       type SignInWithIdTokenParams = Parameters<typeof supabaseClient.auth.signInWithIdToken>[0];
-
       const params = { provider: 'custom:line', token: idToken } as SignInWithIdTokenParams;
-
       const { data, error } = await supabaseClient.auth.signInWithIdToken(params);
 
       if (error) {
@@ -234,15 +235,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
     }
 
-    void supabaseClient.auth
-      .getSession()
-      .then(async ({ data, error }) => {
-        if (error) {
-          setStatus('error');
-          setErrorMessage('Supabase session not available');
-          setBridgeDiagnostics(withBridgeMessage('Supabase session not available'));
-          return;
-        }
+    async function resolveInitialSession() {
+      try {
+        const { data } = await supabaseClient.auth.getSession();
 
         if (data.session) {
           await bootstrapWithSession(data.session);
@@ -251,12 +246,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         const bridgedSession = await bridgeLiffToSupabaseSession();
         await bootstrapWithSession(bridgedSession);
-      })
-      .catch(() => {
-        setStatus('error');
-        setErrorMessage('Supabase session not available');
-        setBridgeDiagnostics(withBridgeMessage('Supabase session not available'));
-      });
+      } catch {
+        try {
+          const bridgedSession = await bridgeLiffToSupabaseSession();
+          await bootstrapWithSession(bridgedSession);
+        } catch {
+          setStatus('error');
+          setErrorMessage('Supabase LINE session exchange failed');
+          setBridgeDiagnostics((previous) => ({
+            ...previous,
+            ...getCombinedDiagnostics(),
+            bridgeAttempted: true,
+            bridgeSuccess: false,
+            bridgeErrorMessage: 'Supabase LINE session exchange failed',
+          }));
+        }
+      }
+    }
+
+    void resolveInitialSession();
 
     const {
       data: { subscription },
