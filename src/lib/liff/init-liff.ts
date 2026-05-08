@@ -137,6 +137,12 @@ export async function initLiff(): Promise<LiffInstance | null> {
     diagnostics.liffInitError = null;
     setLiffSessionDiagnostics(liff);
 
+    if (!liff.isLoggedIn()) {
+      diagnostics.bridgeErrorMessage = 'LIFF login is required';
+      liff.login({ redirectUri: window.location.href });
+      return null;
+    }
+
     return liff;
   } catch (error: unknown) {
     diagnostics.liffInitSuccess = false;
