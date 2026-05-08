@@ -18,7 +18,8 @@ The LIFF entry flow exchanges a LINE ID token into a Supabase Auth session using
 2. Enable the **LINE** provider (OIDC).
 3. Set the LINE **Channel ID** and **Channel Secret** from LINE Developers Console.
 4. Confirm the LIFF app/channel used by `NEXT_PUBLIC_LIFF_ID` belongs to the same LINE channel configured in Supabase.
-5. Save provider settings and test login in the deployed URL using LIFF webview.
+5. Add your app origin/callback URLs to the allowed redirect URL list in Supabase Auth settings.
+6. Save provider settings and test login in the deployed URL using LIFF webview.
 
 If LINE provider is not enabled or channel values do not match, LIFF can be logged in but Supabase session exchange will fail and app access remains unauthenticated.
 
