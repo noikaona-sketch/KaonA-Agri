@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 
-import { getPublicEnvIfConfigured, getRequiredPublicEnv } from '@/lib/env/public-env';
+import { getPublicEnvIfConfigured, getPublicSupabaseEnvPresence, getRequiredPublicEnv } from '@/lib/env/public-env';
 
 export function createSupabaseBrowserClient() {
   const { supabaseUrl, supabaseAnonKey } = getRequiredPublicEnv();
@@ -16,4 +16,13 @@ export function tryCreateSupabaseBrowserClient() {
   }
 
   return createClient(env.supabaseUrl, env.supabaseAnonKey);
+}
+
+export function getSupabaseClientDiagnostics() {
+  const presence = getPublicSupabaseEnvPresence();
+
+  return {
+    ...presence,
+    supabaseClientCreated: Boolean(getPublicEnvIfConfigured()),
+  };
 }

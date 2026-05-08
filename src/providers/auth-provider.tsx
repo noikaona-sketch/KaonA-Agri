@@ -5,7 +5,7 @@ import type { ReactNode } from 'react';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
 import { ensureLiffIdToken, getLiffBridgeDiagnostics, getLiffBridgeSnapshot } from '@/lib/liff/init-liff';
-import { tryCreateSupabaseBrowserClient } from '@/lib/supabase/client';
+import { getSupabaseClientDiagnostics, tryCreateSupabaseBrowserClient } from '@/lib/supabase/client';
 import type {
   AppRole,
   AuthBootstrapResult,
@@ -18,6 +18,9 @@ const APP_ROLES: AppRole[] = ['admin', 'staff', 'inspector', 'leader', 'truck_ow
 const MEMBER_STATUSES: MemberStatus[] = ['pending', 'approved', 'rejected', 'suspended'];
 
 const INITIAL_BRIDGE_DIAGNOSTICS: LiffBridgeDiagnostics = {
+  supabaseUrlPresent: false,
+  supabaseAnonKeyPresent: false,
+  supabaseClientCreated: false,
   liffConfigPresent: false,
   liffSdkLoad: 'not_attempted',
   liffInitAttempted: false,
@@ -79,6 +82,7 @@ function normalizeBootstrap(row: BootstrapRpcRow): AuthBootstrapResult {
 
 function withBridgeMessage(message: string): LiffBridgeDiagnostics {
   return {
+    ...getSupabaseClientDiagnostics(),
     ...getLiffBridgeDiagnostics(),
     bridgeErrorMessage: message,
   };
@@ -95,6 +99,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     let isCancelled = false;
 
     const supabase = tryCreateSupabaseBrowserClient();
+    const supabaseDiagnostics = getSupabaseClientDiagnostics();
 
     if (!supabase) {
       void getLiffBridgeSnapshot()
@@ -106,6 +111,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           setStatus('error');
           setErrorMessage('Supabase session not available');
           setBridgeDiagnostics({
+            ...supabaseDiagnostics,
             ...snapshot,
             bridgeErrorMessage: 'Supabase session not available',
           });
@@ -129,13 +135,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     async function bridgeLiffToSupabaseSession() {
       const snapshot = await getLiffBridgeSnapshot();
-      setBridgeDiagnostics(snapshot);
+      setBridgeDiagnostics({
+        ...supabaseDiagnostics,
+        ...snapshot,
+      });
 
       const idToken = await ensureLiffIdToken();
 
       if (!idToken) {
         setBridgeDiagnostics((previous) => ({
           ...previous,
+          ...supabaseDiagnostics,
           ...getLiffBridgeDiagnostics(),
           bridgeAttempted: true,
           bridgeSuccess: false,
@@ -155,6 +165,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (error) {
         setBridgeDiagnostics((previous) => ({
           ...previous,
+          ...supabaseDiagnostics,
           ...getLiffBridgeDiagnostics(),
           bridgeAttempted: true,
           bridgeSuccess: false,
@@ -165,6 +176,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       setBridgeDiagnostics((previous) => ({
         ...previous,
+        ...supabaseDiagnostics,
         ...getLiffBridgeDiagnostics(),
         bridgeAttempted: true,
         bridgeSuccess: true,

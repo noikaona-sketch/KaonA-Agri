@@ -42,3 +42,10 @@ export function getPublicEnvIfConfigured() {
 export function getOptionalPublicLiffId() {
   return process.env.NEXT_PUBLIC_LIFF_ID?.trim() || null;
 }
+
+export function getPublicSupabaseEnvPresence() {
+  return {
+    supabaseUrlPresent: Boolean(tryReadEnv('NEXT_PUBLIC_SUPABASE_URL')),
+    supabaseAnonKeyPresent: Boolean(tryReadEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY')),
+  };
+}
