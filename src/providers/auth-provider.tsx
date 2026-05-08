@@ -4,7 +4,7 @@ import type { Session } from '@supabase/supabase-js';
 import type { ReactNode } from 'react';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
-import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import { tryCreateSupabaseBrowserClient } from '@/lib/supabase/client';
 import type {
   AppRole,
   AuthBootstrapResult,
@@ -65,60 +65,86 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    const supabase = createSupabaseBrowserClient();
+    const supabase = tryCreateSupabaseBrowserClient();
 
-    async function bootstrapWithSession(currentSession: Session | null) {
-      setSession(currentSession);
-      setErrorMessage(null);
-
-      if (!currentSession) {
-        setMember(null);
-        setStatus('unauthenticated');
-        return;
-      }
-
-      const { data, error } = await supabase.rpc('bootstrap_auth_session');
-
-      if (error) {
-        setMember(null);
-        setStatus('error');
-        setErrorMessage(error.message);
-        return;
-      }
-
-      const bootstrapRow = Array.isArray(data) ? (data[0] as BootstrapRpcRow | undefined) : undefined;
-
-      if (!bootstrapRow) {
-        setMember(null);
-        setStatus('no_member');
-        return;
-      }
-
-      const bootstrapResult = normalizeBootstrap(bootstrapRow);
-      setMember(bootstrapResult);
-
-      if (bootstrapResult.status === 'pending') return setStatus('pending_approval');
-      if (bootstrapResult.status === 'rejected') return setStatus('rejected');
-      if (bootstrapResult.status === 'suspended') return setStatus('suspended');
-      if (!bootstrapResult.is_approved) return setStatus('access_denied');
-
-      return setStatus('approved');
+    if (!supabase) {
+      setMember(null);
+      setSession(null);
+      setStatus('error');
+      setErrorMessage('Configuration error: missing Supabase public environment variables.');
+      return;
     }
 
-    void supabase.auth.getSession().then(({ data, error }) => {
-      if (error) {
-        setStatus('error');
-        setErrorMessage(error.message);
-        return;
-      }
+    const supabaseClient = supabase;
 
-      void bootstrapWithSession(data.session);
-    });
+    async function bootstrapWithSession(currentSession: Session | null) {
+      try {
+        setSession(currentSession);
+        setErrorMessage(null);
+
+        if (!currentSession) {
+          setMember(null);
+          setStatus('unauthenticated');
+          return;
+        }
+
+        const { data, error } = await supabaseClient.rpc('bootstrap_auth_session');
+
+        if (error) {
+          setMember(null);
+          setStatus('error');
+          setErrorMessage(error.message);
+          return;
+        }
+
+        const bootstrapRow = Array.isArray(data) ? (data[0] as BootstrapRpcRow | undefined) : undefined;
+
+        if (!bootstrapRow) {
+          setMember(null);
+          setStatus('no_member');
+          return;
+        }
+
+        const bootstrapResult = normalizeBootstrap(bootstrapRow);
+        setMember(bootstrapResult);
+
+        if (bootstrapResult.status === 'pending') return setStatus('pending_approval');
+        if (bootstrapResult.status === 'rejected') return setStatus('rejected');
+        if (bootstrapResult.status === 'suspended') return setStatus('suspended');
+        if (!bootstrapResult.is_approved) return setStatus('access_denied');
+
+        return setStatus('approved');
+      } catch (error: unknown) {
+        setMember(null);
+        setStatus('error');
+        setErrorMessage(error instanceof Error ? error.message : 'Unexpected authentication error.');
+      }
+    }
+
+    void supabaseClient.auth
+      .getSession()
+      .then(({ data, error }) => {
+        if (error) {
+          setStatus('error');
+          setErrorMessage(error.message);
+          return;
+        }
+
+        void bootstrapWithSession(data.session);
+      })
+      .catch((error: unknown) => {
+        setStatus('error');
+        setErrorMessage(error instanceof Error ? error.message : 'Unexpected authentication error.');
+      });
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, updatedSession) => {
-      void bootstrapWithSession(updatedSession);
+    } = supabaseClient.auth.onAuthStateChange((_event, updatedSession) => {
+      void bootstrapWithSession(updatedSession).catch((error: unknown) => {
+        setMember(null);
+        setStatus('error');
+        setErrorMessage(error instanceof Error ? error.message : 'Unexpected authentication error.');
+      });
     });
 
     return () => {
