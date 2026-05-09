@@ -15,7 +15,7 @@ export type AuthStatus =
 
 export type AuthBootstrapResult = {
   member_id: string;
-  auth_user_id: string;
+  auth_user_id: string | null;
   line_user_id: string;
   status: MemberStatus;
   is_approved: boolean;

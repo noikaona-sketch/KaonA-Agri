@@ -34,11 +34,8 @@ function yesNo(value: boolean) {
   return value ? 'yes' : 'no';
 }
 
-function formatBridgeDiagnostics(diagnostics: LiffBridgeDiagnostics) {
+function formatLiffDiagnostics(diagnostics: LiffBridgeDiagnostics) {
   return [
-    `Supabase URL present: ${yesNo(diagnostics.supabaseUrlPresent)}`,
-    `Supabase anon key present: ${yesNo(diagnostics.supabaseAnonKeyPresent)}`,
-    `Supabase client created: ${yesNo(diagnostics.supabaseClientCreated)}`,
     `LIFF config present: ${yesNo(diagnostics.liffConfigPresent)}`,
     `LIFF SDK load: ${diagnostics.liffSdkLoad}`,
     `LIFF window present: ${yesNo(diagnostics.liffWindowPresent)}`,
@@ -49,28 +46,30 @@ function formatBridgeDiagnostics(diagnostics: LiffBridgeDiagnostics) {
     `LIFF initialized: ${yesNo(diagnostics.liffInitialized)}`,
     `LIFF logged in: ${yesNo(diagnostics.liffLoggedIn)}`,
     `ID token present: ${yesNo(diagnostics.idTokenPresent)}`,
-    `Supabase bridge: ${diagnostics.bridgeSuccess ? 'success' : diagnostics.bridgeAttempted ? 'failed' : 'not attempted'}`,
-    `Bridge message: ${diagnostics.bridgeErrorMessage ?? 'none'}`,
+    `Message: ${diagnostics.bridgeErrorMessage ?? 'none'}`,
   ].join(' · ');
 }
 
 export function ProtectedRoute({ allowedRoles, children, ...fallbacks }: ProtectedRouteProps) {
-  const { status, session, errorMessage, bridgeDiagnostics } = useAuth();
+  const { status, errorMessage, bridgeDiagnostics } = useAuth();
   const member = useCurrentMember();
   const effectiveRole = useEffectiveRole();
 
-  if (status === 'loading') return fallbacks.fallbackLoading ?? <StateView title="Checking session" subtitle="Confirming your authentication state." />;
-  if (!session)
+  if (status === 'loading') return fallbacks.fallbackLoading ?? <StateView title="Checking LINE session" subtitle="Confirming LIFF login and member profile." />;
+
+  if (status === 'unauthenticated') {
     return (
       fallbacks.fallbackUnauthenticated ?? (
-        <StateView title="Authentication bridge required" subtitle={formatBridgeDiagnostics(bridgeDiagnostics)} />
+        <StateView title="LINE login required" subtitle={formatLiffDiagnostics(bridgeDiagnostics)} />
       )
     );
-  if (!member || status === 'no_member') return fallbacks.fallbackNoMember ?? <StateView title="No member profile" subtitle="Your account is not linked to a member profile." />;
+  }
+
+  if (status === 'error') return fallbacks.fallbackError ?? <StateView title="Authentication error" subtitle={errorMessage ?? 'Please retry shortly.'} />;
+  if (!member || status === 'no_member') return fallbacks.fallbackNoMember ?? <StateView title="No member profile" subtitle="Your LINE account is not linked to a member profile." />;
   if (status === 'pending_approval') return fallbacks.fallbackPendingApproval ?? <StateView title="Pending approval" subtitle="Your account is awaiting approval." />;
   if (status === 'rejected') return fallbacks.fallbackRejected ?? <StateView title="Access rejected" subtitle="Your member access request was rejected." />;
   if (status === 'suspended') return fallbacks.fallbackSuspended ?? <StateView title="Account suspended" subtitle="Your member account is suspended." />;
-  if (status === 'error') return fallbacks.fallbackError ?? <StateView title="Authentication error" subtitle={errorMessage ?? 'Please retry shortly.'} />;
 
   if (member.is_approved !== true) {
     return fallbacks.fallbackAccessDenied ?? <StateView title="Access denied" subtitle="Your account is not approved for protected modules." />;

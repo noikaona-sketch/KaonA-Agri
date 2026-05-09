@@ -18,7 +18,7 @@ function formatBytes(bytes: number) {
 }
 
 export function PhotoUploadPlaceholder({ label = 'Photo evidence upload' }: PhotoUploadPlaceholderProps) {
-  const { member, session } = useAuth();
+  const { member } = useAuth();
   const [file, setFile] = useState<File | null>(null);
   const [geo, setGeo] = useState<GeoState | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -56,7 +56,7 @@ export function PhotoUploadPlaceholder({ label = 'Photo evidence upload' }: Phot
 
     if (!file) return setError('Please choose a photo before uploading evidence.');
     if (!geo) return setError('GPS evidence is required before save. Capture GPS or retry geolocation.');
-    if (!member?.member_id || !session?.user.id) return setError('Missing authenticated member context.');
+    if (!member?.member_id) return setError('Missing authenticated member context.');
 
     try {
       setUploadState('processing');
