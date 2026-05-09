@@ -156,7 +156,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         options: {
           redirectTo: window.location.origin,
         },
-      } as SignInWithOAuthParams;
+      } as unknown as SignInWithOAuthParams;
 
       const { error } = await supabaseClient.auth.signInWithOAuth(params);
 
