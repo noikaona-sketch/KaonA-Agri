@@ -1,11 +1,10 @@
 'use client';
 
-import type { Session } from '@supabase/supabase-js';
 import type { ReactNode } from 'react';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
 import { ensureLiffIdToken, getLiffBridgeDiagnostics, getLiffBridgeSnapshot } from '@/lib/liff/init-liff';
-import { getSupabaseClientDiagnostics, tryCreateSupabaseBrowserClient } from '@/lib/supabase/client';
+import { getSupabaseClientDiagnostics } from '@/lib/supabase/client';
 import type {
   AppRole,
   AuthBootstrapResult,
@@ -36,19 +35,8 @@ const INITIAL_BRIDGE_DIAGNOSTICS: LiffBridgeDiagnostics = {
   bridgeErrorMessage: null,
 };
 
-type BootstrapRpcRow = {
-  member_id: string;
-  auth_user_id: string;
-  line_user_id: string;
-  status: string;
-  is_approved: boolean;
-  effective_role: string | null;
-  roles: string[];
-};
-
 type AuthContextValue = {
   status: AuthStatus;
-  session: Session | null;
   member: AuthBootstrapResult | null;
   errorMessage: string | null;
   bridgeDiagnostics: LiffBridgeDiagnostics;
@@ -68,29 +56,22 @@ function isMemberStatus(status: string): status is MemberStatus {
   return MEMBER_STATUSES.includes(status as MemberStatus);
 }
 
-function normalizeBootstrap(row: BootstrapRpcRow): AuthBootstrapResult {
+function getCombinedDiagnostics(): LiffBridgeDiagnostics {
   return {
-    member_id: row.member_id,
-    auth_user_id: row.auth_user_id,
-    line_user_id: row.line_user_id,
-    status: isMemberStatus(row.status) ? row.status : 'pending',
-    is_approved: row.is_approved,
-    effective_role: row.effective_role && isAppRole(row.effective_role) ? row.effective_role : null,
-    roles: row.roles.filter(isAppRole),
+    ...getLiffBridgeDiagnostics(),
+    ...getSupabaseClientDiagnostics(),
   };
 }
 
 function withBridgeMessage(message: string): LiffBridgeDiagnostics {
   return {
-    ...getSupabaseClientDiagnostics(),
-    ...getLiffBridgeDiagnostics(),
+    ...getCombinedDiagnostics(),
     bridgeErrorMessage: message,
   };
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const [status, setStatus] = useState<AuthStatus>('loading');
-  const [session, setSession] = useState<Session | null>(null);
   const [member, setMember] = useState<AuthBootstrapResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [bridgeDiagnostics, setBridgeDiagnostics] = useState<LiffBridgeDiagnostics>(INITIAL_BRIDGE_DIAGNOSTICS);
@@ -98,131 +79,90 @@ export function AuthProvider({ children }: AuthProviderProps) {
   useEffect(() => {
     let isCancelled = false;
 
-    const supabase = tryCreateSupabaseBrowserClient();
-    const supabaseDiagnostics = getSupabaseClientDiagnostics();
+    async function bootstrap() {
+      try {
+        setBridgeDiagnostics(getCombinedDiagnostics());
 
-    if (!supabase) {
-      void getLiffBridgeSnapshot()
-        .then((snapshot) => {
-          if (isCancelled) return;
+        const snapshot = await getLiffBridgeSnapshot();
 
-          setMember(null);
-          setSession(null);
-          setStatus('error');
-          setErrorMessage('Supabase session not available');
-          setBridgeDiagnostics({
-            ...supabaseDiagnostics,
-            ...snapshot,
-            bridgeErrorMessage: 'Supabase session not available',
-          });
-        })
-        .catch(() => {
-          if (isCancelled) return;
+        if (isCancelled) {
+          return;
+        }
 
-          setMember(null);
-          setStatus('error');
-          setSession(null);
-          setErrorMessage('Supabase session not available');
-          setBridgeDiagnostics(withBridgeMessage('Supabase session not available'));
+        setBridgeDiagnostics({
+          ...snapshot,
+          ...getSupabaseClientDiagnostics(),
         });
 
-      return () => {
-        isCancelled = true;
-      };
-    }
+        const idToken = await ensureLiffIdToken();
 
-    const supabaseClient = supabase;
+        if (!idToken) {
+          setStatus('unauthenticated');
+          setMember(null);
+          setErrorMessage('LINE login required');
+          return;
+        }
 
-    async function bridgeLiffToSupabaseSession() {
-      const snapshot = await getLiffBridgeSnapshot();
-      setBridgeDiagnostics({
-        ...supabaseDiagnostics,
-        ...snapshot,
-      });
+        const response = await fetch('/api/auth/line', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ idToken }),
+        });
 
-      const idToken = await ensureLiffIdToken();
+        const payload = (await response.json()) as {
+          error?: string;
+          member?: AuthBootstrapResult;
+        };
 
-      if (!idToken) {
-        setBridgeDiagnostics((previous) => ({
-          ...previous,
-          ...supabaseDiagnostics,
-          ...getLiffBridgeDiagnostics(),
-          bridgeAttempted: true,
-          bridgeSuccess: false,
-          bridgeErrorMessage: 'LIFF login is required',
-        }));
-        return null;
-      }
+        if (!response.ok || !payload.member) {
+          setMember(null);
+          setStatus('error');
+          setErrorMessage(payload.error ?? 'Authentication bootstrap failed');
+          setBridgeDiagnostics(withBridgeMessage(payload.error ?? 'Authentication bootstrap failed'));
+          return;
+        }
 
-      type SignInWithIdTokenParams = Parameters<typeof supabaseClient.auth.signInWithIdToken>[0];
+        const bootstrapResult: AuthBootstrapResult = {
+          ...payload.member,
+          roles: payload.member.roles.filter(isAppRole),
+          effective_role:
+            payload.member.effective_role && isAppRole(payload.member.effective_role)
+              ? payload.member.effective_role
+              : null,
+          status: isMemberStatus(payload.member.status) ? payload.member.status : 'pending',
+        };
 
-      const params = { provider: 'custom:line', token: idToken } as SignInWithIdTokenParams;
-
-      const { data, error } = await supabaseClient.auth.signInWithIdToken(params);
-
-      if (error) {
-        setBridgeDiagnostics((previous) => ({
-          ...previous,
-          ...supabaseDiagnostics,
-          ...getLiffBridgeDiagnostics(),
-          bridgeAttempted: true,
-          bridgeSuccess: false,
-          bridgeErrorMessage: 'Supabase LINE session exchange failed',
-        }));
-        throw new Error('Supabase LINE session exchange failed');
-      }
-
-      setBridgeDiagnostics((previous) => ({
-        ...previous,
-        ...supabaseDiagnostics,
-        ...getLiffBridgeDiagnostics(),
-        bridgeAttempted: true,
-        bridgeSuccess: true,
-        bridgeErrorMessage: null,
-      }));
-
-      return data.session;
-    }
-
-    async function bootstrapWithSession(currentSession: Session | null) {
-      try {
-        setSession(currentSession);
+        setMember(bootstrapResult);
         setErrorMessage(null);
 
-        if (!currentSession) {
-          setMember(null);
-          setStatus('unauthenticated');
+        if (bootstrapResult.status === 'pending') {
+          setStatus('pending_approval');
           return;
         }
 
-        const { data, error } = await supabaseClient.rpc('bootstrap_auth_session');
-
-        if (error) {
-          setMember(null);
-          setStatus('error');
-          setErrorMessage('Authentication bootstrap failed');
-          setBridgeDiagnostics(withBridgeMessage('Authentication bootstrap failed'));
+        if (bootstrapResult.status === 'rejected') {
+          setStatus('rejected');
           return;
         }
 
-        const bootstrapRow = Array.isArray(data) ? (data[0] as BootstrapRpcRow | undefined) : undefined;
-
-        if (!bootstrapRow) {
-          setMember(null);
-          setStatus('no_member');
+        if (bootstrapResult.status === 'suspended') {
+          setStatus('suspended');
           return;
         }
 
-        const bootstrapResult = normalizeBootstrap(bootstrapRow);
-        setMember(bootstrapResult);
+        if (!bootstrapResult.is_approved) {
+          setStatus('access_denied');
+          return;
+        }
 
-        if (bootstrapResult.status === 'pending') return setStatus('pending_approval');
-        if (bootstrapResult.status === 'rejected') return setStatus('rejected');
-        if (bootstrapResult.status === 'suspended') return setStatus('suspended');
-        if (!bootstrapResult.is_approved) return setStatus('access_denied');
-
-        return setStatus('approved');
+        setStatus('approved');
       } catch {
+        if (isCancelled) {
+          return;
+        }
+
         setMember(null);
         setStatus('error');
         setErrorMessage('Authentication bootstrap failed');
@@ -230,50 +170,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
     }
 
-    void supabaseClient.auth
-      .getSession()
-      .then(async ({ data, error }) => {
-        if (error) {
-          setStatus('error');
-          setErrorMessage('Supabase session not available');
-          setBridgeDiagnostics(withBridgeMessage('Supabase session not available'));
-          return;
-        }
-
-        if (data.session) {
-          await bootstrapWithSession(data.session);
-          return;
-        }
-
-        const bridgedSession = await bridgeLiffToSupabaseSession();
-        await bootstrapWithSession(bridgedSession);
-      })
-      .catch(() => {
-        setStatus('error');
-        setErrorMessage('Supabase session not available');
-        setBridgeDiagnostics(withBridgeMessage('Supabase session not available'));
-      });
-
-    const {
-      data: { subscription },
-    } = supabaseClient.auth.onAuthStateChange((_event, updatedSession) => {
-      void bootstrapWithSession(updatedSession).catch(() => {
-        setMember(null);
-        setStatus('error');
-        setErrorMessage('Authentication bootstrap failed');
-        setBridgeDiagnostics(withBridgeMessage('Authentication bootstrap failed'));
-      });
-    });
+    void bootstrap();
 
     return () => {
       isCancelled = true;
-      subscription.unsubscribe();
     };
   }, []);
 
   const value = useMemo(
-    () => ({ status, session, member, errorMessage, bridgeDiagnostics }),
-    [status, session, member, errorMessage, bridgeDiagnostics]
+    () => ({ status, member, errorMessage, bridgeDiagnostics }),
+    [status, member, errorMessage, bridgeDiagnostics]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
