@@ -1,51 +1,48 @@
-const REQUIRED_PUBLIC_ENV_KEYS = [
-  'NEXT_PUBLIC_SUPABASE_URL',
-  'NEXT_PUBLIC_SUPABASE_ANON_KEY',
-] as const;
+const NEXT_PUBLIC_SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || null;
+const NEXT_PUBLIC_SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() || null;
+const NEXT_PUBLIC_LIFF_ID = process.env.NEXT_PUBLIC_LIFF_ID?.trim() || null;
 
-type PublicEnvKey = (typeof REQUIRED_PUBLIC_ENV_KEYS)[number];
-
-function readEnv(key: PublicEnvKey): string {
-  const value = process.env[key]?.trim();
-
-  if (!value) {
-    throw new Error(`Missing required environment variable: ${key}. Check .env.example and deployment environment settings.`);
+function readSupabaseUrl(): string {
+  if (!NEXT_PUBLIC_SUPABASE_URL) {
+    throw new Error('Missing required environment variable: NEXT_PUBLIC_SUPABASE_URL. Check .env.example and deployment environment settings.');
   }
 
-  return value;
+  return NEXT_PUBLIC_SUPABASE_URL;
 }
 
-function tryReadEnv(key: PublicEnvKey): string | null {
-  const value = process.env[key]?.trim();
+function readSupabaseAnonKey(): string {
+  if (!NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    throw new Error('Missing required environment variable: NEXT_PUBLIC_SUPABASE_ANON_KEY. Check .env.example and deployment environment settings.');
+  }
 
-  return value || null;
+  return NEXT_PUBLIC_SUPABASE_ANON_KEY;
 }
 
 export function getRequiredPublicEnv() {
   return {
-    supabaseUrl: readEnv('NEXT_PUBLIC_SUPABASE_URL'),
-    supabaseAnonKey: readEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY'),
+    supabaseUrl: readSupabaseUrl(),
+    supabaseAnonKey: readSupabaseAnonKey(),
   };
 }
 
 export function getPublicEnvIfConfigured() {
-  const supabaseUrl = tryReadEnv('NEXT_PUBLIC_SUPABASE_URL');
-  const supabaseAnonKey = tryReadEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY');
-
-  if (!supabaseUrl || !supabaseAnonKey) {
+  if (!NEXT_PUBLIC_SUPABASE_URL || !NEXT_PUBLIC_SUPABASE_ANON_KEY) {
     return null;
   }
 
-  return { supabaseUrl, supabaseAnonKey };
+  return {
+    supabaseUrl: NEXT_PUBLIC_SUPABASE_URL,
+    supabaseAnonKey: NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  };
 }
 
 export function getOptionalPublicLiffId() {
-  return process.env.NEXT_PUBLIC_LIFF_ID?.trim() || null;
+  return NEXT_PUBLIC_LIFF_ID;
 }
 
 export function getPublicSupabaseEnvPresence() {
   return {
-    supabaseUrlPresent: Boolean(tryReadEnv('NEXT_PUBLIC_SUPABASE_URL')),
-    supabaseAnonKeyPresent: Boolean(tryReadEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY')),
+    supabaseUrlPresent: Boolean(NEXT_PUBLIC_SUPABASE_URL),
+    supabaseAnonKeyPresent: Boolean(NEXT_PUBLIC_SUPABASE_ANON_KEY),
   };
 }
