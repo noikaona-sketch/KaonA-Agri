@@ -17,22 +17,9 @@ import { StatusChip } from '@/shared/components/status-chip';
 import { StepList } from '@/shared/components/step-list';
 import { UIButton } from '@/shared/components/ui-button';
 
-function resolveLineUserId(metadata: Record<string, unknown> | undefined) {
-  if (!metadata) return null;
-
-  const candidates = ['line_user_id', 'sub', 'provider_id', 'preferred_username']
-    .map((key) => metadata[key])
-    .filter((value): value is string => typeof value === 'string' && value.length > 0);
-
-  return candidates[0] ?? null;
-}
-
 function NoMemberFallback() {
-  const { session } = useAuth();
-
-  if (!session) return null;
-
-  const lineUserId = resolveLineUserId(session.user.user_metadata as Record<string, unknown> | undefined);
+  const { member } = useAuth();
+  const lineUserId = member?.line_user_id ?? null;
 
   if (!lineUserId) {
     return (
