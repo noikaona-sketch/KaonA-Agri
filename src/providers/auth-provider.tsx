@@ -37,6 +37,7 @@ const INITIAL_BRIDGE_DIAGNOSTICS: LiffBridgeDiagnostics = {
 
 type AuthContextValue = {
   status: AuthStatus;
+  session: null;
   member: AuthBootstrapResult | null;
   errorMessage: string | null;
   bridgeDiagnostics: LiffBridgeDiagnostics;
@@ -178,7 +179,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, []);
 
   const value = useMemo(
-    () => ({ status, member, errorMessage, bridgeDiagnostics }),
+    () => ({ status, session: null, member, errorMessage, bridgeDiagnostics }),
     [status, member, errorMessage, bridgeDiagnostics]
   );
 
