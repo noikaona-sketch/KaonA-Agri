@@ -52,6 +52,16 @@ function createServerSupabaseClient() {
   });
 }
 
+function getEffectiveRole(roleRows: RoleRow[], roles: AppRole[]): AppRole | null {
+  const primaryRole = roleRows.find((row) => row.is_primary && isAppRole(row.role));
+
+  if (primaryRole && isAppRole(primaryRole.role)) {
+    return primaryRole.role;
+  }
+
+  return roles.length > 0 ? roles[0] : null;
+}
+
 function normalizeMember(
   member: MemberRow,
   roles: AppRole[],
@@ -156,8 +166,7 @@ export async function POST(request: Request) {
 
     const roleRows = (roleRowsResult.data ?? []) as RoleRow[];
     const roles: AppRole[] = roleRows.map((row) => row.role).filter(isAppRole);
-    const primaryRole = roleRows.find((row) => row.is_primary && isAppRole(row.role))?.role;
-    const effectiveRole: AppRole | null = isAppRole(primaryRole ?? '') ? primaryRole : roles[0] ?? null;
+    const effectiveRole = getEffectiveRole(roleRows, roles);
 
     return NextResponse.json({
       member: normalizeMember(member, roles, effectiveRole),
