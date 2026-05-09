@@ -52,6 +52,19 @@ function createServerSupabaseClient() {
   });
 }
 
+function getLineChannelId() {
+  const explicitChannelId = process.env.LINE_CHANNEL_ID ?? process.env.NEXT_PUBLIC_LINE_CHANNEL_ID;
+
+  if (explicitChannelId) {
+    return explicitChannelId;
+  }
+
+  const liffId = process.env.NEXT_PUBLIC_LIFF_ID ?? '';
+  const [channelId] = liffId.split('-');
+
+  return channelId || '';
+}
+
 function getEffectiveRole(roleRows: RoleRow[], roles: AppRole[]): AppRole | null {
   const primaryRole = roleRows.find((row) => row.is_primary && isAppRole(row.role));
 
@@ -88,6 +101,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing LINE ID token' }, { status: 400 });
     }
 
+    const lineChannelId = getLineChannelId();
+
+    if (!lineChannelId) {
+      return NextResponse.json({ error: 'LINE channel id is not configured' }, { status: 500 });
+    }
+
     const verifyResponse = await fetch('https://api.line.me/oauth2/v2.1/verify', {
       method: 'POST',
       headers: {
@@ -95,7 +114,7 @@ export async function POST(request: Request) {
       },
       body: new URLSearchParams({
         id_token: body.idToken,
-        client_id: process.env.NEXT_PUBLIC_LIFF_ID ?? '',
+        client_id: lineChannelId,
       }),
     });
 
