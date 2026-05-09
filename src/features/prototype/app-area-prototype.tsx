@@ -6,6 +6,8 @@ import { SectionHeader } from '@/shared/components/section-header';
 import { StatusChip } from '@/shared/components/status-chip';
 import { UIButton } from '@/shared/components/ui-button';
 
+type PrototypeStatus = 'draft' | 'submitted' | 'under_review' | 'approved' | 'scheduled';
+
 type PrototypeKpi = {
   label: string;
   value: string;
@@ -15,7 +17,7 @@ type PrototypeKpi = {
 type PrototypeWorkflow = {
   title: string;
   detail: string;
-  status: 'planned' | 'submitted' | 'approved' | 'pending';
+  status: PrototypeStatus;
 };
 
 type PrototypeArea = {
@@ -46,10 +48,10 @@ const AREAS: PrototypeArea[] = [
       { label: 'ไม่เผา', value: '1', detail: 'คำขอรอตรวจภาคสนาม' },
     ],
     workflows: [
-      { title: 'ข้อมูลสมาชิก', detail: 'โปรไฟล์ เบอร์โทร ทีม/หัวหน้าทีม สถานะอนุมัติ', status: 'pending' },
+      { title: 'ข้อมูลสมาชิก', detail: 'โปรไฟล์ เบอร์โทร ทีม/หัวหน้าทีม สถานะอนุมัติ', status: 'under_review' },
       { title: 'แปลงเพาะปลูก', detail: 'รายการแปลง เพิ่ม/แก้ไข พิกัด GPS และภาพหลักฐาน', status: 'submitted' },
-      { title: 'จองเมล็ดพันธุ์', detail: 'เลือกชนิดเมล็ด ปริมาณ รอบปลูก และสถานะคำขอ', status: 'planned' },
-      { title: 'นัดขายผลผลิต', detail: 'เลือกช่วงเวลา ปริมาณคาดการณ์ และสถานะนัดหมาย', status: 'planned' },
+      { title: 'จองเมล็ดพันธุ์', detail: 'เลือกชนิดเมล็ด ปริมาณ รอบปลูก และสถานะคำขอ', status: 'draft' },
+      { title: 'นัดขายผลผลิต', detail: 'เลือกช่วงเวลา ปริมาณคาดการณ์ และสถานะนัดหมาย', status: 'scheduled' },
       { title: 'โครงการไม่เผา', detail: 'สมัครเข้าร่วม ถ่ายภาพหลักฐาน และติดตามผลตรวจ', status: 'submitted' },
     ],
     nextActions: ['กรอกข้อมูลสมาชิกให้ครบ', 'เพิ่มแปลงแรก', 'สมัครโครงการไม่เผา'],
@@ -68,11 +70,11 @@ const AREAS: PrototypeArea[] = [
       { label: 'เที่ยวงาน', value: '18', detail: 'ประวัติเข้าโรงงานตัวอย่าง' },
     ],
     workflows: [
-      { title: 'โปรไฟล์ผู้ให้บริการ', detail: 'ข้อมูลเจ้าของ ประเภทบริการ พื้นที่ให้บริการ', status: 'pending' },
+      { title: 'โปรไฟล์ผู้ให้บริการ', detail: 'ข้อมูลเจ้าของ ประเภทบริการ พื้นที่ให้บริการ', status: 'under_review' },
       { title: 'รายการรถ/เครื่องจักร', detail: 'รถไถ รถเกี่ยว รถขนส่ง พร้อมสถานะใช้งาน', status: 'submitted' },
-      { title: 'ปฏิทินคิวว่าง', detail: 'กำหนดวันว่าง รับงาน และปิดคิว', status: 'planned' },
-      { title: 'งานที่ถูกจอง', detail: 'รับ/ปฏิเสธงาน ดูสถานที่และรายละเอียดสมาชิก', status: 'planned' },
-      { title: 'สมัครเป็นผู้ตรวจแปลง', detail: 'ขอรับรองเพิ่มบทบาท inspector', status: 'planned' },
+      { title: 'ปฏิทินคิวว่าง', detail: 'กำหนดวันว่าง รับงาน และปิดคิว', status: 'scheduled' },
+      { title: 'งานที่ถูกจอง', detail: 'รับ/ปฏิเสธงาน ดูสถานที่และรายละเอียดสมาชิก', status: 'draft' },
+      { title: 'สมัครเป็นผู้ตรวจแปลง', detail: 'ขอรับรองเพิ่มบทบาท inspector', status: 'draft' },
     ],
     nextActions: ['เพิ่มรถ/เครื่องจักร', 'ตั้งตารางว่าง', 'เปิดรับงานทดลอง'],
   },
@@ -90,11 +92,11 @@ const AREAS: PrototypeArea[] = [
       { label: 'พื้นที่เสี่ยง', value: '2', detail: 'ต้องติดตามซ้ำ' },
     ],
     workflows: [
-      { title: 'งานตรวจที่ได้รับมอบหมาย', detail: 'รายการแปลง สถานะ และเวลานัดหมาย', status: 'pending' },
+      { title: 'งานตรวจที่ได้รับมอบหมาย', detail: 'รายการแปลง สถานะ และเวลานัดหมาย', status: 'under_review' },
       { title: 'ตรวจแปลง', detail: 'ฟอร์มสำรวจ GPS รูปภาพ และ checklist', status: 'submitted' },
-      { title: 'ตรวจไม่เผา', detail: 'บันทึกหลักฐาน สรุปผล และข้อสังเกต', status: 'planned' },
-      { title: 'ช่วยเหลือสมาชิก', detail: 'ค้นหาสมาชิก เพิ่มข้อมูลเบื้องต้นแทนสมาชิก', status: 'planned' },
-      { title: 'สรุปงานประจำวัน', detail: 'งานเสร็จ งานค้าง และเหตุผิดปกติ', status: 'planned' },
+      { title: 'ตรวจไม่เผา', detail: 'บันทึกหลักฐาน สรุปผล และข้อสังเกต', status: 'draft' },
+      { title: 'ช่วยเหลือสมาชิก', detail: 'ค้นหาสมาชิก เพิ่มข้อมูลเบื้องต้นแทนสมาชิก', status: 'draft' },
+      { title: 'สรุปงานประจำวัน', detail: 'งานเสร็จ งานค้าง และเหตุผิดปกติ', status: 'scheduled' },
     ],
     nextActions: ['เปิดงานตรวจวันนี้', 'บันทึก GPS/รูปภาพ', 'ส่งผลตรวจตัวอย่าง'],
   },
@@ -112,11 +114,11 @@ const AREAS: PrototypeArea[] = [
       { label: 'งานสนาม', value: '31', detail: 'งาน active ทั้งหมด' },
     ],
     workflows: [
-      { title: 'อนุมัติสมาชิก', detail: 'approve/reject และกำหนด role เริ่มต้น', status: 'pending' },
-      { title: 'จัดทีม/หัวหน้าทีม', detail: 'กลุ่มสมาชิก หัวหน้าทีม และผู้ช่วยภาคสนาม', status: 'planned' },
-      { title: 'อนุมัติรถ/ผู้ให้บริการ', detail: 'ตรวจข้อมูลรถ เครื่องจักร และตารางว่าง', status: 'planned' },
+      { title: 'อนุมัติสมาชิก', detail: 'approve/reject และกำหนด role เริ่มต้น', status: 'under_review' },
+      { title: 'จัดทีม/หัวหน้าทีม', detail: 'กลุ่มสมาชิก หัวหน้าทีม และผู้ช่วยภาคสนาม', status: 'draft' },
+      { title: 'อนุมัติรถ/ผู้ให้บริการ', detail: 'ตรวจข้อมูลรถ เครื่องจักร และตารางว่าง', status: 'draft' },
       { title: 'ติดตามโครงการไม่เผา', detail: 'สถานะคำขอ ผลตรวจ และสิทธิ์ที่ได้รับ', status: 'submitted' },
-      { title: 'รายงานผู้บริหาร', detail: 'ภาพรวมสมาชิก แปลง พื้นที่ และงานสนาม', status: 'planned' },
+      { title: 'รายงานผู้บริหาร', detail: 'ภาพรวมสมาชิก แปลง พื้นที่ และงานสนาม', status: 'draft' },
     ],
     nextActions: ['อนุมัติสมาชิก pending', 'ตรวจภาพรวมงานสนาม', 'เตรียม dashboard รายงาน'],
   },
