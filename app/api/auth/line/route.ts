@@ -54,7 +54,7 @@ function createServerSupabaseClient() {
 
 function normalizeMember(
   member: MemberRow,
-  roles: string[],
+  roles: AppRole[],
   effectiveRole: AppRole | null
 ): AuthBootstrapResult {
   const normalizedStatus = isMemberStatus(member.status) ? member.status : 'pending';
@@ -66,7 +66,7 @@ function normalizeMember(
     status: normalizedStatus,
     is_approved: normalizedStatus === 'approved',
     effective_role: effectiveRole,
-    roles: roles.filter(isAppRole),
+    roles,
   };
 }
 
@@ -155,16 +155,9 @@ export async function POST(request: Request) {
     }
 
     const roleRows = (roleRowsResult.data ?? []) as RoleRow[];
-
-    const roles = roleRows
-      .map((row) => row.role)
-      .filter(isAppRole)
-      .filter((role) => role !== 'farmer' || true);
-
-    const effectiveRole =
-      roleRows.find((row) => row.is_primary && isAppRole(row.role))?.role ??
-      roles.find(isAppRole) ??
-      null;
+    const roles: AppRole[] = roleRows.map((row) => row.role).filter(isAppRole);
+    const primaryRole = roleRows.find((row) => row.is_primary && isAppRole(row.role))?.role;
+    const effectiveRole: AppRole | null = isAppRole(primaryRole ?? '') ? primaryRole : roles[0] ?? null;
 
     return NextResponse.json({
       member: normalizeMember(member, roles, effectiveRole),
