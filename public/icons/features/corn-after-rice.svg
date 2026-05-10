@@ -1,0 +1,7 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="corn after rice">
+  <rect width="64" height="64" rx="18" fill="#E8F5E9"/>
+  <path d="M17 47c8-6 22-6 30 0" stroke="#8D6E63" stroke-width="4" stroke-linecap="round"/>
+  <path d="M24 44V26M32 44V20M40 44V27" stroke="#2E7D32" stroke-width="3" stroke-linecap="round"/>
+  <path d="M28 31c-4-1-6-4-7-8 5 0 8 2 10 6M36 31c4-1 6-4 7-8-5 0-8 2-10 6" stroke="#2E7D32" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M18 39h7M39 39h7" stroke="#F9A825" stroke-width="3" stroke-linecap="round"/>
+</svg>
