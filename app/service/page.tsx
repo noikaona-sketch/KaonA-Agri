@@ -9,7 +9,6 @@ export default function ServicePage() {
         title="Service / รถร่วม"
         subtitle="Mock screen for transportation coordination"
         roleBadge="Team leader"
-        activeTab="Service"
       >
         <ServiceTransportUIMock />
       </MobileAppShell>

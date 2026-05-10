@@ -92,7 +92,7 @@ body {
   border-radius: 16px;
   box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, 1fr);
   padding: 8px;
   z-index: 2;
 }
