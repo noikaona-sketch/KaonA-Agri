@@ -1,4 +1,4 @@
-const tabs = ['Home', 'Tasks', 'Records', 'Profile'] as const;
+const tabs = ['Home', 'Tasks', 'Records', 'Service', 'Profile'] as const;
 
 type MobileBottomNavProps = {
   activeTab?: (typeof tabs)[number];

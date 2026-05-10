@@ -7,10 +7,11 @@ type MobileAppShellProps = {
   title: string;
   subtitle: string;
   roleBadge?: string;
+  activeTab?: 'Home' | 'Tasks' | 'Records' | 'Service' | 'Profile';
   children?: ReactNode;
 };
 
-export function MobileAppShell({ title, subtitle, roleBadge, children }: MobileAppShellProps) {
+export function MobileAppShell({ title, subtitle, roleBadge, activeTab = 'Home', children }: MobileAppShellProps) {
   return (
     <main className="mobile-shell">
       <section className="mobile-shell__card">
@@ -23,7 +24,7 @@ export function MobileAppShell({ title, subtitle, roleBadge, children }: MobileA
 
         <div className="mobile-shell__content">{children}</div>
       </section>
-      <MobileBottomNav activeTab="Home" />
+      <MobileBottomNav activeTab={activeTab} />
     </main>
   );
 }

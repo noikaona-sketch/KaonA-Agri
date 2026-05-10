@@ -92,7 +92,7 @@ body {
   border-radius: 16px;
   box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   padding: 8px;
   z-index: 2;
 }
@@ -143,3 +143,12 @@ body {
 .confirm-dialog__actions { display: flex; justify-content: flex-end; gap: 8px; }
 
 @keyframes spin { to { transform: rotate(360deg); } }
+
+.service-mock__list { display: grid; gap: 8px; }
+.service-mock__row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.service-mock__name { margin: 0; font-size: 14px; font-weight: 600; }
+.service-mock__actions { display: grid; gap: 8px; }
+
+.service-mock__provider-list { display: grid; gap: 8px; }
+.service-mock__provider-card { border: 1px solid var(--border); border-radius: 10px; padding: 10px; background: #fafbfa; }
+.service-mock__meta { margin: 6px 0 0; font-size: 12px; color: var(--text-secondary); }
