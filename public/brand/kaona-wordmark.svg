@@ -1,0 +1,6 @@
+<svg width="236" height="56" viewBox="0 0 236 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="1" y="1" width="234" height="54" rx="14" fill="white" stroke="#D8E0DB"/>
+  <text x="20" y="35" fill="#1A1F1C" font-family="Noto Sans Thai, system-ui" font-size="24" font-weight="700">KaonA Agri</text>
+  <circle cx="193" cy="28" r="8" fill="#2E7D32"/>
+  <path d="M204 25C210 22 214 19 218 19C217 24 214 28 208 31" stroke="#F9A825" stroke-width="3" stroke-linecap="round"/>
+</svg>
