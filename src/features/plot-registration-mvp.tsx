@@ -121,7 +121,6 @@ export function PlotRegistrationMVP() {
   }
 
   return (
-codex/implement-plot-registration-mvp-10zr18
     <MobileAppShell title="ลงทะเบียนแปลงเกษตร" subtitle="MVP: เก็บพิกัดเมื่อผู้ใช้กดเท่านั้น" roleBadge={effectiveRole ?? 'farmer'}>
       <SectionHeader title="ขั้นตอนลงทะเบียน" subtitle="รายละเอียดแปลง → แนบรูป → ตรวจทาน → บันทึกร่าง" />
 
@@ -217,6 +216,5 @@ codex/implement-plot-registration-mvp-10zr18
         </section>
       ))}
     </MobileAppShell>
-
   );
 }
