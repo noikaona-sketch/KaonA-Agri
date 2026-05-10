@@ -1,0 +1,133 @@
+.kaona-card {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+}
+
+.kaona-card--feature,
+.kaona-card--summary,
+.kaona-card--kpi {
+  background: linear-gradient(180deg, #ffffff 0%, #fafbfa 100%);
+}
+
+.kaona-card--status,
+.kaona-card--approval {
+  border-color: #c8dfcf;
+  background: #f4fbf5;
+}
+
+.kaona-card--service,
+.kaona-card--field {
+  border-style: solid;
+  background: #ffffff;
+}
+
+.kaona-card__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.kaona-card__icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: #e8f5e9;
+  color: var(--primary);
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+}
+
+.kaona-card__icon svg,
+.kaona-card__icon img {
+  width: 28px;
+  height: 28px;
+}
+
+.kaona-card__heading {
+  min-width: 0;
+  flex: 1;
+}
+
+.kaona-card__title {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.35;
+  font-weight: 800;
+}
+
+.kaona-card__subtitle {
+  margin: 4px 0 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.kaona-card__meta {
+  margin-left: auto;
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.kaona-card__body {
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.kaona-card__action {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 420px) {
+  .mobile-shell {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .mobile-shell__card {
+    padding: 16px;
+    border-radius: 18px;
+  }
+
+  .mobile-shell__title {
+    font-size: 22px;
+    line-height: 1.35;
+  }
+
+  .mobile-bottom-nav {
+    max-width: calc(100vw - 24px);
+  }
+
+  .ui-button {
+    min-height: 48px;
+  }
+}
+
+body {
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+input,
+select,
+textarea {
+  min-height: 44px;
+}
