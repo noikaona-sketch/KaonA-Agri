@@ -13,14 +13,14 @@ type StatusChipProps = {
 };
 
 const statusLabels: Record<CanonicalStatus, string> = {
-  draft: 'Draft',
-  submitted: 'Submitted',
-  under_review: 'Under review',
-  approved: 'Approved',
-  rejected: 'Rejected',
-  needs_update: 'Needs update',
-  scheduled: 'Scheduled',
-  completed: 'Completed',
+  draft: 'แบบร่าง',
+  submitted: 'ส่งคำขอแล้ว',
+  under_review: 'รอตรวจสอบ',
+  approved: 'อนุมัติแล้ว',
+  rejected: 'ไม่อนุมัติ',
+  needs_update: 'ต้องแก้ไขข้อมูล',
+  scheduled: 'วางแผนแล้ว',
+  completed: 'เสร็จสิ้น',
 };
 
 export function StatusChip({ status }: StatusChipProps) {

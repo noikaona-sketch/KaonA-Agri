@@ -9,7 +9,7 @@ import { LoadingState } from '@/shared/components/loading-state';
 import { MobileAppShell } from '@/shared/components/mobile-app-shell';
 import { SectionHeader } from '@/shared/components/section-header';
 import { UIButton } from '@/shared/components/ui-button';
-import { processImageForEvidence } from '@/shared/lib/image-processing';
+import { PendingApprovalPanel } from '@/shared/pending-approval/pending-approval-panel';
 
 type GeoLocation = {
   latitude: number;
