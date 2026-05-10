@@ -144,6 +144,28 @@ body {
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
+
+.field-team-list { display: grid; gap: 10px; }
+.field-team-card { border: 1px solid var(--border); border-radius: 12px; padding: 12px; background: var(--surface); }
+.field-team-card__header { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+.field-team-card__id { margin: 0; font-size: 12px; font-weight: 700; color: var(--text-secondary); }
+.field-team-card__title { margin: 8px 0 6px; font-size: 16px; }
+.field-team-card__meta { margin: 0 0 2px; font-size: 13px; color: var(--text-secondary); }
+.field-team-card__actions { margin-top: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+.field-team-checklist { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 14px; }
+.field-team-placeholder { display: grid; gap: 8px; }
+.field-team-placeholder p { margin: 0; color: var(--text-secondary); font-size: 13px; }
+.field-team-placeholder__box {
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  min-height: 64px;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  color: var(--text-secondary);
+  background: #fafbfa;
+}
 .service-mock__list { display: grid; gap: 8px; }
 .service-mock__row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .service-mock__name { margin: 0; font-size: 14px; font-weight: 600; }
