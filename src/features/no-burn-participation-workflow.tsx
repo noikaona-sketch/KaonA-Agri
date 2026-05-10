@@ -10,6 +10,7 @@ import { ProgressBadge } from '@/shared/components/progress-badge';
 import { StatusChip } from '@/shared/components/status-chip';
 import { StepList } from '@/shared/components/step-list';
 import { UIButton } from '@/shared/components/ui-button';
+import { PendingApprovalPanel } from '@/shared/pending-approval/pending-approval-panel';
 
 type NoBurnFlowStep = 'join' | 'consent' | 'gps' | 'photos' | 'submit';
 type RequestStatus = 'draft' | 'submitted' | 'under_review' | 'approved';
@@ -180,6 +181,9 @@ export function NoBurnParticipationWorkflow() {
               <p>ติดตามสถานะ: ส่งคำขอแล้ว → รอตรวจสอบ → อนุมัติ/ไม่อนุมัติ</p>
             </>
           ) : null}
+          <p>ส่งคำขอสำเร็จแล้ว สถานะปัจจุบัน: รอตรวจโดยทีมภาคสนาม</p>
+          <p>Timeline: Submitted → Under review → Approved</p>
+          <PendingApprovalPanel domain="no_burn_verification" status="under_review" />
         </>
       ) : null}
     </FormSheet>

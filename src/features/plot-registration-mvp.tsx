@@ -7,6 +7,7 @@ import { useCurrentMember } from '@/providers/auth-provider';
 import { ErrorState } from '@/shared/components/error-state';
 import { FormSheet } from '@/shared/components/form-sheet';
 import { UIButton } from '@/shared/components/ui-button';
+import { PendingApprovalPanel } from '@/shared/pending-approval/pending-approval-panel';
 
 type GeoLocation = {
   latitude: number;
@@ -138,7 +139,12 @@ export function PlotRegistrationMVP() {
         <p>GPS location not captured yet.</p>
       )}
       {error ? <ErrorState title="Plot registration failed" detail={error} /> : null}
-      {doneMessage ? <p>{doneMessage}</p> : null}
+      {doneMessage ? (
+        <div style={{ display: 'grid', gap: 8 }}>
+          <p>{doneMessage}</p>
+          <PendingApprovalPanel domain="plot_registration" status="under_review" />
+        </div>
+      ) : null}
     </FormSheet>
   );
 }

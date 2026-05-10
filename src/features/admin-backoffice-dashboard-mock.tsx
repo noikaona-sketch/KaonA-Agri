@@ -5,6 +5,7 @@ import { InfoCard } from '@/shared/components/info-card';
 import { ProgressBadge } from '@/shared/components/progress-badge';
 import { StatusChip } from '@/shared/components/status-chip';
 import { UIButton } from '@/shared/components/ui-button';
+import { PendingApprovalQueue } from '@/shared/pending-approval/pending-approval-queue';
 
 const approvalAndRoleCards = [
   {
@@ -124,6 +125,10 @@ export function AdminBackofficeDashboardMock() {
             {activity}
           </p>
         ))}
+      </FormSheet>
+
+      <FormSheet title="คิวอนุมัติคำขอ (Issue #130 MVP)">
+        <PendingApprovalQueue />
       </FormSheet>
     </>
   );
