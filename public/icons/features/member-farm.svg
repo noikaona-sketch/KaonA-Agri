@@ -1,0 +1,6 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="member farm">
+  <rect width="64" height="64" rx="18" fill="#E8F5E9"/>
+  <path d="M18 46V28l14-10 14 10v18" fill="#fff" stroke="#2E7D32" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M25 46V34h14v12" stroke="#2E7D32" stroke-width="3" stroke-linejoin="round"/>
+  <circle cx="45" cy="22" r="4" fill="#F9A825"/>
+</svg>
