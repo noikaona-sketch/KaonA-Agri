@@ -17,7 +17,7 @@ const bookingQueue = [
     member: 'นางสาวมาลี พรมทอง',
     slot: '10 พ.ค. 2026 • 13:00 - 16:00',
     plot: 'แปลง A-12 (บ้านหนองบัว)',
-    status: 'pending' as const,
+    status: 'under_review' as const,
     cta: 'ยืนยันรับงาน',
   },
   {
@@ -100,7 +100,7 @@ export function ServiceTransportUIMock() {
             <article key={job.id} className="service-booking__card">
               <div className="service-booking__row">
                 <p className="service-booking__id">{job.id}</p>
-                <StatusChip status="in_progress" />
+                <StatusChip status="scheduled" />
               </div>
               <p className="service-booking__service">{job.service}</p>
               <p className="service-booking__meta">สถานะ: {job.progress}</p>
