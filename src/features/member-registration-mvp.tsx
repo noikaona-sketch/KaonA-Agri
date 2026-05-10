@@ -8,6 +8,7 @@ import { FormSheet } from '@/shared/components/form-sheet';
 import { LoadingState } from '@/shared/components/loading-state';
 import { StatusChip } from '@/shared/components/status-chip';
 import { UIButton } from '@/shared/components/ui-button';
+import { PendingApprovalPanel } from '@/shared/pending-approval/pending-approval-panel';
 
 type MemberRegistrationMVPProps = {
   lineUserId: string;
@@ -228,7 +229,7 @@ export function MemberRegistrationMVP({ lineUserId, onSubmitted }: MemberRegistr
         </>
       ) : null}
 
-      {screen === 'pending' ? <InfoMockCard title="คำขอถูกส่งแล้ว" detail="สถานะ: รอเจ้าหน้าที่ตรวจสอบและอนุมัติ" /> : null}
+      {screen === 'pending' ? <PendingApprovalPanel domain="member_onboarding" status="under_review" /> : null}
     </FormSheet>
   );
 }
