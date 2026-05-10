@@ -13,6 +13,7 @@
   --danger: #d32f2f;
   --info: #0288d1;
   --shadow-1: 0 8px 30px rgba(15, 23, 42, 0.08);
+  --shadow-2: 0 12px 32px rgba(15, 23, 42, 0.14);
 }
 
 * {
@@ -34,7 +35,8 @@ body {
   flex-direction: column;
   justify-content: space-between;
   padding: calc(12px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom));
-  gap: 12px;
+  gap: 16px;
+  background: linear-gradient(180deg, #edf5ed 0%, var(--bg) 34%);
 }
 
 .mobile-shell__card {
@@ -43,7 +45,7 @@ body {
   margin: 0 auto;
   border-radius: 16px;
   background: var(--surface);
-  box-shadow: var(--shadow-1);
+  box-shadow: var(--shadow-2);
   border: 1px solid var(--border);
   padding: 20px;
   overflow: hidden;
@@ -55,7 +57,7 @@ body {
   align-items: center;
 }
 
-.mobile-shell__kicker { margin: 0; font-size: 12px; color: var(--text-secondary); font-weight: 600; }
+.mobile-shell__kicker { margin: 0; font-size: 12px; color: var(--primary); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
 .mobile-shell__title { margin: 12px 0 8px; font-size: 24px; line-height: 32px; }
 .mobile-shell__subtitle { margin: 0; color: var(--text-secondary); }
 .mobile-shell__content { margin-top: 16px; }
@@ -90,7 +92,7 @@ body {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 16px;
-  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+  box-shadow: var(--shadow-2);
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   padding: 8px;
@@ -98,7 +100,10 @@ body {
 }
 
 .mobile-bottom-nav__item { min-height: 44px; border: 0; background: transparent; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--text-secondary); }
-.mobile-bottom-nav__item--active { color: var(--primary); background: #e8f5e9; }
+.mobile-bottom-nav__item { display: grid; place-items: center; gap: 3px; padding: 4px 0; }
+.mobile-bottom-nav__icon { font-size: 16px; line-height: 1; }
+.mobile-bottom-nav__label { font-size: 12px; line-height: 1.1; }
+.mobile-bottom-nav__item--active { color: var(--primary); background: #e8f5e9; box-shadow: inset 0 0 0 1px #d5e9d7; }
 
 .role-badge { padding: 4px 8px; border-radius: 999px; background: #e8f5e9; color: var(--primary); font-size: 12px; font-weight: 600; }
 

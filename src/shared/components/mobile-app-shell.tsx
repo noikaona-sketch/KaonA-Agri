@@ -15,7 +15,7 @@ export function MobileAppShell({ title, subtitle, roleBadge, children }: MobileA
     <main className="mobile-shell">
       <section className="mobile-shell__card">
         <header className="mobile-shell__header">
-          <p className="mobile-shell__kicker">Mobile-first shell</p>
+          <p className="mobile-shell__kicker">KaonA Agri</p>
           {roleBadge ? <RoleBadge>{roleBadge}</RoleBadge> : null}
         </header>
         <h1 className="mobile-shell__title">{title}</h1>
