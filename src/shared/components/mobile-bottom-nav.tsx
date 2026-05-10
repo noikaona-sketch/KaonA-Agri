@@ -1,12 +1,15 @@
-import Link from 'next/link';
+"use client";
 
-const tabs = ['Home', 'Tasks', 'Records', 'Profile'] as const;
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+
+const tabs = ['สมาชิก', 'ผู้ให้บริการ', 'ภาคสนาม', 'แอดมิน'] as const;
 
 const TAB_LINKS: Record<(typeof tabs)[number], string> = {
-  Home: '/',
-  Tasks: '/inspection/tasks',
-  Records: '/plots',
-  Profile: '/profile',
+  สมาชิก: '/member',
+  ผู้ให้บริการ: '/service',
+  ภาคสนาม: '/field',
+  แอดมิน: '/admin-prototype',
 };
 
 type MobileBottomNavProps = {
@@ -14,20 +17,22 @@ type MobileBottomNavProps = {
   onTabChange?: (tab: (typeof tabs)[number]) => void;
 };
 
-export function MobileBottomNav({ activeTab = 'Home', onTabChange }: MobileBottomNavProps) {
+export function MobileBottomNav({ onTabChange }: MobileBottomNavProps) {
+  const pathname = usePathname();
+
   return (
-    <nav className="mobile-bottom-nav" aria-label="Primary">
+    <nav className="mobile-bottom-nav" aria-label="เลือกพื้นที่แอปตามบทบาท">
       {tabs.map((tab) => (
         <Link
           key={tab}
           href={TAB_LINKS[tab]}
           className={[
             'mobile-bottom-nav__item',
-            activeTab === tab ? 'mobile-bottom-nav__item--active' : '',
+            pathname === TAB_LINKS[tab] ? 'mobile-bottom-nav__item--active' : '',
           ]
             .filter(Boolean)
             .join(' ')}
-          aria-current={activeTab === tab ? 'page' : undefined}
+          aria-current={pathname === TAB_LINKS[tab] ? 'page' : undefined}
           onClick={onTabChange ? () => onTabChange(tab) : undefined}
         >
           {tab}
