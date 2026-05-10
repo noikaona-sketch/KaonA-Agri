@@ -21,7 +21,17 @@ export function MobileBottomNav({ onTabChange }: MobileBottomNavProps) {
   const pathname = usePathname();
 
   return (
-    <nav className="mobile-bottom-nav" aria-label="เลือกพื้นที่แอปตามบทบาท">
+    <nav
+      className="mobile-bottom-nav"
+      aria-label="เลือกพื้นที่แอปตามบทบาท"
+      style={{
+        background: 'linear-gradient(180deg, #1e7a32 0%, #0f4f1f 100%)',
+        border: 0,
+        borderRadius: 18,
+        boxShadow: '0 14px 34px rgba(15, 79, 31, 0.28)',
+        padding: 10,
+      }}
+    >
       {tabs.map((tab) => {
         const isActive = pathname === tab.href;
 
@@ -36,18 +46,34 @@ export function MobileBottomNav({ onTabChange }: MobileBottomNavProps) {
               .filter(Boolean)
               .join(' ')}
             style={{
-              minHeight: 58,
+              minHeight: 62,
               display: 'grid',
               placeItems: 'center',
               gap: 3,
               padding: '7px 2px',
               textDecoration: 'none',
+              borderRadius: 14,
+              background: isActive ? '#FFFFFF' : 'transparent',
+              color: isActive ? '#2E7D32' : '#FFFFFF',
+              boxShadow: isActive ? '0 8px 20px rgba(0, 0, 0, 0.18)' : 'none',
+              fontWeight: 700,
             }}
             aria-current={isActive ? 'page' : undefined}
             onClick={onTabChange ? () => onTabChange(tab.label) : undefined}
           >
             <span className="mobile-bottom-nav__icon" aria-hidden="true" style={{ display: 'block', lineHeight: 1 }}>
-              <img src={tab.iconSrc} alt="" width={iconSizes.nav} height={iconSizes.nav} loading="eager" />
+              <img
+                src={tab.iconSrc}
+                alt=""
+                width={iconSizes.nav}
+                height={iconSizes.nav}
+                loading="eager"
+                style={{
+                  width: 32,
+                  height: 32,
+                  filter: isActive ? 'none' : 'brightness(0) invert(1)',
+                }}
+              />
             </span>
             <span
               className="mobile-bottom-nav__label"
