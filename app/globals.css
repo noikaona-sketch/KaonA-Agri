@@ -99,6 +99,7 @@ body {
 
 .mobile-bottom-nav__item { min-height: 44px; border: 0; background: transparent; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--text-secondary); }
 .mobile-bottom-nav__item--active { color: var(--primary); background: #e8f5e9; }
+.mobile-bottom-nav__item { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
 
 .role-badge { padding: 4px 8px; border-radius: 999px; background: #e8f5e9; color: var(--primary); font-size: 12px; font-weight: 600; }
 
