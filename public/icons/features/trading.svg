@@ -1,0 +1,7 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="trading">
+  <rect width="64" height="64" rx="18" fill="#E8F5E9"/>
+  <path d="M16 39h26l6-10H34l-5-7H20" fill="#fff" stroke="#2E7D32" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="24" cy="43" r="4" fill="#2E7D32"/>
+  <circle cx="43" cy="43" r="4" fill="#2E7D32"/>
+  <path d="M45 18c3-3 6-4 9-4-.5 4-2.5 7-6 9" stroke="#F9A825" stroke-width="3" stroke-linecap="round"/>
+</svg>
