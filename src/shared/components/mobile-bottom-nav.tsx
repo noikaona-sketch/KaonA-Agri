@@ -3,18 +3,16 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-const tabs = ['สมาชิก', 'ผู้ให้บริการ', 'ภาคสนาม', 'แอดมิน'] as const;
-
-const TAB_LINKS: Record<(typeof tabs)[number], string> = {
-  สมาชิก: '/member',
-  ผู้ให้บริการ: '/service',
-  ภาคสนาม: '/field',
-  แอดมิน: '/admin-prototype',
-};
+const tabs = [
+  { label: 'สมาชิก', icon: '●', href: '/member' },
+  { label: 'ผู้ให้บริการ', icon: '▣', href: '/service' },
+  { label: 'ภาคสนาม', icon: '◆', href: '/field' },
+  { label: 'แอดมิน', icon: '▥', href: '/admin-prototype' },
+] as const;
 
 type MobileBottomNavProps = {
-  activeTab?: (typeof tabs)[number];
-  onTabChange?: (tab: (typeof tabs)[number]) => void;
+  activeTab?: (typeof tabs)[number]['label'];
+  onTabChange?: (tab: (typeof tabs)[number]['label']) => void;
 };
 
 export function MobileBottomNav({ onTabChange }: MobileBottomNavProps) {
@@ -24,18 +22,21 @@ export function MobileBottomNav({ onTabChange }: MobileBottomNavProps) {
     <nav className="mobile-bottom-nav" aria-label="เลือกพื้นที่แอปตามบทบาท">
       {tabs.map((tab) => (
         <Link
-          key={tab}
-          href={TAB_LINKS[tab]}
+          key={tab.href}
+          href={tab.href}
           className={[
             'mobile-bottom-nav__item',
-            pathname === TAB_LINKS[tab] ? 'mobile-bottom-nav__item--active' : '',
+            pathname === tab.href ? 'mobile-bottom-nav__item--active' : '',
           ]
             .filter(Boolean)
             .join(' ')}
-          aria-current={pathname === TAB_LINKS[tab] ? 'page' : undefined}
-          onClick={onTabChange ? () => onTabChange(tab) : undefined}
+          aria-current={pathname === tab.href ? 'page' : undefined}
+          onClick={onTabChange ? () => onTabChange(tab.label) : undefined}
         >
-          {tab}
+          <span className="mobile-bottom-nav__icon" aria-hidden="true">
+            {tab.icon}
+          </span>
+          <span className="mobile-bottom-nav__label">{tab.label}</span>
         </Link>
       ))}
     </nav>
