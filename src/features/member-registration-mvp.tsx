@@ -56,7 +56,6 @@ export function MemberRegistrationMVP({ lineUserId, onSubmitted }: MemberRegistr
   const [draft, setDraft] = useState<DraftData>(initialDraft);
   const [ocrStatus, setOcrStatus] = useState<'idle' | 'processing' | 'failed' | 'success'>('idle');
   const [ocrError, setOcrError] = useState<string | null>(null);
-  const [submitError, setSubmitError] = useState<string | null>(null);
   const [consent, setConsent] = useState(false);
 
   const flowSteps = useMemo(
@@ -124,26 +123,6 @@ export function MemberRegistrationMVP({ lineUserId, onSubmitted }: MemberRegistr
   }
 
   async function submitPendingApproval() {
-    setSubmitError(null);
-
-    const response = await fetch('/api/member/onboarding/submit', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        lineUserId,
-        fullName: draft.fullName,
-        phone: draft.phone,
-        citizenId: draft.citizenId,
-        address: draft.address,
-      }),
-    });
-
-    if (!response.ok) {
-      const payload = (await response.json()) as { error?: string };
-      setSubmitError(payload.error ?? 'ส่งคำขอไม่สำเร็จ');
-      return;
-    }
-
     setScreen('pending');
     await onSubmitted();
   }
@@ -166,7 +145,7 @@ export function MemberRegistrationMVP({ lineUserId, onSubmitted }: MemberRegistr
               }}
               disabled={screen === 'consent' && !consent}
             >
-              {screen === 'consent' ? 'ส่งคำขออนุมัติ' : 'ถัดไป'}
+              {screen === 'consent' ? 'ส่งคำขอ (MVP)' : 'ถัดไป'}
             </UIButton>
           ) : (
             <UIButton fullWidth onClick={onSubmitted}>รีเฟรชสถานะ</UIButton>
@@ -178,6 +157,7 @@ export function MemberRegistrationMVP({ lineUserId, onSubmitted }: MemberRegistr
       }
     >
       <p style={{ marginTop: 0 }}>LINE UID: {lineUserId.slice(0, 8)}...</p>
+      <p style={{ marginTop: 0 }}>MVP นี้ส่งคำขอเป็นสถานะรออนุมัติใน UI โดยยังไม่บันทึกข้อมูลบัตรลงฐานข้อมูล</p>
 
       <label>
         โหมดแสดงผล UI
@@ -245,7 +225,6 @@ export function MemberRegistrationMVP({ lineUserId, onSubmitted }: MemberRegistr
           <label>
             <input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} /> ยืนยันความยินยอม
           </label>
-          {submitError ? <ErrorState title="ส่งคำขอไม่สำเร็จ" detail={submitError} /> : null}
         </>
       ) : null}
 
