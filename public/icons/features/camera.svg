@@ -1,0 +1,6 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="camera">
+  <rect width="64" height="64" rx="18" fill="#E8F5E9"/>
+  <path d="M18 26h8l3-5h7l3 5h7v21H18V26Z" fill="#fff" stroke="#2E7D32" stroke-width="3" stroke-linejoin="round"/>
+  <circle cx="32" cy="36" r="6" fill="#E8F5E9" stroke="#2E7D32" stroke-width="3"/>
+  <circle cx="44" cy="30" r="2" fill="#F9A825"/>
+</svg>
