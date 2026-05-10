@@ -142,7 +142,7 @@ export function PlotRegistrationMVP() {
       {doneMessage ? (
         <div style={{ display: 'grid', gap: 8 }}>
           <p>{doneMessage}</p>
-          <PendingApprovalPanel domain="plot_registration" status={geo?.accuracy && geo.accuracy > GOOD_GPS_ACCURACY_METERS ? 'needs_update' : 'under_review'} />
+          <PendingApprovalPanel domain="plot_registration" status="under_review" />
         </div>
       ) : null}
     </FormSheet>

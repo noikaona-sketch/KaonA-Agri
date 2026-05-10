@@ -8,12 +8,12 @@ export type PendingApprovalStatusMeta = {
 };
 
 const statusMetaMap: Record<PendingApprovalStatus, PendingApprovalStatusMeta> = {
-  draft: { label: 'Draft', detail: 'ข้อมูลยังไม่ถูกส่งเพื่อพิจารณา' },
-  submitted: { label: 'Submitted', detail: 'ส่งคำขอแล้ว กำลังรอเจ้าหน้าที่รับเรื่อง' },
-  under_review: { label: 'Under review', detail: 'เจ้าหน้าที่กำลังตรวจสอบข้อมูลและหลักฐาน' },
-  approved: { label: 'Approved', detail: 'คำขอได้รับการอนุมัติแล้ว' },
-  rejected: { label: 'Rejected', detail: 'คำขอไม่ผ่านการอนุมัติ' },
-  needs_update: { label: 'Needs update', detail: 'ต้องแก้ไขข้อมูลก่อนส่งใหม่' },
+  draft: { label: 'แบบร่าง', detail: 'ข้อมูลยังไม่ถูกส่งเพื่อพิจารณา' },
+  submitted: { label: 'ส่งคำขอแล้ว', detail: 'กำลังรอเจ้าหน้าที่รับเรื่อง' },
+  under_review: { label: 'รอตรวจสอบ', detail: 'เจ้าหน้าที่กำลังตรวจสอบข้อมูลและหลักฐาน' },
+  approved: { label: 'อนุมัติแล้ว', detail: 'คำขอได้รับการอนุมัติแล้ว' },
+  rejected: { label: 'ไม่อนุมัติ', detail: 'คำขอไม่ผ่านการอนุมัติ' },
+  needs_update: { label: 'ต้องแก้ไขข้อมูล', detail: 'ต้องแก้ไขข้อมูลก่อนส่งใหม่' },
 };
 
 const domainLabels: Record<PendingApprovalDomain, string> = {
