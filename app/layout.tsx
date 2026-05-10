@@ -9,6 +9,11 @@ import './kaona-ui.css';
 export const metadata: Metadata = {
   title: 'KaonA Agri',
   description: 'Mobile-first field app scaffold for LINE LIFF + Supabase.',
+  icons: {
+    icon: '/branding/favicon.svg',
+    shortcut: '/branding/favicon.svg',
+    apple: '/branding/logo-icon.svg',
+  },
 };
 
 type RootLayoutProps = {
