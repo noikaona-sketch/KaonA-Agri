@@ -14,43 +14,55 @@ type MemberRegistrationMVPProps = {
   onSubmitted: () => Promise<void>;
 };
 
-type ScreenKey = 'register' | 'ocr-placeholder' | 'review' | 'correct' | 'consent' | 'pending';
-type DemoState = 'default' | 'empty' | 'loading' | 'ocr-processing' | 'success' | 'error' | 'pending';
+type ScreenKey = 'register' | 'ocr' | 'review' | 'consent' | 'pending';
+type DemoState = 'default' | 'empty' | 'loading' | 'error';
 
 type DraftData = {
   fullName: string;
   phone: string;
+  citizenId: string;
   citizenIdMasked: string;
   address: string;
 };
 
 const initialDraft: DraftData = {
-  fullName: 'นายสมชาย ใจดี',
-  phone: '08x-xxx-1234',
-  citizenIdMasked: '1-2345-67xxx-xx-1',
-  address: 'อำเภอเชียงคำ จังหวัดพะเยา',
+  fullName: '',
+  phone: '',
+  citizenId: '',
+  citizenIdMasked: '',
+  address: '',
 };
 
 const screenTitle: Record<ScreenKey, string> = {
   register: 'สมัครสมาชิกเกษตรกร',
-  'ocr-placeholder': 'สแกนบัตรประชาชน (ตัวอย่าง)',
-  review: 'ตรวจสอบข้อมูลที่อ่านได้',
-  correct: 'แก้ไขข้อมูลก่อนส่ง',
+  ocr: 'สแกนบัตรประชาชน',
+  review: 'ตรวจสอบ/แก้ไขข้อมูล',
   consent: 'ยินยอมการใช้ข้อมูล',
   pending: 'รอการอนุมัติ',
 };
+
+function maskCitizenId(value: string) {
+  const digits = value.replace(/\D/g, '');
+
+  if (!digits) return '';
+
+  const visible = digits.slice(-4);
+  return `${'*'.repeat(Math.max(0, digits.length - 4))}${visible}`;
+}
 
 export function MemberRegistrationMVP({ lineUserId, onSubmitted }: MemberRegistrationMVPProps) {
   const [screen, setScreen] = useState<ScreenKey>('register');
   const [demoState, setDemoState] = useState<DemoState>('default');
   const [draft, setDraft] = useState<DraftData>(initialDraft);
+  const [ocrStatus, setOcrStatus] = useState<'idle' | 'processing' | 'failed' | 'success'>('idle');
+  const [ocrError, setOcrError] = useState<string | null>(null);
+  const [consent, setConsent] = useState(false);
 
   const flowSteps = useMemo(
     () => [
       { key: 'register', label: 'ลงทะเบียน' },
-      { key: 'ocr-placeholder', label: 'OCR ตัวอย่าง' },
+      { key: 'ocr', label: 'สแกนบัตร' },
       { key: 'review', label: 'ตรวจข้อมูล' },
-      { key: 'correct', label: 'แก้ไข' },
       { key: 'consent', label: 'ยินยอม' },
       { key: 'pending', label: 'รออนุมัติ' },
     ],
@@ -63,25 +75,80 @@ export function MemberRegistrationMVP({ lineUserId, onSubmitted }: MemberRegistr
     if (next) setScreen(next.key as ScreenKey);
   }
 
+  async function handleOcrUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+
+    if (!file) return;
+
+    setOcrStatus('processing');
+    setOcrError(null);
+
+    try {
+      const form = new FormData();
+      form.append('idImage', file);
+
+      const response = await fetch('/api/ocr/id-card', {
+        method: 'POST',
+        body: form,
+      });
+
+      const payload = (await response.json()) as {
+        error?: string;
+        extracted?: { fullName?: string; citizenId?: string; address?: string };
+      };
+
+      if (!response.ok || !payload.extracted) {
+        setOcrStatus('failed');
+        setOcrError(payload.error ?? 'อ่านข้อมูลไม่สำเร็จ กรุณากรอกด้วยตนเอง');
+        setScreen('review');
+        return;
+      }
+
+      const citizenId = payload.extracted.citizenId ?? '';
+
+      setDraft((prev) => ({
+        ...prev,
+        fullName: payload.extracted?.fullName ?? prev.fullName,
+        citizenId,
+        citizenIdMasked: maskCitizenId(citizenId),
+        address: payload.extracted?.address ?? prev.address,
+      }));
+      setOcrStatus('success');
+      setScreen('review');
+    } catch {
+      setOcrStatus('failed');
+      setOcrError('การเชื่อมต่อ OCR มีปัญหา กรุณากรอกข้อมูลด้วยตนเอง');
+      setScreen('review');
+    }
+  }
+
+  async function submitPendingApproval() {
+    setScreen('pending');
+    await onSubmitted();
+  }
+
   return (
     <FormSheet
       title={screenTitle[screen]}
       footer={
         <div style={{ display: 'grid', gap: 8 }}>
           {screen !== 'pending' ? (
-            <UIButton fullWidth onClick={goNext}>
-              ถัดไป
-            </UIButton>
-          ) : (
             <UIButton
               fullWidth
               onClick={async () => {
-                setDemoState('pending');
-                await onSubmitted();
+                if (screen === 'consent') {
+                  await submitPendingApproval();
+                  return;
+                }
+
+                goNext();
               }}
+              disabled={screen === 'consent' && !consent}
             >
-              รีเฟรชสถานะ
+              {screen === 'consent' ? 'ส่งคำขอ (MVP)' : 'ถัดไป'}
             </UIButton>
+          ) : (
+            <UIButton fullWidth onClick={onSubmitted}>รีเฟรชสถานะ</UIButton>
           )}
           <UIButton variant="secondary" fullWidth onClick={() => setScreen('register')}>
             เริ่มใหม่
@@ -89,14 +156,8 @@ export function MemberRegistrationMVP({ lineUserId, onSubmitted }: MemberRegistr
         </div>
       }
     >
-      <p style={{ marginTop: 0 }}>LINE UID: {lineUserId.slice(0, 8)}... (เฉพาะหน้าจอจำลอง UX)</p>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
-        {flowSteps.map((step) => (
-          <UIButton key={step.key} variant={screen === step.key ? 'primary' : 'ghost'} onClick={() => setScreen(step.key as ScreenKey)}>
-            {step.label}
-          </UIButton>
-        ))}
-      </div>
+      <p style={{ marginTop: 0 }}>LINE UID: {lineUserId.slice(0, 8)}...</p>
+      <p style={{ marginTop: 0 }}>MVP นี้จำลองการส่งคำขอเป็นสถานะรออนุมัติใน UI เท่านั้น (ไม่มี onboarding DB write ใน PR นี้)</p>
 
       <label>
         โหมดแสดงผล UI
@@ -104,26 +165,17 @@ export function MemberRegistrationMVP({ lineUserId, onSubmitted }: MemberRegistr
           <option value="default">ปกติ</option>
           <option value="empty">empty state</option>
           <option value="loading">loading state</option>
-          <option value="ocr-processing">OCR processing placeholder</option>
-          <option value="success">success state</option>
           <option value="error">error state</option>
-          <option value="pending">pending approval state</option>
         </select>
       </label>
 
       {demoState === 'empty' ? <EmptyState title="ยังไม่มีข้อมูลลงทะเบียน" detail="กรอกข้อมูลผู้สมัครเพื่อเริ่มต้นกระบวนการ" /> : null}
       {demoState === 'loading' ? <LoadingState label="กำลังโหลดหน้าลงทะเบียน..." /> : null}
       {demoState === 'error' ? <ErrorState title="เกิดข้อผิดพลาดชั่วคราว" detail="ไม่สามารถโหลดข้อมูลตัวอย่างได้ กรุณาลองใหม่" /> : null}
-      {demoState === 'success' ? <StatusChip status="approved" /> : null}
-      {demoState === 'pending' ? <StatusChip status="submitted" /> : null}
 
       {screen === 'register' ? (
         <>
-          <p>กรอกข้อมูลเบื้องต้นเพื่อสมัครสมาชิกผ่าน LINE Mini App (หน้าจอจำลอง ไม่บันทึกข้อมูลจริง)</p>
-          <label>
-            ชื่อ-นามสกุล
-            <input value={draft.fullName} onChange={(event) => setDraft((prev) => ({ ...prev, fullName: event.target.value }))} />
-          </label>
+          <p>กรอกข้อมูลเบื้องต้นเพื่อสมัครสมาชิกผ่าน LINE Mini App</p>
           <label>
             เบอร์โทร
             <input value={draft.phone} onChange={(event) => setDraft((prev) => ({ ...prev, phone: event.target.value }))} />
@@ -131,42 +183,53 @@ export function MemberRegistrationMVP({ lineUserId, onSubmitted }: MemberRegistr
         </>
       ) : null}
 
-      {screen === 'ocr-placeholder' || demoState === 'ocr-processing' ? (
-        <InfoMockCard title="OCR Placeholder" detail="จำลองการประมวลผลเอกสาร 2-4 วินาที (ไม่มีการเชื่อมต่อผู้ให้บริการ OCR จริง)" />
+      {screen === 'ocr' ? (
+        <>
+          <p>อัปโหลด/ถ่ายรูปบัตรประชาชนเพื่ออ่านข้อมูลอัตโนมัติ (ประมวลผลฝั่งเซิร์ฟเวอร์)</p>
+          <input type="file" accept="image/*" capture="environment" onChange={handleOcrUpload} />
+          {ocrStatus === 'processing' ? <LoadingState label="กำลังอ่านข้อมูลจากบัตร..." /> : null}
+          {ocrStatus === 'failed' ? <ErrorState title="OCR ไม่สำเร็จ" detail={ocrError ?? 'กรุณากรอกข้อมูลเอง'} /> : null}
+          <p style={{ marginBottom: 0 }}>หาก OCR ไม่สำเร็จ สามารถกรอกข้อมูลด้วยตนเองในขั้นตอนถัดไปได้ทันที</p>
+        </>
       ) : null}
 
-      {screen === 'review' ? <ReviewCard draft={draft} /> : null}
-
-      {screen === 'correct' ? (
-        <label>
-          ที่อยู่ตามบัตรประชาชน
-          <textarea value={draft.address} onChange={(event) => setDraft((prev) => ({ ...prev, address: event.target.value }))} rows={3} />
-        </label>
+      {screen === 'review' ? (
+        <>
+          <h3 style={{ marginBottom: 6 }}>ตรวจสอบ/แก้ไขข้อมูล</h3>
+          {ocrStatus === 'failed' ? <StatusChip status="under_review" /> : null}
+          <label>
+            ชื่อ-นามสกุล
+            <input value={draft.fullName} onChange={(event) => setDraft((prev) => ({ ...prev, fullName: event.target.value }))} />
+          </label>
+          <label>
+            เลขบัตรประชาชน
+            <input
+              value={draft.citizenId}
+              onChange={(event) => {
+                const citizenId = event.target.value;
+                setDraft((prev) => ({ ...prev, citizenId, citizenIdMasked: maskCitizenId(citizenId) }));
+              }}
+            />
+          </label>
+          <p>แสดงผลแบบปกปิด: {draft.citizenIdMasked || '-'}</p>
+          <label>
+            ที่อยู่ตามบัตรประชาชน
+            <textarea value={draft.address} onChange={(event) => setDraft((prev) => ({ ...prev, address: event.target.value }))} rows={3} />
+          </label>
+        </>
       ) : null}
 
       {screen === 'consent' ? (
-        <InfoMockCard
-          title="ความยินยอม"
-          detail="ข้าพเจ้ายินยอมให้ระบบใช้ข้อมูลเพื่อการยืนยันตัวตนและการพิจารณาสมัครสมาชิก โดยข้อมูลนี้เป็นตัวอย่าง UI เท่านั้น"
-        />
+        <>
+          <p>ข้าพเจ้ายินยอมให้ระบบใช้ข้อมูลเพื่อการยืนยันตัวตนและการพิจารณาสมัครสมาชิก</p>
+          <label>
+            <input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} /> ยืนยันความยินยอม
+          </label>
+        </>
       ) : null}
 
-      {screen === 'pending' ? (
-        <InfoMockCard title="คำขอถูกส่งแล้ว" detail="สถานะ: รอเจ้าหน้าที่ตรวจสอบและอนุมัติภายใน 1-2 วันทำการ" />
-      ) : null}
+      {screen === 'pending' ? <InfoMockCard title="คำขอถูกส่งแล้ว" detail="สถานะ: รอเจ้าหน้าที่ตรวจสอบและอนุมัติ" /> : null}
     </FormSheet>
-  );
-}
-
-function ReviewCard({ draft }: { draft: DraftData }) {
-  return (
-    <article>
-      <h3 style={{ marginBottom: 6 }}>ข้อมูลที่สแกนได้ (ตัวอย่าง)</h3>
-      <p>ชื่อ: {draft.fullName}</p>
-      <p>โทรศัพท์: {draft.phone}</p>
-      <p>เลขบัตร (ปกปิด): {draft.citizenIdMasked}</p>
-      <p>ที่อยู่: {draft.address}</p>
-    </article>
   );
 }
 
