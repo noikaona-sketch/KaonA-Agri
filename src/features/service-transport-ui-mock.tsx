@@ -7,10 +7,10 @@ import { UIButton } from '@/shared/components/ui-button';
 export function ServiceTransportUIMock() {
   return (
     <>
-      <SectionHeader title="Service / รถร่วม" subtitle="UI mock for service trip + vehicle provider flow" />
+      <SectionHeader title="Service / รถร่วม" subtitle="Issue #88 · UI mock for service trip + vehicle provider flow" />
 
       <InfoCard
-        title="รอบบริการเช้า"
+        title="Issue #88 - รอบบริการเช้า"
         subtitle="แม่สรวย → โรงงาน | 06:30 น."
         meta={<StatusChip status="scheduled" />}
         action={<UIButton fullWidth>ดูรายละเอียดรอบรถ</UIButton>}
