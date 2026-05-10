@@ -7,7 +7,7 @@ export default function ServicePage() {
     <ProtectedRoute>
       <MobileAppShell
         title="Service / รถร่วม"
-        subtitle="Issue #88 mock screen for transportation coordination"
+        subtitle="Mock screen for transportation coordination"
         roleBadge="Team leader"
         activeTab="Service"
       >
