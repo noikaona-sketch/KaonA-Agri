@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-import { iconPaths, iconSizes } from '@/shared/design/icon-tokens';
+import { iconPaths } from '@/shared/design/icon-tokens';
 
 const tabs = [
   { label: 'สมาชิก', iconSrc: iconPaths.nav.member, href: '/member' },
@@ -62,18 +62,9 @@ export function MobileBottomNav({ onTabChange }: MobileBottomNavProps) {
             onClick={onTabChange ? () => onTabChange(tab.label) : undefined}
           >
             <span className="mobile-bottom-nav__icon" aria-hidden="true" style={{ display: 'block', lineHeight: 1 }}>
-              <img
-                src={tab.iconSrc}
-                alt=""
-                width={iconSizes.nav}
-                height={iconSizes.nav}
-                loading="eager"
-                style={{
-                  width: 32,
-                  height: 32,
-                  filter: isActive ? 'none' : 'brightness(0) invert(1)',
-                }}
-              />
+              <svg width="32" height="32" aria-hidden="true">
+                <use href={`${tab.iconSrc}#icon`} />
+              </svg>
             </span>
             <span
               className="mobile-bottom-nav__label"
