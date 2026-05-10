@@ -143,3 +143,30 @@ body {
 .confirm-dialog__actions { display: flex; justify-content: flex-end; gap: 8px; }
 
 @keyframes spin { to { transform: rotate(360deg); } }
+
+.prototype-area-switcher {
+  margin-top: 16px;
+}
+
+.prototype-notice {
+  margin-bottom: 12px;
+}
+
+.prototype-kpi-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.prototype-kpi-card,
+.prototype-workflow-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.prototype-workflow-list,
+.prototype-action-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
