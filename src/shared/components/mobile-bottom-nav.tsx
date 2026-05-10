@@ -3,13 +3,13 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-import { AdminNavIcon, FieldNavIcon, MemberNavIcon, ServiceNavIcon } from '@/shared/components/kaona-icons';
+import { iconPaths, iconSizes } from '@/shared/design/icon-tokens';
 
 const tabs = [
-  { label: 'สมาชิก', icon: MemberNavIcon, href: '/member' },
-  { label: 'ผู้ให้บริการ', icon: ServiceNavIcon, href: '/service' },
-  { label: 'ภาคสนาม', icon: FieldNavIcon, href: '/field' },
-  { label: 'แอดมิน', icon: AdminNavIcon, href: '/admin-prototype' },
+  { label: 'สมาชิก', iconSrc: iconPaths.nav.member, href: '/member' },
+  { label: 'ผู้ให้บริการ', iconSrc: iconPaths.nav.service, href: '/service' },
+  { label: 'ภาคสนาม', iconSrc: iconPaths.nav.field, href: '/field' },
+  { label: 'แอดมิน', iconSrc: iconPaths.nav.admin, href: '/admin-prototype' },
 ] as const;
 
 type MobileBottomNavProps = {
@@ -23,7 +23,7 @@ export function MobileBottomNav({ onTabChange }: MobileBottomNavProps) {
   return (
     <nav className="mobile-bottom-nav" aria-label="เลือกพื้นที่แอปตามบทบาท">
       {tabs.map((tab) => {
-        const Icon = tab.icon;
+        const isActive = pathname === tab.href;
 
         return (
           <Link
@@ -31,7 +31,7 @@ export function MobileBottomNav({ onTabChange }: MobileBottomNavProps) {
             href={tab.href}
             className={[
               'mobile-bottom-nav__item',
-              pathname === tab.href ? 'mobile-bottom-nav__item--active' : '',
+              isActive ? 'mobile-bottom-nav__item--active' : '',
             ]
               .filter(Boolean)
               .join(' ')}
@@ -43,11 +43,11 @@ export function MobileBottomNav({ onTabChange }: MobileBottomNavProps) {
               padding: '7px 2px',
               textDecoration: 'none',
             }}
-            aria-current={pathname === tab.href ? 'page' : undefined}
+            aria-current={isActive ? 'page' : undefined}
             onClick={onTabChange ? () => onTabChange(tab.label) : undefined}
           >
             <span className="mobile-bottom-nav__icon" aria-hidden="true" style={{ display: 'block', lineHeight: 1 }}>
-              <Icon width={22} height={22} />
+              <img src={tab.iconSrc} alt="" width={iconSizes.nav} height={iconSizes.nav} loading="eager" />
             </span>
             <span
               className="mobile-bottom-nav__label"
