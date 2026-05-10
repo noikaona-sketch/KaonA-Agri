@@ -1,192 +1,159 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
 
-import { createSupabaseBrowserClient } from '@/lib/supabase/client';
-import { useCurrentMember, useEffectiveRole } from '@/providers/auth-provider';
-import { EmptyState } from '@/shared/components/empty-state';
-import { ErrorState } from '@/shared/components/error-state';
-import { FormSheet } from '@/shared/components/form-sheet';
+import { useEffectiveRole } from '@/providers/auth-provider';
 import { InfoCard } from '@/shared/components/info-card';
-import { LoadingState } from '@/shared/components/loading-state';
 import { MobileAppShell } from '@/shared/components/mobile-app-shell';
 import { SectionHeader } from '@/shared/components/section-header';
 import { StatusChip } from '@/shared/components/status-chip';
 import { UIButton } from '@/shared/components/ui-button';
 
-type PlotRow = {
+type FlowStep = 'details' | 'gps' | 'review' | 'submitted';
+
+type FlowTimelineItem = {
   id: string;
-  name: string;
-  area_rai: number;
-  lat: number;
-  lng: number;
-  accuracy: number | null;
-  status: 'active' | 'inactive' | 'pending_review';
-  created_at: string;
+  plotName: string;
+  areaRai: string;
+  locationLabel: string;
+  submittedAt: string;
+  status: 'submitted' | 'under_review' | 'approved';
 };
 
-type GPSState = {
-  lat: number;
-  lng: number;
-  accuracy: number;
-};
+const FLOW_STEPS: Array<{ key: Exclude<FlowStep, 'submitted'>; title: string; subtitle: string }> = [
+  { key: 'details', title: '1. Plot details', subtitle: 'Enter plot name and area' },
+  { key: 'gps', title: '2. GPS capture', subtitle: 'Confirm map pin and accuracy' },
+  { key: 'review', title: '3. Review & submit', subtitle: 'Double-check and submit request' },
+];
 
 export function PlotRegistrationScreen() {
-  const member = useCurrentMember();
   const effectiveRole = useEffectiveRole();
 
-  const [name, setName] = useState('');
-  const [areaRai, setAreaRai] = useState('');
-  const [gps, setGps] = useState<GPSState | null>(null);
-  const [capturingGps, setCapturingGps] = useState(false);
+  const [currentStep, setCurrentStep] = useState<FlowStep>('details');
+  const [plotName, setPlotName] = useState('North paddy section');
+  const [areaRai, setAreaRai] = useState('8.50');
+  const [locationLabel, setLocationLabel] = useState('14.291039, 100.612951 (±7m)');
+  const [timeline, setTimeline] = useState<FlowTimelineItem[]>([
+    {
+      id: 'PR-2026-019',
+      plotName: 'Canal edge plot',
+      areaRai: '5.75',
+      locationLabel: '14.288830, 100.618230 (±9m)',
+      submittedAt: 'May 08, 2026 · 10:32',
+      status: 'under_review',
+    },
+  ]);
 
-  const [submitting, setSubmitting] = useState(false);
-  const [loadingPlots, setLoadingPlots] = useState(true);
-  const [plots, setPlots] = useState<PlotRow[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const canGoNext = useMemo(() => {
+    if (currentStep === 'details') return Boolean(plotName.trim()) && Number(areaRai) > 0;
+    if (currentStep === 'gps') return Boolean(locationLabel.trim());
+    if (currentStep === 'review') return true;
+    return false;
+  }, [areaRai, currentStep, locationLabel, plotName]);
 
-  async function loadPlots() {
-    if (!member) return;
-
-    setLoadingPlots(true);
-    const supabase = createSupabaseBrowserClient();
-    const { data, error: queryError } = await supabase
-      .from('plots')
-      .select('id,name,area_rai,lat,lng,accuracy,status,created_at')
-      .eq('member_id', member.member_id)
-      .is('deleted_at', null)
-      .order('created_at', { ascending: false });
-
-    setLoadingPlots(false);
-
-    if (queryError) {
-      setError(queryError.message);
-      return;
+  function goNext() {
+    if (currentStep === 'details') return setCurrentStep('gps');
+    if (currentStep === 'gps') return setCurrentStep('review');
+    if (currentStep === 'review') {
+      setTimeline((previous) => [
+        {
+          id: `PR-2026-0${previous.length + 20}`,
+          plotName,
+          areaRai,
+          locationLabel,
+          submittedAt: new Date().toLocaleString(),
+          status: 'submitted',
+        },
+        ...previous,
+      ]);
+      setCurrentStep('submitted');
     }
-
-    setPlots((data ?? []) as PlotRow[]);
   }
 
-  useEffect(() => {
-    void loadPlots();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [member?.member_id]);
-
-  function captureGps() {
-    setError(null);
-    setSuccessMessage(null);
-
-    if (typeof navigator === 'undefined' || !navigator.geolocation) {
-      setError('GPS is unavailable on this device/browser. Please enable location services and retry.');
-      return;
-    }
-
-    setCapturingGps(true);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setGps({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-          accuracy: position.coords.accuracy,
-        });
-        setCapturingGps(false);
-      },
-      (geoError) => {
-        setError(geoError.message || 'Unable to capture GPS location.');
-        setCapturingGps(false);
-      },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-    );
-  }
-
-  async function submitPlot() {
-    setError(null);
-    setSuccessMessage(null);
-
-    if (!member) return setError('Member not found. Please sign in again.');
-    if (!name.trim()) return setError('Plot name is required.');
-
-    const parsedArea = Number(areaRai);
-    if (!Number.isFinite(parsedArea) || parsedArea <= 0) return setError('Area (rai) must be greater than 0.');
-
-    if (!gps) return setError('Please capture GPS before submitting plot registration.');
-
-    setSubmitting(true);
-    const supabase = createSupabaseBrowserClient();
-
-    const { error: insertError } = await supabase.from('plots').insert({
-      member_id: member.member_id,
-      name: name.trim(),
-      area_rai: parsedArea,
-      lat: gps.lat,
-      lng: gps.lng,
-      accuracy: gps.accuracy,
-      status: 'active',
-      created_by: member.member_id,
-      role_used: effectiveRole ?? 'farmer',
-    });
-
-    setSubmitting(false);
-
-    if (insertError) {
-      setError(insertError.message);
-      return;
-    }
-
-    setName('');
-    setAreaRai('');
-    setGps(null);
-    setSuccessMessage('Plot registered successfully.');
-    await loadPlots();
+  function goBack() {
+    if (currentStep === 'gps') return setCurrentStep('details');
+    if (currentStep === 'review') return setCurrentStep('gps');
+    if (currentStep === 'submitted') return setCurrentStep('details');
   }
 
   return (
-    <MobileAppShell title="Plot registration" subtitle="Register and view your farm plots" roleBadge={effectiveRole ?? 'farmer'}>
-      <SectionHeader title="Register a new plot" subtitle="GPS coordinates are required" />
-      <FormSheet
-        title="Plot details"
-        footer={
-          <UIButton onClick={submitPlot} loading={submitting} disabled={submitting} fullWidth>
-            Save plot
-          </UIButton>
-        }
-      >
-        <label>
-          Plot name
-          <input value={name} onChange={(event) => setName(event.target.value)} disabled={submitting} />
-        </label>
-        <label>
-          Area (rai)
-          <input type="number" min="0" step="0.01" value={areaRai} onChange={(event) => setAreaRai(event.target.value)} disabled={submitting} />
-        </label>
-        <UIButton type="button" onClick={captureGps} disabled={capturingGps || submitting} fullWidth>
-          {capturingGps ? 'Capturing GPS…' : 'Capture GPS'}
-        </UIButton>
-        {gps ? (
-          <p>
-            Lat: {gps.lat.toFixed(6)} · Lng: {gps.lng.toFixed(6)} · Accuracy: ±{Math.round(gps.accuracy)}m
-          </p>
-        ) : (
-          <p>GPS not captured yet.</p>
-        )}
-        {error ? <ErrorState title="Plot registration error" detail={error} /> : null}
-        {successMessage ? <p>{successMessage}</p> : null}
-      </FormSheet>
+    <MobileAppShell title="Plot registration" subtitle="UX flow prototype (UI only)" roleBadge={effectiveRole ?? 'farmer'}>
+      <SectionHeader title="Registration flow" subtitle="Issue #114 · No backend write" />
+      {FLOW_STEPS.map((step) => {
+        const isCurrent = step.key === currentStep;
+        const isComplete =
+          (step.key === 'details' && ['gps', 'review', 'submitted'].includes(currentStep)) ||
+          (step.key === 'gps' && ['review', 'submitted'].includes(currentStep)) ||
+          (step.key === 'review' && currentStep === 'submitted');
 
-      <SectionHeader title="My plots" subtitle="Owned by current member" />
-      {loadingPlots ? <LoadingState label="Loading plots" /> : null}
-      {!loadingPlots && plots.length === 0 ? <EmptyState title="No plots yet" detail="Register your first plot above." /> : null}
-      {!loadingPlots
-        ? plots.map((plot) => (
-            <InfoCard
-              key={plot.id}
-              title={plot.name}
-              subtitle={`Area: ${plot.area_rai} rai · Lat: ${Number(plot.lat).toFixed(6)} · Lng: ${Number(plot.lng).toFixed(6)} · Accuracy: ${plot.accuracy ? `±${Math.round(plot.accuracy)}m` : 'N/A'}`}
-              meta={<StatusChip status={plot.status === 'active' ? 'approved' : 'under_review'} />}
-            />
-          ))
-        : null}
+        return <InfoCard key={step.key} title={step.title} subtitle={step.subtitle} meta={<StatusChip status={isCurrent ? 'under_review' : isComplete ? 'approved' : 'draft'} />} />;
+      })}
+
+      {currentStep === 'details' ? (
+        <InfoCard
+          title="Step 1: Enter plot details"
+          subtitle="Collect the basic information first."
+          meta={
+            <div>
+              <label>
+                Plot name
+                <input value={plotName} onChange={(event) => setPlotName(event.target.value)} />
+              </label>
+              <label>
+                Area (rai)
+                <input type="number" min="0" step="0.01" value={areaRai} onChange={(event) => setAreaRai(event.target.value)} />
+              </label>
+            </div>
+          }
+        />
+      ) : null}
+
+      {currentStep === 'gps' ? (
+        <InfoCard
+          title="Step 2: Capture GPS"
+          subtitle="Simulated map and GPS evidence confirmation."
+          meta={
+            <div>
+              <p>Map preview placeholder: user drops pin inside farm boundary.</p>
+              <label>
+                GPS result
+                <input value={locationLabel} onChange={(event) => setLocationLabel(event.target.value)} />
+              </label>
+            </div>
+          }
+        />
+      ) : null}
+
+      {currentStep === 'review' ? (
+        <InfoCard
+          title="Step 3: Review"
+          subtitle={`Name: ${plotName} · Area: ${areaRai} rai`}
+          meta={<p>Location: {locationLabel}</p>}
+        />
+      ) : null}
+
+      {currentStep === 'submitted' ? <InfoCard title="Submitted" subtitle="Plot registration request sent for review." meta={<StatusChip status="submitted" />} /> : null}
+
+      <div>
+        {currentStep !== 'details' ? (
+          <UIButton type="button" onClick={goBack}>
+            Back
+          </UIButton>
+        ) : null}{' '}
+        <UIButton type="button" onClick={goNext} disabled={!canGoNext}>
+          {currentStep === 'review' ? 'Submit request' : currentStep === 'submitted' ? 'Start new draft' : 'Next'}
+        </UIButton>
+      </div>
+
+      <SectionHeader title="Recent requests (mock)" subtitle="Shows what members see after submitting" />
+      {timeline.map((item) => (
+        <InfoCard
+          key={item.id}
+          title={`${item.plotName} · ${item.areaRai} rai`}
+          subtitle={`${item.locationLabel} · ${item.submittedAt}`}
+          meta={<StatusChip status={item.status} />}
+        />
+      ))}
     </MobileAppShell>
   );
 }
