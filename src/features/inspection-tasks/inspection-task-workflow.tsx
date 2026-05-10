@@ -40,8 +40,13 @@ export function InspectionTaskWorkflow() {
 
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [resultNote, setResultNote] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | InspectionTaskRow['result_status']>('all');
 
   const selectedTask = useMemo(() => tasks.find((t) => t.id === selectedTaskId) ?? null, [selectedTaskId, tasks]);
+  const filteredTasks = useMemo(() => {
+    if (statusFilter === 'all') return tasks;
+    return tasks.filter((task) => task.result_status === statusFilter);
+  }, [statusFilter, tasks]);
 
   async function loadData() {
     if (!member) return;
@@ -121,6 +126,18 @@ export function InspectionTaskWorkflow() {
   return (
     <MobileAppShell title="งานตรวจแปลง" subtitle="ติดตามคิว ตรวจผล และแนบหลักฐาน" roleBadge={effectiveRole ?? 'farmer'}>
       <SectionHeader title="รายการงานตรวจ" subtitle="ระบบจะแสดงตามสิทธิ์และ RLS (เกษตรกรเป็นโหมดอ่านอย่างเดียว)" />
+      <label>
+        กรองตามสถานะ
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}>
+          <option value="all">ทั้งหมด</option>
+          <option value="pending">รอมอบหมาย</option>
+          <option value="assigned">มอบหมายแล้ว</option>
+          <option value="passed">ผ่าน</option>
+          <option value="failed">ไม่ผ่าน</option>
+          <option value="needs_update">ให้แก้ไข</option>
+          <option value="completed">ปิดงานแล้ว</option>
+        </select>
+      </label>
       {isStaffOrAdmin ? (
         <ResultForm
           loading={loading}
@@ -138,10 +155,10 @@ export function InspectionTaskWorkflow() {
       ) : null}
 
       {loading ? <LoadingState label="กำลังโหลดงานตรวจ" /> : null}
-      {!loading && tasks.length === 0 ? <EmptyState title="ไม่พบงานตรวจ" detail="ยังไม่มีงานตรวจในสิทธิ์ที่คุณเข้าถึงได้" /> : null}
-      {!loading ? tasks.map((task) => <TaskCard key={task.id} task={task} canUpdate={canUpdate} updating={updatingId === task.id} onSelect={setSelectedTaskId} onUpdate={updateTaskStatus} />) : null}
+      {!loading && filteredTasks.length === 0 ? <EmptyState title="ไม่พบงานตรวจ" detail="ยังไม่มีงานตรวจในสถานะหรือสิทธิ์ที่คุณเข้าถึงได้" /> : null}
+      {!loading ? filteredTasks.map((task) => <TaskCard key={task.id} task={task} onSelect={setSelectedTaskId} selected={task.id === selectedTaskId} />) : null}
 
-      {selectedTask ? <TaskDetail task={selectedTask} note={resultNote} submitting={updatingId === selectedTask.id} onNoteChange={setResultNote} onSubmit={() => updateTaskStatus(selectedTask.id, selectedTask.result_status)} canUpdate={canUpdate} /> : null}
+      {selectedTask ? <TaskDetail task={selectedTask} note={resultNote} submitting={updatingId === selectedTask.id} onNoteChange={setResultNote} onSubmit={(status) => updateTaskStatus(selectedTask.id, status)} canUpdate={canUpdate} /> : null}
 
       {error ? <ErrorState title="เกิดข้อผิดพลาดในงานตรวจ" detail={error} /> : null}
       {message ? <p>{message}</p> : null}
