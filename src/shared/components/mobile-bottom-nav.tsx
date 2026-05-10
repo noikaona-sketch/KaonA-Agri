@@ -62,9 +62,16 @@ export function MobileBottomNav({ onTabChange }: MobileBottomNavProps) {
             onClick={onTabChange ? () => onTabChange(tab.label) : undefined}
           >
             <span className="mobile-bottom-nav__icon" aria-hidden="true" style={{ display: 'block', lineHeight: 1 }}>
-              <svg width="32" height="32" aria-hidden="true">
-                <use href={`${tab.iconSrc}#icon`} />
-              </svg>
+              <span
+                style={{
+                  display: 'block',
+                  width: 32,
+                  height: 32,
+                  backgroundColor: 'currentColor',
+                  WebkitMask: `url(${tab.iconSrc}) center / contain no-repeat`,
+                  mask: `url(${tab.iconSrc}) center / contain no-repeat`,
+                }}
+              />
             </span>
             <span
               className="mobile-bottom-nav__label"
