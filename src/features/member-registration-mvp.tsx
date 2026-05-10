@@ -6,7 +6,6 @@ import { EmptyState } from '@/shared/components/empty-state';
 import { ErrorState } from '@/shared/components/error-state';
 import { FormSheet } from '@/shared/components/form-sheet';
 import { LoadingState } from '@/shared/components/loading-state';
-import { StatusChip } from '@/shared/components/status-chip';
 import { UIButton } from '@/shared/components/ui-button';
 
 type MemberRegistrationMVPProps = {
@@ -196,7 +195,7 @@ export function MemberRegistrationMVP({ lineUserId, onSubmitted }: MemberRegistr
       {screen === 'review' ? (
         <>
           <h3 style={{ marginBottom: 6 }}>ตรวจสอบ/แก้ไขข้อมูล</h3>
-          {ocrStatus === 'failed' ? <StatusChip status="under_review" /> : null}
+          {ocrStatus === 'failed' ? <p style={{ marginTop: 0 }}>OCR ไม่สำเร็จ กรุณากรอกข้อมูลด้วยตนเอง</p> : null}
           <label>
             ชื่อ-นามสกุล
             <input value={draft.fullName} onChange={(event) => setDraft((prev) => ({ ...prev, fullName: event.target.value }))} />
