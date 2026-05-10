@@ -1,0 +1,6 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="booking">
+  <rect width="64" height="64" rx="18" fill="#E8F5E9"/>
+  <rect x="18" y="18" width="28" height="30" rx="5" fill="#fff" stroke="#2E7D32" stroke-width="3"/>
+  <path d="M23 26h18M24 34h7M24 41h11" stroke="#2E7D32" stroke-width="3" stroke-linecap="round"/>
+  <path d="M39 39l3 3 7-8" stroke="#F9A825" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
