@@ -1,3 +1,4 @@
+ codex/create-ui-mock-for-service
 import { ServiceTransportUIMock } from '@/features/service-transport-ui-mock';
 import { MobileAppShell } from '@/shared/components/mobile-app-shell';
 import { ProtectedRoute } from '@/shared/components/protected-route';
