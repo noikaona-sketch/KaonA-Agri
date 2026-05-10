@@ -1,150 +1,104 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 
-import { createSupabaseBrowserClient } from '@/lib/supabase/client';
-import { useCurrentMember, useCurrentRoles, useEffectiveRole } from '@/providers/auth-provider';
 import { EmptyState } from '@/shared/components/empty-state';
-import { ErrorState } from '@/shared/components/error-state';
-import { LoadingState } from '@/shared/components/loading-state';
 import { MobileAppShell } from '@/shared/components/mobile-app-shell';
 import { SectionHeader } from '@/shared/components/section-header';
 
-import { ResultForm } from './result-form';
 import { TaskCard } from './task-card';
 import { TaskDetail } from './task-detail';
-import type { InspectionTaskRow, NoBurnRequestOption, PlotOption } from './types';
+import type { InspectionTaskRow } from './types';
+
+const MOCK_TASKS: InspectionTaskRow[] = [
+  {
+    id: 'task-001',
+    no_burn_request_id: 'nbr-2026-0510-01',
+    plot_id: 'plot-a1',
+    inspector_member_id: 'inspector-demo',
+    assigned_at: '2026-05-10T08:00:00.000Z',
+    visited_at: null,
+    result_status: 'assigned',
+    result_note: null,
+    created_at: '2026-05-10T07:30:00.000Z',
+  },
+  {
+    id: 'task-002',
+    no_burn_request_id: 'nbr-2026-0510-02',
+    plot_id: 'plot-c3',
+    inspector_member_id: 'inspector-demo',
+    assigned_at: '2026-05-10T09:30:00.000Z',
+    visited_at: null,
+    result_status: 'pending',
+    result_note: null,
+    created_at: '2026-05-10T09:00:00.000Z',
+  },
+];
 
 export function InspectionTaskWorkflow() {
-  const member = useCurrentMember();
-  const roles = useCurrentRoles();
-  const effectiveRole = useEffectiveRole();
-
-  const isStaffOrAdmin = useMemo(() => roles.includes('staff') || roles.includes('admin'), [roles]);
-  const isInspector = useMemo(() => roles.includes('inspector'), [roles]);
-  const canUpdate = isInspector || isStaffOrAdmin;
-
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [updatingId, setUpdatingId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
-
-  const [noBurnRequests, setNoBurnRequests] = useState<NoBurnRequestOption[]>([]);
-  const [plots, setPlots] = useState<PlotOption[]>([]);
-  const [tasks, setTasks] = useState<InspectionTaskRow[]>([]);
-
-  const [selectedNoBurnRequestId, setSelectedNoBurnRequestId] = useState('');
-  const [selectedPlotId, setSelectedPlotId] = useState('');
-  const [assignmentNote, setAssignmentNote] = useState('');
-
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-  const [resultNote, setResultNote] = useState('');
+  const [tasks] = useState<InspectionTaskRow[]>(MOCK_TASKS);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(MOCK_TASKS[0]?.id ?? null);
+  const [statusFilter, setStatusFilter] = useState<'all' | InspectionTaskRow['result_status']>('all');
+  const [gpsChecked, setGpsChecked] = useState(false);
+  const [photoChecked, setPhotoChecked] = useState(false);
+  const [checklistChecked, setChecklistChecked] = useState(false);
+  const [resultDraft, setResultDraft] = useState('');
+  const [submitted, setSubmitted] = useState(false);
 
   const selectedTask = useMemo(() => tasks.find((t) => t.id === selectedTaskId) ?? null, [selectedTaskId, tasks]);
+  const filteredTasks = useMemo(() => {
+    if (statusFilter === 'all') return tasks;
+    return tasks.filter((task) => task.result_status === statusFilter);
+  }, [statusFilter, tasks]);
 
-  async function loadData() {
-    if (!member) return;
-    setLoading(true);
-    setError(null);
-
-    const supabase = createSupabaseBrowserClient();
-    const inspectionQuery = supabase
-      .from('inspections')
-      .select('id,no_burn_request_id,plot_id,inspector_member_id,assigned_at,visited_at,result_status,result_note,created_at')
-      .order('created_at', { ascending: false })
-      .limit(50);
-
-    const scopedInspectionQuery = isInspector && !isStaffOrAdmin ? inspectionQuery.eq('inspector_member_id', member.member_id) : inspectionQuery;
-
-    const [{ data: requestData, error: requestError }, { data: plotData, error: plotError }, { data: taskData, error: taskError }] = await Promise.all([
-      supabase.from('no_burn_requests').select('id,status').order('created_at', { ascending: false }).limit(30),
-      supabase.from('plots').select('id,plot_name,name').order('created_at', { ascending: false }).limit(100),
-      scopedInspectionQuery,
-    ]);
-
-    setLoading(false);
-    if (requestError || plotError || taskError) {
-      setError(requestError?.message ?? plotError?.message ?? taskError?.message ?? 'ไม่สามารถโหลดข้อมูลงานตรวจได้');
-      return;
-    }
-
-    setNoBurnRequests((requestData ?? []) as NoBurnRequestOption[]);
-    setPlots((plotData ?? []) as PlotOption[]);
-    setTasks((taskData ?? []) as InspectionTaskRow[]);
-  }
-
-  useEffect(() => {
-    void loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [member?.member_id, isInspector, isStaffOrAdmin]);
-
-  async function createTask() {
-    if (!member) return;
-    setError(null);
-    setMessage(null);
-    if (!isStaffOrAdmin) return setError('เฉพาะเจ้าหน้าที่หรือผู้ดูแลระบบเท่านั้นที่สร้างงานตรวจได้');
-
-    setSubmitting(true);
-    const supabase = createSupabaseBrowserClient();
-    const { error: insertError } = await supabase.from('inspections').insert({
-      no_burn_request_id: selectedNoBurnRequestId || null,
-      plot_id: selectedPlotId || null,
-      inspector_member_id: member.member_id,
-      assigned_at: new Date().toISOString(),
-      result_status: 'assigned',
-      result_note: assignmentNote || null,
-    });
-    setSubmitting(false);
-
-    if (insertError) return setError(insertError.message);
-    setMessage('สร้างงานตรวจเรียบร้อยแล้ว');
-    await loadData();
-  }
-
-  async function updateTaskStatus(taskId: string, status: InspectionTaskRow['result_status']) {
-    setUpdatingId(taskId);
-    setError(null);
-    const supabase = createSupabaseBrowserClient();
-    const payload = {
-      result_status: status,
-      result_note: selectedTaskId === taskId && resultNote ? resultNote : undefined,
-      visited_at: status === 'passed' || status === 'failed' || status === 'completed' ? new Date().toISOString() : null,
-    };
-    const { error: updateError } = await supabase.from('inspections').update(payload).eq('id', taskId);
-    setUpdatingId(null);
-    if (updateError) return setError(updateError.message);
-    setMessage('อัปเดตสถานะงานตรวจเรียบร้อยแล้ว');
-    await loadData();
+  function resetFlow() {
+    setGpsChecked(false);
+    setPhotoChecked(false);
+    setChecklistChecked(false);
+    setResultDraft('');
+    setSubmitted(false);
   }
 
   return (
-    <MobileAppShell title="งานตรวจแปลง" subtitle="ติดตามคิว ตรวจผล และแนบหลักฐาน" roleBadge={effectiveRole ?? 'farmer'}>
-      <SectionHeader title="รายการงานตรวจ" subtitle="ระบบจะแสดงตามสิทธิ์และ RLS (เกษตรกรเป็นโหมดอ่านอย่างเดียว)" />
-      {isStaffOrAdmin ? (
-        <ResultForm
-          loading={loading}
-          submitting={submitting}
-          noBurnRequests={noBurnRequests}
-          plots={plots}
-          selectedNoBurnRequestId={selectedNoBurnRequestId}
-          selectedPlotId={selectedPlotId}
-          note={assignmentNote}
-          onNoBurnChange={setSelectedNoBurnRequestId}
-          onPlotChange={setSelectedPlotId}
-          onNoteChange={setAssignmentNote}
-          onSubmit={createTask}
+    <MobileAppShell title="งานตรวจแปลง (Prototype)" subtitle="UI Flow: รายการงาน → รายละเอียด → GPS → รูปหลักฐาน → เช็กลิสต์ → ส่งผล" roleBadge="inspector">
+      <SectionHeader title="รายการงานตรวจ (Mock Data)" subtitle="Issue #115: UI-only prototype (ไม่เชื่อม DB / Auth / RLS / Backend)" />
+
+      <label>
+        กรองตามสถานะ
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}>
+          <option value="all">ทั้งหมด</option>
+          <option value="pending">รอมอบหมาย</option>
+          <option value="assigned">มอบหมายแล้ว</option>
+          <option value="passed">ผ่าน</option>
+          <option value="failed">ไม่ผ่าน</option>
+          <option value="needs_update">ให้แก้ไข</option>
+          <option value="completed">ปิดงานแล้ว</option>
+        </select>
+      </label>
+
+      {filteredTasks.length === 0 ? <EmptyState title="ไม่พบงานตรวจ" detail="ไม่มีงานในสถานะที่เลือก (mock)" /> : null}
+      {filteredTasks.map((task) => (
+        <TaskCard key={task.id} task={task} onSelect={(id) => {
+          setSelectedTaskId(id);
+          resetFlow();
+        }} selected={task.id === selectedTaskId} />
+      ))}
+
+      {selectedTask ? (
+        <TaskDetail
+          task={selectedTask}
+          gpsChecked={gpsChecked}
+          photoChecked={photoChecked}
+          checklistChecked={checklistChecked}
+          submitted={submitted}
+          resultDraft={resultDraft}
+          onGpsToggle={() => setGpsChecked((v) => !v)}
+          onPhotoToggle={() => setPhotoChecked((v) => !v)}
+          onChecklistToggle={() => setChecklistChecked((v) => !v)}
+          onResultDraftChange={setResultDraft}
+          onSubmit={() => setSubmitted(true)}
         />
       ) : null}
-
-      {loading ? <LoadingState label="กำลังโหลดงานตรวจ" /> : null}
-      {!loading && tasks.length === 0 ? <EmptyState title="ไม่พบงานตรวจ" detail="ยังไม่มีงานตรวจในสิทธิ์ที่คุณเข้าถึงได้" /> : null}
-      {!loading ? tasks.map((task) => <TaskCard key={task.id} task={task} canUpdate={canUpdate} updating={updatingId === task.id} onSelect={setSelectedTaskId} onUpdate={updateTaskStatus} />) : null}
-
-      {selectedTask ? <TaskDetail task={selectedTask} note={resultNote} submitting={updatingId === selectedTask.id} onNoteChange={setResultNote} onSubmit={() => updateTaskStatus(selectedTask.id, selectedTask.result_status)} canUpdate={canUpdate} /> : null}
-
-      {error ? <ErrorState title="เกิดข้อผิดพลาดในงานตรวจ" detail={error} /> : null}
-      {message ? <p>{message}</p> : null}
     </MobileAppShell>
   );
 }
