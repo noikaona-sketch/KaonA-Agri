@@ -57,28 +57,30 @@
 .kaona-card__title {
   margin: 0;
   font-size: 16px;
-  line-height: 1.35;
+  line-height: 1.45;
   font-weight: 800;
+  letter-spacing: .01em;
 }
 
 .kaona-card__subtitle {
   margin: 4px 0 0;
   color: var(--text-secondary);
   font-size: 13px;
-  line-height: 1.55;
+  line-height: 1.7;
 }
 
 .kaona-card__meta {
   margin-left: auto;
   color: var(--primary);
   font-size: 12px;
+  line-height: 1.45;
   font-weight: 800;
 }
 
 .kaona-card__body {
   color: var(--text-secondary);
   font-size: 14px;
-  line-height: 1.6;
+  line-height: 1.7;
 }
 
 .kaona-card__action {
@@ -86,6 +88,28 @@
   gap: 8px;
   justify-content: flex-end;
   flex-wrap: wrap;
+}
+
+.mobile-thai-readable {
+  line-height: 1.7;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.mobile-caption {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.mobile-stack {
+  display: grid;
+  gap: 12px;
+}
+
+.mobile-scroll-safe {
+  overscroll-behavior-y: contain;
+  scroll-padding-bottom: calc(96px + env(safe-area-inset-bottom));
 }
 
 @media (max-width: 420px) {
@@ -101,7 +125,13 @@
 
   .mobile-shell__title {
     font-size: 22px;
-    line-height: 1.35;
+    line-height: 1.4;
+  }
+
+  .mobile-shell__subtitle,
+  .section-header__subtitle,
+  .info-card__subtitle {
+    line-height: 1.65;
   }
 
   .mobile-bottom-nav {
@@ -110,12 +140,15 @@
 
   .ui-button {
     min-height: 48px;
+    line-height: 1.35;
+    letter-spacing: .01em;
   }
 }
 
 body {
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
 }
 
 button,
@@ -126,8 +159,24 @@ textarea {
   font: inherit;
 }
 
+button,
+a {
+  touch-action: manipulation;
+}
+
 input,
 select,
 textarea {
   min-height: 44px;
+  font-size: 16px;
+}
+
+textarea {
+  line-height: 1.6;
+  resize: vertical;
+}
+
+:focus-visible {
+  outline: 3px solid rgba(46, 125, 50, .3);
+  outline-offset: 2px;
 }
