@@ -30,13 +30,30 @@ export function MobileBottomNav({ onTabChange }: MobileBottomNavProps) {
           ]
             .filter(Boolean)
             .join(' ')}
+          style={{
+            minHeight: 58,
+            display: 'grid',
+            placeItems: 'center',
+            gap: 3,
+            padding: '7px 2px',
+            textDecoration: 'none',
+          }}
           aria-current={pathname === tab.href ? 'page' : undefined}
           onClick={onTabChange ? () => onTabChange(tab.label) : undefined}
         >
-          <span className="mobile-bottom-nav__icon" aria-hidden="true">
+          <span
+            className="mobile-bottom-nav__icon"
+            aria-hidden="true"
+            style={{ display: 'block', fontSize: 24, lineHeight: 1 }}
+          >
             {tab.icon}
           </span>
-          <span className="mobile-bottom-nav__label">{tab.label}</span>
+          <span
+            className="mobile-bottom-nav__label"
+            style={{ display: 'block', fontSize: 11, lineHeight: 1.15, whiteSpace: 'nowrap' }}
+          >
+            {tab.label}
+          </span>
         </Link>
       ))}
     </nav>
