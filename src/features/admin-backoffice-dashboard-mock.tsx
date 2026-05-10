@@ -6,61 +6,82 @@ import { ProgressBadge } from '@/shared/components/progress-badge';
 import { StatusChip } from '@/shared/components/status-chip';
 import { UIButton } from '@/shared/components/ui-button';
 
-const queueCards = [
+const approvalAndRoleCards = [
   {
-    title: 'Member approvals',
-    subtitle: '23 requests pending KYC and document checks',
+    title: 'อนุมัติสมาชิก',
+    subtitle: 'รออนุมัติ 12 รายการ (KYC/เอกสารยังไม่ครบ 4 ราย)',
     status: 'under_review' as const,
-    cta: 'Open approval queue',
+    cta: 'เปิดคิวอนุมัติ',
   },
   {
-    title: 'No-burn participation requests',
-    subtitle: '12 submissions waiting for staff validation',
-    status: 'under_review' as const,
-    cta: 'Review no-burn requests',
+    title: 'มอบหมายบทบาทผู้ใช้',
+    subtitle: 'รอจัดสิทธิ์ 7 บัญชีใหม่ สำหรับทีมภาคสนามและผู้ให้บริการ',
+    status: 'submitted' as const,
+    cta: 'จัดการบทบาท',
+  },
+];
+
+const operationsOverviewCards = [
+  {
+    title: 'สรุปการจัดการทีม',
+    subtitle: 'ทีมงานพร้อมปฏิบัติการ 5 ทีม · งานค้างเกิน SLA 3 งาน',
+    status: 'scheduled' as const,
+    cta: 'ดูสรุปทีม',
   },
   {
-    title: 'Inspection escalations',
-    subtitle: '5 plots flagged for failed evidence or GPS mismatch',
-    status: 'rejected' as const,
-    cta: 'Prioritize escalations',
+    title: 'ภาพรวมปฏิบัติการภาคสนาม',
+    subtitle: 'งานตรวจที่มอบหมาย 18 งาน · งานต้องติดตาม 5 งาน',
+    status: 'under_review' as const,
+    cta: 'ดูงานภาคสนาม',
+  },
+  {
+    title: 'ภาพรวมโครงการเข้าร่วมไม่เผา',
+    subtitle: 'คำขอใหม่ 14 รายการ · ผ่านตรวจแล้ว 36 รายการ',
+    status: 'approved' as const,
+    cta: 'ดูคำขอไม่เผา',
   },
 ];
 
 const kpiCards = [
-  { label: 'Active members', value: '1,248' },
-  { label: 'Assigned inspectors', value: '34' },
-  { label: 'Open operational tasks', value: '87' },
-  { label: 'Current planting cycles', value: '9' },
+  { label: 'สมาชิกใช้งาน', value: '1,248' },
+  { label: 'ผู้ตรวจแปลงที่มอบหมาย', value: '34' },
+  { label: 'งานค้างดำเนินการ', value: '87' },
+  { label: 'รอบเพาะปลูกปัจจุบัน', value: '9' },
 ];
 
-const activityFeed = [
-  '09:45 · Staff Somchai approved member #MBR-1024',
-  '09:30 · Inspection task INS-542 marked as failed (missing photo metadata)',
-  '09:10 · No-burn request NBR-233 submitted from Nong Khai cooperative',
-  '08:40 · New planting cycle 2026-Rainy drafted by admin team',
+const widgets = [
+  'วิดเจ็ต: คิวอนุมัติด่วน (ภายใน 24 ชม.) 6 รายการ',
+  'วิดเจ็ต: งานเสี่ยงไม่ผ่านตรวจวันนี้ 2 งาน',
+  'วิดเจ็ต: แจ้งเตือนสมาชิกเอกสารหมดอายุ 11 บัญชี',
+];
+
+const recentActivity = [
+  '09:45 · อนุมัติสมาชิก MBR-1024 โดยเจ้าหน้าที่สมชาย',
+  '09:30 · งานตรวจ INS-542 ถูกยกระดับติดตาม (ข้อมูลหลักฐานไม่ครบ)',
+  '09:10 · รับคำขอเข้าร่วมไม่เผา NBR-233 จากกลุ่มสหกรณ์หนองคาย',
+  '08:40 · สร้างรอบเพาะปลูก 2026-ฤดูฝน โดยทีมแอดมิน',
 ];
 
 export function AdminBackofficeDashboardMock() {
   return (
     <>
       <FormSheet
-        title="Back-office dashboard"
+        title="แดชบอร์ดหลังบ้าน"
         footer={
           <div style={{ display: 'flex', gap: 8 }}>
-            <UIButton variant="secondary">Export daily summary</UIButton>
-            <UIButton>Broadcast staff update</UIButton>
+            <UIButton variant="secondary">ส่งออกสรุปรายวัน</UIButton>
+            <UIButton>แจ้งข่าวทีมงาน</UIButton>
           </div>
         }
       >
         <InfoCard
-          title="Operations health"
-          subtitle="Daily SLA compliance at 91% · last synced 10 May 2026, 10:00 UTC"
+          title="สถานะปฏิบัติการรวม"
+          subtitle="อัตราทำงานตาม SLA วันนี้ 91% · อัปเดตล่าสุด 10 พฤษภาคม 2026 เวลา 10:00 UTC"
           meta={<StatusChip status="approved" />}
           action={<ProgressBadge current={91} total={100} />}
         />
 
-        {queueCards.map((card) => (
+        {approvalAndRoleCards.map((card) => (
           <InfoCard
             key={card.title}
             title={card.title}
@@ -71,14 +92,34 @@ export function AdminBackofficeDashboardMock() {
         ))}
       </FormSheet>
 
-      <FormSheet title="KPI snapshot (mock data)">
+      <FormSheet title="ภาพรวมงานบริหารและภาคสนาม">
+        {operationsOverviewCards.map((card) => (
+          <InfoCard
+            key={card.title}
+            title={card.title}
+            subtitle={card.subtitle}
+            meta={<StatusChip status={card.status} />}
+            action={<UIButton variant="ghost">{card.cta}</UIButton>}
+          />
+        ))}
+      </FormSheet>
+
+      <FormSheet title="การ์ด KPI ผู้บริหาร (ข้อมูลจำลอง)">
         {kpiCards.map((kpi) => (
           <InfoCard key={kpi.label} title={kpi.label} subtitle={kpi.value} />
         ))}
       </FormSheet>
 
-      <FormSheet title="Live activity feed (mock)">
-        {activityFeed.map((activity) => (
+      <FormSheet title="วิดเจ็ตแดชบอร์ด">
+        {widgets.map((widget) => (
+          <p key={widget} style={{ marginBottom: 12 }}>
+            {widget}
+          </p>
+        ))}
+      </FormSheet>
+
+      <FormSheet title="ความเคลื่อนไหวล่าสุด">
+        {recentActivity.map((activity) => (
           <p key={activity} style={{ marginBottom: 12 }}>
             {activity}
           </p>
