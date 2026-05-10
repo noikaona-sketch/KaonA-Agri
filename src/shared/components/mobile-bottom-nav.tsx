@@ -1,4 +1,13 @@
+import Link from 'next/link';
+
 const tabs = ['Home', 'Tasks', 'Records', 'Profile'] as const;
+
+const TAB_LINKS: Record<(typeof tabs)[number], string> = {
+  Home: '/',
+  Tasks: '/inspection/tasks',
+  Records: '/plots',
+  Profile: '/profile',
+};
 
 type MobileBottomNavProps = {
   activeTab?: (typeof tabs)[number];
@@ -9,9 +18,9 @@ export function MobileBottomNav({ activeTab = 'Home', onTabChange }: MobileBotto
   return (
     <nav className="mobile-bottom-nav" aria-label="Primary">
       {tabs.map((tab) => (
-        <button
+        <Link
           key={tab}
-          type="button"
+          href={TAB_LINKS[tab]}
           className={[
             'mobile-bottom-nav__item',
             activeTab === tab ? 'mobile-bottom-nav__item--active' : '',
@@ -22,7 +31,7 @@ export function MobileBottomNav({ activeTab = 'Home', onTabChange }: MobileBotto
           onClick={onTabChange ? () => onTabChange(tab) : undefined}
         >
           {tab}
-        </button>
+        </Link>
       ))}
     </nav>
   );

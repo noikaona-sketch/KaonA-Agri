@@ -12,6 +12,7 @@ import { SectionHeader } from '@/shared/components/section-header';
 import { StatusChip } from '@/shared/components/status-chip';
 import { StepList } from '@/shared/components/step-list';
 import { UIButton } from '@/shared/components/ui-button';
+import Link from 'next/link';
 
 interface AppAreaPrototypeProps {
   areaHref: '/member' | '/service' | '/field' | '/admin-prototype';
@@ -104,9 +105,36 @@ const AREA_CONFIG: Record<AppAreaPrototypeProps['areaHref'], AreaConfig> = {
 
 export function AppAreaPrototype({ areaHref }: AppAreaPrototypeProps) {
   const area = AREA_CONFIG[areaHref];
+  const areaLinks: AppAreaPrototypeProps['areaHref'][] = ['/member', '/service', '/field', '/admin-prototype'];
+
+  const areaLabel: Record<AppAreaPrototypeProps['areaHref'], string> = {
+    '/member': 'สมาชิก',
+    '/service': 'ผู้ให้บริการ',
+    '/field': 'ภาคสนาม',
+    '/admin-prototype': 'แอดมิน',
+  };
 
   return (
     <MobileAppShell title={area.title} subtitle={area.subtitle} roleBadge={area.roleBadge}>
+      <FormSheet title="สลับบทบาท (ต้นแบบ UX)">
+        <div className="app-area-switcher" role="tablist" aria-label="Role switcher">
+          {areaLinks.map((href) => (
+            <Link
+              key={href}
+              href={href}
+              className={[
+                'app-area-switcher__item',
+                href === areaHref ? 'app-area-switcher__item--active' : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              aria-current={href === areaHref ? 'page' : undefined}
+            >
+              {areaLabel[href]}
+            </Link>
+          ))}
+        </div>
+      </FormSheet>
       <SectionHeader title={area.workflowTitle} subtitle="ต้นแบบมือถือสำหรับ KaonA-Agri" action={<ProgressBadge current={area.workflows.length} total={area.workflows.length} />} />
       <InfoCard
         title={area.cardTitle}

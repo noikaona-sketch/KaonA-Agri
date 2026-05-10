@@ -99,6 +99,11 @@ body {
 
 .mobile-bottom-nav__item { min-height: 44px; border: 0; background: transparent; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--text-secondary); }
 .mobile-bottom-nav__item--active { color: var(--primary); background: #e8f5e9; }
+.mobile-bottom-nav__item { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
+
+.app-area-switcher { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.app-area-switcher__item { min-height: 42px; border-radius: 10px; border: 1px solid var(--border); display: inline-flex; align-items: center; justify-content: center; text-decoration: none; color: var(--text-primary); font-size: 13px; font-weight: 600; }
+.app-area-switcher__item--active { border-color: var(--primary); background: #e8f5e9; color: var(--primary); }
 
 .role-badge { padding: 4px 8px; border-radius: 999px; background: #e8f5e9; color: var(--primary); font-size: 12px; font-weight: 600; }
 
