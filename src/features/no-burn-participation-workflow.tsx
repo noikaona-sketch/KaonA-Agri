@@ -1,176 +1,136 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 
-import { createSupabaseBrowserClient } from '@/lib/supabase/client';
-import { useCurrentMember, useCurrentRoles } from '@/providers/auth-provider';
-import { ErrorState } from '@/shared/components/error-state';
 import { FormSheet } from '@/shared/components/form-sheet';
-import { PhotoUploadPlaceholder } from '@/shared/components/photo-upload-placeholder';
+import { InfoCard } from '@/shared/components/info-card';
+import { ProgressBadge } from '@/shared/components/progress-badge';
 import { StatusChip } from '@/shared/components/status-chip';
+import { StepList } from '@/shared/components/step-list';
 import { UIButton } from '@/shared/components/ui-button';
+
+type NoBurnFlowStep = 'select_cycle' | 'agreement' | 'evidence' | 'review';
+type RequestStatus = 'draft' | 'submitted' | 'under_review' | 'approved';
 
 type PlantingCycleOption = {
   id: string;
-  crop_type: string;
-  season_year: number;
-  status: string;
+  label: string;
+  phase: string;
 };
 
-type WorkflowStatus = 'pending' | 'reviewed' | 'approved' | 'rejected';
+const MOCK_CYCLES: PlantingCycleOption[] = [
+  { id: '2026-rice-1', label: 'ข้าวนาปี 2026 แปลง A', phase: 'กำลังเพาะปลูก' },
+  { id: '2026-corn-1', label: 'ข้าวโพดเลี้ยงสัตว์ 2026 แปลง B', phase: 'เตรียมดิน' },
+  { id: '2025-rice-3', label: 'ข้าวนาปรัง 2025 แปลง C', phase: 'ปิดรอบและรอตรวจซ้ำ' },
+];
 
-type NoBurnRequestRow = {
-  id: string;
-  status: WorkflowStatus;
-  submitted_at: string;
-  created_at: string;
-  reviewed_by: string | null;
-  planting_cycle_id: string | null;
-};
-
-function toChipStatus(status: WorkflowStatus) {
-  if (status === 'pending') return 'submitted' as const;
-  if (status === 'reviewed') return 'under_review' as const;
-  return status;
+function flowToStatus(step: NoBurnFlowStep): RequestStatus {
+  if (step === 'review') return 'under_review';
+  if (step === 'evidence') return 'submitted';
+  return 'draft';
 }
 
 export function NoBurnParticipationWorkflow() {
-  const member = useCurrentMember();
-  const roles = useCurrentRoles();
-  const isReviewer = useMemo(() => roles.includes('staff') || roles.includes('admin'), [roles]);
-
-  const [cycles, setCycles] = useState<PlantingCycleOption[]>([]);
-  const [requests, setRequests] = useState<NoBurnRequestRow[]>([]);
-  const [selectedCycleId, setSelectedCycleId] = useState<string>('');
+  const [currentStep, setCurrentStep] = useState<NoBurnFlowStep>('select_cycle');
+  const [selectedCycleId, setSelectedCycleId] = useState('');
   const [agreementAccepted, setAgreementAccepted] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [updatingReviewId, setUpdatingReviewId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [doneMessage, setDoneMessage] = useState<string | null>(null);
+  const [evidenceAttached, setEvidenceAttached] = useState(false);
+  const [submittedAt, setSubmittedAt] = useState<string | null>(null);
 
-  async function refreshData() {
-    const supabase = createSupabaseBrowserClient();
-    setLoading(true);
-    setError(null);
+  const selectedCycle = useMemo(() => MOCK_CYCLES.find((cycle) => cycle.id === selectedCycleId) ?? null, [selectedCycleId]);
+  const requestStatus = flowToStatus(currentStep);
 
-    const [cycleResult, requestResult] = await Promise.all([
-      supabase.from('planting_cycles').select('id, crop_type, season_year, status').order('created_at', { ascending: false }).limit(20),
-      supabase.from('no_burn_requests').select('id, status, submitted_at, created_at, reviewed_by, planting_cycle_id').order('created_at', { ascending: false }).limit(20),
-    ]);
+  const checklist = [
+    { title: 'เลือกแปลงเพาะปลูก', detail: selectedCycle ? `เลือกแล้ว: ${selectedCycle.label}` : 'เลือกแปลงที่ต้องการเข้าร่วมไม่เผา', done: Boolean(selectedCycle) },
+    { title: 'ยืนยันข้อตกลงไม่เผา', detail: agreementAccepted ? 'ยืนยันข้อตกลงเรียบร้อย' : 'ยอมรับเงื่อนไขก่อนส่งคำขอ', done: agreementAccepted },
+    { title: 'แนบหลักฐานภาพกิจกรรม', detail: evidenceAttached ? 'แนบรูปหลักฐานแล้ว (UI mock)' : 'แนบรูปกิจกรรมลดการเผาในแปลง', done: evidenceAttached },
+    { title: 'รอตรวจโดยทีมภาคสนาม', detail: submittedAt ? `ส่งคำขอเมื่อ ${submittedAt}` : 'เมื่อส่งคำขอแล้วสถานะจะเปลี่ยนเป็นรอตรวจ', done: Boolean(submittedAt) },
+  ];
 
-    setLoading(false);
-
-    if (cycleResult.error) return setError(cycleResult.error.message);
-    if (requestResult.error) return setError(requestResult.error.message);
-
-    setCycles((cycleResult.data ?? []) as PlantingCycleOption[]);
-    setRequests((requestResult.data ?? []) as NoBurnRequestRow[]);
+  function goNext() {
+    if (currentStep === 'select_cycle' && selectedCycle) setCurrentStep('agreement');
+    else if (currentStep === 'agreement' && agreementAccepted) setCurrentStep('evidence');
+    else if (currentStep === 'evidence' && evidenceAttached) {
+      setCurrentStep('review');
+      setSubmittedAt(new Date().toLocaleString());
+    }
   }
 
-  useEffect(() => {
-    void refreshData();
-  }, []);
-
-  async function submitRequest() {
-    setError(null);
-    setDoneMessage(null);
-
-    if (!member?.is_approved || member.status !== 'approved') return setError('Only approved members can submit no-burn participation requests.');
-    if (!selectedCycleId) return setError('Please choose a planting cycle.');
-    if (!agreementAccepted) return setError('Please accept the no-burn agreement before submission.');
-
-    setSubmitting(true);
-    const supabase = createSupabaseBrowserClient();
-    const { error: insertError } = await supabase.from('no_burn_requests').insert({
-      planting_cycle_id: selectedCycleId,
-      status: 'pending',
-    });
-    setSubmitting(false);
-
-    if (insertError) return setError(insertError.message);
-
+  function resetFlow() {
+    setCurrentStep('select_cycle');
     setSelectedCycleId('');
     setAgreementAccepted(false);
-    setDoneMessage('No-burn participation request submitted successfully.');
-    await refreshData();
-  }
-
-  async function updateReviewStatus(requestId: string, nextStatus: 'reviewed' | 'approved' | 'rejected') {
-    setError(null);
-    setUpdatingReviewId(requestId);
-
-    const supabase = createSupabaseBrowserClient();
-    const { error: updateError } = await supabase.from('no_burn_requests').update({ status: nextStatus }).eq('id', requestId);
-
-    setUpdatingReviewId(null);
-    if (updateError) return setError(updateError.message);
-
-    await refreshData();
+    setEvidenceAttached(false);
+    setSubmittedAt(null);
   }
 
   return (
     <FormSheet
       title="No-burn participation"
       footer={
-        <UIButton onClick={submitRequest} loading={submitting} disabled={submitting || loading} fullWidth>
-          Submit no-burn request
-        </UIButton>
+        currentStep === 'review' ? (
+          <UIButton onClick={resetFlow} fullWidth>
+            สร้างคำขอใหม่
+          </UIButton>
+        ) : (
+          <UIButton
+            onClick={goNext}
+            disabled={
+              (currentStep === 'select_cycle' && !selectedCycle) ||
+              (currentStep === 'agreement' && !agreementAccepted) ||
+              (currentStep === 'evidence' && !evidenceAttached)
+            }
+            fullWidth
+          >
+            ขั้นตอนถัดไป
+          </UIButton>
+        )
       }
     >
-      <p>Submit no-burn participation by selecting a planting cycle, agreeing to the commitment, and attaching evidence photo.</p>
-      <label>
-        Planting cycle <strong>*</strong>
-        <select value={selectedCycleId} onChange={(event) => setSelectedCycleId(event.target.value)} disabled={submitting || loading}>
-          <option value="">Select planting cycle</option>
-          {cycles.map((cycle) => (
-            <option key={cycle.id} value={cycle.id}>
-              {cycle.crop_type} / {cycle.season_year} ({cycle.status})
-            </option>
-          ))}
-        </select>
-      </label>
+      <InfoCard
+        title="คำขอเข้าร่วมโครงการไม่เผา"
+        subtitle="ต้นแบบ UX flow สำหรับสมาชิก (UI only)"
+        meta={<StatusChip status={requestStatus === 'draft' ? 'submitted' : requestStatus} />}
+        action={<ProgressBadge current={checklist.filter((item) => item.done).length} total={checklist.length} />}
+      />
 
-      <label>
-        <input
-          type="checkbox"
-          checked={agreementAccepted}
-          onChange={(event) => setAgreementAccepted(event.target.checked)}
-          disabled={submitting || loading}
-        />{' '}
-        I agree to participate in no-burn farming and allow inspection if required.
-      </label>
+      <StepList steps={checklist} />
 
-      <PhotoUploadPlaceholder label="No-burn evidence photo" />
+      {currentStep === 'select_cycle' ? (
+        <label>
+          รอบเพาะปลูก
+          <select value={selectedCycleId} onChange={(event) => setSelectedCycleId(event.target.value)}>
+            <option value="">เลือกรอบเพาะปลูก</option>
+            {MOCK_CYCLES.map((cycle) => (
+              <option key={cycle.id} value={cycle.id}>
+                {cycle.label} ({cycle.phase})
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
 
-      <h4>Request status & timeline</h4>
-      {requests.length === 0 ? <p>No no-burn requests yet.</p> : null}
-      {requests.map((request) => (
-        <div key={request.id}>
-          <p>
-            <strong>Request:</strong> {request.id.slice(0, 8)}...
-          </p>
-          <StatusChip status={toChipStatus(request.status)} />
-          <p>Submitted: {new Date(request.submitted_at || request.created_at).toLocaleString()}</p>
-          <p>Timeline: Pending → Reviewed → Approved/Rejected</p>
-          {isReviewer ? (
-            <div>
-              <UIButton type="button" onClick={() => updateReviewStatus(request.id, 'reviewed')} disabled={updatingReviewId === request.id}>
-                Mark reviewed
-              </UIButton>{' '}
-              <UIButton type="button" onClick={() => updateReviewStatus(request.id, 'approved')} disabled={updatingReviewId === request.id}>
-                Approve
-              </UIButton>{' '}
-              <UIButton type="button" onClick={() => updateReviewStatus(request.id, 'rejected')} disabled={updatingReviewId === request.id}>
-                Reject
-              </UIButton>
-            </div>
-          ) : null}
+      {currentStep === 'agreement' ? (
+        <label>
+          <input type="checkbox" checked={agreementAccepted} onChange={(event) => setAgreementAccepted(event.target.checked)} /> ฉันยืนยันว่าจะไม่เผาเศษวัสดุในแปลง และยินยอมให้ทีมภาคสนามเข้าตรวจ
+        </label>
+      ) : null}
+
+      {currentStep === 'evidence' ? (
+        <div>
+          <p>แนบหลักฐานรูปภาพกิจกรรม (ต้นแบบ UI ไม่อัปโหลดไฟล์จริง)</p>
+          <UIButton type="button" onClick={() => setEvidenceAttached((value) => !value)}>
+            {evidenceAttached ? 'ลบหลักฐาน (Mock)' : 'แนบหลักฐาน (Mock)'}
+          </UIButton>
         </div>
-      ))}
+      ) : null}
 
-      {error ? <ErrorState title="No-burn request failed" detail={error} /> : null}
-      {doneMessage ? <p>{doneMessage}</p> : null}
+      {currentStep === 'review' ? (
+        <>
+          <p>ส่งคำขอสำเร็จแล้ว สถานะปัจจุบัน: รอตรวจโดยทีมภาคสนาม</p>
+          <p>Timeline: Submitted → Under review → Approved</p>
+        </>
+      ) : null}
     </FormSheet>
   );
 }
