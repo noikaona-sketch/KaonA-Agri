@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import type { ReactNode } from 'react';
 
 import { MobileBottomNav } from '@/shared/components/mobile-bottom-nav';
@@ -15,7 +16,10 @@ export function MobileAppShell({ title, subtitle, roleBadge, children }: MobileA
     <main className="mobile-shell">
       <section className="mobile-shell__card">
         <header className="mobile-shell__header">
-          <p className="mobile-shell__kicker">KaonA Agri</p>
+          <div className="mobile-shell__brand" aria-label="KaonA Agri brand">
+            <Image src="/brand/kaona-mark.svg" alt="KaonA mark" width={24} height={24} priority />
+            <Image src="/brand/kaona-wordmark.svg" alt="KaonA Agri" width={118} height={28} priority />
+          </div>
           {roleBadge ? <RoleBadge>{roleBadge}</RoleBadge> : null}
         </header>
         <h1 className="mobile-shell__title">{title}</h1>
