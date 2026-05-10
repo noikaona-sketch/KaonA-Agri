@@ -166,3 +166,11 @@ body {
   color: var(--text-secondary);
   background: #fafbfa;
 }
+.service-mock__list { display: grid; gap: 8px; }
+.service-mock__row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.service-mock__name { margin: 0; font-size: 14px; font-weight: 600; }
+.service-mock__actions { display: grid; gap: 8px; }
+
+.service-mock__provider-list { display: grid; gap: 8px; }
+.service-mock__provider-card { border: 1px solid var(--border); border-radius: 10px; padding: 10px; background: #fafbfa; }
+.service-mock__meta { margin: 6px 0 0; font-size: 12px; color: var(--text-secondary); }
