@@ -10,9 +10,11 @@ type MobileBottomNavProps = {
   onTabChange?: (tab: (typeof tabs)[number]['label']) => void;
 };
 
-export function MobileBottomNav({ activeTab = 'Home', onTabChange }: MobileBottomNavProps) {
+export function MobileBottomNav({ onTabChange }: MobileBottomNavProps) {
+  const pathname = usePathname();
+
   return (
-    <nav className="mobile-bottom-nav" aria-label="Primary">
+    <nav className="mobile-bottom-nav" aria-label="เลือกพื้นที่แอปตามบทบาท">
       {tabs.map((tab) => (
         <button
           key={tab.label}

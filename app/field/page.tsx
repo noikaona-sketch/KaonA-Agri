@@ -1,5 +1,5 @@
-import { AppAreaPrototype } from '@/features/prototype/app-area-prototype';
+import { FieldTeamUIMock } from '@/features/field-team-ui-mock';
 
 export default function FieldPage() {
-  return <AppAreaPrototype areaHref="/field" />;
+  return <FieldTeamUIMock />;
 }

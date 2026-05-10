@@ -23,7 +23,7 @@ export function MobileAppShell({ title, subtitle, roleBadge, children }: MobileA
 
         <div className="mobile-shell__content">{children}</div>
       </section>
-      <MobileBottomNav activeTab="Home" />
+      <MobileBottomNav />
     </main>
   );
 }
