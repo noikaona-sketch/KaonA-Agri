@@ -1,0 +1,15 @@
+<svg width="420" height="120" viewBox="0 0 420 120" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="KaonA-Agri">
+  <rect width="420" height="120" rx="28" fill="white"/>
+  <g transform="translate(18 18)">
+    <rect width="84" height="84" rx="22" fill="#E8F5E9" stroke="#2E7D32" stroke-width="4"/>
+    <path d="M17 61C27 43 40 33 56 29" stroke="#2E7D32" stroke-width="5" stroke-linecap="round"/>
+    <path d="M24 64C39 57 55 55 71 59" stroke="#1B5E20" stroke-width="5" stroke-linecap="round"/>
+    <path d="M43 59C52 44 65 35 78 32C75 47 64 57 48 61" fill="#E8F5E9" stroke="#2E7D32" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M54 27c8 6 12 17 8 30-9-7-13-18-8-30Z" fill="#F9A825" stroke="#2E7D32" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M33 56L44 26h9l11 30h-9l-2-7H42l-2 7h-7Z" fill="#1B5E20"/>
+  </g>
+  <text x="122" y="55" fill="#1B5E20" font-family="Noto Sans Thai, LINE Seed Sans, system-ui, sans-serif" font-size="38" font-weight="800">KaonA-Agri</text>
+  <text x="124" y="84" fill="#2E7D32" font-family="Noto Sans Thai, LINE Seed Sans, system-ui, sans-serif" font-size="19" font-weight="700">แอพสมาชิกข้าวโพดอาหารสัตว์</text>
+  <path d="M126 96c70-8 150-8 230 0" stroke="#2E7D32" stroke-width="3" stroke-linecap="round"/>
+  <path d="M368 28c10-8 18-11 29-11-2 11-8 19-20 24" stroke="#2E7D32" stroke-width="5" stroke-linecap="round"/>
+</svg>
