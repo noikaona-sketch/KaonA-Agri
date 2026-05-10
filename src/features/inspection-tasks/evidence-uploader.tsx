@@ -12,11 +12,23 @@ type EvidenceUploaderProps = {
 
 const EVIDENCE_BUCKET = process.env.NEXT_PUBLIC_SUPABASE_EVIDENCE_BUCKET || 'mvp-evidence';
 
+function buildGpsMeta(position: GeolocationPosition) {
+  return {
+    altitude: position.coords.altitude,
+    altitudeAccuracy: position.coords.altitudeAccuracy,
+    heading: position.coords.heading,
+    speed: position.coords.speed,
+    timestamp: position.timestamp,
+    userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+  };
+}
+
 export function EvidenceUploader({ inspectionId }: EvidenceUploaderProps) {
   const { member } = useAuth();
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [geo, setGeo] = useState<{ lat: number; lng: number; accuracy: number; capturedAt: string } | null>(null);
+  const [gpsMeta, setGpsMeta] = useState<Record<string, unknown> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
 
@@ -33,6 +45,7 @@ export function EvidenceUploader({ inspectionId }: EvidenceUploaderProps) {
           accuracy: position.coords.accuracy,
           capturedAt: new Date().toISOString(),
         });
+        setGpsMeta(buildGpsMeta(position));
       },
       (geoError) => setError(geoError.message || 'จับพิกัดไม่สำเร็จ'),
       { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 },
@@ -70,6 +83,9 @@ export function EvidenceUploader({ inspectionId }: EvidenceUploaderProps) {
         accuracy: geo.accuracy,
         captured_at: geo.capturedAt,
         gps_source: 'device',
+        gps_provider: 'unknown',
+        gps_is_mocked: false,
+        gps_meta: gpsMeta,
         gps_verified: false,
         evidence_status: 'submitted',
         processing_status: 'processed',
