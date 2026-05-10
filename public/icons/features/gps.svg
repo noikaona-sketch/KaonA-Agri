@@ -1,0 +1,6 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="gps">
+  <rect width="64" height="64" rx="18" fill="#E8F5E9"/>
+  <path d="M32 50s13-10.5 13-23A13 13 0 0 0 19 27c0 12.5 13 23 13 23Z" fill="#fff" stroke="#2E7D32" stroke-width="3"/>
+  <circle cx="32" cy="27" r="5" fill="#2E7D32"/>
+  <path d="M42 18c3-3 6-4 9-4-.5 4-2.5 7-6 9" stroke="#F9A825" stroke-width="3" stroke-linecap="round"/>
+</svg>
