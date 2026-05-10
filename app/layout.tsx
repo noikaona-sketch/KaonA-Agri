@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { AppProviders } from '@/providers/app-providers';
 
 import './globals.css';
+import './kaona-ui.css';
 
 export const metadata: Metadata = {
   title: 'KaonA Agri',
@@ -16,7 +17,7 @@ type RootLayoutProps = {
 
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <html lang="en">
+    <html lang="th">
       <body>
         <AppProviders>{children}</AppProviders>
       </body>
