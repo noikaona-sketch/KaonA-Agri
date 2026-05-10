@@ -1,0 +1,7 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="tractor">
+  <rect width="64" height="64" rx="18" fill="#E8F5E9"/>
+  <path d="M18 40h24l4-10h-9l-4-8H24" fill="#fff" stroke="#2E7D32" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="24" cy="44" r="6" fill="#2E7D32"/>
+  <circle cx="45" cy="44" r="4" fill="#2E7D32"/>
+  <path d="M25 22v-5h9" stroke="#F9A825" stroke-width="3" stroke-linecap="round"/>
+</svg>
