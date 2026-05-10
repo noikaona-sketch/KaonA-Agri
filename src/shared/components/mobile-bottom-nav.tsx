@@ -4,10 +4,10 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const tabs = [
-  { label: 'สมาชิก', icon: '🌽', href: '/member' },
-  { label: 'ผู้ให้บริการ', icon: '🚜', href: '/service' },
-  { label: 'ภาคสนาม', icon: '📍', href: '/field' },
-  { label: 'แอดมิน', icon: '📊', href: '/admin-prototype' },
+  { label: 'สมาชิก', icon: '●', href: '/member' },
+  { label: 'ผู้ให้บริการ', icon: '▣', href: '/service' },
+  { label: 'ภาคสนาม', icon: '◆', href: '/field' },
+  { label: 'แอดมิน', icon: '▥', href: '/admin-prototype' },
 ] as const;
 
 type MobileBottomNavProps = {
