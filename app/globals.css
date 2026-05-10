@@ -185,3 +185,16 @@ body {
 .service-mock__provider-list { display: grid; gap: 8px; }
 .service-mock__provider-card { border: 1px solid var(--border); border-radius: 10px; padding: 10px; background: #fafbfa; }
 .service-mock__meta { margin: 6px 0 0; font-size: 12px; color: var(--text-secondary); }
+
+.service-booking__steps { margin: 0; padding-left: 18px; display: grid; gap: 10px; }
+.service-booking__step-item { padding: 8px; border: 1px solid var(--border); border-radius: 10px; background: #fafbfa; }
+.service-booking__step-label { margin: 0; font-size: 13px; font-weight: 700; }
+.service-booking__step-detail { margin: 4px 0 0; font-size: 12px; color: var(--text-secondary); }
+.service-booking__actions { margin-top: 12px; display: grid; gap: 8px; }
+.service-booking__actions--inline { margin-top: 10px; grid-template-columns: 1fr 1fr; }
+.service-booking__card-list { display: grid; gap: 8px; }
+.service-booking__card { border: 1px solid var(--border); border-radius: 10px; padding: 10px; background: #fafbfa; }
+.service-booking__row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.service-booking__id { margin: 0; font-size: 12px; font-weight: 700; color: var(--text-secondary); }
+.service-booking__service { margin: 8px 0 4px; font-size: 14px; font-weight: 700; }
+.service-booking__meta { margin: 0 0 4px; font-size: 12px; color: var(--text-secondary); }
