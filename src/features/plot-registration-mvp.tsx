@@ -8,6 +8,7 @@ import { LoadingState } from '@/shared/components/loading-state';
 import { MobileAppShell } from '@/shared/components/mobile-app-shell';
 import { SectionHeader } from '@/shared/components/section-header';
 import { UIButton } from '@/shared/components/ui-button';
+import { PendingApprovalPanel } from '@/shared/pending-approval/pending-approval-panel';
 
 type GeoLocation = {
   latitude: number;
@@ -120,6 +121,7 @@ export function PlotRegistrationMVP() {
   }
 
   return (
+
     <MobileAppShell title="ลงทะเบียนแปลงเกษตร" subtitle="MVP: เก็บพิกัดเมื่อผู้ใช้กดเท่านั้น" roleBadge={effectiveRole ?? 'farmer'}>
       <SectionHeader title="ขั้นตอนลงทะเบียน" subtitle="รายละเอียดแปลง → แนบรูป → ตรวจทาน → บันทึกร่าง" />
 
@@ -214,6 +216,6 @@ export function PlotRegistrationMVP() {
           <p>เวลาส่ง: {item.submittedAt}</p>
         </section>
       ))}
-    </MobileAppShell>
-  );
+    </MobileAppShell
+     );
 }
