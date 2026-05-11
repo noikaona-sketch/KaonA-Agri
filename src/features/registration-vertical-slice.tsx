@@ -8,6 +8,8 @@ import { UIButton } from '@/shared/components/ui-button';
 
 type ApprovalStatus = 'pending' | 'approved' | 'rejected';
 type RoleRequestType = 'service_team' | 'field_team' | 'field_assist' | 'backoffice_role';
+type ServiceType = 'รถไถ' | 'รถเกี่ยว' | 'รถขนส่ง';
+type AssistTarget = 'member_onboarding' | 'service_team_onboarding';
 
 type RoleRequest = {
   id: string;
@@ -17,6 +19,11 @@ type RoleRequest = {
   phone: string;
   area: string;
   note?: string;
+  serviceType?: ServiceType;
+  providerTeamName?: string;
+  equipmentSummary?: string;
+  availabilityNote?: string;
+  assistTarget?: AssistTarget;
   status: ApprovalStatus;
   reviewerReason?: string;
   createdAt: string;
@@ -29,6 +36,11 @@ const typeLabel: Record<RoleRequestType, string> = {
   field_team: 'คำขอบทบาททีมภาคสนาม',
   field_assist: 'งานช่วยลงทะเบียนสมาชิก/บริการ',
   backoffice_role: 'คำขอบทบาทหลังบ้าน',
+};
+
+const assistTargetLabel: Record<AssistTarget, string> = {
+  member_onboarding: 'ช่วยลงทะเบียนสมาชิก',
+  service_team_onboarding: 'ช่วยลงทะเบียนทีมบริการ',
 };
 
 function useRoleRequests() {
@@ -72,8 +84,15 @@ export function RegistrationRequestForm({ title, subtitle, type }: { title: stri
   const [phone, setPhone] = useState('');
   const [area, setArea] = useState('');
   const [note, setNote] = useState('');
+  const [serviceType, setServiceType] = useState<ServiceType>('รถไถ');
+  const [providerTeamName, setProviderTeamName] = useState('');
+  const [equipmentSummary, setEquipmentSummary] = useState('');
+  const [availabilityNote, setAvailabilityNote] = useState('');
+  const [assistTarget, setAssistTarget] = useState<AssistTarget>('member_onboarding');
 
   const ownItems = useMemo(() => items.filter((item) => item.type === type), [items, type]);
+  const isServiceRegister = type === 'service_team';
+  const isAssistRegister = type === 'field_assist';
 
   return (
     <MobileAppShell title={title} subtitle={subtitle}>
@@ -81,18 +100,62 @@ export function RegistrationRequestForm({ title, subtitle, type }: { title: stri
         <article className="kaona-card">
           <h2 className="kaona-card__title">แบบฟอร์มส่งคำขอ</h2>
           <div style={{ display: 'grid', gap: 8 }}>
-            <input placeholder="ชื่อ-นามสกุล" value={requesterName} onChange={(e) => setRequesterName(e.target.value)} />
-            <input placeholder="เบอร์โทร" value={phone} onChange={(e) => setPhone(e.target.value)} />
-            <input placeholder="พื้นที่รับผิดชอบ" value={area} onChange={(e) => setArea(e.target.value)} />
+            {isServiceRegister ? (
+              <>
+                <label>
+                  ประเภทบริการ
+                  <select value={serviceType} onChange={(e) => setServiceType(e.target.value as ServiceType)}>
+                    <option value="รถไถ">รถไถ</option>
+                    <option value="รถเกี่ยว">รถเกี่ยว</option>
+                    <option value="รถขนส่ง">รถขนส่ง</option>
+                  </select>
+                </label>
+                <input placeholder="ชื่อผู้ให้บริการ/ทีม" value={providerTeamName} onChange={(e) => setProviderTeamName(e.target.value)} />
+              </>
+            ) : null}
+
+            {isAssistRegister ? (
+              <label>
+                ประเภทงานช่วยลงทะเบียน
+                <select value={assistTarget} onChange={(e) => setAssistTarget(e.target.value as AssistTarget)}>
+                  <option value="member_onboarding">member onboarding</option>
+                  <option value="service_team_onboarding">service team onboarding</option>
+                </select>
+              </label>
+            ) : null}
+
+            <input placeholder={isServiceRegister ? 'ช่องทางติดต่อ (โทรศัพท์หรือ LINE)' : 'เบอร์โทร/LINE'} value={phone} onChange={(e) => setPhone(e.target.value)} />
+            <input placeholder={isServiceRegister ? 'พื้นที่ให้บริการ' : 'พื้นที่รับผิดชอบ'} value={area} onChange={(e) => setArea(e.target.value)} />
+            <input placeholder="ชื่อ-นามสกุลผู้ยื่นคำขอ" value={requesterName} onChange={(e) => setRequesterName(e.target.value)} />
+
+            {isServiceRegister ? <textarea rows={3} placeholder="สรุปรถ/อุปกรณ์" value={equipmentSummary} onChange={(e) => setEquipmentSummary(e.target.value)} /> : null}
+            {isServiceRegister ? <input placeholder="ช่วงเวลาพร้อมให้บริการ (placeholder)" value={availabilityNote} onChange={(e) => setAvailabilityNote(e.target.value)} /> : null}
+
             <textarea rows={3} placeholder="หมายเหตุ/เหตุผล" value={note} onChange={(e) => setNote(e.target.value)} />
             <UIButton
               onClick={() => {
                 if (!requesterName || !phone || !area) return;
-                submit({ title, requesterName, phone, area, note: note || undefined, type });
+                if (isServiceRegister && (!providerTeamName || !equipmentSummary)) return;
+                submit({
+                  title,
+                  requesterName,
+                  phone,
+                  area,
+                  note: note || undefined,
+                  type,
+                  serviceType: isServiceRegister ? serviceType : undefined,
+                  providerTeamName: isServiceRegister ? providerTeamName : undefined,
+                  equipmentSummary: isServiceRegister ? equipmentSummary : undefined,
+                  availabilityNote: isServiceRegister ? availabilityNote || undefined : undefined,
+                  assistTarget: isAssistRegister ? assistTarget : undefined,
+                });
                 setRequesterName('');
                 setPhone('');
                 setArea('');
                 setNote('');
+                setProviderTeamName('');
+                setEquipmentSummary('');
+                setAvailabilityNote('');
               }}
             >
               ส่งคำขอ
@@ -108,6 +171,9 @@ export function RegistrationRequestForm({ title, subtitle, type }: { title: stri
               <div key={item.id} style={{ border: '1px solid var(--line-soft)', borderRadius: 10, padding: 10 }}>
                 <p style={{ margin: 0, fontWeight: 600 }}>{typeLabel[item.type]}</p>
                 <p style={{ margin: '4px 0' }}>เลขอ้างอิง: {item.id}</p>
+                {item.serviceType ? <p style={{ margin: '4px 0' }}>ประเภทบริการ: {item.serviceType}</p> : null}
+                {item.providerTeamName ? <p style={{ margin: '4px 0' }}>ผู้ให้บริการ/ทีม: {item.providerTeamName}</p> : null}
+                {item.assistTarget ? <p style={{ margin: '4px 0' }}>งานช่วยลงทะเบียน: {assistTargetLabel[item.assistTarget]}</p> : null}
                 <StatusChip status={statusToChip(item.status)} />
                 {item.reviewerReason ? <p style={{ margin: '6px 0 0' }}>เหตุผลจากผู้ตรวจ: {item.reviewerReason}</p> : null}
               </div>
