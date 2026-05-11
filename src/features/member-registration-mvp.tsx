@@ -186,7 +186,7 @@ export function MemberRegistrationMVP({ lineUserId, onSubmitted }: MemberRegistr
               disabled={(screen === 'consent' && !consent) || submitting}
               loading={submitting}
             >
-              {screen === 'consent' ? 'ส่งคำขอ (MVP)' : 'ถัดไป'}
+              {screen === 'consent' ? 'ส่งคำขอ' : 'ถัดไป'}
             </UIButton>
           ) : (
             <UIButton fullWidth onClick={onSubmitted}>รีเฟรชสถานะ</UIButton>
@@ -198,7 +198,7 @@ export function MemberRegistrationMVP({ lineUserId, onSubmitted }: MemberRegistr
       }
     >
       <p style={{ marginTop: 0 }}>LINE UID: {lineUserId.slice(0, 8)}...</p>
-      <p style={{ marginTop: 0 }}>เมื่อส่งคำขอ ระบบจะบันทึกข้อมูลสมาชิกและส่งเข้าคิวรออนุมัติ</p>
+      <p style={{ marginTop: 0 }}>ฟลว์นี้ครอบคลุมการส่งคำขอลงทะเบียนสมาชิก และส่งเข้าคิวรออนุมัติ</p>
 
       <label>
         โหมดแสดงผล UI
