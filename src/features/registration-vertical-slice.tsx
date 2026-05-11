@@ -99,6 +99,7 @@ export function RegistrationRequestForm({ title, subtitle, type }: { title: stri
       <section className="mobile-stack">
         <article className="kaona-card">
           <h2 className="kaona-card__title">แบบฟอร์มส่งคำขอ</h2>
+          <p className="kaona-card__body">ข้อมูลชุดนี้เป็นสถานะต้นแบบ (localStorage) เพื่อรองรับ MVP ก่อนเชื่อม persistence ฝั่งฐานข้อมูลในรอบถัดไป</p>
           <div style={{ display: 'grid', gap: 8 }}>
             {isServiceRegister ? (
               <>
@@ -118,8 +119,8 @@ export function RegistrationRequestForm({ title, subtitle, type }: { title: stri
               <label>
                 ประเภทงานช่วยลงทะเบียน
                 <select value={assistTarget} onChange={(e) => setAssistTarget(e.target.value as AssistTarget)}>
-                  <option value="member_onboarding">member onboarding</option>
-                  <option value="service_team_onboarding">service team onboarding</option>
+                  <option value="member_onboarding">ช่วยสมัครสมาชิกใหม่</option>
+                  <option value="service_team_onboarding">ช่วยสมัครทีมบริการ</option>
                 </select>
               </label>
             ) : null}
@@ -129,7 +130,7 @@ export function RegistrationRequestForm({ title, subtitle, type }: { title: stri
             <input placeholder="ชื่อ-นามสกุลผู้ยื่นคำขอ" value={requesterName} onChange={(e) => setRequesterName(e.target.value)} />
 
             {isServiceRegister ? <textarea rows={3} placeholder="สรุปรถ/อุปกรณ์" value={equipmentSummary} onChange={(e) => setEquipmentSummary(e.target.value)} /> : null}
-            {isServiceRegister ? <input placeholder="ช่วงเวลาพร้อมให้บริการ (placeholder)" value={availabilityNote} onChange={(e) => setAvailabilityNote(e.target.value)} /> : null}
+            {isServiceRegister ? <input placeholder="ช่วงเวลาพร้อมให้บริการ (เช่น จ.-ส. 08:00-18:00)" value={availabilityNote} onChange={(e) => setAvailabilityNote(e.target.value)} /> : null}
 
             <textarea rows={3} placeholder="หมายเหตุ/เหตุผล" value={note} onChange={(e) => setNote(e.target.value)} />
             <UIButton
