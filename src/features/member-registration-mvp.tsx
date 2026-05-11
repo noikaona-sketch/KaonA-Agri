@@ -7,6 +7,7 @@ import { ErrorState } from '@/shared/components/error-state';
 import { FormSheet } from '@/shared/components/form-sheet';
 import { LoadingState } from '@/shared/components/loading-state';
 import { UIButton } from '@/shared/components/ui-button';
+import { ensureLiffIdToken } from '@/lib/liff/init-liff';
 import { PendingApprovalPanel } from '@/shared/pending-approval/pending-approval-panel';
 
 type MemberRegistrationMVPProps = {
@@ -129,13 +130,20 @@ export function MemberRegistrationMVP({ lineUserId, onSubmitted }: MemberRegistr
     setSubmitError(null);
 
     try {
+      const idToken = await ensureLiffIdToken();
+
+      if (!idToken) {
+        setSubmitError('ไม่พบ LINE session กรุณาเข้าสู่ระบบใหม่');
+        return;
+      }
+
       const response = await fetch('/api/member/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          lineUserId,
+          idToken,
           fullName: draft.fullName,
           phone: draft.phone,
           citizenIdMasked: draft.citizenIdMasked || maskCitizenId(draft.citizenId),
