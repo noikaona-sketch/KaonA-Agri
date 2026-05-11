@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import { EmptyState } from '@/shared/components/empty-state';
 import { MobileAppShell } from '@/shared/components/mobile-app-shell';
 import { SectionHeader } from '@/shared/components/section-header';
+import { PendingApprovalPanel } from '@/shared/pending-approval/pending-approval-panel';
 
 import { TaskCard } from './task-card';
 import { TaskDetail } from './task-detail';
@@ -85,19 +86,22 @@ export function InspectionTaskWorkflow() {
       ))}
 
       {selectedTask ? (
-        <TaskDetail
-          task={selectedTask}
-          gpsChecked={gpsChecked}
-          photoChecked={photoChecked}
-          checklistChecked={checklistChecked}
-          submitted={submitted}
-          resultDraft={resultDraft}
-          onGpsToggle={() => setGpsChecked((v) => !v)}
-          onPhotoToggle={() => setPhotoChecked((v) => !v)}
-          onChecklistToggle={() => setChecklistChecked((v) => !v)}
-          onResultDraftChange={setResultDraft}
-          onSubmit={() => setSubmitted(true)}
-        />
+        <>
+          <TaskDetail
+            task={selectedTask}
+            gpsChecked={gpsChecked}
+            photoChecked={photoChecked}
+            checklistChecked={checklistChecked}
+            submitted={submitted}
+            resultDraft={resultDraft}
+            onGpsToggle={() => setGpsChecked((v) => !v)}
+            onPhotoToggle={() => setPhotoChecked((v) => !v)}
+            onChecklistToggle={() => setChecklistChecked((v) => !v)}
+            onResultDraftChange={setResultDraft}
+            onSubmit={() => setSubmitted(true)}
+          />
+          <PendingApprovalPanel domain="field_verification" status={submitted ? 'under_review' : 'draft'} />
+        </>
       ) : null}
     </MobileAppShell>
   );
