@@ -57,6 +57,8 @@ export function MemberRegistrationMVP({ lineUserId, onSubmitted }: MemberRegistr
   const [ocrStatus, setOcrStatus] = useState<'idle' | 'processing' | 'failed' | 'success'>('idle');
   const [ocrError, setOcrError] = useState<string | null>(null);
   const [consent, setConsent] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const flowSteps = useMemo(
     () => [
@@ -123,8 +125,38 @@ export function MemberRegistrationMVP({ lineUserId, onSubmitted }: MemberRegistr
   }
 
   async function submitPendingApproval() {
-    setScreen('pending');
-    await onSubmitted();
+    setSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      const response = await fetch('/api/member/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          lineUserId,
+          fullName: draft.fullName,
+          phone: draft.phone,
+          citizenIdMasked: draft.citizenIdMasked || maskCitizenId(draft.citizenId),
+          address: draft.address,
+        }),
+      });
+
+      const payload = (await response.json()) as { error?: string };
+
+      if (!response.ok) {
+        setSubmitError(payload.error ?? 'ส่งคำขอไม่สำเร็จ');
+        return;
+      }
+
+      setScreen('pending');
+      await onSubmitted();
+    } catch {
+      setSubmitError('การเชื่อมต่อขัดข้อง กรุณาลองใหม่อีกครั้ง');
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -143,7 +175,8 @@ export function MemberRegistrationMVP({ lineUserId, onSubmitted }: MemberRegistr
 
                 goNext();
               }}
-              disabled={screen === 'consent' && !consent}
+              disabled={(screen === 'consent' && !consent) || submitting}
+              loading={submitting}
             >
               {screen === 'consent' ? 'ส่งคำขอ (MVP)' : 'ถัดไป'}
             </UIButton>
@@ -157,7 +190,7 @@ export function MemberRegistrationMVP({ lineUserId, onSubmitted }: MemberRegistr
       }
     >
       <p style={{ marginTop: 0 }}>LINE UID: {lineUserId.slice(0, 8)}...</p>
-      <p style={{ marginTop: 0 }}>MVP นี้จำลองการส่งคำขอเป็นสถานะรออนุมัติใน UI เท่านั้น (ไม่มี onboarding DB write ใน PR นี้)</p>
+      <p style={{ marginTop: 0 }}>เมื่อส่งคำขอ ระบบจะบันทึกข้อมูลสมาชิกและส่งเข้าคิวรออนุมัติ</p>
 
       <label>
         โหมดแสดงผล UI
@@ -172,6 +205,7 @@ export function MemberRegistrationMVP({ lineUserId, onSubmitted }: MemberRegistr
       {demoState === 'empty' ? <EmptyState title="ยังไม่มีข้อมูลลงทะเบียน" detail="กรอกข้อมูลผู้สมัครเพื่อเริ่มต้นกระบวนการ" /> : null}
       {demoState === 'loading' ? <LoadingState label="กำลังโหลดหน้าลงทะเบียน..." /> : null}
       {demoState === 'error' ? <ErrorState title="เกิดข้อผิดพลาดชั่วคราว" detail="ไม่สามารถโหลดข้อมูลตัวอย่างได้ กรุณาลองใหม่" /> : null}
+      {submitError ? <ErrorState title="ส่งคำขอไม่สำเร็จ" detail={submitError} /> : null}
 
       {screen === 'register' ? (
         <>
@@ -230,14 +264,5 @@ export function MemberRegistrationMVP({ lineUserId, onSubmitted }: MemberRegistr
 
       {screen === 'pending' ? <PendingApprovalPanel domain="member_onboarding" status="under_review" /> : null}
     </FormSheet>
-  );
-}
-
-function InfoMockCard({ title, detail }: { title: string; detail: string }) {
-  return (
-    <article style={{ border: '1px solid var(--line-soft)', borderRadius: 12, padding: 12 }}>
-      <h3 style={{ margin: 0 }}>{title}</h3>
-      <p style={{ marginBottom: 0 }}>{detail}</p>
-    </article>
   );
 }
