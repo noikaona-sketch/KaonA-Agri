@@ -11,22 +11,32 @@ type NavItem = { label: string; href: string; icon: string };
 // เมนูตาม permission
 const ALL_NAV: NavItem[] = [
   { label: 'แดชบอร์ด',       href: '/admin',                    icon: '📊' },
+  // สมาชิก
   { label: 'คิวอนุมัติ',     href: '/admin/members/approvals',  icon: '✅' },
   { label: 'สมาชิกทั้งหมด', href: '/admin/members',            icon: '👥' },
   { label: 'จัดการ Role',    href: '/admin/roles',              icon: '🏷️' },
   { label: 'จัดกลุ่ม',      href: '/admin/groups',             icon: '🗂️' },
   { label: 'สร้าง PIN',      href: '/admin/invites',            icon: '🔑' },
+  // เกษตร
+  { label: 'แปลงเกษตร',     href: '/admin/plots',              icon: '🌾' },
+  { label: 'รอบเพาะปลูก',   href: '/admin/planting',           icon: '🌱' },
+  { label: 'เมล็ดพันธุ์',   href: '/admin/seeds',              icon: '🫘' },
+  { label: 'งดเผา',          href: '/admin/no-burn',            icon: '🔥' },
+  { label: 'งานตรวจ',        href: '/admin/inspections',        icon: '🔍' },
+  // บริการ
+  { label: 'การจองบริการ',   href: '/admin/service',            icon: '🚜' },
+  // ระบบ
   { label: 'เจ้าหน้าที่',   href: '/admin/staff',              icon: '👤' },
 ];
 
 const DEPT_NAV: Record<string, string[]> = {
-  super_admin: ['แดชบอร์ด','คิวอนุมัติ','สมาชิกทั้งหมด','จัดการ Role','จัดกลุ่ม','สร้าง PIN','เจ้าหน้าที่'],
-  admin:       ['แดชบอร์ด','คิวอนุมัติ','สมาชิกทั้งหมด','จัดการ Role','จัดกลุ่ม','สร้าง PIN','เจ้าหน้าที่'],
-  field:       ['แดชบอร์ด','คิวอนุมัติ','สมาชิกทั้งหมด','จัดกลุ่ม','สร้าง PIN'],
-  sales:       ['แดชบอร์ด','สมาชิกทั้งหมด'],
-  accounting:  ['แดชบอร์ด','สมาชิกทั้งหมด'],
-  finance:     ['แดชบอร์ด','สมาชิกทั้งหมด'],
-  stock:       ['แดชบอร์ด','สมาชิกทั้งหมด'],
+  super_admin: ['แดชบอร์ด','คิวอนุมัติ','สมาชิกทั้งหมด','จัดการ Role','จัดกลุ่ม','สร้าง PIN','แปลงเกษตร','รอบเพาะปลูก','เมล็ดพันธุ์','งดเผา','งานตรวจ','การจองบริการ','เจ้าหน้าที่'],
+  admin:       ['แดชบอร์ด','คิวอนุมัติ','สมาชิกทั้งหมด','จัดการ Role','จัดกลุ่ม','สร้าง PIN','แปลงเกษตร','รอบเพาะปลูก','เมล็ดพันธุ์','งดเผา','งานตรวจ','การจองบริการ','เจ้าหน้าที่'],
+  field:       ['แดชบอร์ด','คิวอนุมัติ','สมาชิกทั้งหมด','จัดกลุ่ม','สร้าง PIN','แปลงเกษตร','รอบเพาะปลูก','งดเผา','งานตรวจ','การจองบริการ'],
+  sales:       ['แดชบอร์ด','สมาชิกทั้งหมด','แปลงเกษตร','รอบเพาะปลูก','เมล็ดพันธุ์','การจองบริการ'],
+  accounting:  ['แดชบอร์ด','สมาชิกทั้งหมด','เมล็ดพันธุ์','การจองบริการ'],
+  finance:     ['แดชบอร์ด','สมาชิกทั้งหมด','เมล็ดพันธุ์','การจองบริการ'],
+  stock:       ['แดชบอร์ด','สมาชิกทั้งหมด','เมล็ดพันธุ์'],
 };
 
 function getNavForDept(dept: string): NavItem[] {
@@ -70,21 +80,33 @@ export function AdminWebShell({ title, subtitle, roleBadge, children }: AdminWeb
         </p>
 
         <nav className="admin-web-shell__nav" aria-label="เมนูหลังบ้าน">
-          {navItems.map((item) => {
+          {navItems.map((item, idx) => {
             const isActive = pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href));
+            // เพิ่ม divider ก่อน section ใหม่
+            const prevItem = navItems[idx - 1];
+            const sections: Record<string, string[]> = {
+              agri: ['แปลงเกษตร','รอบเพาะปลูก','เมล็ดพันธุ์','งดเผา','งานตรวจ'],
+              service: ['การจองบริการ'],
+              system: ['เจ้าหน้าที่'],
+            };
+            const isNewSection = idx > 0 && Object.values(sections).some(
+              (s) => s.includes(item.label) && !s.includes(prevItem?.label ?? '')
+            );
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`admin-web-shell__nav-item${isActive ? ' admin-web-shell__nav-item--active' : ''}`}
-                aria-current={isActive ? 'page' : undefined}
-              >
-                <span style={{ marginRight: 8 }}>{item.icon}</span>{item.label}
-              </Link>
+              <div key={item.href}>
+                {isNewSection && <div style={{ borderTop: '1px solid rgba(255,255,255,0.12)', margin: '6px 0' }} />}
+                <Link
+                  href={item.href}
+                  className={`admin-web-shell__nav-item${isActive ? ' admin-web-shell__nav-item--active' : ''}`}
+                  aria-current={isActive ? 'page' : undefined}
+                >
+                  <span style={{ marginRight: 8 }}>{item.icon}</span>{item.label}
+                </Link>
+              </div>
             );
           })}
 
-          <div style={{ borderTop: '1px solid rgba(255,255,255,0.15)', marginTop: 12, paddingTop: 12 }}>
+          <div style={{ borderTop: '1px solid rgba(255,255,255,0.12)', marginTop: 12, paddingTop: 12 }}>
             <Link href="/api/admin-auth/logout" className="admin-web-shell__nav-item" style={{ color: '#fca5a5' }}>
               <span style={{ marginRight: 8 }}>🚪</span>ออกจากระบบ
             </Link>
