@@ -13,6 +13,7 @@ import type {
   LiffBridgeDiagnostics,
   MemberStatus,
 } from '@/shared/auth/auth-types';
+import { isAdminWebPath } from '@/shared/auth/admin-web-path';
 
 const APP_ROLES: AppRole[] = ['admin', 'staff', 'inspector', 'leader', 'truck_owner', 'farmer'];
 const MEMBER_STATUSES: MemberStatus[] = ['pending', 'approved', 'rejected', 'suspended'];
@@ -80,7 +81,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [bridgeDiagnostics, setBridgeDiagnostics] = useState<LiffBridgeDiagnostics>(INITIAL_BRIDGE_DIAGNOSTICS);
 
   useEffect(() => {
-    const shouldBypassLineAuth = pathname === '/admin-login' || pathname === '/admin' || pathname.startsWith('/admin-prototype');
+    const shouldBypassLineAuth = isAdminWebPath(pathname);
 
     if (shouldBypassLineAuth) {
       setStatus('unauthenticated');

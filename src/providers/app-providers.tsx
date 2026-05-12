@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 
 import { initLiff } from '@/lib/liff/init-liff';
 import { AuthProvider } from '@/providers/auth-provider';
+import { isAdminWebPath } from '@/shared/auth/admin-web-path';
 
 type AppProvidersProps = {
   children: ReactNode;
@@ -13,7 +14,7 @@ type AppProvidersProps = {
 
 export function AppProviders({ children }: AppProvidersProps) {
   const pathname = usePathname();
-  const shouldBypassLineAuth = pathname === '/admin-login' || pathname === '/admin' || pathname.startsWith('/admin-prototype');
+  const shouldBypassLineAuth = isAdminWebPath(pathname);
 
   useEffect(() => {
     if (shouldBypassLineAuth) {

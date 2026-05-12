@@ -1,10 +1,11 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { isAdminWebPath } from '@/shared/auth/admin-web-path';
 
 const ADMIN_COOKIE_NAME = 'kaona_admin_web';
 
 function isAdminProtectedPath(pathname: string) {
-  return pathname === '/admin' || pathname.startsWith('/admin-prototype');
+  return isAdminWebPath(pathname) && pathname !== '/admin-login';
 }
 
 export function middleware(request: NextRequest) {
