@@ -280,3 +280,57 @@ textarea {
   accent-color: var(--primary);
   cursor: pointer;
 }
+
+/* ── PIN Entry ── */
+.pin-icon { font-size: 48px; text-align: center; }
+
+.pin-title {
+  margin: 0 0 4px;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.pin-subtitle {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.pin-inputs {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin: 8px 0;
+}
+
+.pin-digit {
+  width: 48px;
+  height: 56px;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  font-size: 24px;
+  font-weight: 700;
+  text-align: center;
+  background: var(--surface);
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  font-family: monospace;
+}
+
+.pin-digit:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.15);
+}
+
+.pin-digit--filled {
+  border-color: var(--primary);
+  background: #f1f8f1;
+  color: var(--primary);
+}
+
+.pin-digit:disabled {
+  background: var(--bg);
+  opacity: 0.6;
+}
