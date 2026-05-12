@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { isAdminWebPath } from '@/shared/auth/admin-web-path';
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState('');
@@ -26,7 +27,10 @@ export default function AdminLoginPage() {
         return;
       }
 
-      window.location.href = '/admin';
+      const currentUrl = new URL(window.location.href);
+      const next = currentUrl.searchParams.get('next');
+      const redirectTarget = next && isAdminWebPath(next) && next !== '/admin-login' ? next : '/admin-prototype';
+      window.location.href = redirectTarget;
     } finally {
       setLoading(false);
     }
