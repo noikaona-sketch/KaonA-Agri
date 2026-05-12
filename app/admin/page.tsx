@@ -1,17 +1,14 @@
 'use client';
 
 import { AdminOperationalDashboard } from '@/features/admin-operational-dashboard';
-import { MobileAppShell } from '@/shared/components/mobile-app-shell';
-import { ProtectedRoute } from '@/shared/components/protected-route';
+import { AdminWebShell } from '@/shared/components/admin-web-shell';
 import { SectionHeader } from '@/shared/components/section-header';
 
 export default function AdminOperationalDashboardPage() {
   return (
-    <ProtectedRoute allowedRoles={['admin', 'staff']}>
-      <MobileAppShell title="KaonA Agri" subtitle="Admin / staff workspace" roleBadge="Admin/Staff">
-        <SectionHeader title="ภาพรวมงานปฏิบัติการ" subtitle="สรุปคิวงานและสถานะสำหรับแอดมิน/เจ้าหน้าที่" />
-        <AdminOperationalDashboard />
-      </MobileAppShell>
-    </ProtectedRoute>
+    <AdminWebShell title="ศูนย์ปฏิบัติการแอดมิน" subtitle="พื้นที่ทำงานหลังบ้านสำหรับแอดมิน/เจ้าหน้าที่" roleBadge="แอดมิน/เจ้าหน้าที่">
+      <SectionHeader title="ภาพรวมงานปฏิบัติการ" subtitle="สรุปคิวงานและสถานะสำหรับแอดมิน/เจ้าหน้าที่" />
+      <AdminOperationalDashboard />
+    </AdminWebShell>
   );
 }
