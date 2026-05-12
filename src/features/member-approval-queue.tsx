@@ -45,7 +45,7 @@ export function MemberApprovalQueue() {
   }, []);
 
   async function review(approvalId: string, decision: 'approved' | 'rejected') {
-    const confirmationMessage = decision === 'approved' ? 'Approve this member onboarding request?' : 'Reject this member onboarding request?';
+    const confirmationMessage = decision === 'approved' ? 'ยืนยันอนุมัติคำขอสมัครสมาชิกนี้ใช่หรือไม่?' : 'ยืนยันไม่อนุมัติคำขอสมัครสมาชิกนี้ใช่หรือไม่?';
     if (!window.confirm(confirmationMessage)) return;
 
     setActingId(approvalId);
@@ -65,24 +65,24 @@ export function MemberApprovalQueue() {
       return;
     }
 
-    setNotice(decision === 'approved' ? 'Member request approved.' : 'Member request rejected.');
+    setNotice(decision === 'approved' ? 'อนุมัติคำขอสมาชิกเรียบร้อยแล้ว' : 'ไม่อนุมัติคำขอสมาชิกเรียบร้อยแล้ว');
 
     await loadQueue();
   }
 
   return (
-    <FormSheet title="Member onboarding approvals">
-      {loading ? <p>Loading pending requests...</p> : null}
-      {!loading && items.length === 0 ? <p>No pending member approvals.</p> : null}
-      {error ? <ErrorState title="Approval queue error" detail={error} /> : null}
+    <FormSheet title="คิวอนุมัติสมาชิก">
+      {loading ? <p>กำลังโหลดรายการรออนุมัติ...</p> : null}
+      {!loading && items.length === 0 ? <p>ยังไม่มีคำขอสมัครสมาชิกที่รออนุมัติ</p> : null}
+      {error ? <ErrorState title="โหลดคิวอนุมัติไม่สำเร็จ" detail={error} /> : null}
       {notice ? <p>{notice}</p> : null}
 
       {items.map((item) => (
         <article key={item.approval_id}>
           <h3>{item.full_name}</h3>
-          <p>Phone: {item.phone ?? '-'}</p>
-          <p>Citizen ID: {item.citizen_id_masked}</p>
-          <p>Requested: {new Date(item.requested_at).toLocaleString()}</p>
+          <p>เบอร์โทร: {item.phone ?? '-'}</p>
+          <p>เลขบัตรประชาชน (ปกปิด): {item.citizen_id_masked}</p>
+          <p>วันที่ยื่นคำขอ: {new Date(item.requested_at).toLocaleString('th-TH')}</p>
           <StatusChip status="submitted" />
           <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
             <UIButton
@@ -90,7 +90,7 @@ export function MemberApprovalQueue() {
               loading={actingId === item.approval_id}
               disabled={actingId !== null}
             >
-              Approve
+              อนุมัติ
             </UIButton>
             <UIButton
               variant="secondary"
@@ -98,7 +98,7 @@ export function MemberApprovalQueue() {
               loading={actingId === item.approval_id}
               disabled={actingId !== null}
             >
-              Reject
+              ไม่อนุมัติ
             </UIButton>
           </div>
           <hr style={{ margin: '12px 0' }} />
