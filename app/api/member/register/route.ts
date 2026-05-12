@@ -1,5 +1,6 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+
+import { createServerSupabaseClient, getLineChannelId } from '../../auth/line/line-auth-helpers';
 
 type RegisterPayload = {
   idToken?: string;
@@ -9,68 +10,20 @@ type RegisterPayload = {
   address?: string;
 };
 
-type LineVerifyResponse = {
-  sub?: string;
-};
-
-function createServerSupabaseClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SECRET_KEY;
-
-  if (!supabaseUrl || !serviceRoleKey) {
-    throw new Error('Missing Supabase server environment variables');
-  }
-
-  return createClient(supabaseUrl, serviceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
-}
-
-function getLineChannelId() {
-  const explicitChannelId = process.env.LINE_CHANNEL_ID ?? process.env.NEXT_PUBLIC_LINE_CHANNEL_ID;
-
-  if (explicitChannelId) {
-    return explicitChannelId;
-  }
-
-  const liffId = process.env.NEXT_PUBLIC_LIFF_ID ?? '';
-  const [channelId] = liffId.split('-');
-
-  return channelId || '';
-}
-
 async function verifyLineUserId(idToken: string): Promise<string> {
-  const lineChannelId = getLineChannelId();
+  const channelId = getLineChannelId();
+  if (!channelId) throw new Error('LINE channel id is not configured');
 
-  if (!lineChannelId) {
-    throw new Error('LINE channel id is not configured');
-  }
-
-  const verifyResponse = await fetch('https://api.line.me/oauth2/v2.1/verify', {
+  const res = await fetch('https://api.line.me/oauth2/v2.1/verify', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: new URLSearchParams({
-      id_token: idToken,
-      client_id: lineChannelId,
-    }),
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ id_token: idToken, client_id: channelId }),
   });
 
-  if (!verifyResponse.ok) {
-    throw new Error('LINE token verification failed');
-  }
-
-  const verifyData = (await verifyResponse.json()) as LineVerifyResponse;
-
-  if (!verifyData.sub) {
-    throw new Error('LINE user id missing');
-  }
-
-  return verifyData.sub;
+  if (!res.ok) throw new Error('LINE token verification failed');
+  const data = (await res.json()) as { sub?: string };
+  if (!data.sub) throw new Error('LINE user id missing');
+  return data.sub;
 }
 
 export async function POST(request: Request) {
@@ -82,6 +35,7 @@ export async function POST(request: Request) {
     }
 
     const lineUserId = await verifyLineUserId(body.idToken);
+    // service role — bypass RLS ได้ทั้งหมด
     const supabase = createServerSupabaseClient();
 
     const { data: member, error: memberError } = await supabase
@@ -109,19 +63,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Failed to save registration details' }, { status: 500 });
     }
 
-    const { error: approvalError } = await supabase.from('approvals').upsert(
-      {
-        member_id: member.id,
-        requested_by: member.id,
-        resource_type: 'member',
-        resource_id: member.id,
-        status: 'pending',
-        note: 'Member onboarding request',
-      },
-      { onConflict: 'member_id,resource_type,resource_id' }
-    );
+    // ใช้ insert + on conflict do nothing แทน upsert (partial index ไม่รองรับ onConflict)
+    const { error: approvalError } = await supabase.from('approvals').insert({
+      member_id: member.id,
+      requested_by: member.id,
+      resource_type: 'member',
+      resource_id: member.id,
+      status: 'pending',
+      note: 'Member onboarding request',
+    });
 
-    if (approvalError) {
+    if (approvalError && !approvalError.message.includes('duplicate')) {
       return NextResponse.json({ error: 'Failed to create onboarding approval request' }, { status: 500 });
     }
 

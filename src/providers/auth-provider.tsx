@@ -6,12 +6,14 @@ import { usePathname } from 'next/navigation';
 
 import { ensureLiffIdToken, getLiffBridgeDiagnostics, getLiffBridgeSnapshot } from '@/lib/liff/init-liff';
 import { getSupabaseClientDiagnostics } from '@/lib/supabase/client';
+import { applySupabaseSession } from '@/lib/supabase/set-supabase-session';
 import type {
   AppRole,
   AuthBootstrapResult,
   AuthStatus,
   LiffBridgeDiagnostics,
   MemberStatus,
+  SupabaseSession,
 } from '@/shared/auth/auth-types';
 import { isAdminWebPath } from '@/shared/auth/admin-web-path';
 
@@ -130,6 +132,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const payload = (await response.json()) as {
           error?: string;
           member?: AuthBootstrapResult;
+          session?: SupabaseSession;
         };
 
         if (!response.ok || !payload.member) {
@@ -146,6 +149,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
           setBridgeDiagnostics(withBridgeMessage(payload.error ?? 'Authentication bootstrap failed'));
           return;
         }
+
+        // ตั้ง Supabase session ให้ browser client — จำเป็นสำหรับ RLS
+        await applySupabaseSession(payload.session);
 
         const bootstrapResult: AuthBootstrapResult = {
           ...payload.member,

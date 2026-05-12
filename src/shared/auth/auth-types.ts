@@ -23,6 +23,11 @@ export type AuthBootstrapResult = {
   roles: AppRole[];
 };
 
+export type SupabaseSession = {
+  access_token: string;
+  refresh_token: string;
+};
+
 export type LiffRuntimeMode = 'production' | 'preview' | 'direct';
 
 export type LiffBridgeDiagnostics = {
