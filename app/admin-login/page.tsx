@@ -56,6 +56,12 @@ export default function AdminLoginPage() {
           <button disabled={loading} type="submit">
             {loading ? 'Signing in...' : 'Sign in'}
           </button>
+          <p style={{ margin: 0, textAlign: 'center', fontSize: 14, color: '#6b7280' }}>
+            ยังไม่มีบัญชี?{' '}
+            <a href="/admin/register" style={{ color: 'var(--primary)', fontWeight: 600 }}>
+              สมัครบัญชีเจ้าหน้าที่
+            </a>
+          </p>
         </form>
       </section>
     </main>

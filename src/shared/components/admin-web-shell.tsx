@@ -8,13 +8,13 @@ import type { ReactNode } from 'react';
 import { RoleBadge } from '@/shared/components/role-badge';
 
 const navItems = [
-  { label: 'แดชบอร์ด', href: '/admin' },
-  { label: 'คิวอนุมัติ', href: '/admin-prototype/approvals' },
-  { label: 'สมาชิก', href: '/admin/members' },
-  { label: 'ผู้ให้บริการ', href: '' },
-  { label: 'ทีมภาคสนาม', href: '' },
-  { label: 'แปลง', href: '' },
-  { label: 'ไม่เผา', href: '' },
+  { label: 'แดชบอร์ด',    href: '/admin' },
+  { label: 'คิวอนุมัติ',  href: '/admin/members' },
+  { label: 'สมาชิก',      href: '/admin/members' },
+  { label: 'สร้าง PIN',   href: '/admin/invites' },
+  { label: 'จัดการ Role', href: '/admin/roles' },
+  { label: 'จัดกลุ่ม',   href: '' },
+  { label: 'ออกจากระบบ', href: '/api/admin-auth/logout' },
 ] as const;
 
 type AdminWebShellProps = {

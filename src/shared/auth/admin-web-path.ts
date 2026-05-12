@@ -7,3 +7,5 @@ export function isAdminWebPath(pathname: string) {
     pathname.startsWith('/admin-prototype/')
   );
 }
+
+export const ADMIN_PUBLIC_PATHS = ['/admin-login', '/admin/register'];

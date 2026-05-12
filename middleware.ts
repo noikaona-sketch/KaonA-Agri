@@ -5,7 +5,8 @@ import { isAdminWebPath } from '@/shared/auth/admin-web-path';
 const ADMIN_COOKIE_NAME = 'kaona_admin_web';
 
 function isAdminProtectedPath(pathname: string) {
-  return isAdminWebPath(pathname) && pathname !== '/admin-login';
+  if (pathname === '/admin-login' || pathname === '/admin/register') return false;
+  return isAdminWebPath(pathname);
 }
 
 export function middleware(request: NextRequest) {
