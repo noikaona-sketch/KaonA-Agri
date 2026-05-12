@@ -26,7 +26,10 @@ export default function AdminLoginPage() {
         return;
       }
 
-      window.location.href = '/admin';
+      const currentUrl = new URL(window.location.href);
+      const next = currentUrl.searchParams.get('next');
+      const redirectTarget = next && next.startsWith('/') ? next : '/admin';
+      window.location.href = redirectTarget;
     } finally {
       setLoading(false);
     }
