@@ -85,7 +85,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const isPublicRegistrationPath =
       pathname === '/service/register' || pathname === '/field/assist-registration' || pathname === '/field/register-role';
 
-    if (shouldBypassLineAuth || isPublicRegistrationPath) {
+    if (shouldBypassLineAuth) {
       setStatus('unauthenticated');
       setMember(null);
       setErrorMessage(null);
@@ -133,6 +133,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
         };
 
         if (!response.ok || !payload.member) {
+          if (isPublicRegistrationPath && payload.error === 'LINE token verification failed') {
+            setMember(null);
+            setStatus('unauthenticated');
+            setErrorMessage(null);
+            return;
+          }
+
           setMember(null);
           setStatus('error');
           setErrorMessage(payload.error ?? 'Authentication bootstrap failed');
