@@ -334,3 +334,8 @@ textarea {
   background: var(--bg);
   opacity: 0.6;
 }
+
+/* ── 3-tab layout ── */
+.reg-tabs--3 {
+  grid-template-columns: repeat(3, 1fr);
+}
