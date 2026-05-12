@@ -219,3 +219,65 @@ body {
 .service-booking__slot:disabled {
   opacity: 0.65;
 }
+
+@media (min-width: 1024px) {
+  .mobile-shell--desktop-backoffice {
+    min-height: 100vh;
+    padding: 24px;
+    display: grid;
+    grid-template-columns: 300px minmax(0, 1fr);
+    gap: 20px;
+    align-items: start;
+    background: linear-gradient(135deg, #eef7ef 0%, #f9fbf9 40%, #f2f6f2 100%);
+  }
+
+  .mobile-shell__card--desktop-backoffice {
+    max-width: none;
+    width: 100%;
+    min-height: calc(100vh - 48px);
+    border-radius: 20px;
+    padding: 28px;
+    overflow: auto;
+  }
+
+  .mobile-shell--desktop-backoffice .mobile-shell__title {
+    font-size: 30px;
+    line-height: 38px;
+    margin-top: 18px;
+  }
+
+  .mobile-shell--desktop-backoffice .mobile-shell__content {
+    margin-top: 22px;
+  }
+
+  .mobile-shell--desktop-backoffice .mobile-shell__nav-wrap {
+    position: sticky;
+    top: 24px;
+  }
+
+  .mobile-shell--desktop-backoffice .mobile-bottom-nav {
+    position: static;
+    max-width: none;
+    width: 100%;
+    border-radius: 20px;
+    padding: 16px;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .mobile-shell--desktop-backoffice .mobile-bottom-nav__item {
+    min-height: 52px;
+    justify-content: flex-start;
+    padding: 0 12px;
+    font-size: 14px;
+    border: 1px solid transparent;
+  }
+
+  .mobile-shell--desktop-backoffice .mobile-bottom-nav__item--active {
+    border-color: #cfe8cf;
+  }
+
+  .mobile-shell--desktop-backoffice .section-header {
+    margin-bottom: 18px;
+  }
+}
