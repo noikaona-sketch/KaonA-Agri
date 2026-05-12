@@ -5,15 +5,13 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { usePathname } from 'next/navigation';
 
 import { ensureLiffIdToken, getLiffBridgeDiagnostics, getLiffBridgeSnapshot } from '@/lib/liff/init-liff';
-import { getSupabaseClientDiagnostics } from '@/lib/supabase/client';
-import { applySupabaseSession } from '@/lib/supabase/set-supabase-session';
+import { getSupabaseClientDiagnostics, tryCreateSupabaseBrowserClient } from '@/lib/supabase/client';
 import type {
   AppRole,
   AuthBootstrapResult,
   AuthStatus,
   LiffBridgeDiagnostics,
   MemberStatus,
-  SupabaseSession,
 } from '@/shared/auth/auth-types';
 import { isAdminWebPath } from '@/shared/auth/admin-web-path';
 
@@ -132,7 +130,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const payload = (await response.json()) as {
           error?: string;
           member?: AuthBootstrapResult;
-          session?: SupabaseSession;
         };
 
         if (!response.ok || !payload.member) {
@@ -150,8 +147,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
           return;
         }
 
-        // ตั้ง Supabase session ให้ browser client — จำเป็นสำหรับ RLS
-        await applySupabaseSession(payload.session);
+        // signInWithIdToken เพื่อสร้าง Supabase session บน browser client — จำเป็นสำหรับ RLS
+        const supabase = tryCreateSupabaseBrowserClient();
+        if (supabase && idToken) {
+          await supabase.auth.signInWithIdToken({ provider: 'kakao', token: idToken });
+        }
 
         const bootstrapResult: AuthBootstrapResult = {
           ...payload.member,

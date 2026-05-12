@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 
-import type { AppRole, AuthBootstrapResult, MemberStatus, SupabaseSession } from '@/shared/auth/auth-types';
+import type { AppRole, AuthBootstrapResult, MemberStatus } from '@/shared/auth/auth-types';
 
 export const APP_ROLES: AppRole[] = ['admin', 'staff', 'inspector', 'leader', 'truck_owner', 'farmer'];
 export const MEMBER_STATUSES: MemberStatus[] = ['pending', 'approved', 'rejected', 'suspended'];
@@ -75,38 +75,4 @@ export function normalizeMember(
     effective_role: effectiveRole,
     roles,
   };
-}
-
-type SupabaseClient = ReturnType<typeof createServerSupabaseClient>;
-
-export async function ensureSupabaseAuthUser(
-  supabase: SupabaseClient,
-  lineUserId: string,
-  existingAuthUserId: string | null
-): Promise<{ authUserId: string; session: SupabaseSession } | { error: string }> {
-  if (existingAuthUserId) {
-    const { data, error } = await supabase.auth.admin.createSession({ user_id: existingAuthUserId });
-    if (error || !data.session) return { error: 'Failed to create session' };
-    return { authUserId: existingAuthUserId, session: { access_token: data.session.access_token, refresh_token: data.session.refresh_token } };
-  }
-
-  const email = `line_${lineUserId}@liff.kaona.app`;
-  const { data: created, error: ce } = await supabase.auth.admin.createUser({
-    email,
-    user_metadata: { line_user_id: lineUserId },
-    email_confirm: true,
-  });
-
-  if (ce || !created.user) {
-    const { data: listed } = await supabase.auth.admin.listUsers();
-    const found = listed?.users?.find((u) => u.email === email);
-    if (!found) return { error: 'Failed to create Supabase Auth user' };
-    const { data: s, error: se } = await supabase.auth.admin.createSession({ user_id: found.id });
-    if (se || !s.session) return { error: 'Failed to create session for existing user' };
-    return { authUserId: found.id, session: { access_token: s.session.access_token, refresh_token: s.session.refresh_token } };
-  }
-
-  const { data: s2, error: se2 } = await supabase.auth.admin.createSession({ user_id: created.user.id });
-  if (se2 || !s2.session) return { error: 'Failed to create session for new user' };
-  return { authUserId: created.user.id, session: { access_token: s2.session.access_token, refresh_token: s2.session.refresh_token } };
 }
