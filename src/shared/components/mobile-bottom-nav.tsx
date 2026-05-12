@@ -1,39 +1,65 @@
-"use client";
+'use client';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
+import { useEffectiveRole } from '@/providers/auth-provider';
+import { getNavConfigForRole } from '@/shared/auth/role-nav-config';
 import { iconPaths } from '@/shared/design/icon-tokens';
 
-const tabs = [
-  { label: 'สมาชิก', iconSrc: iconPaths.nav.member, href: '/member' },
-  { label: 'ผู้ให้บริการ', iconSrc: iconPaths.nav.service, href: '/service' },
-  { label: 'ภาคสนาม', iconSrc: iconPaths.nav.field, href: '/field' },
-  { label: 'แอดมิน', iconSrc: iconPaths.nav.admin, href: '/admin-prototype' },
-] as const;
+const NAV_STYLE = {
+  background: 'linear-gradient(180deg, #1e7a32 0%, #0f4f1f 100%)',
+  border: 0,
+  borderRadius: 18,
+  boxShadow: '0 14px 34px rgba(15, 79, 31, 0.28)',
+  padding: 10,
+} as const;
 
-type MobileBottomNavProps = {
-  activeTab?: (typeof tabs)[number]['label'];
-  onTabChange?: (tab: (typeof tabs)[number]['label']) => void;
-};
+function getTabStyle(isActive: boolean) {
+  return {
+    minHeight: 62,
+    display: 'grid',
+    placeItems: 'center',
+    gap: 3,
+    padding: '7px 2px',
+    textDecoration: 'none',
+    borderRadius: 14,
+    background: isActive ? '#FFFFFF' : 'transparent',
+    color: isActive ? '#2E7D32' : '#FFFFFF',
+    boxShadow: isActive ? '0 8px 20px rgba(0, 0, 0, 0.18)' : 'none',
+    fontWeight: 700,
+  } as const;
+}
 
-export function MobileBottomNav({ onTabChange }: MobileBottomNavProps) {
-  const pathname = usePathname();
+function NavIcon({ iconKey }: { iconKey: keyof typeof iconPaths.nav }) {
+  const src = iconPaths.nav[iconKey];
 
   return (
-    <nav
-      className="mobile-bottom-nav"
-      aria-label="เลือกพื้นที่แอปตามบทบาท"
-      style={{
-        background: 'linear-gradient(180deg, #1e7a32 0%, #0f4f1f 100%)',
-        border: 0,
-        borderRadius: 18,
-        boxShadow: '0 14px 34px rgba(15, 79, 31, 0.28)',
-        padding: 10,
-      }}
-    >
+    <span style={{ display: 'block', lineHeight: 1 }} aria-hidden="true">
+      <span
+        style={{
+          display: 'block',
+          width: 32,
+          height: 32,
+          backgroundColor: 'currentColor',
+          WebkitMask: `url(${src}) center / contain no-repeat`,
+          mask: `url(${src}) center / contain no-repeat`,
+        }}
+      />
+    </span>
+  );
+}
+
+export function MobileBottomNav() {
+  const pathname = usePathname();
+  const effectiveRole = useEffectiveRole();
+  const { tabs } = getNavConfigForRole(effectiveRole);
+
+  return (
+    <nav className="mobile-bottom-nav" aria-label="เมนูหลัก" style={NAV_STYLE}>
       {tabs.map((tab) => {
-        const isActive = pathname === tab.href;
+        const isActive =
+          pathname === tab.href || (tab.href !== '/' && pathname.startsWith(tab.href));
 
         return (
           <Link
@@ -45,36 +71,11 @@ export function MobileBottomNav({ onTabChange }: MobileBottomNavProps) {
             ]
               .filter(Boolean)
               .join(' ')}
-            style={{
-              minHeight: 62,
-              display: 'grid',
-              placeItems: 'center',
-              gap: 3,
-              padding: '7px 2px',
-              textDecoration: 'none',
-              borderRadius: 14,
-              background: isActive ? '#FFFFFF' : 'transparent',
-              color: isActive ? '#2E7D32' : '#FFFFFF',
-              boxShadow: isActive ? '0 8px 20px rgba(0, 0, 0, 0.18)' : 'none',
-              fontWeight: 700,
-            }}
+            style={getTabStyle(isActive)}
             aria-current={isActive ? 'page' : undefined}
-            onClick={onTabChange ? () => onTabChange(tab.label) : undefined}
           >
-            <span className="mobile-bottom-nav__icon" aria-hidden="true" style={{ display: 'block', lineHeight: 1 }}>
-              <span
-                style={{
-                  display: 'block',
-                  width: 32,
-                  height: 32,
-                  backgroundColor: 'currentColor',
-                  WebkitMask: `url(${tab.iconSrc}) center / contain no-repeat`,
-                  mask: `url(${tab.iconSrc}) center / contain no-repeat`,
-                }}
-              />
-            </span>
+            <NavIcon iconKey={tab.iconKey} />
             <span
-              className="mobile-bottom-nav__label"
               style={{ display: 'block', fontSize: 11, lineHeight: 1.15, whiteSpace: 'nowrap' }}
             >
               {tab.label}
