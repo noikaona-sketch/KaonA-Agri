@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-import { useEffectiveRole } from '@/providers/auth-provider';
-import { getNavConfigForRole } from '@/shared/auth/role-nav-config';
+import { useAuth, useEffectiveRole } from '@/providers/auth-provider';
+import { getNavConfig } from '@/shared/auth/role-nav-config';
 import { iconPaths } from '@/shared/design/icon-tokens';
 
 const NAV_STYLE = {
@@ -52,8 +52,9 @@ function NavIcon({ iconKey }: { iconKey: keyof typeof iconPaths.nav }) {
 
 export function MobileBottomNav() {
   const pathname = usePathname();
+  const { status } = useAuth();
   const effectiveRole = useEffectiveRole();
-  const { tabs } = getNavConfigForRole(effectiveRole);
+  const { tabs } = getNavConfig(status, effectiveRole);
 
   return (
     <nav className="mobile-bottom-nav" aria-label="เมนูหลัก" style={NAV_STYLE}>

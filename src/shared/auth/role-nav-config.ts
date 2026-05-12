@@ -1,4 +1,4 @@
-import type { AppRole } from '@/shared/auth/auth-types';
+import type { AppRole, AuthStatus } from '@/shared/auth/auth-types';
 
 export type NavIconKey = 'member' | 'service' | 'field' | 'admin';
 
@@ -10,6 +10,26 @@ export type NavTab = {
 
 export type RoleNavConfig = {
   tabs: readonly [NavTab, NavTab, NavTab, NavTab];
+};
+
+// ยังไม่มี role — สมัครสมาชิก / บริการ
+const GUEST_NAV: RoleNavConfig = {
+  tabs: [
+    { label: 'หน้าหลัก',     href: '/',         iconKey: 'member'  },
+    { label: 'สมัครสมาชิก', href: '/register',  iconKey: 'field'   },
+    { label: 'บริการ',       href: '/register?tab=pin', iconKey: 'service' },
+    { label: 'โปรไฟล์',     href: '/profile',   iconKey: 'admin'   },
+  ],
+};
+
+// pending / rejected / suspended — จำกัดเมนู
+const PENDING_NAV: RoleNavConfig = {
+  tabs: [
+    { label: 'หน้าหลัก',  href: '/',        iconKey: 'member'  },
+    { label: 'สถานะ',     href: '/',        iconKey: 'field'   },
+    { label: 'บริการ',    href: '/register?tab=pin', iconKey: 'service' },
+    { label: 'โปรไฟล์',  href: '/profile', iconKey: 'admin'   },
+  ],
 };
 
 const ROLE_NAV_MAP: Record<AppRole, RoleNavConfig> = {
@@ -63,16 +83,21 @@ const ROLE_NAV_MAP: Record<AppRole, RoleNavConfig> = {
   },
 };
 
-const FALLBACK_NAV: RoleNavConfig = {
-  tabs: [
-    { label: 'หน้าหลัก', href: '/', iconKey: 'member' },
-    { label: 'สมัครสมาชิก', href: '/member/register', iconKey: 'field' },
-    { label: 'บริการ', href: '/service', iconKey: 'service' },
-    { label: 'โปรไฟล์', href: '/profile', iconKey: 'admin' },
-  ],
-};
+const FALLBACK_NAV: RoleNavConfig = GUEST_NAV;
 
 export function getNavConfigForRole(role: AppRole | null): RoleNavConfig {
-  if (!role) return FALLBACK_NAV;
-  return ROLE_NAV_MAP[role] ?? FALLBACK_NAV;
+  if (!role) return GUEST_NAV;
+  return ROLE_NAV_MAP[role] ?? GUEST_NAV;
+}
+
+// ใช้ทั้ง status + role เพื่อได้ nav ที่ถูกต้อง
+export function getNavConfig(status: AuthStatus, role: AppRole | null): RoleNavConfig {
+  if (status === 'loading' || status === 'unauthenticated' || status === 'no_member' || status === 'error') {
+    return GUEST_NAV;
+  }
+  if (status === 'pending_approval' || status === 'rejected' || status === 'suspended' || status === 'access_denied') {
+    return PENDING_NAV;
+  }
+  // approved
+  return getNavConfigForRole(role);
 }
