@@ -13,6 +13,7 @@ const ROLES = [
   { value: 'inspector',   label: 'ผู้ตรวจสอบ 🔍' },
   { value: 'staff',       label: 'เจ้าหน้าที่ภาคสนาม 👷' },
   { value: 'leader',      label: 'หัวหน้ากลุ่ม 👥' },
+  { value: 'admin',       label: 'แอดมิน ⚙️' },
 ];
 
 type PinResult = { pin: string; memberId: string };

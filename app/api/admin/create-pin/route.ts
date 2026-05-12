@@ -10,7 +10,7 @@ type CreatePinPayload = {
   phone?: string;
 };
 
-const VALID_ROLES = ['farmer', 'truck_owner', 'inspector', 'staff', 'leader'];
+const VALID_ROLES = ['farmer', 'truck_owner', 'inspector', 'staff', 'leader', 'admin'];
 
 export async function POST(request: Request) {
   try {
