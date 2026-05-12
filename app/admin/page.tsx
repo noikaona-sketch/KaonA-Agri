@@ -13,6 +13,15 @@ const SECTIONS = [
     ],
   },
   {
+    title: 'ขาย / สต๊อก',
+    items: [
+      { href: '/admin/pos',      icon: '💰', label: 'POS ขาย/จอง',  color: '#e8f5e9', border: '#a5d6a7' },
+      { href: '/admin/orders',   icon: '📋', label: 'คำสั่งซื้อ',   color: '#e3f2fd', border: '#90caf9' },
+      { href: '/admin/products', icon: '🛍️', label: 'จัดการสินค้า', color: '#fff8e1', border: '#ffe082' },
+      { href: '/admin/stock',    icon: '📦', label: 'สต๊อก',         color: '#fff3e0', border: '#ffcc80' },
+    ],
+  },
+  {
     title: 'เกษตรกรรม',
     items: [
       { href: '/admin/plots',       icon: '🌾', label: 'แปลงเกษตร',   color: '#e8f5e9', border: '#a5d6a7' },
