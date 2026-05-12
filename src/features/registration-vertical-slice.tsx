@@ -98,8 +98,8 @@ export function RegistrationRequestForm({ title, subtitle, type }: { title: stri
     <MobileAppShell title={title} subtitle={subtitle}>
       <section className="mobile-stack">
         <article className="kaona-card">
-          <h2 className="kaona-card__title">แบบฟอร์มส่งคำขอ</h2>
-          <p className="kaona-card__body">ข้อมูลชุดนี้เป็นสถานะต้นแบบ (localStorage) เพื่อรองรับ MVP ก่อนเชื่อม persistence ฝั่งฐานข้อมูลในรอบถัดไป</p>
+          <h2 className="kaona-card__title">ส่งคำขอรออนุมัติบทบาท</h2>
+          <p className="kaona-card__body">MVP/Local: ข้อมูลหน้านี้เก็บใน localStorage ของเครื่องนี้เท่านั้น</p>
           <div style={{ display: 'grid', gap: 8 }}>
             {isServiceRegister ? (
               <>
@@ -165,7 +165,7 @@ export function RegistrationRequestForm({ title, subtitle, type }: { title: stri
         </article>
 
         <article className="kaona-card">
-          <h3 className="kaona-card__title">สถานะคำขอของฉัน</h3>
+          <h3 className="kaona-card__title">คำขอของฉัน</h3>
           {ownItems.length === 0 ? <p className="kaona-card__body">ยังไม่มีคำขอ</p> : null}
           <div style={{ display: 'grid', gap: 8 }}>
             {ownItems.map((item) => (
@@ -193,10 +193,10 @@ export function ApprovalsQueuePage() {
   const selected = items.find((item) => item.id === selectedId) ?? null;
 
   return (
-    <MobileAppShell title="คิวอนุมัติคำขอบทบาท" subtitle="ต้นแบบอนุมัติ/ไม่อนุมัติ พร้อมเหตุผล" roleBadge="แอดมิน">
+    <MobileAppShell title="คิวอนุมัติคำขอบทบาท" subtitle="MVP/Local: อนุมัติคำขอจากข้อมูลในเครื่องนี้" roleBadge="แอดมิน">
       <section className="mobile-stack">
         <article className="kaona-card">
-          <h2 className="kaona-card__title">รายการรอพิจารณา</h2>
+          <h2 className="kaona-card__title">รายการรออนุมัติ</h2>
           <div style={{ display: 'grid', gap: 8 }}>
             {items.length === 0 ? <p className="kaona-card__body">ยังไม่มีคำขอในคิว</p> : null}
             {items.map((item) => (
@@ -212,10 +212,10 @@ export function ApprovalsQueuePage() {
         {selected ? (
           <article className="kaona-card">
             <h3 className="kaona-card__title">พิจารณาคำขอ {selected.id}</h3>
-            <textarea rows={3} placeholder="ระบุเหตุผลประกอบการอนุมัติ/ปฏิเสธ" value={reason} onChange={(e) => setReason(e.target.value)} />
+            <textarea rows={3} placeholder="เหตุผล (ถ้ามี)" value={reason} onChange={(e) => setReason(e.target.value)} />
             <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
               <UIButton onClick={() => review(selected.id, 'approved', reason || undefined)}>อนุมัติ</UIButton>
-              <UIButton variant="secondary" onClick={() => review(selected.id, 'rejected', reason || undefined)}>ปฏิเสธ</UIButton>
+              <UIButton variant="secondary" onClick={() => review(selected.id, 'rejected', reason || undefined)}>ไม่อนุมัติ</UIButton>
             </div>
           </article>
         ) : null}

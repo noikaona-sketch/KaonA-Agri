@@ -110,7 +110,7 @@ export function PlotRegistrationMVP() {
     ]);
 
     setSubmitting(false);
-    setDoneMessage('บันทึกร่างแปลงเรียบร้อยแล้ว (โหมด MVP: ยังไม่บันทึกเข้าฐานข้อมูล)');
+    setDoneMessage('บันทึกร่างแปลงแล้ว (Local draft: เก็บเฉพาะในเครื่องนี้)');
     setStep('details');
     setPlotName('');
     setAreaRai('');
@@ -120,7 +120,7 @@ export function PlotRegistrationMVP() {
   }
 
   return (
-    <MobileAppShell title="ลงทะเบียนแปลงเกษตร" subtitle="MVP: เก็บพิกัดเมื่อผู้ใช้กดเท่านั้น" roleBadge={effectiveRole ?? 'farmer'}>
+    <MobileAppShell title="ลงทะเบียนแปลงเกษตร" subtitle="MVP/Local: กดจับ GPS เอง และบันทึกร่างเฉพาะในเครื่อง" roleBadge={effectiveRole ?? 'farmer'}>
       <SectionHeader title="ขั้นตอนลงทะเบียน" subtitle="รายละเอียดแปลง → แนบรูป → ตรวจทาน → บันทึกร่าง" />
 
       {step === 'details' ? (
@@ -201,7 +201,7 @@ export function PlotRegistrationMVP() {
         ) : null}
       </div>
 
-      <SectionHeader title="ร่างที่ส่งแล้ว (เฉพาะในเครื่อง)" subtitle="สำหรับ MVP นี้ยังไม่บันทึกลงฐานข้อมูล" />
+      <SectionHeader title="ร่างที่ส่งแล้ว (เฉพาะในเครื่อง)" subtitle="สำหรับ MVP/Local: ร่างแปลงเก็บเฉพาะในเครื่องนี้" />
       {submittedDrafts.length === 0 ? <p>ยังไม่มีร่างที่ส่ง</p> : null}
       {submittedDrafts.map((item) => (
         <section key={item.id} className="kaona-card">
