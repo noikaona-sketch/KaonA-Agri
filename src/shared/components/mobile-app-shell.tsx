@@ -8,14 +8,13 @@ type MobileAppShellProps = {
   title: string;
   subtitle: string;
   roleBadge?: string;
-  desktopBackoffice?: boolean;
   children?: ReactNode;
 };
 
-export function MobileAppShell({ title, subtitle, roleBadge, desktopBackoffice = false, children }: MobileAppShellProps) {
+export function MobileAppShell({ title, subtitle, roleBadge, children }: MobileAppShellProps) {
   return (
-    <main className={`mobile-shell${desktopBackoffice ? ' mobile-shell--desktop-backoffice' : ''}`}>
-      <section className={`mobile-shell__card${desktopBackoffice ? ' mobile-shell__card--desktop-backoffice' : ''}`}>
+    <main className="mobile-shell">
+      <section className="mobile-shell__card">
         <header className="mobile-shell__header">
           <div className="mobile-shell__brand" aria-label="KaonA Agri brand">
             <Image src="/brand/kaona-mark.svg" alt="KaonA mark" width={24} height={24} priority />
@@ -28,9 +27,7 @@ export function MobileAppShell({ title, subtitle, roleBadge, desktopBackoffice =
 
         <div className="mobile-shell__content">{children}</div>
       </section>
-      <div className={desktopBackoffice ? 'mobile-shell__nav-wrap' : ''}>
-        <MobileBottomNav />
-      </div>
+      <MobileBottomNav />
     </main>
   );
 }

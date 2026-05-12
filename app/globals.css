@@ -263,6 +263,11 @@ body {
   color: #1f6f33;
 }
 
+.admin-web-shell__nav-item--disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .admin-web-shell__content-card {
   background: var(--surface);
   border: 1px solid var(--border);

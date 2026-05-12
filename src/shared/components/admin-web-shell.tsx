@@ -11,10 +11,10 @@ const navItems = [
   { label: 'แดชบอร์ด', href: '/admin' },
   { label: 'คิวอนุมัติ', href: '/admin-prototype/approvals' },
   { label: 'สมาชิก', href: '/admin/members' },
-  { label: 'ผู้ให้บริการ', href: '/service' },
-  { label: 'ทีมภาคสนาม', href: '/field' },
-  { label: 'แปลง', href: '/plots' },
-  { label: 'ไม่เผา', href: '/no-burn' },
+  { label: 'ผู้ให้บริการ', href: '' },
+  { label: 'ทีมภาคสนาม', href: '' },
+  { label: 'แปลง', href: '' },
+  { label: 'ไม่เผา', href: '' },
 ] as const;
 
 type AdminWebShellProps = {
@@ -37,6 +37,14 @@ export function AdminWebShell({ title, subtitle, roleBadge = 'แอดมิน
 
         <nav className="admin-web-shell__nav" aria-label="เมนูหลังบ้าน">
           {navItems.map((item) => {
+            if (!item.href) {
+              return (
+                <span key={item.label} className="admin-web-shell__nav-item admin-web-shell__nav-item--disabled" aria-disabled="true">
+                  {item.label}
+                </span>
+              );
+            }
+
             const isActive = pathname === item.href;
 
             return (
