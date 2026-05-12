@@ -1,85 +1,110 @@
 'use client';
 
-import { MemberRegistrationMVP } from '@/features/member-registration-mvp';
-import { PlotRegistrationMVP } from '@/features/plot-registration-mvp';
-import { NoBurnParticipationWorkflow } from '@/features/no-burn-participation-workflow';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+
 import { useAuth } from '@/providers/auth-provider';
-import { ErrorState } from '@/shared/components/error-state';
-import { FormSheet } from '@/shared/components/form-sheet';
-import { InfoCard } from '@/shared/components/info-card';
+import { LoadingState } from '@/shared/components/loading-state';
 import { MobileAppShell } from '@/shared/components/mobile-app-shell';
-import { PhotoUploadPlaceholder } from '@/shared/components/photo-upload-placeholder';
-import { ProgressBadge } from '@/shared/components/progress-badge';
-import { ProtectedRoute } from '@/shared/components/protected-route';
-import { SectionHeader } from '@/shared/components/section-header';
 import { StatusChip } from '@/shared/components/status-chip';
-import { StepList } from '@/shared/components/step-list';
 import { UIButton } from '@/shared/components/ui-button';
 
-function NoMemberFallback() {
-  const { member } = useAuth();
-  const lineUserId = member?.line_user_id ?? null;
-
-  if (!lineUserId) {
-    return (
-      <main className="mobile-shell">
-        <ErrorState title="LINE identity is missing. Please reopen from LINE." />
-      </main>
-    );
-  }
-
+// หน้ารออนุมัติ — แสดงหลังส่งคำขอสมัครแล้ว
+function PendingApprovalScreen() {
   return (
-    <main className="mobile-shell">
-      <MemberRegistrationMVP
-        lineUserId={lineUserId}
-        onSubmitted={async () => {
-          window.location.reload();
-        }}
-      />
-    </main>
+    <MobileAppShell title="รอการอนุมัติ" subtitle="คำขอสมัครของคุณอยู่ระหว่างตรวจสอบ">
+      <div className="mobile-stack" style={{ textAlign: 'center', padding: '24px 0' }}>
+        <div style={{ fontSize: 56 }}>🌱</div>
+        <div>
+          <h2 style={{ margin: '8px 0 4px', fontSize: 20 }}>ส่งคำขอแล้ว</h2>
+          <div style={{ display: 'flex', justifyContent: 'center', marginTop: 8 }}>
+            <StatusChip status="submitted" />
+          </div>
+        </div>
+        <div className="kaona-card" style={{ textAlign: 'left' }}>
+          <p style={{ margin: 0, fontWeight: 700, fontSize: 14 }}>ขั้นตอนถัดไป</p>
+          <ul style={{ margin: '8px 0 0', paddingLeft: 16, fontSize: 14, color: 'var(--text-secondary)', display: 'grid', gap: 6 }}>
+            <li>เจ้าหน้าที่รับข้อมูลและตรวจสอบ</li>
+            <li>แจ้งผลทาง LINE ภายใน 1-3 วันทำการ</li>
+            <li>เมื่ออนุมัติแล้ว เปิด LINE Mini App เข้าใช้งานได้ทันที</li>
+          </ul>
+        </div>
+      </div>
+    </MobileAppShell>
   );
 }
 
+// redirect ไปหน้าสมัคร
+function RedirectToRegister() {
+  const router = useRouter();
+  useEffect(() => { router.replace('/register'); }, [router]);
+  return <LoadingState label="กำลังนำทางไปหน้าสมัคร…" />;
+}
+
+// หน้าหลัก — routing ตาม auth status
 export default function HomePage() {
-  return (
-    <ProtectedRoute fallbackNoMember={<NoMemberFallback />}>
-      <MobileAppShell title="หน้าหลักสมาชิก" subtitle="ติดตามงานเกษตรและสถานะคำขอผ่าน LINE" roleBadge="สมาชิก">
-        <SectionHeader title="แดชบอร์ดสมาชิก" subtitle="รอบเพาะปลูก 2569/1" action={<ProgressBadge current={2} total={4} />} />
-        <InfoCard
-          title="สถานะรอบเพาะปลูก"
-          subtitle="อยู่ระหว่างดูแลแปลงและบันทึกกิจกรรม"
-          meta={<StatusChip status="under_review" />}
-          action={<UIButton fullWidth>ดูแผนงานรอบนี้</UIButton>}
-        />
-        <InfoCard
-          title="นัดหมายตรวจแปลง"
-          subtitle="เจ้าหน้าที่นัดตรวจวันที่ 15 พฤษภาคม 2026"
-          meta={<StatusChip status="scheduled" />}
-          action={<UIButton variant="secondary" fullWidth>ยืนยันนัดหมาย</UIButton>}
-        />
+  const { status } = useAuth();
 
-        <PlotRegistrationMVP />
-        <NoBurnParticipationWorkflow />
+  // กำลังโหลด
+  if (status === 'loading') {
+    return <LoadingState label="กำลังตรวจสอบบัญชี LINE…" />;
+  }
 
-        <FormSheet title="การลงทะเบียนแปลงและหลักฐาน">
-          <StepList
-            steps={[
-              { title: 'ลงทะเบียนข้อมูลแปลง', done: true, detail: 'บันทึกพิกัดและขนาดพื้นที่เรียบร้อย' },
-              { title: 'อัปโหลดภาพแปลงพร้อม GPS', detail: 'ถ่ายภาพจากจุดกลางแปลงเพื่อยืนยันพิกัด' },
-            ]}
-          />
-          <PhotoUploadPlaceholder label="ภาพแปลงและพิกัด GPS" />
-        </FormSheet>
+  // ยังไม่ได้ login / ไม่มี member record / access denied → ไปสมัคร
+  if (
+    status === 'unauthenticated' ||
+    status === 'no_member' ||
+    status === 'access_denied' ||
+    status === 'error'
+  ) {
+    return <RedirectToRegister />;
+  }
 
+  // รออนุมัติ
+  if (status === 'pending_approval') {
+    return <PendingApprovalScreen />;
+  }
 
-
-        <InfoCard
-          title="การเข้าร่วมงดเผา"
-          subtitle="คำขอเข้าร่วมอยู่ระหว่างรอเจ้าหน้าที่อนุมัติ"
-          meta={<StatusChip status="under_review" />}
-          action={<UIButton variant="ghost" fullWidth>แก้ไขคำขอ</UIButton>}
-        />
+  // ถูกปฏิเสธ / ระงับ
+  if (status === 'rejected') {
+    return (
+      <MobileAppShell title="ไม่ผ่านการอนุมัติ" subtitle="ติดต่อเจ้าหน้าที่เพื่อขอข้อมูลเพิ่มเติม">
+        <div className="mobile-stack" style={{ textAlign: 'center', padding: '24px 0' }}>
+          <div style={{ fontSize: 56 }}>❌</div>
+          <StatusChip status="rejected" />
+          <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
+            กรุณาติดต่อเจ้าหน้าที่ผ่าน LINE OA ของ KaonA
+          </p>
+        </div>
       </MobileAppShell>
-    </ProtectedRoute>
+    );
+  }
+
+  if (status === 'suspended') {
+    return (
+      <MobileAppShell title="บัญชีถูกระงับ" subtitle="ติดต่อเจ้าหน้าที่เพื่อขอความช่วยเหลือ">
+        <div className="mobile-stack" style={{ textAlign: 'center', padding: '24px 0' }}>
+          <div style={{ fontSize: 56 }}>⚠️</div>
+          <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
+            บัญชีของคุณถูกระงับชั่วคราว กรุณาติดต่อเจ้าหน้าที่
+          </p>
+        </div>
+      </MobileAppShell>
+    );
+  }
+
+  // approved → หน้าหลักตาม role (TODO: role-based home)
+  return (
+    <MobileAppShell title="หน้าหลัก" subtitle="ยินดีต้อนรับสู่ KaonA Agri">
+      <div className="mobile-stack" style={{ textAlign: 'center', padding: '16px 0' }}>
+        <div style={{ fontSize: 48 }}>🌾</div>
+        <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
+          กำลังพัฒนา dashboard — เร็วๆ นี้
+        </p>
+        <UIButton fullWidth onClick={() => window.location.reload()}>
+          รีเฟรช
+        </UIButton>
+      </div>
+    </MobileAppShell>
   );
 }
