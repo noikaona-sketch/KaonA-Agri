@@ -13,8 +13,8 @@ type StatusChipProps = {
 };
 
 const statusLabels: Record<CanonicalStatus, string> = {
-  draft: 'แบบร่าง',
-  submitted: 'ส่งคำขอแล้ว',
+  draft: 'ร่างเฉพาะในเครื่อง',
+  submitted: 'รออนุมัติ',
   under_review: 'รอตรวจสอบ',
   approved: 'อนุมัติแล้ว',
   rejected: 'ไม่อนุมัติ',

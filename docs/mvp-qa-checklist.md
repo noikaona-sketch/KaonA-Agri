@@ -1,152 +1,84 @@
-# MVP QA Checklist
+# MVP QA Checklist (Issue #148)
 
-This checklist is the release-readiness gate for the KaonA Agri LINE Mini App MVP.
+เช็กลิสต์นี้ใช้สำหรับ smoke test เส้นทาง MVP ที่มีอยู่แล้วเท่านั้น (ไม่เพิ่มฟีเจอร์ใหม่)
 
-## 1) Test Setup & Environment
+## Scope
 
-- [ ] Test with at least 5 user personas: `farmer`, `staff`, `admin`, `leader`, `inspector` (and `truck_owner` visibility checks if seeded).
-- [ ] Validate in mobile viewport first (LINE in-app browser behavior), then desktop browser sanity check.
-- [ ] Verify all required seed data exists (members, plots, planting cycles, tasks, approvals).
-- [ ] Confirm Supabase connectivity and expected RLS behavior for each role.
-- [ ] Confirm LIFF app initialization works in QA environment (app boot, profile fetch, route protection).
-- [ ] Capture test evidence format (screenshots + timestamp + role + expected/actual result).
+- `/member/register` *(ใน MVP ปัจจุบันแสดงผ่าน member onboarding flow บนหน้า member/home)*
+- `/service`
+- `/service/register`
+- `/service/booking`
+- `/field/register-role`
+- `/field/assist-registration`
+- `/admin-prototype/register-role`
+- `/admin-prototype/approvals`
+- `/no-burn` *(ใน MVP ปัจจุบันเป็นส่วนหนึ่งของ member flow)*
+- `/plots`
 
-## 2) Authentication & Session
+## Copy and UX standards (Thai mobile)
 
-- [ ] LIFF sign-in is the only interactive sign-in path for MVP users.
-- [ ] Unauthenticated users are redirected to sign-in/entry flow.
-- [ ] Session survives page refresh and route navigation.
-- [ ] Session expiration or invalid token produces clear re-auth flow.
-- [ ] Role resolution is deterministic when multiple roles exist.
-- [ ] Role-based landing page/home route is correct per user role.
+- [ ] ปุ่มและหัวข้อใช้คำสั้น อ่านเร็วบนมือถือ
+- [ ] ระบุบทบาทชัดเจน เช่น สมาชิก / ทีมบริการ / ทีมภาคสนาม / แอดมิน
+- [ ] มี next action ชัดเจน เช่น “กดส่งคำขอ”, “ไปหน้าจองบริการ”
+- [ ] เลี่ยงข้อความยาวที่ให้ความรู้สึกแบบเอกสารราชการ
 
-## 3) Authorization & Role Access
+## Status wording (must match exactly)
 
-- [ ] Each role only sees allowed routes/pages.
-- [ ] Forbidden pages/components are blocked server-side and client-side.
-- [ ] Navigation menu/tabs are role-aware and hide unauthorized entries.
-- [ ] Direct URL access to restricted pages is blocked with safe fallback.
-- [ ] Data queries return only allowed records for each role.
-- [ ] Write operations are denied for unauthorized roles (negative tests).
+- [ ] pending = **รออนุมัติ**
+- [ ] approved = **อนุมัติแล้ว**
+- [ ] rejected = **ไม่อนุมัติ**
+- [ ] under review = **รอตรวจสอบ**
+- [ ] local draft = **ร่างเฉพาะในเครื่อง**
 
-## 4) Member Registration Flow (MVP)
+## MVP / Local / Mock notes
 
-- [ ] New member form loads with correct required fields.
-- [ ] Validation messages appear for missing/invalid input.
-- [ ] Submit creates member in expected status (e.g., pending).
-- [ ] Duplicate prevention behavior is correct (e.g., LINE ID / key identifiers).
-- [ ] Staff/admin can review and approve/reject as defined.
-- [ ] Status transition history/audit timestamps are captured.
-- [ ] Approved member appears in downstream flows that depend on active membership.
+- [ ] หน้า no-burn ระบุชัดว่า GPS และรูปภาพเป็น **Mock**
+- [ ] หน้า plots ระบุชัดว่าเป็น **Local draft only**
+- [ ] หน้า registration ที่ใช้ localStorage ระบุชัดว่าเป็น **MVP/Local**
 
-## 5) Plot Registration & Geolocation
+## Route smoke checklist
 
-- [ ] Plot form loads and supports required geographic fields.
-- [ ] GPS capture works (lat/lng persisted correctly).
-- [ ] Manual coordinate entry validation works (range/format).
-- [ ] Plot ownership/member association is correct.
-- [ ] Plot status transitions are recorded and visible to authorized users.
-- [ ] Plot list/detail views show newly registered records with correct metadata.
+### 1) `/service`
+- [ ] หน้าโหลดได้บนมือถือ
+- [ ] เห็น 2 ทางเลือกหลัก: สมัครทีมบริการ / จองบริการ
+- [ ] ลิงก์ไป `/service/register` และ `/service/booking` ได้
 
-## 6) Planting Cycle & Field Operations
+### 2) `/service/register`
+- [ ] เห็นฟอร์มส่งคำขอบทบาททีมบริการ
+- [ ] ข้อความแจ้งว่าเก็บข้อมูลใน localStorage (MVP/Local)
+- [ ] หลังกดส่ง สถานะคำขอเป็น “รออนุมัติ”
 
-- [ ] Planting cycle creation flow works end-to-end.
-- [ ] Date and season fields enforce validation/business rules.
-- [ ] Linked member/plot references are consistent.
-- [ ] Editing/updating cycle state preserves data integrity.
-- [ ] Status chips/labels reflect backend source of truth.
+### 3) `/service/booking`
+- [ ] หน้าโหลดได้พร้อมคำอธิบายขั้นตอนสั้น
+- [ ] CTA และข้อความไม่ยาวเกินจำเป็น
 
-## 7) Seed Booking / Request Flow
+### 4) `/field/register-role`
+- [ ] หัวข้อแสดงว่าเป็นการสมัครบทบาทภาคสนาม
+- [ ] มี next action ชัดเจนให้ส่งคำขอ
 
-- [ ] Eligible users can create booking/request with required fields.
-- [ ] Quantity and constraints validation is enforced.
-- [ ] Staff/admin approval workflow functions as expected.
-- [ ] Rejection path requires/records reason (if defined in workflow).
-- [ ] Request status updates are visible to requester and approvers.
-- [ ] truck_owner visibility (if in MVP scope for assigned operations) is correct.
+### 5) `/field/assist-registration`
+- [ ] หัวข้อแสดงว่าเป็นงานช่วยลงทะเบียน
+- [ ] ตัวเลือกงานช่วยลงทะเบียนอ่านง่ายบนมือถือ
 
-## 8) No-Burn Evidence Submission
+### 6) `/admin-prototype/register-role`
+- [ ] หัวข้อสื่อว่าเป็นการสมัครบทบาทหลังบ้าน
+- [ ] มีข้อความ MVP/Local ชัดเจน
 
-- [ ] Evidence submission UI supports photo checklist requirements.
-- [ ] Image upload success/failure states are clear.
-- [ ] Geolocation capture confirmation is shown and persisted.
-- [ ] Evidence can be linked to correct member/plot/cycle context.
-- [ ] Inspectors/staff can review submitted evidence.
-- [ ] Evidence records retain timestamp, actor, and status trail.
+### 7) `/admin-prototype/approvals`
+- [ ] รายการรออนุมัติแสดงผลได้
+- [ ] ปุ่มสถานะใช้คำ “อนุมัติ” / “ไม่อนุมัติ”
+- [ ] หากกรอกเหตุผล ช่องข้อความสื่อความหมายชัด
 
-## 9) Inspection Tasks & Status Tracking
+### 8) `/plots`
+- [ ] ฟอร์มลงทะเบียนแปลงใช้งานได้
+- [ ] ข้อความระบุว่าเป็น Local draft only
+- [ ] สถานะร่างใช้คำ “ร่างเฉพาะในเครื่อง”
 
-- [ ] Inspection task list loads for authorized roles.
-- [ ] Task detail includes required context and evidence linkages.
-- [ ] Inspector can update task outcomes/status.
-- [ ] Status progression follows allowed transitions only.
-- [ ] Farmer/leader/staff views reflect updated status consistently.
-- [ ] Any SLA/priority indicator appears correctly if implemented.
+### 9) `/member/register` and `/no-burn` (embedded flows)
+- [ ] member registration flow ใช้คำสถานะตามมาตรฐานเดียวกัน
+- [ ] no-burn flow ระบุชัดว่า GPS/Photo เป็น Mock
+- [ ] ขั้นตอนถัดไปหลังส่งคำขออ่านง่ายและชัดเจน
 
-## 10) UI/UX & Navigation Quality
+## Build gate
 
-- [ ] Primary navigation follows role-aware MVP map.
-- [ ] Back/forward behavior is predictable in LINE in-app browser.
-- [ ] Forms are mobile-usable (touch targets, keyboard types, spacing).
-- [ ] Loading/empty/error states exist for every critical list/detail view.
-- [ ] CTA labels and status chips are clear and consistent.
-- [ ] Thai/English copy (if bilingual) is consistent and non-truncated.
-
-## 11) Data Integrity & Auditability
-
-- [ ] Created/updated timestamps populate correctly.
-- [ ] `created_by` / `updated_by` (or equivalent actor fields) are captured where required.
-- [ ] Cross-entity references (member ↔ plot ↔ cycle ↔ task) remain valid.
-- [ ] Soft-delete/archival behavior (if present) is respected by UI queries.
-- [ ] No orphaned records are created during happy or failure paths.
-
-## 12) Error Handling & Resilience
-
-- [ ] Network/API failures show actionable user feedback.
-- [ ] Retry paths are available where sensible.
-- [ ] Invalid server responses are handled gracefully.
-- [ ] Unauthorized/forbidden responses trigger correct UX fallback.
-- [ ] Form submit double-click protection prevents duplicate records.
-
-## 13) Performance & Reliability (MVP Baseline)
-
-- [ ] App entry/home route loads within acceptable mobile performance budget.
-- [ ] Critical pages remain responsive on low-end mobile devices.
-- [ ] Large list views paginate/limit safely (no major UI freezes).
-- [ ] Image uploads complete within acceptable QA threshold.
-
-## 14) Security & Privacy Baseline
-
-- [ ] No sensitive tokens/secrets exposed in client logs or UI.
-- [ ] PII visibility is role-appropriate.
-- [ ] Supabase RLS policies enforce read/write boundaries in real queries.
-- [ ] File upload access rules prevent unauthorized retrieval.
-
-## 15) Regression Smoke (Pre-Release)
-
-Run this full smoke for each deploy candidate:
-
-- [ ] Login → role home → logout/login cycle.
-- [ ] Member registration create + approval.
-- [ ] Plot registration with geolocation.
-- [ ] Planting cycle create/update.
-- [ ] Seed request create + approve/reject.
-- [ ] No-burn evidence submit + review.
-- [ ] Inspection task update + downstream status visibility.
-
-## 16) Release Exit Criteria
-
-- [ ] All P0/P1 MVP scenarios pass.
-- [ ] No open critical or high-severity defects.
-- [ ] Known issues are documented with owner + target fix date.
-- [ ] Product + engineering sign-off completed.
-- [ ] QA evidence package archived (screenshots, logs, checklist revision).
-
----
-
-## Suggested Defect Severity Guide
-
-- **P0/Critical**: Security/data loss/system unusable.
-- **P1/High**: Core MVP flow broken; no viable workaround.
-- **P2/Medium**: Partial workaround exists; non-core impact.
-- **P3/Low**: Cosmetic/minor UX issue.
+- [ ] รัน `npm run build` ผ่านก่อนส่ง PR

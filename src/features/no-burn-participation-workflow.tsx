@@ -83,7 +83,7 @@ export function NoBurnParticipationWorkflow() {
 
   return (
     <FormSheet
-      title="เข้าร่วมโครงการไม่เผา (MVP)"
+      title="เข้าร่วมไม่เผา (MVP/Mock)"
       footer={
         <div style={{ display: 'grid', gap: 8 }}>
           {submittedAt ? (
@@ -145,7 +145,7 @@ export function NoBurnParticipationWorkflow() {
 
       {currentStep === 'gps' ? (
         <div>
-          <p>แนบหลักฐานพิกัด GPS (MVP: จำลองการแนบพิกัดในแอป ไม่ติดตามเบื้องหลัง)</p>
+          <p>GPS (Mock): กดแนบเพื่อทดสอบเท่านั้น ยังไม่ใช้ GPS จริง</p>
           <UIButton type="button" onClick={() => setGpsAttached((value) => !value)}>
             {gpsAttached ? 'ลบพิกัด GPS (Mock)' : 'แนบพิกัด GPS (Mock)'}
           </UIButton>
@@ -154,7 +154,7 @@ export function NoBurnParticipationWorkflow() {
 
       {currentStep === 'photos' ? (
         <div>
-          <p>อัปโหลดรูปกิจกรรมไม่เผา (MVP: จำลองการอัปโหลด, ไม่ส่งไฟล์จริง)</p>
+          <p>รูปกิจกรรม (Mock): เพิ่ม/ลบรูปจำลอง ยังไม่อัปโหลดไฟล์จริง</p>
           <div style={{ display: 'flex', gap: 8 }}>
             <UIButton type="button" onClick={() => setPhotoCount((value) => Math.min(5, value + 1))}>
               เพิ่มรูป (Mock)
@@ -177,14 +177,14 @@ export function NoBurnParticipationWorkflow() {
           {submittedAt ? (
             <>
               <p>ส่งคำขอสำเร็จเมื่อ {submittedAt}</p>
-              <p>สถานะปัจจุบัน: รอตรวจสอบ (Pending verification)</p>
+              <p>สถานะปัจจุบัน: รอตรวจสอบ</p>
               <p>ติดตามสถานะ: ส่งคำขอแล้ว → รอตรวจสอบ → อนุมัติ/ไม่อนุมัติ</p>
             </>
           ) : (
             <p>เมื่อกดปุ่ม "ส่งคำขอ" ระบบจะเปลี่ยนสถานะเป็นรอตรวจสอบ</p>
           )}
-          <p>ส่งคำขอสำเร็จแล้ว สถานะปัจจุบัน: รอตรวจโดยทีมภาคสนาม</p>
-          <p>Timeline: Submitted → Under review → Approved</p>
+          <p>ส่งคำขอแล้ว ขั้นตอนถัดไป: รอตรวจโดยทีมภาคสนาม</p>
+          <p>สถานะ: รออนุมัติ → รอตรวจสอบ → อนุมัติแล้ว/ไม่อนุมัติ</p>
           <PendingApprovalPanel domain="no_burn_verification" status="under_review" />
         </>
       ) : null}

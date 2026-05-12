@@ -8,8 +8,8 @@ export type PendingApprovalStatusMeta = {
 };
 
 const statusMetaMap: Record<PendingApprovalStatus, PendingApprovalStatusMeta> = {
-  draft: { label: 'แบบร่าง', detail: 'ข้อมูลยังไม่ถูกส่งเพื่อพิจารณา' },
-  submitted: { label: 'ส่งคำขอแล้ว', detail: 'กำลังรอเจ้าหน้าที่รับเรื่อง' },
+  draft: { label: 'ร่างเฉพาะในเครื่อง', detail: 'บันทึกไว้ในเครื่องนี้ ยังไม่ส่งเข้าระบบจริง' },
+  submitted: { label: 'รออนุมัติ', detail: 'ส่งคำขอแล้ว รอเจ้าหน้าที่อนุมัติ' },
   under_review: { label: 'รอตรวจสอบ', detail: 'เจ้าหน้าที่กำลังตรวจสอบข้อมูลและหลักฐาน' },
   approved: { label: 'อนุมัติแล้ว', detail: 'คำขอได้รับการอนุมัติแล้ว' },
   rejected: { label: 'ไม่อนุมัติ', detail: 'คำขอไม่ผ่านการอนุมัติ' },
