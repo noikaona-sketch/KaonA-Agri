@@ -16,6 +16,12 @@ async function verifyLine(idToken: string) {
   return data.sub;
 }
 
+type PlotPayload = {
+  name: string; areaRai: number;
+  lat: number; lng: number; accuracy: number | null;
+  landDocType: string | null; landDocNumber: string | null; province: string | null;
+};
+
 export async function POST(request: Request) {
   try {
     const form = await request.formData();
@@ -24,7 +30,7 @@ export async function POST(request: Request) {
     const phone = form.get('phone') as string;
     const citizenIdMasked = form.get('citizenIdMasked') as string;
     const address = (form.get('address') as string) || null;
-    const plotsJson = form.get('plots') as string;
+    const plotsJson = (form.get('plots') as string) || '[]';
 
     if (!idToken || !fullName || !citizenIdMasked) {
       return NextResponse.json({ error: 'ข้อมูลไม่ครบ' }, { status: 400 });
@@ -33,50 +39,61 @@ export async function POST(request: Request) {
     const lineUserId = await verifyLine(idToken);
     const supabase = createServerSupabaseClient();
 
-    // สมัครสมาชิก
-    const { data: memberId, error: regError } = await supabase.rpc('submit_farmer_registration', {
-      p_line_user_id: lineUserId,
-      p_full_name: fullName,
-      p_phone: phone,
-      p_citizen_id_masked: citizenIdMasked,
-      p_address: address,
-    });
+    // หา member จาก line_user_id
+    const { data: member, error: findErr } = await supabase
+      .from('members').select('id').eq('line_user_id', lineUserId).maybeSingle();
 
-    if (regError || !memberId) {
-      return NextResponse.json({ error: regError?.message ?? 'สมัครสมาชิกไม่สำเร็จ' }, { status: 500 });
+    if (findErr || !member) {
+      return NextResponse.json({ error: 'ไม่พบข้อมูลสมาชิก กรุณาเปิดแอปใหม่' }, { status: 404 });
     }
 
-    // เพิ่มแปลง
-    const plots = plotsJson ? (JSON.parse(plotsJson) as Array<Record<string, unknown>>) : [];
+    // อัปเดตข้อมูลสมาชิก
+    const { error: updateErr } = await supabase.from('members').update({
+      full_name: fullName, phone, citizen_id_masked: citizenIdMasked,
+      address, status: 'pending', registration_type: 'self', updated_at: new Date().toISOString(),
+    }).eq('id', member.id);
 
+    if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 500 });
+
+    // ตั้ง role farmer
+    await supabase.from('member_roles').upsert(
+      { member_id: member.id, role: 'farmer', is_primary: true },
+      { onConflict: 'member_id,role' }
+    );
+
+    // สร้าง approval
+    await supabase.from('approvals').insert({
+      member_id: member.id, requested_by: member.id,
+      resource_type: 'member', resource_id: member.id,
+      status: 'pending', note: 'Farmer registration',
+    }).then(() => {}); // ignore duplicate
+
+    // เพิ่มแปลง (direct insert ไม่ต้องผ่าน RPC)
+    const plots = JSON.parse(plotsJson) as PlotPayload[];
     for (const plot of plots) {
       if (!plot.name || !plot.areaRai || plot.lat == null || plot.lng == null) continue;
-      await supabase.rpc('add_registration_plot', {
-        p_member_id: memberId,
-        p_name: plot.name,
-        p_area_rai: plot.areaRai,
-        p_lat: plot.lat,
-        p_lng: plot.lng,
-        p_accuracy: plot.accuracy ?? null,
-        p_land_doc_type: plot.landDocType ?? null,
-        p_land_doc_number: plot.landDocNumber ?? null,
-        p_province: plot.province ?? null,
-        p_description: null,
+      await supabase.from('plots').insert({
+        member_id: member.id, name: plot.name, area_rai: plot.areaRai,
+        lat: plot.lat, lng: plot.lng, accuracy: plot.accuracy,
+        land_doc_type: plot.landDocType, land_doc_number: plot.landDocNumber,
+        province: plot.province, status: 'pending_review',
+        created_by: member.id, role_used: 'farmer', timestamp: new Date().toISOString(),
       });
     }
 
-    // Upload รูปแปลง (ถ้ามี)
+    // Upload รูปแปลง
     for (let i = 0; i < plots.length; i++) {
-      const photoFile = form.get(`plotPhoto_${i}`);
-      if (photoFile instanceof File && photoFile.size > 0) {
-        const path = `${memberId}/plots/plot_${i}_${Date.now()}.${photoFile.name.split('.').pop()}`;
-        await supabase.storage.from('member-photos').upload(path, photoFile, { upsert: true });
+      const photo = form.get(`plotPhoto_${i}`);
+      if (photo instanceof File && photo.size > 0) {
+        const ext = photo.name.split('.').pop() ?? 'jpg';
+        await supabase.storage.from('member-photos')
+          .upload(`${member.id}/plots/plot_${i}_${Date.now()}.${ext}`, photo, { upsert: true });
       }
     }
 
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error('[REGISTER_FARMER]', error);
-    return NextResponse.json({ error: 'เกิดข้อผิดพลาด กรุณาลองใหม่' }, { status: 500 });
+    return NextResponse.json({ error: String(error) }, { status: 500 });
   }
 }
