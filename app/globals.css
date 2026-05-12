@@ -223,57 +223,71 @@ body {
 .admin-web-shell {
   min-height: 100dvh;
   display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
-  gap: 20px;
-  padding: 20px;
-  background: linear-gradient(135deg, #ecf6ec 0%, #f7faf7 45%, #eef5ee 100%);
+  grid-template-columns: 260px minmax(0, 1fr);
+  background: #f0f2f0;
 }
 
 .admin-web-shell__sidebar {
-  background: #164f27;
+  background: linear-gradient(180deg, #0d3d1f 0%, #164f27 60%, #1a5e2e 100%);
   color: #ffffff;
-  border-radius: 18px;
-  padding: 18px 14px;
+  padding: 24px 16px;
   position: sticky;
-  top: 20px;
-  height: calc(100dvh - 40px);
+  top: 0;
+  height: 100dvh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
 }
 
 .admin-web-shell__brand {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 18px;
+  gap: 10px;
+  margin-bottom: 8px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.12);
 }
 
-.admin-web-shell__nav { display: grid; gap: 8px; }
+.admin-web-shell__nav { display: grid; gap: 2px; }
 .admin-web-shell__nav-item {
-  min-height: 44px;
-  display: inline-flex;
+  min-height: 42px;
+  display: flex;
   align-items: center;
   padding: 0 12px;
   border-radius: 10px;
   text-decoration: none;
-  color: #e7f6ea;
-  font-weight: 600;
+  color: rgba(255,255,255,0.72);
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.15s, color 0.15s;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+}
+
+.admin-web-shell__nav-item:hover {
+  background: rgba(255,255,255,0.10);
+  color: #ffffff;
 }
 
 .admin-web-shell__nav-item--active {
-  background: #ffffff;
-  color: #1f6f33;
+  background: rgba(255,255,255,0.18);
+  color: #ffffff;
+  font-weight: 700;
 }
 
 .admin-web-shell__nav-item--disabled {
-  opacity: 0.55;
+  opacity: 0.35;
   cursor: not-allowed;
 }
 
 .admin-web-shell__content-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  box-shadow: var(--shadow-2);
-  padding: 22px;
+  background: #ffffff;
+  min-height: 100dvh;
+  padding: 32px 36px;
 }
 
 .admin-web-shell__header {
@@ -281,20 +295,155 @@ body {
   justify-content: space-between;
   align-items: flex-start;
   gap: 12px;
+  margin-bottom: 28px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #e8ede8;
 }
 
-.admin-web-shell__title { margin: 0; font-size: 28px; line-height: 36px; }
-.admin-web-shell__subtitle { margin: 8px 0 0; color: var(--text-secondary); }
-.admin-web-shell__content { margin-top: 18px; }
+.admin-web-shell__title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.2;
+  color: #0d3d1f;
+}
+.admin-web-shell__subtitle { margin: 4px 0 0; color: var(--text-secondary); font-size: 14px; }
+.admin-web-shell__content { }
+
+/* ── Admin Table ── */
+.admin-table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid #e8ede8; }
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.admin-table th {
+  background: #f7faf7;
+  color: #4a6741;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid #e8ede8;
+  white-space: nowrap;
+}
+.admin-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid #f0f2f0;
+  vertical-align: middle;
+  color: #1a1f1c;
+}
+.admin-table tr:last-child td { border-bottom: none; }
+.admin-table tr:hover td { background: #f9fbf9; }
+.admin-table tr { transition: background 0.1s; }
+
+/* ── Status Badge ── */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.status-badge--approved  { background: #e8f5e9; color: #2e7d32; }
+.status-badge--pending   { background: #fff8e1; color: #e65100; }
+.status-badge--rejected  { background: #ffebee; color: #c62828; }
+.status-badge--suspended { background: #f5f5f5; color: #616161; }
+
+/* ── Role Badge ── */
+.role-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #e8f5e9;
+  color: #1b5e20;
+  border: 1px solid #a5d6a7;
+  margin: 2px;
+}
+
+/* ── Admin Action Button ── */
+.admin-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: opacity 0.15s, transform 0.1s;
+  text-decoration: none;
+}
+.admin-btn:hover { opacity: 0.85; }
+.admin-btn:active { transform: scale(0.97); }
+.admin-btn--primary   { background: #1b5e20; color: #fff; }
+.admin-btn--success   { background: #2e7d32; color: #fff; }
+.admin-btn--danger    { background: #c62828; color: #fff; }
+.admin-btn--secondary { background: #f0f2f0; color: #333; border: 1px solid #d8ddd8; }
+.admin-btn--ghost     { background: transparent; color: #2e7d32; border: 1px solid #a5d6a7; }
+.admin-btn:disabled   { opacity: 0.45; cursor: not-allowed; }
+
+/* ── Search & Filter Bar ── */
+.admin-filter-bar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  align-items: center;
+}
+.admin-search {
+  flex: 1;
+  padding: 10px 14px;
+  border: 1.5px solid #d8ddd8;
+  border-radius: 10px;
+  font-size: 14px;
+  outline: none;
+  background: #fff;
+  transition: border-color 0.15s;
+}
+.admin-search:focus { border-color: #2e7d32; }
+.admin-select {
+  padding: 10px 14px;
+  border: 1.5px solid #d8ddd8;
+  border-radius: 10px;
+  font-size: 14px;
+  outline: none;
+  background: #fff;
+  cursor: pointer;
+}
+
+/* ── KPI Cards ── */
+.admin-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 28px;
+}
+.admin-kpi-card {
+  background: #fff;
+  border: 1px solid #e8ede8;
+  border-radius: 14px;
+  padding: 20px;
+  text-decoration: none;
+  display: block;
+  transition: box-shadow 0.15s, transform 0.15s;
+}
+.admin-kpi-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); transform: translateY(-2px); }
+.admin-kpi-icon { font-size: 28px; margin-bottom: 10px; }
+.admin-kpi-value { font-size: 28px; font-weight: 800; color: #0d3d1f; line-height: 1; }
+.admin-kpi-label { font-size: 13px; color: #6b7280; margin-top: 4px; }
 
 @media (max-width: 1023px) {
-  .admin-web-shell {
-    grid-template-columns: 1fr;
-    padding: calc(12px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom));
-  }
-
-  .admin-web-shell__sidebar {
-    position: static;
-    height: auto;
-  }
+  .admin-web-shell { grid-template-columns: 1fr; }
+  .admin-web-shell__sidebar { position: static; height: auto; }
+  .admin-web-shell__content-card { padding: 20px 16px; }
 }

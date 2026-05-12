@@ -1,12 +1,11 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { ErrorState } from '@/shared/components/error-state';
 import { LoadingState } from '@/shared/components/loading-state';
-import { StatusChip } from '@/shared/components/status-chip';
-import { UIButton } from '@/shared/components/ui-button';
 
 type QueueItem = {
   approval_id: string;
@@ -18,24 +17,24 @@ type QueueItem = {
 };
 
 export function AdminApprovalQueue() {
-  const [items, setItems]   = useState<QueueItem[]>([]);
+  const [items, setItems]     = useState<QueueItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [actingId, setActingId] = useState<string | null>(null);
-  const [error, setError]   = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [error, setError]     = useState<string | null>(null);
+  const [notice, setNotice]   = useState<string | null>(null);
 
   async function loadQueue() {
     setLoading(true);
-    setError(null);
     const supabase = createSupabaseBrowserClient();
     const { data, error: rpcError } = await supabase.rpc('list_member_onboarding_queue');
-    if (rpcError) { setError(rpcError.message); } else { setItems((data as QueueItem[]) ?? []); }
+    if (rpcError) setError(rpcError.message);
+    else setItems((data as QueueItem[]) ?? []);
     setLoading(false);
   }
 
   useEffect(() => { void loadQueue(); }, []);
 
-  async function review(approvalId: string, decision: 'approved' | 'rejected') {
+  async function review(approvalId: string, memberId: string, decision: 'approved' | 'rejected') {
     if (!window.confirm(decision === 'approved' ? 'อนุมัติสมาชิกนี้?' : 'ไม่อนุมัติสมาชิกนี้?')) return;
     setActingId(approvalId);
     setNotice(null);
@@ -49,53 +48,75 @@ export function AdminApprovalQueue() {
     await loadQueue();
   }
 
-  if (loading) return <LoadingState label="กำลังโหลดคิวอนุมัติ…" />;
+  if (loading) return <LoadingState label="กำลังโหลด…" />;
   if (error) return <ErrorState title="โหลดไม่สำเร็จ" detail={error} />;
 
   return (
-    <div className="mobile-stack">
-      {notice && <p style={{ margin: 0, fontWeight: 600, color: 'var(--primary)' }}>{notice}</p>}
-
-      {items.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-secondary)' }}>
-          <div style={{ fontSize: 40 }}>✅</div>
-          <p style={{ margin: '8px 0 0' }}>ไม่มีคำขอรออนุมัติ</p>
+    <div>
+      {notice && (
+        <div style={{ background: '#e8f5e9', border: '1px solid #a5d6a7', borderRadius: 10, padding: '12px 16px', marginBottom: 16, color: '#1b5e20', fontWeight: 600 }}>
+          {notice}
         </div>
       )}
 
-      {items.map((item) => (
-        <article key={item.approval_id} className="kaona-card">
-          <div className="kaona-card__header">
-            <div className="kaona-card__heading">
-              <p className="kaona-card__title">{item.full_name}</p>
-              <p className="kaona-card__subtitle">
-                📞 {item.phone ?? '-'} · บัตร: {item.citizen_id_masked}
-              </p>
-              <p className="kaona-card__subtitle">
-                ยื่นเมื่อ: {new Date(item.requested_at).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-              </p>
-            </div>
-            <StatusChip status="submitted" />
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 12 }}>
-            <UIButton
-              onClick={() => review(item.approval_id, 'approved')}
-              loading={actingId === item.approval_id}
-              disabled={actingId !== null}
-            >
-              ✅ อนุมัติ
-            </UIButton>
-            <UIButton
-              variant="secondary"
-              onClick={() => review(item.approval_id, 'rejected')}
-              loading={actingId === item.approval_id}
-              disabled={actingId !== null}
-            >
-              ❌ ไม่อนุมัติ
-            </UIButton>
-          </div>
-        </article>
-      ))}
+      {items.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '48px 0', color: '#9ca3af' }}>
+          <div style={{ fontSize: 48, marginBottom: 12 }}>✅</div>
+          <p style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>ไม่มีคำขอรออนุมัติ</p>
+          <p style={{ margin: '4px 0 0', fontSize: 14 }}>สมาชิกทุกคนได้รับการตรวจสอบแล้ว</p>
+        </div>
+      ) : (
+        <div className="admin-table-wrap">
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>ชื่อ-นามสกุล</th>
+                <th>เบอร์โทร</th>
+                <th>เลขบัตร (ปกปิด)</th>
+                <th>วันที่ยื่น</th>
+                <th style={{ textAlign: 'center' }}>การดำเนินการ</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item) => (
+                <tr key={item.approval_id}>
+                  <td>
+                    <Link href={`/admin/members/${item.member_id}`} style={{ fontWeight: 700, color: '#0d3d1f', textDecoration: 'none' }}>
+                      {item.full_name}
+                    </Link>
+                  </td>
+                  <td style={{ color: '#6b7280' }}>{item.phone ?? '—'}</td>
+                  <td style={{ fontFamily: 'monospace', color: '#6b7280' }}>{item.citizen_id_masked}</td>
+                  <td style={{ color: '#6b7280', whiteSpace: 'nowrap', fontSize: 13 }}>
+                    {new Date(item.requested_at).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </td>
+                  <td>
+                    <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
+                      <button
+                        className="admin-btn admin-btn--success"
+                        onClick={() => review(item.approval_id, item.member_id, 'approved')}
+                        disabled={actingId !== null}
+                      >
+                        ✅ อนุมัติ
+                      </button>
+                      <button
+                        className="admin-btn admin-btn--danger"
+                        onClick={() => review(item.approval_id, item.member_id, 'rejected')}
+                        disabled={actingId !== null}
+                      >
+                        ❌ ไม่อนุมัติ
+                      </button>
+                      <Link href={`/admin/members/${item.member_id}`} className="admin-btn admin-btn--secondary">
+                        ดูข้อมูล
+                      </Link>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
