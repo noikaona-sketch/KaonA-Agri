@@ -186,15 +186,14 @@ export function RegistrationRequestForm({ title, subtitle, type }: { title: stri
   );
 }
 
-export function ApprovalsQueuePage() {
+export function ApprovalsQueueContent() {
   const { items, review } = useRoleRequests();
   const [selectedId, setSelectedId] = useState('');
   const [reason, setReason] = useState('');
   const selected = items.find((item) => item.id === selectedId) ?? null;
 
   return (
-    <MobileAppShell title="คิวอนุมัติคำขอบทบาท" subtitle="MVP/Local: อนุมัติคำขอจากข้อมูลในเครื่องนี้" roleBadge="แอดมิน">
-      <section className="mobile-stack">
+    <section className="mobile-stack">
         <article className="kaona-card">
           <h2 className="kaona-card__title">รายการรออนุมัติ</h2>
           <div style={{ display: 'grid', gap: 8 }}>
@@ -220,6 +219,13 @@ export function ApprovalsQueuePage() {
           </article>
         ) : null}
       </section>
+  );
+}
+
+export function ApprovalsQueuePage() {
+  return (
+    <MobileAppShell title="คิวอนุมัติคำขอบทบาท" subtitle="MVP/Local: อนุมัติคำขอจากข้อมูลในเครื่องนี้" roleBadge="แอดมิน">
+      <ApprovalsQueueContent />
     </MobileAppShell>
   );
 }
