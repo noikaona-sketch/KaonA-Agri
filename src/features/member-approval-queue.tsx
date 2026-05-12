@@ -22,6 +22,7 @@ export function MemberApprovalQueue() {
   const [loading, setLoading] = useState(true);
   const [actingId, setActingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   async function loadQueue() {
     setLoading(true);
@@ -44,8 +45,12 @@ export function MemberApprovalQueue() {
   }, []);
 
   async function review(approvalId: string, decision: 'approved' | 'rejected') {
+    const confirmationMessage = decision === 'approved' ? 'Approve this member onboarding request?' : 'Reject this member onboarding request?';
+    if (!window.confirm(confirmationMessage)) return;
+
     setActingId(approvalId);
     setError(null);
+    setNotice(null);
 
     const supabase = createSupabaseBrowserClient();
     const { error: rpcError } = await supabase.rpc('review_member_onboarding', {
@@ -60,6 +65,8 @@ export function MemberApprovalQueue() {
       return;
     }
 
+    setNotice(decision === 'approved' ? 'Member request approved.' : 'Member request rejected.');
+
     await loadQueue();
   }
 
@@ -68,6 +75,7 @@ export function MemberApprovalQueue() {
       {loading ? <p>Loading pending requests...</p> : null}
       {!loading && items.length === 0 ? <p>No pending member approvals.</p> : null}
       {error ? <ErrorState title="Approval queue error" detail={error} /> : null}
+      {notice ? <p>{notice}</p> : null}
 
       {items.map((item) => (
         <article key={item.approval_id}>
@@ -80,7 +88,7 @@ export function MemberApprovalQueue() {
             <UIButton
               onClick={() => review(item.approval_id, 'approved')}
               loading={actingId === item.approval_id}
-              disabled={actingId === item.approval_id}
+              disabled={actingId !== null}
             >
               Approve
             </UIButton>
@@ -88,7 +96,7 @@ export function MemberApprovalQueue() {
               variant="secondary"
               onClick={() => review(item.approval_id, 'rejected')}
               loading={actingId === item.approval_id}
-              disabled={actingId === item.approval_id}
+              disabled={actingId !== null}
             >
               Reject
             </UIButton>
