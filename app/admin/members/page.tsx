@@ -1,14 +1,10 @@
-'use client';
-
-import { MemberApprovalQueue } from '@/features/member-approval-queue';
+import { AdminMemberList } from '@/features/admin-members/admin-member-list';
 import { AdminWebShell } from '@/shared/components/admin-web-shell';
-import { SectionHeader } from '@/shared/components/section-header';
 
 export default function AdminMembersPage() {
   return (
-    <AdminWebShell title="สมาชิก" subtitle="จัดการข้อมูลสมาชิกและสถานะการอนุมัติ" roleBadge="แอดมิน">
-      <SectionHeader title="รายการสมาชิก" subtitle="หน้าหลังบ้านสำหรับตรวจสอบและจัดการสมาชิก" />
-      <MemberApprovalQueue />
+    <AdminWebShell title="สมาชิกทั้งหมด" subtitle="ค้นหา กรอง และจัดการสมาชิกในระบบ">
+      <AdminMemberList />
     </AdminWebShell>
   );
 }

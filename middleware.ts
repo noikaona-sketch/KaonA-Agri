@@ -9,9 +9,14 @@ function isAdminProtectedPath(pathname: string) {
   return isAdminWebPath(pathname);
 }
 
+// UUID pattern
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export function middleware(request: NextRequest) {
   if (isAdminProtectedPath(request.nextUrl.pathname)) {
-    const isLoggedIn = request.cookies.get(ADMIN_COOKIE_NAME)?.value === '1';
+    const cookieVal = request.cookies.get(ADMIN_COOKIE_NAME)?.value ?? '';
+    // รองรับทั้ง UUID (ใหม่) และ '1' (เดิม ระหว่าง migration)
+    const isLoggedIn = UUID_RE.test(cookieVal) || cookieVal === '1';
 
     if (!isLoggedIn) {
       const loginUrl = new URL('/admin-login', request.url);
