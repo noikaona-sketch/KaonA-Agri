@@ -82,8 +82,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   useEffect(() => {
     const shouldBypassLineAuth = isAdminWebPath(pathname);
+    const isPublicRegistrationPath =
+      pathname === '/service/register' || pathname === '/field/assist-registration' || pathname === '/field/register-role';
 
-    if (shouldBypassLineAuth) {
+    if (shouldBypassLineAuth || isPublicRegistrationPath) {
       setStatus('unauthenticated');
       setMember(null);
       setErrorMessage(null);
