@@ -1,14 +1,16 @@
 import { NextResponse } from 'next/server';
 
-import { parseThaiIdCard, processDocumentAI } from '../google-documentai';
+import { processDocumentAI } from '../google-documentai';
 
+// OCR สำหรับเอกสารทั่วไป: บัตรเกษตรกร, โฉนด, ทะเบียนรถ
 export async function POST(request: Request) {
   try {
     const form = await request.formData();
-    const file = form.get('idImage');
+    const file = form.get('document');
+    const docType = (form.get('docType') as string) ?? 'other';
 
     if (!(file instanceof File)) {
-      return NextResponse.json({ error: 'Missing ID image' }, { status: 400 });
+      return NextResponse.json({ error: 'Missing document file' }, { status: 400 });
     }
 
     const configured =
@@ -25,23 +27,16 @@ export async function POST(request: Request) {
     const mimeType = file.type || 'image/jpeg';
 
     const result = await processDocumentAI(imageBase64, mimeType);
-    const extracted = parseThaiIdCard(result);
 
-    if (!extracted.citizenId && !extracted.fullName) {
-      return NextResponse.json({ error: 'Unable to extract ID fields — กรุณากรอกด้วยตนเอง' }, { status: 422 });
-    }
-
+    // ดึง text แล้วให้ frontend แสดงให้ user ตรวจสอบ
     return NextResponse.json({
-      extracted: {
-        fullName:    extracted.fullName,
-        citizenId:   extracted.citizenId,
-        address:     extracted.address,
-        dateOfBirth: extracted.dateOfBirth,
-      },
-      confidence: Math.round(extracted.confidence * 100),
+      docType,
+      rawText: result.text,
+      entities: result.entities,
+      confidence: Math.round(result.confidence * 100),
     });
   } catch (error) {
-    console.error('[OCR_ID_CARD]', error);
+    console.error('[OCR_DOCUMENT]', error);
     return NextResponse.json({ error: 'OCR processing failed — กรุณากรอกด้วยตนเอง' }, { status: 500 });
   }
 }
