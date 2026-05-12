@@ -18,11 +18,11 @@ type ProtectedRouteProps = {
   fallbackError?: ReactNode;
 };
 
-function StateView({ title, subtitle }: { title: string; subtitle: string }) {
+function StateView({ title, subtitle, kicker = 'สถานะการเข้าใช้งาน' }: { title: string; subtitle: string; kicker?: string }) {
   return (
     <main className="mobile-shell">
       <section className="mobile-shell__card">
-        <p className="mobile-shell__kicker">Authentication</p>
+        <p className="mobile-shell__kicker">{kicker}</p>
         <h1 className="mobile-shell__title">{title}</h1>
         <p className="mobile-shell__subtitle">{subtitle}</p>
       </section>
@@ -55,24 +55,24 @@ export function ProtectedRoute({ allowedRoles, children, ...fallbacks }: Protect
   const member = useCurrentMember();
   const effectiveRole = useEffectiveRole();
 
-  if (status === 'loading') return fallbacks.fallbackLoading ?? <StateView title="Checking LINE session" subtitle="Confirming LIFF login and member profile." />;
+  if (status === 'loading') return fallbacks.fallbackLoading ?? <StateView title="กำลังตรวจสอบบัญชี LINE" subtitle="กำลังยืนยันการเข้าสู่ระบบและข้อมูลสมาชิก" />;
 
   if (status === 'unauthenticated') {
     return (
       fallbacks.fallbackUnauthenticated ?? (
-        <StateView title="LINE login required" subtitle={formatLiffDiagnostics(bridgeDiagnostics)} />
+        <StateView title="กรุณาเข้าสู่ระบบผ่าน LINE" subtitle={formatLiffDiagnostics(bridgeDiagnostics)} />
       )
     );
   }
 
-  if (status === 'error') return fallbacks.fallbackError ?? <StateView title="Authentication error" subtitle={errorMessage ?? 'Please retry shortly.'} />;
-  if (!member || status === 'no_member') return fallbacks.fallbackNoMember ?? <StateView title="No member profile" subtitle="Your LINE account is not linked to a member profile." />;
-  if (status === 'pending_approval') return fallbacks.fallbackPendingApproval ?? <StateView title="Pending approval" subtitle="Your account is awaiting approval." />;
-  if (status === 'rejected') return fallbacks.fallbackRejected ?? <StateView title="Access rejected" subtitle="Your member access request was rejected." />;
-  if (status === 'suspended') return fallbacks.fallbackSuspended ?? <StateView title="Account suspended" subtitle="Your member account is suspended." />;
+  if (status === 'error') return fallbacks.fallbackError ?? <StateView title="เกิดข้อผิดพลาดการยืนยันตัวตน" subtitle={errorMessage ?? 'กรุณาลองใหม่อีกครั้งในภายหลัง'} />;
+  if (!member || status === 'no_member') return fallbacks.fallbackNoMember ?? <StateView title="ไม่พบโปรไฟล์สมาชิก" subtitle="บัญชี LINE นี้ยังไม่เชื่อมกับข้อมูลสมาชิก" />;
+  if (status === 'pending_approval') return fallbacks.fallbackPendingApproval ?? <StateView title="สถานะ: รออนุมัติ" subtitle="คำขอสมัครสมาชิกของคุณอยู่ระหว่างการตรวจสอบ กรุณารอการอนุมัติจากเจ้าหน้าที่" kicker="รออนุมัติ" />;
+  if (status === 'rejected') return fallbacks.fallbackRejected ?? <StateView title="สถานะ: ไม่อนุมัติ" subtitle="คำขอสมัครสมาชิกของคุณไม่ได้รับการอนุมัติ กรุณาติดต่อเจ้าหน้าที่เพื่อขอคำแนะนำ" kicker="ไม่สามารถเข้าใช้งานได้" />;
+  if (status === 'suspended') return fallbacks.fallbackSuspended ?? <StateView title="บัญชีถูกระงับ" subtitle="บัญชีสมาชิกของคุณถูกระงับชั่วคราว กรุณาติดต่อเจ้าหน้าที่" />;
 
   if (member.is_approved !== true) {
-    return fallbacks.fallbackAccessDenied ?? <StateView title="Access denied" subtitle="Your account is not approved for protected modules." />;
+    return fallbacks.fallbackAccessDenied ?? <StateView title="ยังไม่สามารถเข้าใช้งานได้" subtitle="เฉพาะสมาชิกสถานะ อนุมัติแล้ว เท่านั้นที่เข้าใช้งานส่วนนี้ได้" />;
   }
 
   if (allowedRoles && allowedRoles.length > 0 && (!effectiveRole || !allowedRoles.includes(effectiveRole))) {
