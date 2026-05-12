@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
 import { ensureLiffIdToken, getLiffBridgeDiagnostics, getLiffBridgeSnapshot } from '@/lib/liff/init-liff';
-import { getSupabaseClientDiagnostics } from '@/lib/supabase/client';
+import { getSupabaseClientDiagnostics, tryCreateSupabaseBrowserClient } from '@/lib/supabase/client';
 import type {
   AppRole,
   AuthBootstrapResult,
@@ -83,6 +83,66 @@ export function AuthProvider({ children }: AuthProviderProps) {
     async function bootstrap() {
       try {
         setBridgeDiagnostics(getCombinedDiagnostics());
+
+        const supabaseClient = tryCreateSupabaseBrowserClient();
+
+        if (supabaseClient) {
+          const sessionResult = await supabaseClient.auth.getSession();
+          const accessToken = sessionResult.data.session?.access_token;
+
+          if (accessToken) {
+            const response = await fetch('/api/auth/session', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ accessToken }),
+            });
+
+            const payload = (await response.json()) as {
+              error?: string;
+              member?: AuthBootstrapResult;
+            };
+
+            if (response.ok && payload.member) {
+              const bootstrapResult: AuthBootstrapResult = {
+                ...payload.member,
+                roles: payload.member.roles.filter(isAppRole),
+                effective_role:
+                  payload.member.effective_role && isAppRole(payload.member.effective_role)
+                    ? payload.member.effective_role
+                    : null,
+                status: isMemberStatus(payload.member.status) ? payload.member.status : 'pending',
+              };
+
+              setMember(bootstrapResult);
+              setErrorMessage(null);
+
+              if (bootstrapResult.status === 'pending') {
+                setStatus('pending_approval');
+                return;
+              }
+
+              if (bootstrapResult.status === 'rejected') {
+                setStatus('rejected');
+                return;
+              }
+
+              if (bootstrapResult.status === 'suspended') {
+                setStatus('suspended');
+                return;
+              }
+
+              if (!bootstrapResult.is_approved) {
+                setStatus('access_denied');
+                return;
+              }
+
+              setStatus('approved');
+              return;
+            }
+          }
+        }
 
         const snapshot = await getLiffBridgeSnapshot();
 
