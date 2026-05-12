@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { usePathname } from 'next/navigation';
 
 import { ensureLiffIdToken, getLiffBridgeDiagnostics, getLiffBridgeSnapshot } from '@/lib/liff/init-liff';
 import { getSupabaseClientDiagnostics } from '@/lib/supabase/client';
@@ -72,12 +73,23 @@ function withBridgeMessage(message: string): LiffBridgeDiagnostics {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
+  const pathname = usePathname();
   const [status, setStatus] = useState<AuthStatus>('loading');
   const [member, setMember] = useState<AuthBootstrapResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [bridgeDiagnostics, setBridgeDiagnostics] = useState<LiffBridgeDiagnostics>(INITIAL_BRIDGE_DIAGNOSTICS);
 
   useEffect(() => {
+    const shouldBypassLineAuth = pathname === '/admin-login' || pathname === '/admin' || pathname.startsWith('/admin-prototype');
+
+    if (shouldBypassLineAuth) {
+      setStatus('unauthenticated');
+      setMember(null);
+      setErrorMessage(null);
+      setBridgeDiagnostics(getCombinedDiagnostics());
+      return;
+    }
+
     let isCancelled = false;
 
     async function bootstrap() {
@@ -176,7 +188,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     return () => {
       isCancelled = true;
     };
-  }, []);
+  }, [pathname]);
 
   const value = useMemo(
     () => ({ status, session: null, member, errorMessage, bridgeDiagnostics }),
