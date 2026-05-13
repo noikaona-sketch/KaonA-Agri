@@ -50,14 +50,14 @@ export default function AddPlotPage() {
   }
 
   async function handleSubmit() {
-    if (!member?.id) { setError('กรุณาเข้าสู่ระบบก่อน'); return; }
+    if (!member?.member_id) { setError('กรุณาเข้าสู่ระบบก่อน'); return; }
     if (!name.trim() || !areaRai || !lat || !lng) {
       setError('กรุณากรอกชื่อแปลง พื้นที่ และจับพิกัด GPS ให้ครบ'); return;
     }
     setSubmitting(true); setError(null);
     const s = createSupabaseBrowserClient();
     const { error: err } = await s.from('plots').insert({
-      member_id:       member.id,
+      member_id:       member.member_id,
       name:            name.trim(),
       area_rai:        Number(areaRai),
       province:        province || null,
@@ -65,7 +65,7 @@ export default function AddPlotPage() {
       land_doc_number: landDocNum || null,
       lat, lng, accuracy,
       status:          'pending_review',
-      created_by:      member.id,
+      created_by:      member.member_id,
       role_used:       'farmer',
       timestamp:       new Date().toISOString(),
     });

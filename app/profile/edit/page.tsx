@@ -24,12 +24,12 @@ export default function ProfileEditPage() {
   const [loadingData, setLoadingData] = useState(true);
 
   useEffect(() => {
-    if (!member?.id) return;
+    if (!member?.member_id) return;
     void (async () => {
       const s = createSupabaseBrowserClient();
       const { data } = await s.from('members')
         .select('full_name,phone,address,citizen_id_masked')
-        .eq('id', member.id).maybeSingle();
+        .eq('id', member.member_id).maybeSingle();
       if (data) {
         setFullName((data as Record<string, string>).full_name ?? '');
         setPhone((data as Record<string, string>).phone ?? '');
@@ -38,10 +38,10 @@ export default function ProfileEditPage() {
       }
       setLoadingData(false);
     })();
-  }, [member?.id]);
+  }, [member?.member_id]);
 
   async function handleSave() {
-    if (!member?.id) return;
+    if (!member?.member_id) return;
     if (!fullName.trim()) { setError('กรุณากรอกชื่อ-นามสกุล'); return; }
     setSubmitting(true); setError(null);
 
@@ -49,7 +49,7 @@ export default function ProfileEditPage() {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        memberId: member.id,
+        memberId: member.member_id,
         fullName: fullName.trim(),
         phone: phone.trim() || null,
         address: address.trim() || null,
