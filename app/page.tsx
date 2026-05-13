@@ -1,10 +1,11 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
 
 import { useAuth, useCurrentMember, useEffectiveRole } from '@/providers/auth-provider';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { LoadingState } from '@/shared/components/loading-state';
 import { MobileAppShell } from '@/shared/components/mobile-app-shell';
 
@@ -15,7 +16,16 @@ const ROLE_TH: Record<string, string> = {
 };
 
 // Farmer home
-function FarmerHome({ name }: { name: string }) {
+function FarmerHome({ name, memberId }: { name: string; memberId: string }) {
+  const [stats, setStats] = useState({ plots: 0, activeCycles: 0 });
+
+  useEffect(() => {
+    const s = createSupabaseBrowserClient();
+    void Promise.all([
+      s.from('plots').select('id', { count: 'exact', head: true }).eq('member_id', memberId).is('deleted_at', null),
+      s.from('planting_cycles').select('id', { count: 'exact', head: true }).eq('member_id', memberId).not('status', 'in', '("harvested","cancelled")'),
+    ]).then(([p, c]) => setStats({ plots: p.count ?? 0, activeCycles: c.count ?? 0 }));
+  }, [memberId]);
   return (
     <MobileAppShell title="" subtitle="">
       <div className="mobile-stack">
@@ -25,11 +35,11 @@ function FarmerHome({ name }: { name: string }) {
           <span className="home-hero__role">🌾 เกษตรกร</span>
           <div className="home-hero__stats">
             <div className="home-hero__stat">
-              <p className="home-hero__stat-val">—</p>
+              <p className="home-hero__stat-val">{stats.plots}</p>
               <p className="home-hero__stat-lbl">แปลงของฉัน</p>
             </div>
             <div className="home-hero__stat">
-              <p className="home-hero__stat-val">—</p>
+              <p className="home-hero__stat-val">{stats.activeCycles}</p>
               <p className="home-hero__stat-lbl">รอบปลูกปัจจุบัน</p>
             </div>
           </div>
@@ -182,8 +192,7 @@ export default function HomePage() {
   if (effectiveRole === 'inspector' || effectiveRole === 'staff')
     return <StaffHome name={name} role={effectiveRole} />;
   if (effectiveRole === 'farmer' || effectiveRole === 'leader')
-    return <FarmerHome name={name} />;
+    return <FarmerHome name={name} memberId={member?.member_id ?? ''} />;
 
-  // approved แต่ไม่มี role ที่รู้จัก
-  return <FarmerHome name={name} />;
+  return <FarmerHome name={name} memberId={member?.member_id ?? ''} />;
 }
