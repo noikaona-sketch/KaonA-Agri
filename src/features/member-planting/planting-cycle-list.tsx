@@ -35,25 +35,29 @@ function daysUntil(dateStr: string | null): number | null {
 
 export function PlantingCycleList() {
   const member = useCurrentMember();
+  const memberId = member?.member_id;
   const [cycles, setCycles]   = useState<Cycle[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeOnly, setActiveOnly] = useState(true);
 
   useEffect(() => {
-    if (!member?.id) return;
+    if (!memberId) {
+      setLoading(false);
+      return;
+    }
     void (async () => {
       setLoading(true);
       const s = createSupabaseBrowserClient();
       let q = s.from('planting_cycles')
         .select('id,crop_name,season_year,status,planted_at,expected_harvest_at,area_planted_rai,estimated_yield_kg,quota_kg,source,confirmed_at,products(name,seed_variety),plots(name)')
-        .eq('member_id', member.id)
+        .eq('member_id', memberId)
         .order('created_at', { ascending: false });
       if (activeOnly) q = q.not('status', 'in', '("harvested","cancelled")');
       const { data } = await q;
-      setCycles((data as Cycle[]) ?? []);
+      setCycles((data as unknown as Cycle[]) ?? []);
       setLoading(false);
     })();
-  }, [member?.id, activeOnly]);
+  }, [memberId, activeOnly]);
 
   if (loading) return <LoadingState label="กำลังโหลด…" />;
 
