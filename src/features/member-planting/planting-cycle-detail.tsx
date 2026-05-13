@@ -42,6 +42,7 @@ function daysUntil(d: string | null) {
 
 export function PlantingCycleDetail({ cycleId }: { cycleId: string }) {
   const member = useCurrentMember();
+  const memberId = member?.member_id;
   const [cycle, setCycle]     = useState<Cycle | null>(null);
   const [progress, setProgress] = useState<Progress[]>([]);
   const [plots, setPlots]     = useState<Plot[]>([]);
@@ -69,8 +70,8 @@ export function PlantingCycleDetail({ cycleId }: { cycleId: string }) {
         .select('id,stage,description,recorded_at')
         .eq('planting_cycle_id', cycleId)
         .order('recorded_at', { ascending: false }),
-      member?.id
-        ? s.from('plots').select('id,name,province').eq('member_id', member.id).is('deleted_at', null)
+      memberId
+        ? s.from('plots').select('id,name,province').eq('member_id', memberId).is('deleted_at', null)
         : Promise.resolve({ data: [] }),
     ]);
     if (cRes.error) { setError(cRes.error.message); setLoading(false); return; }
@@ -86,7 +87,7 @@ export function PlantingCycleDetail({ cycleId }: { cycleId: string }) {
     setLoading(false);
   }
 
-  useEffect(() => { void load(); }, [cycleId]);
+  useEffect(() => { void load(); }, [cycleId, memberId]);
 
   async function confirmPlanting() {
     if (!selectedPlot || !plantedDate) return;
@@ -103,11 +104,11 @@ export function PlantingCycleDetail({ cycleId }: { cycleId: string }) {
   }
 
   async function addProgress() {
-    if (!newStage || !member?.id) return;
+    if (!newStage || !memberId) return;
     setSaving(true);
     const s = createSupabaseBrowserClient();
     await s.from('planting_cycle_progress').insert({
-      planting_cycle_id: cycleId, member_id: member.id,
+      planting_cycle_id: cycleId, member_id: memberId,
       stage: newStage, description: stageDesc || null,
     });
     // อัปเดต status ของ cycle ด้วย
@@ -140,7 +141,6 @@ export function PlantingCycleDetail({ cycleId }: { cycleId: string }) {
         )}
       </div>
 
-      {/* Banner: ระบุแปลง */}
       {needConfirm && (
         <div style={{ background: '#fff8e1', border: '2px solid #ffe082', borderRadius: 14, padding: '14px 16px' }}>
           <p style={{ margin: '0 0 4px', fontWeight: 800, fontSize: 15, color: '#e65100' }}>⚠️ ยังไม่ได้ระบุแปลงและวันปลูก</p>
@@ -149,7 +149,6 @@ export function PlantingCycleDetail({ cycleId }: { cycleId: string }) {
         </div>
       )}
 
-      {/* ฟอร์ม confirm วันปลูก */}
       {showConfirm && (
         <div className="kaona-card">
           <p style={{ margin: '0 0 12px', fontWeight: 700, fontSize: 15 }}>📅 ยืนยันข้อมูลการปลูก</p>
@@ -179,7 +178,6 @@ export function PlantingCycleDetail({ cycleId }: { cycleId: string }) {
         </div>
       )}
 
-      {/* ข้อมูลสรุป */}
       <div className="kaona-card">
         <p style={{ margin: '0 0 8px', fontWeight: 700, fontSize: 14, color: 'var(--primary)' }}>📊 ข้อมูลรอบปลูก</p>
         {[
@@ -196,7 +194,6 @@ export function PlantingCycleDetail({ cycleId }: { cycleId: string }) {
         ))}
       </div>
 
-      {/* คู่มือปลูก */}
       {cycle.products?.planting_guide && (
         <div className="kaona-card" style={{ background: '#f1f8e9', borderColor: '#c5e1a5' }}>
           <p style={{ margin: '0 0 6px', fontWeight: 700, fontSize: 14, color: '#2e7d32' }}>🌱 คู่มือการปลูก</p>
@@ -204,14 +201,12 @@ export function PlantingCycleDetail({ cycleId }: { cycleId: string }) {
         </div>
       )}
 
-      {/* ปุ่มบันทึกความคืบหน้า */}
       {cycle.confirmed_at && !['harvested','cancelled'].includes(cycle.status) && (
         <UIButton fullWidth variant="secondary" onClick={() => setShowProgress(true)}>
           📸 บันทึกความคืบหน้า
         </UIButton>
       )}
 
-      {/* ฟอร์ม progress */}
       {showProgress && (
         <div className="kaona-card">
           <p style={{ margin: '0 0 12px', fontWeight: 700, fontSize: 15 }}>📸 บันทึกสถานะล่าสุด</p>
@@ -235,11 +230,10 @@ export function PlantingCycleDetail({ cycleId }: { cycleId: string }) {
         </div>
       )}
 
-      {/* Timeline */}
       {progress.length > 0 && (
         <div>
           <p style={{ margin: '0 0 10px', fontWeight: 700, fontSize: 15 }}>📅 ประวัติการติดตาม</p>
-          {progress.map((p, i) => {
+          {progress.map((p) => {
             const st = STAGES.find((s) => s.value === p.stage);
             return (
               <div key={p.id} className="activity-item">
