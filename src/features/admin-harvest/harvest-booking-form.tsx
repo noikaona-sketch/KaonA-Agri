@@ -1,219 +1,182 @@
 'use client';
 
-import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { ErrorState } from '@/shared/components/error-state';
 import { LoadingState } from '@/shared/components/loading-state';
-import { UIButton } from '@/shared/components/ui-button';
 
 type TruckMember = { id: string; full_name: string; phone: string | null };
-type Cycle = {
-  id: string; crop_name: string; area_planted_rai: number | null;
+type PlantingCycle = {
+  id: string; crop_name: string; season_year: number;
   expected_harvest_at: string | null; estimated_yield_kg: number | null;
+  area_planted_rai: number | null; member_id: string;
   members: { full_name: string } | null;
-  plots: { id: string; name: string; province: string | null; lat: number | null; lng: number | null } | null;
+  plots: { id: string; name: string; province: string | null } | null;
 };
 
-type QualityGrade = {
-  grade_a_moisture_max: number; grade_b_moisture_max: number;
-  buyer_spec: string | null; seed_variety: string | null; product_name: string | null;
-};
+type Props = { cycleId?: string; onCreated: () => void };
 
-export function HarvestBookingForm() {
-  const router = useRouter();
-  const params = useSearchParams();
-  const cycleIdFromUrl = params.get('cycle');
-
-  const [cycles, setCycles]   = useState<Cycle[]>([]);
+export function HarvestBookingForm({ cycleId, onCreated }: Props) {
+  const [cycles, setCycles]   = useState<PlantingCycle[]>([]);
   const [trucks, setTrucks]   = useState<TruckMember[]>([]);
-  const [selectedCycleId, setSelectedCycleId] = useState(cycleIdFromUrl ?? '');
-  const [selectedCycle, setSelectedCycle] = useState<Cycle | null>(null);
-  const [qualityInfo, setQualityInfo] = useState<QualityGrade | null>(null);
+  const [selectedCycle, setSelectedCycle] = useState<PlantingCycle | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError]     = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
-  const [truckType, setTruckType] = useState<'internal' | 'external'>('internal');
   const [form, setForm] = useState({
-    truckMemberId: '',
-    externalName: '', externalPlate: '', externalPhone: '',
-    scheduledDate: '', timeStart: '08:00', timeEnd: '17:00', note: '',
+    planting_cycle_id: cycleId ?? '',
+    truck_type: 'internal' as 'internal' | 'external',
+    truck_member_id: '',
+    external_truck_name: '',
+    external_truck_plate: '',
+    external_truck_phone: '',
+    scheduled_date: '',
+    scheduled_time_start: '08:00',
+    scheduled_time_end: '17:00',
+    note: '',
   });
 
-  function setField(f: keyof typeof form) {
-    return (e: React.ChangeEvent<HTMLInputElement>) => setForm((p) => ({ ...p, [f]: e.target.value }));
-  }
-
   useEffect(() => {
     void (async () => {
       const s = createSupabaseBrowserClient();
-      const [cyc, tr] = await Promise.all([
+      const [cRes, tRes] = await Promise.all([
         s.from('planting_cycles')
-          .select('id,crop_name,area_planted_rai,expected_harvest_at,estimated_yield_kg,members(full_name),plots(id,name,province,lat,lng)')
-          .in('status', ['growing','flowering','maturing','ready']).order('expected_harvest_at'),
-        s.from('members')
-          .select('id,full_name,phone')
-          .eq('status', 'approved')
-          .in('id', (await s.from('member_roles').select('member_id').eq('role','truck_owner').then((r) => r.data?.map((x) => x.member_id) ?? []))),
+          .select('id,crop_name,season_year,expected_harvest_at,estimated_yield_kg,area_planted_rai,member_id,members(full_name),plots(id,name,province)')
+          .in('status', ['planted','growing','flowering','maturing','fruiting','ready'])
+          .order('expected_harvest_at'),
+        s.from('members').select('id,full_name,phone').eq('status','approved').limit(100),
       ]);
-      setCycles((cyc.data as Cycle[]) ?? []);
-      setTrucks((tr.data as TruckMember[]) ?? []);
+      setCycles((cRes.data as PlantingCycle[]) ?? []);
+      // กรอง truck_owner จาก member_roles
+      const allMembers = (tRes.data as TruckMember[]) ?? [];
+      const { data: roleData } = await s.from('member_roles').select('member_id').eq('role','truck_owner');
+      const truckIds = new Set((roleData ?? []).map((r: { member_id: string }) => r.member_id));
+      setTrucks(allMembers.filter((m) => truckIds.has(m.id)));
+
+      if (cycleId && cRes.data) {
+        const found = (cRes.data as PlantingCycle[]).find((x) => x.id === cycleId);
+        if (found) { setSelectedCycle(found); setForm((p) => ({ ...p, planting_cycle_id: cycleId, scheduled_date: found.expected_harvest_at ?? '' })); }
+      }
       setLoading(false);
     })();
-  }, []);
+  }, [cycleId]);
 
-  useEffect(() => {
-    const cycle = cycles.find((c) => c.id === selectedCycleId);
-    setSelectedCycle(cycle ?? null);
-    if (!cycle) { setQualityInfo(null); return; }
-    // ดึง quality grade ถ้ามี
-    void (async () => {
-      const s = createSupabaseBrowserClient();
-      const { data } = await s.from('harvest_bookings_full')
-        .select('grade_a_moisture_max,grade_b_moisture_max,buyer_spec,seed_variety,product_name')
-        .eq('planting_cycle_id', selectedCycleId).limit(1);
-      if (data?.[0]) setQualityInfo(data[0] as QualityGrade);
-    })();
-  }, [selectedCycleId, cycles]);
+  function set(field: keyof typeof form) {
+    return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
+      setForm((p) => ({ ...p, [field]: e.target.value }));
+  }
 
   async function handleSubmit() {
-    if (!selectedCycleId || !form.scheduledDate) { setError('กรุณาเลือกรอบปลูกและวันนัด'); return; }
-    if (truckType === 'internal' && !form.truckMemberId) { setError('กรุณาเลือกรถเกี่ยว'); return; }
-    if (truckType === 'external' && !form.externalName) { setError('กรุณากรอกชื่อรถภายนอก'); return; }
+    if (!form.planting_cycle_id || !form.scheduled_date) { setError('กรุณากรอกข้อมูลให้ครบ'); return; }
+    if (form.truck_type === 'internal' && !form.truck_member_id) { setError('กรุณาเลือกรถเกี่ยวในระบบ'); return; }
+    if (form.truck_type === 'external' && !form.external_truck_plate) { setError('กรุณากรอกทะเบียนรถ'); return; }
+    if (!selectedCycle) { setError('กรุณาเลือกรอบปลูก'); return; }
 
     setSubmitting(true); setError(null);
     const s = createSupabaseBrowserClient();
-    const cycle = cycles.find((c) => c.id === selectedCycleId);
-    const { error: insertError } = await s.from('harvest_bookings').insert({
-      planting_cycle_id: selectedCycleId,
-      member_id: (await s.from('planting_cycles').select('member_id').eq('id', selectedCycleId).single()).data?.member_id,
-      plot_id: cycle?.plots?.id ?? null,
-      truck_type: truckType,
-      truck_member_id: truckType === 'internal' ? form.truckMemberId : null,
-      external_truck_name: truckType === 'external' ? form.externalName : null,
-      external_truck_plate: truckType === 'external' ? form.externalPlate : null,
-      external_truck_phone: truckType === 'external' ? form.externalPhone : null,
-      scheduled_date: form.scheduledDate,
-      scheduled_time_start: form.timeStart || null,
-      scheduled_time_end: form.timeEnd || null,
+    const { error: insertErr } = await s.from('harvest_bookings').insert({
+      planting_cycle_id: form.planting_cycle_id,
+      member_id: selectedCycle.member_id,
+      plot_id: selectedCycle.plots?.id ?? null,
+      truck_type: form.truck_type,
+      truck_member_id: form.truck_type === 'internal' ? form.truck_member_id || null : null,
+      external_truck_name: form.truck_type === 'external' ? form.external_truck_name || null : null,
+      external_truck_plate: form.truck_type === 'external' ? form.external_truck_plate.toUpperCase() : null,
+      external_truck_phone: form.truck_type === 'external' ? form.external_truck_phone || null : null,
+      scheduled_date: form.scheduled_date,
+      scheduled_time_start: form.scheduled_time_start || null,
+      scheduled_time_end: form.scheduled_time_end || null,
       status: 'pending',
       note: form.note || null,
     });
-
     setSubmitting(false);
-    if (insertError) { setError(insertError.message); return; }
-    router.push('/admin/harvest');
+    if (insertErr) { setError(insertErr.message); return; }
+    setSuccess(true);
+    onCreated();
   }
 
   if (loading) return <LoadingState label="กำลังโหลด…" />;
 
-  return (
-    <div style={{ maxWidth: 600, display: 'grid', gap: 20 }}>
-      {error && <ErrorState title="ไม่สำเร็จ" detail={error} />}
+  if (success) return (
+    <div style={{ textAlign: 'center', padding: '32px 0' }}>
+      <div style={{ fontSize: 56 }}>🚜</div>
+      <h2 style={{ margin: '12px 0 4px', color: '#1b5e20' }}>นัดรถเกี่ยวแล้ว!</h2>
+      <p style={{ color: '#6b7280' }}>ระบบบันทึกการนัดหมายเรียบร้อย</p>
+    </div>
+  );
 
-      {/* เลือกรอบปลูก */}
+  return (
+    <div style={{ display: 'grid', gap: 20 }}>
+      {error && <ErrorState title="เกิดข้อผิดพลาด" detail={error} />}
+
       <section>
-        <h3 style={{ margin: '0 0 10px', fontSize: 14, fontWeight: 700, color: '#0d3d1f' }}>1. เลือกรอบการปลูก</h3>
-        <select className="reg-input" value={selectedCycleId} onChange={(e) => setSelectedCycleId(e.target.value)}>
-          <option value="">— เลือกรอบปลูก —</option>
+        <h3 style={{ margin: '0 0 10px', fontSize: 14, fontWeight: 700, color: '#4a6741' }}>1. เลือกรอบการปลูก</h3>
+        <select className="reg-input" value={form.planting_cycle_id} onChange={(e) => {
+          const c = cycles.find((x) => x.id === e.target.value) ?? null;
+          setSelectedCycle(c);
+          setForm((p) => ({ ...p, planting_cycle_id: e.target.value, scheduled_date: c?.expected_harvest_at ?? '' }));
+        }}>
+          <option value="">เลือกรอบปลูก…</option>
           {cycles.map((c) => (
             <option key={c.id} value={c.id}>
-              {c.members?.full_name} · {c.crop_name} · {c.plots?.name} {c.plots?.province ?? ''}
-              {c.expected_harvest_at ? ` · ${new Date(c.expected_harvest_at).toLocaleDateString('th-TH')}` : ''}
+              {c.members?.full_name} — {c.crop_name} {c.season_year} · {c.plots?.name}{c.plots?.province ? ` (${c.plots.province})` : ''}
             </option>
           ))}
         </select>
-
         {selectedCycle && (
-          <div style={{ background: '#f7faf7', borderRadius: 10, padding: 14, marginTop: 10, display: 'grid', gap: 8 }}>
-            <p style={{ margin: 0, fontWeight: 700 }}>🌾 {selectedCycle.crop_name} · {selectedCycle.plots?.name}</p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-              {[
-                { label: 'พื้นที่', value: `${selectedCycle.area_planted_rai ?? '—'} ไร่` },
-                { label: 'คาดเก็บ', value: selectedCycle.expected_harvest_at ? new Date(selectedCycle.expected_harvest_at).toLocaleDateString('th-TH') : '—' },
-                { label: 'ผลผลิต', value: `~${(selectedCycle.estimated_yield_kg ?? 0).toLocaleString()} กก.` },
-              ].map(({ label, value }) => (
-                <div key={label} style={{ background: '#fff', borderRadius: 8, padding: '8px 10px' }}>
-                  <p style={{ margin: 0, fontSize: 11, color: '#6b7280' }}>{label}</p>
-                  <p style={{ margin: 0, fontWeight: 700 }}>{value}</p>
-                </div>
-              ))}
-            </div>
-
-            {qualityInfo && (
-              <div style={{ background: '#e3f2fd', borderRadius: 8, padding: 10, fontSize: 13 }}>
-                <p style={{ margin: 0, fontWeight: 700, color: '#1565c0' }}>🔬 เกณฑ์คุณภาพ: {qualityInfo.product_name} {qualityInfo.seed_variety ? `(${qualityInfo.seed_variety})` : ''}</p>
-                <p style={{ margin: '4px 0 0', color: '#1565c0' }}>เกรด A: ≤{qualityInfo.grade_a_moisture_max}% · เกรด B: ≤{qualityInfo.grade_b_moisture_max}%</p>
-                {qualityInfo.buyer_spec && <p style={{ margin: '4px 0 0', color: '#6b7280' }}>Spec ผู้รับซื้อ: {qualityInfo.buyer_spec}</p>}
-              </div>
-            )}
+          <div style={{ marginTop: 10, background: '#e8f5e9', borderRadius: 10, padding: '12px 16px', display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+            {[['แปลง', `${selectedCycle.plots?.name ?? '—'} ${selectedCycle.plots?.province ? `(${selectedCycle.plots.province})` : ''}`],
+              ['พื้นที่', `${selectedCycle.area_planted_rai ?? '—'} ไร่`],
+              ['คาดผลผลิต', `${(selectedCycle.estimated_yield_kg ?? 0).toLocaleString()} กก.`],
+              ['คาดเก็บ', selectedCycle.expected_harvest_at ? new Date(selectedCycle.expected_harvest_at).toLocaleDateString('th-TH') : '—']
+            ].map(([k, v]) => (
+              <div key={String(k)}><p style={{ margin: 0, fontSize: 11, color: '#4a6741' }}>{k}</p><p style={{ margin: 0, fontWeight: 700, fontSize: 14 }}>{v}</p></div>
+            ))}
           </div>
         )}
       </section>
 
-      {/* เลือกรถเกี่ยว */}
       <section>
-        <h3 style={{ margin: '0 0 10px', fontSize: 14, fontWeight: 700, color: '#0d3d1f' }}>2. เลือกรถเกี่ยว</h3>
+        <h3 style={{ margin: '0 0 10px', fontSize: 14, fontWeight: 700, color: '#4a6741' }}>2. รถเกี่ยว</h3>
         <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-          {(['internal', 'external'] as const).map((t) => (
-            <button key={t} onClick={() => setTruckType(t)}
-              className={`admin-btn ${truckType === t ? 'admin-btn--primary' : 'admin-btn--secondary'}`}
-              style={{ fontSize: 13, padding: '8px 16px' }}>
-              {t === 'internal' ? '👥 รถในระบบ' : '🚜 รถภายนอก'}
+          {(['internal','external'] as const).map((t) => (
+            <button key={t} onClick={() => setForm((p) => ({ ...p, truck_type: t }))}
+              className={`admin-btn ${form.truck_type === t ? 'admin-btn--primary' : 'admin-btn--secondary'}`} style={{ fontSize: 13 }}>
+              {t === 'internal' ? '👥 รถในระบบ' : '🔗 รถภายนอก'}
             </button>
           ))}
         </div>
-
-        {truckType === 'internal' ? (
-          <label className="reg-label">เลือกรถเกี่ยว (truck_owner) <span className="reg-required">*</span>
-            <select className="reg-input" value={form.truckMemberId} onChange={(e) => setForm((p) => ({ ...p, truckMemberId: e.target.value }))}>
-              <option value="">— เลือก —</option>
-              {trucks.map((t) => <option key={t.id} value={t.id}>{t.full_name} {t.phone ? `(${t.phone})` : ''}</option>)}
-            </select>
-          </label>
+        {form.truck_type === 'internal' ? (
+          <select className="reg-input" value={form.truck_member_id} onChange={set('truck_member_id')}>
+            <option value="">เลือก truck owner…</option>
+            {trucks.map((t) => <option key={t.id} value={t.id}>{t.full_name} {t.phone ? `(${t.phone})` : ''}</option>)}
+          </select>
         ) : (
-          <div style={{ display: 'grid', gap: 10 }}>
-            <label className="reg-label">ชื่อคนขับ/บริษัท <span className="reg-required">*</span>
-              <input className="reg-input" value={form.externalName} onChange={setField('externalName')} placeholder="ชื่อคนขับหรือบริษัทรถเกี่ยว" />
-            </label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <label className="reg-label">ทะเบียนรถ
-                <input className="reg-input" value={form.externalPlate} onChange={setField('externalPlate')} placeholder="กข 1234" style={{ textTransform: 'uppercase' }} />
-              </label>
-              <label className="reg-label">เบอร์ติดต่อ
-                <input className="reg-input" type="tel" value={form.externalPhone} onChange={setField('externalPhone')} placeholder="0XX-XXX-XXXX" />
-              </label>
-            </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+            <label className="reg-label" style={{ fontSize: 13 }}>ชื่อ/บริษัท<input className="reg-input" value={form.external_truck_name} onChange={set('external_truck_name')} placeholder="ชื่อคนขับ/บริษัท" /></label>
+            <label className="reg-label" style={{ fontSize: 13 }}>ทะเบียน <span className="reg-required">*</span><input className="reg-input" value={form.external_truck_plate} onChange={set('external_truck_plate')} placeholder="กข 1234" style={{ textTransform: 'uppercase' }} /></label>
+            <label className="reg-label" style={{ fontSize: 13 }}>เบอร์ติดต่อ<input className="reg-input" type="tel" value={form.external_truck_phone} onChange={set('external_truck_phone')} placeholder="08X-XXX-XXXX" /></label>
           </div>
         )}
       </section>
 
-      {/* วันนัด */}
       <section>
-        <h3 style={{ margin: '0 0 10px', fontSize: 14, fontWeight: 700, color: '#0d3d1f' }}>3. กำหนดวันและเวลา</h3>
+        <h3 style={{ margin: '0 0 10px', fontSize: 14, fontWeight: 700, color: '#4a6741' }}>3. วันและเวลา</h3>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-          <label className="reg-label" style={{ gridColumn: '1/-1' }}>วันนัด <span className="reg-required">*</span>
-            <input className="reg-input" type="date" value={form.scheduledDate} onChange={setField('scheduledDate')} min={new Date().toISOString().slice(0,10)} />
-          </label>
-          <label className="reg-label">เวลาเริ่ม
-            <input className="reg-input" type="time" value={form.timeStart} onChange={setField('timeStart')} />
-          </label>
-          <label className="reg-label">เวลาสิ้นสุด
-            <input className="reg-input" type="time" value={form.timeEnd} onChange={setField('timeEnd')} />
-          </label>
-          <label className="reg-label">หมายเหตุ
-            <input className="reg-input" value={form.note} onChange={setField('note')} placeholder="หมายเหตุ..." />
-          </label>
+          <label className="reg-label" style={{ fontSize: 13 }}>วันนัด <span className="reg-required">*</span><input className="reg-input" type="date" value={form.scheduled_date} onChange={set('scheduled_date')} min={new Date().toISOString().slice(0,10)} /></label>
+          <label className="reg-label" style={{ fontSize: 13 }}>เวลาเริ่ม<input className="reg-input" type="time" value={form.scheduled_time_start} onChange={set('scheduled_time_start')} /></label>
+          <label className="reg-label" style={{ fontSize: 13 }}>เวลาสิ้นสุด<input className="reg-input" type="time" value={form.scheduled_time_end} onChange={set('scheduled_time_end')} /></label>
         </div>
+        <label className="reg-label" style={{ marginTop: 12, fontSize: 13 }}>หมายเหตุ<textarea className="reg-input reg-textarea" rows={2} value={form.note} onChange={set('note')} placeholder="รายละเอียดเพิ่มเติม…" /></label>
       </section>
 
-      <div style={{ display: 'flex', gap: 10 }}>
-        <UIButton variant="ghost" onClick={() => router.back()}>← ย้อนกลับ</UIButton>
-        <UIButton onClick={handleSubmit} disabled={!selectedCycleId || !form.scheduledDate || submitting} loading={submitting}>
-          🚜 สร้างนัดรถเกี่ยว
-        </UIButton>
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <button className="admin-btn admin-btn--primary" style={{ padding: '12px 24px', fontSize: 15 }} onClick={handleSubmit} disabled={submitting}>
+          {submitting ? 'กำลังนัด…' : '🚜 บันทึกนัดรถเกี่ยว'}
+        </button>
       </div>
     </div>
   );

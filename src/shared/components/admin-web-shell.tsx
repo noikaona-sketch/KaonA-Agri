@@ -19,6 +19,7 @@ const ALL_NAV: NavItem[] = [
   { label: 'สร้าง PIN',      href: '/admin/invites',            icon: '🔑' },
   // เกษตร
   { label: 'ภาพรวมฟาร์ม',   href: '/admin/farming',            icon: '🗺️' },
+  { label: 'นัดขาย',         href: '/admin/appointments',       icon: '📅' },
   { label: 'แปลงเกษตร',     href: '/admin/plots',              icon: '🌾' },
   { label: 'รอบเพาะปลูก',   href: '/admin/planting',           icon: '🌱' },
   { label: 'งดเผา',          href: '/admin/no-burn',            icon: '🔥' },
