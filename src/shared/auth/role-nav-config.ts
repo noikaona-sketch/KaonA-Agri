@@ -43,26 +43,26 @@ const ROLE_NAV_MAP: Record<AppRole, RoleNavConfig> = {
   },
   leader: {
     tabs: [
-      { label: 'หน้าหลัก',   href: '/',                  iconKey: 'member'  },
-      { label: 'รอบปลูก',    href: '/planting-cycles',   iconKey: 'field'   },
-      { label: 'แจ้งเตือน',  href: '/notifications',     iconKey: 'service' },
-      { label: 'โปรไฟล์',   href: '/profile',            iconKey: 'admin'   },
+      { label: 'หน้าหลัก',  href: '/',                iconKey: 'member'  },
+      { label: 'ทีมของฉัน', href: '/team',            iconKey: 'field'   },
+      { label: 'รอบปลูก',   href: '/planting-cycles', iconKey: 'service' },
+      { label: 'โปรไฟล์',  href: '/profile',          iconKey: 'admin'   },
     ],
   },
   inspector: {
     tabs: [
       { label: 'หน้าหลัก', href: '/', iconKey: 'member' },
       { label: 'งานตรวจ', href: '/inspection/tasks', iconKey: 'field' },
-      { label: 'บันทึก', href: '/plots', iconKey: 'service' },
-      { label: 'โปรไฟล์', href: '/profile', iconKey: 'admin' },
+      { label: 'ภาคสนาม', href: '/field',            iconKey: 'service' },
+      { label: 'โปรไฟล์', href: '/profile',          iconKey: 'admin' },
     ],
   },
   truck_owner: {
     tabs: [
-      { label: 'หน้าหลัก', href: '/', iconKey: 'member' },
-      { label: 'งานขนส่ง', href: '/service', iconKey: 'field' },
-      { label: 'งดเผา', href: '/no-burn', iconKey: 'service' },
-      { label: 'โปรไฟล์', href: '/profile', iconKey: 'admin' },
+      { label: 'หน้าหลัก',   href: '/',        iconKey: 'member'  },
+      { label: 'งานรถเกี่ยว', href: '/truck',   iconKey: 'field'   },
+      { label: 'งดเผา',      href: '/no-burn', iconKey: 'service' },
+      { label: 'โปรไฟล์',   href: '/profile', iconKey: 'admin'   },
     ],
   },
   staff: {

@@ -82,10 +82,13 @@ function TruckHome({ name }: { name: string }) {
         </div>
         <div className="home-actions">
           {[
-            { href: '/service',  icon: '🚛', label: 'งานของฉัน',    desc: 'ดูงานที่ได้รับมอบหมาย' },
-            { href: '/profile',  icon: '👤', label: 'ข้อมูลรถ',     desc: 'จัดการรถและทะเบียน' },
+            { href: '/truck',    icon: '🚜', label: 'งานรถเกี่ยว', desc: 'งานที่ได้รับมอบหมาย', accent: true },
+            { href: '/profile',  icon: '👤', label: 'ข้อมูลรถ',    desc: 'จัดการรถและทะเบียน' },
+            { href: '/no-burn',  icon: '🔥', label: 'งดเผา',       desc: 'ประวัติคำของดเผา' },
+            { href: '/notifications', icon: '🔔', label: 'แจ้งเตือน', desc: 'ข่าวสารและอัปเดต' },
           ].map((item) => (
-            <Link key={item.href} href={item.href} className="home-action-card">
+            <Link key={item.href} href={item.href}
+              className={`home-action-card${item.accent ? ' home-action-card--accent' : ''}`}>
               <span className="home-action-card__icon">{item.icon}</span>
               <p className="home-action-card__label">{item.label}</p>
               <p className="home-action-card__desc">{item.desc}</p>
@@ -109,10 +112,13 @@ function StaffHome({ name, role }: { name: string; role: string }) {
         </div>
         <div className="home-actions">
           {[
-            { href: '/inspection/tasks', icon: '🔍', label: 'งานตรวจ',      desc: 'รายการงานตรวจแปลง' },
-            { href: '/field',            icon: '📋', label: 'ภาคสนาม',      desc: 'จัดการทีมภาคสนาม' },
+            { href: '/inspection/tasks', icon: '🔍', label: 'งานตรวจ',    desc: 'รายการงานตรวจแปลง', accent: true },
+            { href: '/field',            icon: '📋', label: 'ทีมภาคสนาม', desc: 'งานทั้งหมดของทีม' },
+            { href: '/notifications',    icon: '🔔', label: 'แจ้งเตือน',  desc: 'ข่าวสารและอัปเดต' },
+            { href: '/profile',          icon: '👤', label: 'โปรไฟล์',    desc: 'ข้อมูลและสิทธิ์' },
           ].map((item) => (
-            <Link key={item.href} href={item.href} className="home-action-card">
+            <Link key={item.href} href={item.href}
+              className={`home-action-card${item.accent ? ' home-action-card--accent' : ''}`}>
               <span className="home-action-card__icon">{item.icon}</span>
               <p className="home-action-card__label">{item.label}</p>
               <p className="home-action-card__desc">{item.desc}</p>
