@@ -66,10 +66,12 @@ export function normalizeMember(
   effectiveRole: AppRole | null
 ): AuthBootstrapResult {
   const status = isMemberStatus(member.status) ? member.status : 'pending';
+
   return {
     member_id: member.id,
     auth_user_id: member.auth_user_id,
     line_user_id: member.line_user_id,
+    full_name: member.full_name,
     status,
     is_approved: status === 'approved',
     effective_role: effectiveRole,
