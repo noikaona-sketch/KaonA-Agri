@@ -1,32 +1,137 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
-import { useAuth } from '@/providers/auth-provider';
+import { useAuth, useCurrentMember, useEffectiveRole } from '@/providers/auth-provider';
 import { LoadingState } from '@/shared/components/loading-state';
 import { MobileAppShell } from '@/shared/components/mobile-app-shell';
-import { StatusChip } from '@/shared/components/status-chip';
-import { UIButton } from '@/shared/components/ui-button';
 
-// หน้ารออนุมัติ — แสดงหลังส่งคำขอสมัครแล้ว
-function PendingApprovalScreen() {
+const ROLE_TH: Record<string, string> = {
+  farmer: '🌾 เกษตรกร', truck_owner: '🚛 ทีมบริการ',
+  inspector: '🔍 ผู้ตรวจ', staff: '👷 เจ้าหน้าที่',
+  leader: '👥 หัวหน้ากลุ่ม', admin: '⚙️ แอดมิน',
+};
+
+// Farmer home
+function FarmerHome({ name }: { name: string }) {
   return (
-    <MobileAppShell title="รอการอนุมัติ" subtitle="คำขอสมัครของคุณอยู่ระหว่างตรวจสอบ">
-      <div className="mobile-stack" style={{ textAlign: 'center', padding: '24px 0' }}>
-        <div style={{ fontSize: 56 }}>🌱</div>
-        <div>
-          <h2 style={{ margin: '8px 0 4px', fontSize: 20 }}>ส่งคำขอแล้ว</h2>
-          <div style={{ display: 'flex', justifyContent: 'center', marginTop: 8 }}>
-            <StatusChip status="submitted" />
+    <MobileAppShell title="" subtitle="">
+      <div className="mobile-stack">
+        <div className="home-hero">
+          <p className="home-hero__greeting">สวัสดี 👋</p>
+          <p className="home-hero__name">{name}</p>
+          <span className="home-hero__role">🌾 เกษตรกร</span>
+          <div className="home-hero__stats">
+            <div className="home-hero__stat">
+              <p className="home-hero__stat-val">—</p>
+              <p className="home-hero__stat-lbl">แปลงของฉัน</p>
+            </div>
+            <div className="home-hero__stat">
+              <p className="home-hero__stat-val">—</p>
+              <p className="home-hero__stat-lbl">รอบปลูกปัจจุบัน</p>
+            </div>
           </div>
+        </div>
+
+        <div>
+          <div className="section-header">
+            <h2 className="section-title">เมนูหลัก</h2>
+          </div>
+          <div className="home-actions">
+            {[
+              { href: '/plots',          icon: '🌾', label: 'แปลงของฉัน',    desc: 'ดูและจัดการแปลง' },
+              { href: '/planting-cycles',icon: '🌱', label: 'รอบเพาะปลูก',   desc: 'บันทึกความคืบหน้า' },
+              { href: '/no-burn',        icon: '🔥', label: 'คำของดเผา',     desc: 'ยื่นคำของดเผา' },
+              { href: '/service',        icon: '📦', label: 'สั่งซื้อ/จอง',  desc: 'เมล็ดพันธุ์และบริการ', accent: true },
+            ].map((item) => (
+              <Link key={item.href} href={item.href}
+                className={`home-action-card${item.accent ? ' home-action-card--accent' : ''}`}>
+                <span className="home-action-card__icon">{item.icon}</span>
+                <p className="home-action-card__label">{item.label}</p>
+                <p className="home-action-card__desc">{item.desc}</p>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </div>
+    </MobileAppShell>
+  );
+}
+
+// Truck owner home
+function TruckHome({ name }: { name: string }) {
+  return (
+    <MobileAppShell title="" subtitle="">
+      <div className="mobile-stack">
+        <div className="home-hero">
+          <p className="home-hero__greeting">สวัสดี 👋</p>
+          <p className="home-hero__name">{name}</p>
+          <span className="home-hero__role">🚛 ทีมบริการ</span>
+        </div>
+        <div className="home-actions">
+          {[
+            { href: '/service',  icon: '🚛', label: 'งานของฉัน',    desc: 'ดูงานที่ได้รับมอบหมาย' },
+            { href: '/profile',  icon: '👤', label: 'ข้อมูลรถ',     desc: 'จัดการรถและทะเบียน' },
+          ].map((item) => (
+            <Link key={item.href} href={item.href} className="home-action-card">
+              <span className="home-action-card__icon">{item.icon}</span>
+              <p className="home-action-card__label">{item.label}</p>
+              <p className="home-action-card__desc">{item.desc}</p>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </MobileAppShell>
+  );
+}
+
+// Inspector/Staff home
+function StaffHome({ name, role }: { name: string; role: string }) {
+  return (
+    <MobileAppShell title="" subtitle="">
+      <div className="mobile-stack">
+        <div className="home-hero">
+          <p className="home-hero__greeting">สวัสดี 👋</p>
+          <p className="home-hero__name">{name}</p>
+          <span className="home-hero__role">{ROLE_TH[role] ?? role}</span>
+        </div>
+        <div className="home-actions">
+          {[
+            { href: '/inspection/tasks', icon: '🔍', label: 'งานตรวจ',      desc: 'รายการงานตรวจแปลง' },
+            { href: '/field',            icon: '📋', label: 'ภาคสนาม',      desc: 'จัดการทีมภาคสนาม' },
+          ].map((item) => (
+            <Link key={item.href} href={item.href} className="home-action-card">
+              <span className="home-action-card__icon">{item.icon}</span>
+              <p className="home-action-card__label">{item.label}</p>
+              <p className="home-action-card__desc">{item.desc}</p>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </MobileAppShell>
+  );
+}
+
+// Pending screen
+function PendingScreen() {
+  return (
+    <MobileAppShell title="" subtitle="">
+      <div className="mobile-stack" style={{ textAlign: 'center', padding: '32px 0' }}>
+        <div style={{ fontSize: 64 }}>🌱</div>
+        <div>
+          <h2 style={{ margin: '8px 0 4px', fontSize: 20, fontWeight: 800 }}>รอการอนุมัติ</h2>
+          <p style={{ margin: 0, fontSize: 14, color: 'var(--text-secondary)' }}>
+            คำขอสมัครของคุณอยู่ระหว่างตรวจสอบ
+          </p>
         </div>
         <div className="kaona-card" style={{ textAlign: 'left' }}>
           <p style={{ margin: 0, fontWeight: 700, fontSize: 14 }}>ขั้นตอนถัดไป</p>
-          <ul style={{ margin: '8px 0 0', paddingLeft: 16, fontSize: 14, color: 'var(--text-secondary)', display: 'grid', gap: 6 }}>
+          <ul style={{ margin: '8px 0 0', paddingLeft: 18, fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.8 }}>
             <li>เจ้าหน้าที่รับข้อมูลและตรวจสอบ</li>
             <li>แจ้งผลทาง LINE ภายใน 1-3 วันทำการ</li>
-            <li>เมื่ออนุมัติแล้ว เปิด LINE Mini App เข้าใช้งานได้ทันที</li>
+            <li>เมื่ออนุมัติแล้ว เปิด Mini App เข้าใช้ได้ทันที</li>
           </ul>
         </div>
       </div>
@@ -34,77 +139,51 @@ function PendingApprovalScreen() {
   );
 }
 
-// redirect ไปหน้าสมัคร
-function RedirectToRegister() {
-  const router = useRouter();
-  useEffect(() => { router.replace('/register'); }, [router]);
-  return <LoadingState label="กำลังนำทางไปหน้าสมัคร…" />;
-}
-
-// หน้าหลัก — routing ตาม auth status
 export default function HomePage() {
-  const { status } = useAuth();
+  const { status }     = useAuth();
+  const member         = useCurrentMember();
+  const effectiveRole  = useEffectiveRole();
+  const router         = useRouter();
 
-  // กำลังโหลด
-  if (status === 'loading') {
-    return <LoadingState label="กำลังตรวจสอบบัญชี LINE…" />;
-  }
+  useEffect(() => {
+    if (['unauthenticated','no_member','access_denied','error'].includes(status)) {
+      router.replace('/register');
+    }
+  }, [status, router]);
 
-  // ยังไม่ได้ login / ไม่มี member record / access denied → ไปสมัคร
-  if (
-    status === 'unauthenticated' ||
-    status === 'no_member' ||
-    status === 'access_denied' ||
-    status === 'error'
-  ) {
-    return <RedirectToRegister />;
-  }
+  if (status === 'loading') return <LoadingState label="กำลังโหลด…" />;
+  if (['unauthenticated','no_member','access_denied','error'].includes(status))
+    return <LoadingState label="กำลังนำทาง…" />;
+  if (['pending_approval','pending'].includes(status)) return <PendingScreen />;
 
-  // รออนุมัติ
-  if (status === 'pending_approval') {
-    return <PendingApprovalScreen />;
-  }
-
-  // ถูกปฏิเสธ / ระงับ
-  if (status === 'rejected') {
-    return (
-      <MobileAppShell title="ไม่ผ่านการอนุมัติ" subtitle="ติดต่อเจ้าหน้าที่เพื่อขอข้อมูลเพิ่มเติม">
-        <div className="mobile-stack" style={{ textAlign: 'center', padding: '24px 0' }}>
-          <div style={{ fontSize: 56 }}>❌</div>
-          <StatusChip status="rejected" />
-          <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
-            กรุณาติดต่อเจ้าหน้าที่ผ่าน LINE OA ของ KaonA
-          </p>
-        </div>
-      </MobileAppShell>
-    );
-  }
-
-  if (status === 'suspended') {
-    return (
-      <MobileAppShell title="บัญชีถูกระงับ" subtitle="ติดต่อเจ้าหน้าที่เพื่อขอความช่วยเหลือ">
-        <div className="mobile-stack" style={{ textAlign: 'center', padding: '24px 0' }}>
-          <div style={{ fontSize: 56 }}>⚠️</div>
-          <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
-            บัญชีของคุณถูกระงับชั่วคราว กรุณาติดต่อเจ้าหน้าที่
-          </p>
-        </div>
-      </MobileAppShell>
-    );
-  }
-
-  // approved → หน้าหลักตาม role (TODO: role-based home)
-  return (
-    <MobileAppShell title="หน้าหลัก" subtitle="ยินดีต้อนรับสู่ KaonA Agri">
-      <div className="mobile-stack" style={{ textAlign: 'center', padding: '16px 0' }}>
-        <div style={{ fontSize: 48 }}>🌾</div>
-        <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
-          กำลังพัฒนา dashboard — เร็วๆ นี้
-        </p>
-        <UIButton fullWidth onClick={() => window.location.reload()}>
-          รีเฟรช
-        </UIButton>
+  if (status === 'rejected') return (
+    <MobileAppShell title="" subtitle="">
+      <div style={{ textAlign: 'center', padding: '48px 0' }}>
+        <div style={{ fontSize: 56 }}>❌</div>
+        <h2 style={{ margin: '12px 0 4px' }}>ไม่ผ่านการอนุมัติ</h2>
+        <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>ติดต่อเจ้าหน้าที่ผ่าน LINE OA ของ KaonA</p>
       </div>
     </MobileAppShell>
   );
+
+  if (status === 'suspended') return (
+    <MobileAppShell title="" subtitle="">
+      <div style={{ textAlign: 'center', padding: '48px 0' }}>
+        <div style={{ fontSize: 56 }}>⚠️</div>
+        <h2 style={{ margin: '12px 0 4px' }}>บัญชีถูกระงับ</h2>
+        <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>ติดต่อเจ้าหน้าที่เพื่อขอความช่วยเหลือ</p>
+      </div>
+    </MobileAppShell>
+  );
+
+  const name = member?.full_name ?? 'สมาชิก';
+
+  if (effectiveRole === 'truck_owner') return <TruckHome name={name} />;
+  if (effectiveRole === 'inspector' || effectiveRole === 'staff')
+    return <StaffHome name={name} role={effectiveRole} />;
+  if (effectiveRole === 'farmer' || effectiveRole === 'leader')
+    return <FarmerHome name={name} />;
+
+  // approved แต่ไม่มี role ที่รู้จัก
+  return <FarmerHome name={name} />;
 }
