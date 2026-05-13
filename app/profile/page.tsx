@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { useCurrentMember, useCurrentRoles, useEffectiveRole } from '@/providers/auth-provider';
 import { MobileAppShell } from '@/shared/components/mobile-app-shell';
 import { LoadingState } from '@/shared/components/loading-state';
@@ -17,10 +18,20 @@ type ProfileMemberExtras = {
   address?: string | null;
 };
 
+type CreditAccount = { balance: number; debit_balance: number; total_spent: number };
+
 export default function ProfilePage() {
   const member        = useCurrentMember();
   const roles         = useCurrentRoles();
   const effectiveRole = useEffectiveRole();
+  const [credit, setCredit] = useState<CreditAccount | null>(null);
+
+  useEffect(() => {
+    void fetch('/api/member/credit')
+      .then((r) => r.json())
+      .then((d: { account?: CreditAccount }) => setCredit(d.account ?? null))
+      .catch(() => {});
+  }, []);
 
   if (!member) return <LoadingState label="กำลังโหลด…" />;
 
@@ -72,6 +83,34 @@ export default function ProfilePage() {
                 </span>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Credit / ยอดค้างชำระ */}
+        {credit && (credit.debit_balance > 0 || credit.balance > 0) && (
+          <div className="kaona-card" style={{ background: credit.debit_balance > 0 ? '#fff8e1' : '#e8f5e9', borderColor: credit.debit_balance > 0 ? '#ffe082' : '#a5d6a7' }}>
+            <p style={{ margin: '0 0 10px', fontWeight: 700, fontSize: 14, color: credit.debit_balance > 0 ? '#e65100' : 'var(--primary)' }}>
+              {credit.debit_balance > 0 ? '📒 ยอดค้างชำระ' : '💳 เครดิตคงเหลือ'}
+            </p>
+            {credit.debit_balance > 0 && (
+              <div className="info-row">
+                <span className="info-row__label">ค้างชำระ</span>
+                <span className="info-row__value" style={{ color: '#c62828', fontSize: 20, fontWeight: 900 }}>{credit.debit_balance.toLocaleString()} บาท</span>
+              </div>
+            )}
+            {credit.balance > 0 && (
+              <div className="info-row">
+                <span className="info-row__label">เครดิตคงเหลือ</span>
+                <span className="info-row__value" style={{ color: 'var(--primary)', fontWeight: 700 }}>{credit.balance.toLocaleString()} บาท</span>
+              </div>
+            )}
+            <div className="info-row">
+              <span className="info-row__label">รวมซื้อทั้งหมด</span>
+              <span className="info-row__value">{credit.total_spent.toLocaleString()} บาท</span>
+            </div>
+            {credit.debit_balance > 0 && (
+              <p style={{ margin: '8px 0 0', fontSize: 13, color: '#7b5800' }}>ติดต่อ admin เพื่อชำระยอดค้าง</p>
+            )}
           </div>
         )}
 

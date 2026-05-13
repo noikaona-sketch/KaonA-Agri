@@ -35,6 +35,7 @@ const ALL_NAV: NavItem[] = [
   { label: 'พันธุ์เมล็ด',     href: '/admin/seed-varieties',   icon: '🌾' },
   { label: 'Stock LOT เมล็ด', href: '/admin/seed-lots',         icon: '🗄️' },
   { label: 'คิวจองเมล็ด',    href: '/admin/seed-reservations',  icon: '📋' },
+  { label: 'เครดิต/ค้างชำระ', href: '/admin/credit',             icon: '💳' },
   { label: 'เมล็ดพันธุ์',     href: '/admin/seeds',            icon: '🫘' },
   // บริการ/ระบบ
   { label: 'การจองบริการ',   href: '/admin/service',            icon: '🚜' },
