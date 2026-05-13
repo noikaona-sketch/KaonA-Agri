@@ -7,14 +7,14 @@ import { ErrorState } from '@/shared/components/error-state';
 import { LoadingState } from '@/shared/components/loading-state';
 
 type QueueItem = {
-  id: string;           // approval id
+  id: string;
   member_id: string;
   created_at: string;
-  members: {
+  member: {
     id: string; full_name: string; phone: string | null;
     citizen_id_masked: string; registration_type: string | null;
     address: string | null; created_at: string;
-  };
+  } | null;
 };
 
 export function AdminApprovalQueue() {
@@ -86,21 +86,21 @@ export function AdminApprovalQueue() {
                   <td>
                     <Link href={`/admin/members/${item.member_id}`}
                       style={{ fontWeight: 700, color: '#0d3d1f', textDecoration: 'none' }}>
-                      {item.members.full_name}
+                      {item.member?.full_name}
                     </Link>
                   </td>
-                  <td style={{ color: '#6b7280' }}>{item.members.phone ?? '—'}</td>
+                  <td style={{ color: '#6b7280' }}>{item.member?.phone ?? '—'}</td>
                   <td style={{ fontFamily: 'monospace', fontSize: 12, color: '#6b7280' }}>
-                    {item.members.citizen_id_masked}
+                    {item.member?.citizen_id_masked}
                   </td>
                   <td>
                     <span className="role-pill">
-                      {item.members.registration_type === 'self' ? '🌾 สมัครเอง' :
-                       item.members.registration_type === 'admin_created' ? '⚙️ admin สร้าง' : '—'}
+                      {item.member?.registration_type === 'self' ? '🌾 สมัครเอง' :
+                       item.member?.registration_type === 'admin_created' ? '⚙️ admin สร้าง' : '—'}
                     </span>
                   </td>
                   <td style={{ fontSize: 12, color: '#6b7280', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {item.members.address ?? '—'}
+                    {item.member?.address ?? '—'}
                   </td>
                   <td style={{ fontSize: 12, color: '#6b7280', whiteSpace: 'nowrap' }}>
                     {new Date(item.created_at).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}

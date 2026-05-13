@@ -12,14 +12,13 @@ export async function GET() {
         member_id,
         status,
         created_at,
-        members!inner (
+        member:members!approvals_member_id_fkey (
           id, full_name, phone, citizen_id_masked, status,
           registration_type, address, created_at
         )
       `)
       .eq('resource_type', 'member')
       .eq('status', 'pending')
-      .eq('members.status', 'pending')
       .order('created_at', { ascending: true })
       .limit(100);
 
