@@ -13,8 +13,8 @@ type PlantingCycle = {
   area_planted_rai: number | null;
   estimated_yield_kg: number | null; quota_kg: number | null;
   seed_qty_used: number | null;
-  members: { full_name: string } | null;
-  plots: { name: string; province: string | null } | null;
+  members: { full_name: string }[] | null;
+  plots: { name: string; province: string | null }[] | null;
 };
 
 type YieldEst = {
@@ -129,9 +129,9 @@ export function AppointmentForm({ cycleId, onCreated }: Props) {
                   <tr key={c.id} onClick={() => pickCycle(c)}
                     style={{ cursor: 'pointer', background: selectedCycle?.id === c.id ? '#e8f5e9' : undefined }}>
                     <td><input type="radio" readOnly checked={selectedCycle?.id === c.id} /></td>
-                    <td style={{ fontWeight: 600 }}>{c.members?.full_name ?? '—'}</td>
+                    <td style={{ fontWeight: 600 }}>{c.members?.[0]?.full_name ?? '—'}</td>
                     <td>{c.crop_name} {c.season_year}</td>
-                    <td>{c.plots?.name ?? '—'} {c.plots?.province ? `(${c.plots.province})` : ''}</td>
+                    <td>{c.plots?.[0]?.name ?? '—'} {c.plots?.[0]?.province ? `(${c.plots[0].province})` : ''}</td>
                     <td style={{ fontSize: 13, color: '#6b7280' }}>{c.expected_harvest_at ? new Date(c.expected_harvest_at).toLocaleDateString('th-TH') : '—'}</td>
                     <td>{(c.estimated_yield_kg ?? 0).toLocaleString()} กก.</td>
                   </tr>
