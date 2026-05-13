@@ -41,10 +41,10 @@ function FarmerHome({ name }: { name: string }) {
           </div>
           <div className="home-actions">
             {[
-              { href: '/plots',          icon: '🌾', label: 'แปลงของฉัน',    desc: 'ดูและจัดการแปลง' },
-              { href: '/planting-cycles',icon: '🌱', label: 'รอบเพาะปลูก',   desc: 'บันทึกความคืบหน้า' },
-              { href: '/no-burn',        icon: '🔥', label: 'คำของดเผา',     desc: 'ยื่นคำของดเผา' },
-              { href: '/service',        icon: '📦', label: 'สั่งซื้อ/จอง',  desc: 'เมล็ดพันธุ์และบริการ', accent: true },
+              { href: '/plots',                icon: '🌾', label: 'แปลงของฉัน',   desc: 'ดูและจัดการแปลง' },
+              { href: '/planting-cycles',      icon: '🌱', label: 'รอบเพาะปลูก', desc: 'บันทึกความคืบหน้า' },
+              { href: '/service/reservations', icon: '🫘', label: 'จองเมล็ดพันธุ์', desc: 'เลือกพันธุ์ จองกับ admin', accent: true },
+              { href: '/no-burn',              icon: '🔥', label: 'งดเผา',          desc: 'ยื่นคำของดเผา' },
             ].map((item) => (
               <Link key={item.href} href={item.href}
                 className={`home-action-card${item.accent ? ' home-action-card--accent' : ''}`}>
