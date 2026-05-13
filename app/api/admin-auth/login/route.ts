@@ -2,8 +2,19 @@ import { NextResponse } from 'next/server';
 
 import { createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
 
-const ADMIN_COOKIE_NAME = 'kaona_admin_web';
-const ADMIN_DEPT_COOKIE  = 'kaona_admin_dept';
+const ADMIN_COOKIE   = 'kaona_admin_web';
+const DEPT_COOKIE    = 'kaona_admin_dept';
+const ENV_ADMIN_ID   = 'env-super-admin';
+
+function cookieOpts(secure: boolean) {
+  return {
+    httpOnly: true,
+    secure,
+    sameSite: 'lax' as const,
+    path: '/',
+    maxAge: 60 * 60 * 8,
+  };
+}
 
 export async function POST(request: Request) {
   try {
@@ -13,9 +24,25 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'กรุณากรอก email และ password' }, { status: 400 });
     }
 
+    const isProd  = process.env.NODE_ENV === 'production';
+    const secure  = cookieOpts(isProd);
+    const insecure = { ...secure, httpOnly: false };
+
+    // ── ENV fallback (bootstrap / ก่อน run migrations) ────────────────
+    // ใช้เมื่อ admin_users table ยังว่างหรือยังไม่มี
+    const envEmail = process.env.ADMIN_WEB_EMAIL;
+    const envPass  = process.env.ADMIN_WEB_PASSWORD;
+
+    if (envEmail && envPass && body.email === envEmail && body.password === envPass) {
+      const response = NextResponse.json({ ok: true, department: 'super_admin', fullName: 'Super Admin (ENV)' });
+      response.cookies.set(ADMIN_COOKIE, ENV_ADMIN_ID, secure);
+      response.cookies.set(DEPT_COOKIE,  'super_admin', insecure);
+      return response;
+    }
+
+    // ── Supabase Auth + admin_users ────────────────────────────────────
     const supabase = createServerSupabaseClient();
 
-    // sign in ด้วย Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
       email: body.email,
       password: body.password,
@@ -25,7 +52,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' }, { status: 401 });
     }
 
-    // ตรวจสอบว่ามีใน admin_users และ approved
     const { data: adminUser, error: adminError } = await supabase
       .from('admin_users')
       .select('id, department, status, full_name')
@@ -33,15 +59,15 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     if (adminError || !adminUser) {
-      return NextResponse.json({ error: 'ไม่พบบัญชีเจ้าหน้าที่' }, { status: 403 });
+      return NextResponse.json({ error: 'ไม่พบบัญชีเจ้าหน้าที่ในระบบ' }, { status: 403 });
     }
 
     if (adminUser.status === 'pending') {
-      return NextResponse.json({ error: 'บัญชีของคุณรอการอนุมัติจาก super admin' }, { status: 403 });
+      return NextResponse.json({ error: 'บัญชีรอการอนุมัติจาก super admin' }, { status: 403 });
     }
 
     if (adminUser.status === 'suspended') {
-      return NextResponse.json({ error: 'บัญชีของคุณถูกระงับ' }, { status: 403 });
+      return NextResponse.json({ error: 'บัญชีถูกระงับ' }, { status: 403 });
     }
 
     const response = NextResponse.json({
@@ -50,17 +76,8 @@ export async function POST(request: Request) {
       fullName: adminUser.full_name,
     });
 
-    // เก็บ session cookie
-    const cookieOpts = {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax' as const,
-      path: '/',
-      maxAge: 60 * 60 * 8,
-    };
-
-    response.cookies.set(ADMIN_COOKIE_NAME, adminUser.id, cookieOpts);
-    response.cookies.set(ADMIN_DEPT_COOKIE, adminUser.department, { ...cookieOpts, httpOnly: false });
+    response.cookies.set(ADMIN_COOKIE, adminUser.id, secure);
+    response.cookies.set(DEPT_COOKIE,  adminUser.department, insecure);
 
     return response;
   } catch (error) {

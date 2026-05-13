@@ -9,14 +9,13 @@ function isAdminProtectedPath(pathname: string) {
   return isAdminWebPath(pathname);
 }
 
-// UUID pattern
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// UUID pattern หรือ env-super-admin
+const VALID_ADMIN_COOKIE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$|^env-super-admin$/i;
 
 export function middleware(request: NextRequest) {
   if (isAdminProtectedPath(request.nextUrl.pathname)) {
     const cookieVal = request.cookies.get(ADMIN_COOKIE_NAME)?.value ?? '';
-    // รองรับทั้ง UUID (ใหม่) และ '1' (เดิม ระหว่าง migration)
-    const isLoggedIn = UUID_RE.test(cookieVal) || cookieVal === '1';
+    const isLoggedIn = VALID_ADMIN_COOKIE.test(cookieVal) || cookieVal === '1';
 
     if (!isLoggedIn) {
       const loginUrl = new URL('/admin-login', request.url);
