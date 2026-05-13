@@ -33,11 +33,40 @@ export function AdminMemberList() {
     void (async () => {
       setLoading(true);
       const supabase = createSupabaseBrowserClient();
-      const { data, error: rpcError } = await supabase.rpc('list_members_with_roles', {
-        p_status: statusFilter || null, p_limit: 200,
+
+      // ลอง RPC ก่อน
+      const { data: rpcData, error: rpcError } = await supabase.rpc('list_members_with_roles', {
+        p_status: statusFilter || null,
+        p_limit: 200,
       });
-      if (rpcError) setError(rpcError.message);
-      else setMembers((data as MemberRow[]) ?? []);
+
+      if (!rpcError) {
+        setMembers((rpcData as MemberRow[]) ?? []);
+        setLoading(false);
+        return;
+      }
+
+      // fallback: query ตรงถ้า RPC ยังไม่มี (migration ยังไม่ run ครบ)
+      let q = supabase.from('members')
+        .select('id, full_name, phone, status, created_at')
+        .order('created_at', { ascending: false })
+        .limit(200);
+      if (statusFilter) q = q.eq('status', statusFilter);
+      const { data: rawData, error: rawError } = await q;
+
+      if (rawError) { setError(rawError.message); setLoading(false); return; }
+
+      // normalize ให้ตรง MemberRow type
+      const normalized = ((rawData ?? []) as Array<Record<string, unknown>>).map((m) => ({
+        member_id: m.id as string,
+        full_name: m.full_name as string,
+        phone: m.phone as string | null,
+        status: m.status as string,
+        roles: [] as string[],
+        effective_role: null,
+        created_at: m.created_at as string,
+      }));
+      setMembers(normalized);
       setLoading(false);
     })();
   }, [statusFilter]);

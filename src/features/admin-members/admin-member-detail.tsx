@@ -55,13 +55,15 @@ export function AdminMemberDetail({ memberId }: { memberId: string }) {
   useEffect(() => { void load(); }, [memberId]);
 
   async function updateStatus(status: 'approved' | 'rejected' | 'suspended' | 'pending') {
-    const s = createSupabaseBrowserClient();
     setActing(true); setNotice(null);
-    await s.from('members').update({ status }).eq('id', memberId);
-    if (status === 'approved') {
-      await s.from('approvals').update({ status: 'approved' }).eq('member_id', memberId).eq('status', 'pending');
-    }
-    setNotice(STATUS_TH[status]?.label ?? status);
+    const res = await fetch('/api/admin/members/approvals', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ memberId, decision: status }),
+    });
+    const payload = (await res.json()) as { ok?: boolean; error?: string };
+    if (!res.ok) { setError(payload.error ?? 'ดำเนินการไม่สำเร็จ'); setActing(false); return; }
+    setNotice(`เปลี่ยนสถานะเป็น "${status}" แล้ว`);
     setActing(false);
     await load();
   }
