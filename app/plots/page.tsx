@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 import { useCurrentMember } from '@/providers/auth-provider';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
@@ -30,6 +31,7 @@ const DOC_TH: Record<string, string> = {
 
 export default function PlotsPage() {
   const member = useCurrentMember();
+  const router  = useRouter();
   const [plots, setPlots]     = useState<Plot[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState<string | null>(null);
@@ -97,7 +99,7 @@ export default function PlotsPage() {
           );
         })}
 
-        <UIButton variant="secondary" fullWidth onClick={() => window.location.href = '/register'}>
+        <UIButton variant="secondary" fullWidth onClick={() => router.push('/plots/add')}>
           + เพิ่มแปลงใหม่
         </UIButton>
       </div>

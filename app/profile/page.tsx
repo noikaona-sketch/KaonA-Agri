@@ -36,11 +36,14 @@ export default function ProfilePage() {
         {/* Profile hero */}
         <div className="profile-card">
           <div className="profile-avatar">{initials}</div>
-          <div>
+          <div style={{ flex: 1 }}>
             <p className="profile-name">{member.full_name}</p>
             <p className="profile-role">{ROLE_TH[effectiveRole ?? ''] ?? effectiveRole ?? 'สมาชิก'}</p>
             {profile.phone && <p className="profile-phone">📞 {profile.phone}</p>}
           </div>
+          <Link href="/profile/edit" style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: 10, padding: '8px 12px', color: '#fff', fontSize: 13, fontWeight: 700, textDecoration: 'none', flexShrink: 0 }}>
+            ✏️ แก้ไข
+          </Link>
         </div>
 
         {/* ข้อมูล */}

@@ -81,17 +81,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [bridgeDiagnostics, setBridgeDiagnostics] = useState<LiffBridgeDiagnostics>(INITIAL_BRIDGE_DIAGNOSTICS);
 
   useEffect(() => {
-    const shouldBypassLineAuth = isAdminWebPath(pathname);
-    const isPublicRegistrationPath =
-      pathname === '/service/register' || pathname === '/field/assist-registration' || pathname === '/field/register-role';
-
-    if (shouldBypassLineAuth) {
+    if (isAdminWebPath(pathname)) {
       setStatus('unauthenticated');
       setMember(null);
       setErrorMessage(null);
       setBridgeDiagnostics(getCombinedDiagnostics());
       return;
     }
+  }, [pathname]);
+
+  useEffect(() => {
+    if (isAdminWebPath(pathname)) return; // handled above
+
+    const isPublicRegistrationPath =
+      pathname === '/service/register' || pathname === '/field/assist-registration' || pathname === '/field/register-role';
 
     let isCancelled = false;
 
@@ -204,7 +207,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     return () => {
       isCancelled = true;
     };
-  }, [pathname]);
+  }, []); // bootstrap ครั้งเดียวเมื่อ mount — ไม่ deps pathname เพื่อลด LIFF call
 
   const value = useMemo(
     () => ({ status, session: null, member, errorMessage, bridgeDiagnostics }),
