@@ -25,20 +25,25 @@ function getHref(n: Notif): string | null {
 
 export function NotificationsList() {
   const member = useCurrentMember();
+  const memberId = member?.member_id;
   const [items, setItems] = useState<Notif[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!member?.id) return;
+    if (!memberId) {
+      setLoading(false);
+      return;
+    }
+
     void (async () => {
       const s = createSupabaseBrowserClient();
       const { data } = await s.from('notifications')
-        .select('*').eq('member_id', member.id)
+        .select('*').eq('member_id', memberId)
         .order('created_at', { ascending: false }).limit(50);
       setItems((data as Notif[]) ?? []);
       setLoading(false);
     })();
-  }, [member?.id]);
+  }, [memberId]);
 
   async function markRead(id: string) {
     const s = createSupabaseBrowserClient();
@@ -47,8 +52,10 @@ export function NotificationsList() {
   }
 
   async function markAllRead() {
+    if (!memberId) return;
+
     const s = createSupabaseBrowserClient();
-    await s.from('notifications').update({ read_at: new Date().toISOString() }).eq('member_id', member!.id).is('read_at', null);
+    await s.from('notifications').update({ read_at: new Date().toISOString() }).eq('member_id', memberId).is('read_at', null);
     setItems((prev) => prev.map((n) => ({ ...n, read_at: n.read_at ?? new Date().toISOString() })));
   }
 
