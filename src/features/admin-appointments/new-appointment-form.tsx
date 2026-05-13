@@ -13,8 +13,8 @@ type Cycle = {
   expected_harvest_at: string | null; estimated_yield_kg: number | null;
   quota_kg: number | null; seed_qty_used: number | null;
   area_planted_rai: number | null;
-  members: { full_name: string; phone: string | null } | null;
-  plots: { name: string; province: string | null } | null;
+  members: { full_name: string; phone: string | null }[] | null;
+  plots: { name: string; province: string | null }[] | null;
 };
 
 type YieldCalc = {
@@ -120,7 +120,7 @@ export function NewAppointmentForm() {
           <option value="">— เลือกรอบปลูก —</option>
           {cycles.map((c) => (
             <option key={c.id} value={c.id}>
-              {c.members?.full_name} · {c.crop_name} · {c.plots?.name ?? ''} {c.plots?.province ?? ''}
+              {c.members?.[0]?.full_name} · {c.crop_name} · {c.plots?.[0]?.name ?? ''} {c.plots?.[0]?.province ?? ''}
               {c.expected_harvest_at ? ` · เก็บ ${new Date(c.expected_harvest_at).toLocaleDateString('th-TH')}` : ''}
             </option>
           ))}
@@ -131,10 +131,10 @@ export function NewAppointmentForm() {
       {selectedCycle && (
         <section style={{ background: '#f7faf7', borderRadius: 12, padding: 16, display: 'grid', gap: 8 }}>
           <p style={{ margin: 0, fontWeight: 700, fontSize: 15, color: '#0d3d1f' }}>
-            🌾 {selectedCycle.crop_name} · {selectedCycle.plots?.name}
+            🌾 {selectedCycle.crop_name} · {selectedCycle.plots?.[0]?.name}
           </p>
           <p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>
-            สมาชิก: {selectedCycle.members?.full_name} · {selectedCycle.members?.phone ?? ''}
+            สมาชิก: {selectedCycle.members?.[0]?.full_name} · {selectedCycle.members?.[0]?.phone ?? ''}
           </p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginTop: 4 }}>
             {[
