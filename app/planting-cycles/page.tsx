@@ -1,10 +1,10 @@
-import { PlantingCycleManagementScreen } from '@/features/planting-cycle/planting-cycle-management-screen';
-import { ProtectedRoute } from '@/shared/components/protected-route';
+import { MobileAppShell } from '@/shared/components/mobile-app-shell';
+import { PlantingCycleList } from '@/features/member-planting/planting-cycle-list';
 
-export default function PlantingCyclePage() {
+export default function PlantingCyclesPage() {
   return (
-    <ProtectedRoute>
-      <PlantingCycleManagementScreen />
-    </ProtectedRoute>
+    <MobileAppShell title="รอบเพาะปลูก" subtitle="ติดตามการเพาะปลูกทุกแปลง">
+      <PlantingCycleList />
+    </MobileAppShell>
   );
 }

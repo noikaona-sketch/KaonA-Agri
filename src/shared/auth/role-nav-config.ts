@@ -35,18 +35,18 @@ const PENDING_NAV: RoleNavConfig = {
 const ROLE_NAV_MAP: Record<AppRole, RoleNavConfig> = {
   farmer: {
     tabs: [
-      { label: 'หน้าหลัก', href: '/', iconKey: 'member' },
-      { label: 'แปลงของฉัน', href: '/plots', iconKey: 'field' },
-      { label: 'งดเผา', href: '/no-burn', iconKey: 'service' },
-      { label: 'โปรไฟล์', href: '/profile', iconKey: 'admin' },
+      { label: 'หน้าหลัก',    href: '/',                  iconKey: 'member'  },
+      { label: 'แปลง',        href: '/plots',             iconKey: 'field'   },
+      { label: 'รอบปลูก',     href: '/planting-cycles',   iconKey: 'service' },
+      { label: 'โปรไฟล์',    href: '/profile',            iconKey: 'admin'   },
     ],
   },
   leader: {
     tabs: [
-      { label: 'หน้าหลัก', href: '/', iconKey: 'member' },
-      { label: 'ทีมของฉัน', href: '/member', iconKey: 'field' },
-      { label: 'บันทึก', href: '/plots', iconKey: 'service' },
-      { label: 'โปรไฟล์', href: '/profile', iconKey: 'admin' },
+      { label: 'หน้าหลัก',   href: '/',                  iconKey: 'member'  },
+      { label: 'รอบปลูก',    href: '/planting-cycles',   iconKey: 'field'   },
+      { label: 'แจ้งเตือน',  href: '/notifications',     iconKey: 'service' },
+      { label: 'โปรไฟล์',   href: '/profile',            iconKey: 'admin'   },
     ],
   },
   inspector: {
