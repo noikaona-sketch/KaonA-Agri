@@ -11,7 +11,7 @@ type Order = {
   status: string; payment_status: string; payment_method: string | null;
   total: number; paid_amount: number; created_at: string;
   pickup_date: string | null; reserved_until: string | null;
-  members: { full_name: string; phone: string | null } | null;
+  members: { full_name: string; phone: string | null }[] | null;
 };
 
 const STATUS_MAP: Record<string, { badge: string; label: string }> = {
@@ -112,8 +112,8 @@ export function AdminOrdersList() {
                   <tr key={o.id}>
                     <td style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 12 }}>{o.order_number}</td>
                     <td>
-                      <p style={{ margin: 0, fontWeight: 600 }}>{o.members?.full_name ?? '—'}</p>
-                      <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>{o.members?.phone ?? ''}</p>
+                      <p style={{ margin: 0, fontWeight: 600 }}>{o.members?.[0]?.full_name ?? '—'}</p>
+                      <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>{o.members?.[0]?.phone ?? ''}</p>
                     </td>
                     <td>{isReservation ? '📋 จอง' : '💰 ขาย'}</td>
                     <td style={{ fontWeight: 700 }}>{o.total.toLocaleString()} บาท</td>
