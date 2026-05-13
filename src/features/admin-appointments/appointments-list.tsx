@@ -13,8 +13,8 @@ type Appointment = {
   appointment_time: string | null; estimated_qty_kg: number;
   actual_qty_kg: number | null; price_per_kg: number;
   total_amount: number; location_note: string | null;
-  members: { full_name: string; phone: string | null } | null;
-  planting_cycles: { crop_name: string; season_year: number } | null;
+  members: { full_name: string; phone: string | null }[] | null;
+  planting_cycles: { crop_name: string; season_year: number }[] | null;
 };
 
 const STATUS_MAP: Record<string, { badge: string; label: string }> = {
@@ -118,12 +118,12 @@ export function AppointmentsList() {
                   <tr key={item.id} style={{ background: isToday ? '#f9fff9' : undefined }}>
                     <td style={{ fontFamily: 'monospace', fontSize: 12, fontWeight: 700 }}>{item.appointment_number}</td>
                     <td>
-                      <p style={{ margin: 0, fontWeight: 600 }}>{item.members?.full_name ?? '—'}</p>
-                      <p style={{ margin: 0, fontSize: 11, color: '#6b7280' }}>{item.members?.phone ?? ''}</p>
+                      <p style={{ margin: 0, fontWeight: 600 }}>{item.members?.[0]?.full_name ?? '—'}</p>
+                      <p style={{ margin: 0, fontSize: 11, color: '#6b7280' }}>{item.members?.[0]?.phone ?? ''}</p>
                     </td>
                     <td style={{ fontWeight: 600 }}>
-                      {item.planting_cycles?.crop_name ?? '—'}
-                      <span style={{ display: 'block', fontSize: 11, color: '#6b7280' }}>{item.planting_cycles?.season_year}</span>
+                      {item.planting_cycles?.[0]?.crop_name ?? '—'}
+                      <span style={{ display: 'block', fontSize: 11, color: '#6b7280' }}>{item.planting_cycles?.[0]?.season_year}</span>
                     </td>
                     <td style={{ fontSize: 13, whiteSpace: 'nowrap' }}>
                       {new Date(item.appointment_date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}
