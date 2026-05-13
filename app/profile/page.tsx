@@ -11,6 +11,12 @@ const ROLE_TH: Record<string, string> = {
   leader: 'หัวหน้ากลุ่ม', admin: 'แอดมิน',
 };
 
+type ProfileMemberExtras = {
+  phone?: string | null;
+  citizen_id_masked?: string | null;
+  address?: string | null;
+};
+
 export default function ProfilePage() {
   const member        = useCurrentMember();
   const roles         = useCurrentRoles();
@@ -18,6 +24,7 @@ export default function ProfilePage() {
 
   if (!member) return <LoadingState label="กำลังโหลด…" />;
 
+  const profile = member as typeof member & ProfileMemberExtras;
   const initials = member.full_name
     ? member.full_name.trim().split(' ').map((w: string) => w[0]).slice(0, 2).join('')
     : '?';
@@ -32,7 +39,7 @@ export default function ProfilePage() {
           <div>
             <p className="profile-name">{member.full_name}</p>
             <p className="profile-role">{ROLE_TH[effectiveRole ?? ''] ?? effectiveRole ?? 'สมาชิก'}</p>
-            {member.phone && <p className="profile-phone">📞 {member.phone}</p>}
+            {profile.phone && <p className="profile-phone">📞 {profile.phone}</p>}
           </div>
         </div>
 
@@ -40,8 +47,8 @@ export default function ProfilePage() {
         <div className="kaona-card">
           <p style={{ margin: '0 0 8px', fontWeight: 700, fontSize: 14, color: 'var(--primary)' }}>ข้อมูลสมาชิก</p>
           {[
-            ['เลขบัตรประชาชน', member.citizen_id_masked ?? '—'],
-            ['ที่อยู่', member.address ?? '—'],
+            ['เลขบัตรประชาชน', profile.citizen_id_masked ?? '—'],
+            ['ที่อยู่', profile.address ?? '—'],
             ['สถานะ', member.status === 'approved' ? '✅ อนุมัติแล้ว' : member.status],
           ].map(([label, value]) => (
             <div key={String(label)} className="info-row">
