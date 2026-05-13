@@ -2,8 +2,6 @@
 
 import { useState } from 'react';
 
-import { createSupabaseBrowserClient } from '@/lib/supabase/client';
-
 type RoleRow = { role: string; is_primary: boolean };
 
 const ALL_ROLES = ['farmer', 'truck_owner', 'inspector', 'staff', 'leader', 'admin'] as const;
@@ -31,52 +29,52 @@ export function MemberRoleManager({ memberId, memberName, currentRoles, onRolesU
 
   const roleNames = currentRoles.map((r) => r.role);
 
+  async function callRoleApi(action: 'add' | 'remove' | 'set_primary', role: string) {
+    const res = await fetch(`/api/admin/members/${memberId}/roles`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, role }),
+    });
+    const payload = (await res.json()) as { ok?: boolean; error?: string };
+    if (!res.ok) throw new Error(payload.error ?? 'ดำเนินการไม่สำเร็จ');
+  }
+
   async function addRole(role: AppRole, setPrimary = false) {
-    setActing(`add-${role}`);
-    setNotice(null);
-    const supabase = createSupabaseBrowserClient();
-
-    // ถ้า setPrimary → unset primary เดิมก่อน
-    if (setPrimary) {
-      await supabase.from('member_roles')
-        .update({ is_primary: false })
-        .eq('member_id', memberId);
+    setActing(`add-${role}`); setNotice(null);
+    try {
+      await callRoleApi('add', role);
+      if (setPrimary) await callRoleApi('set_primary', role);
+      setNotice({ type: 'ok', msg: `เพิ่มสิทธิ์ ${ROLE_CONFIG[role].icon} ${ROLE_CONFIG[role].label} แล้ว` });
+      onRolesUpdated();
+    } catch (e) {
+      setNotice({ type: 'err', msg: String(e) });
     }
-
-    const { error } = await supabase.from('member_roles')
-      .upsert({ member_id: memberId, role, is_primary: setPrimary }, { onConflict: 'member_id,role' });
-
     setActing(null);
-    if (error) { setNotice({ type: 'err', msg: error.message }); return; }
-    setNotice({ type: 'ok', msg: `เพิ่มสิทธิ์ ${ROLE_CONFIG[role].icon} ${ROLE_CONFIG[role].label} แล้ว` });
-    onRolesUpdated();
   }
 
   async function removeRole(role: string) {
-    if (currentRoles.length <= 1) {
-      setNotice({ type: 'err', msg: 'ไม่สามารถลบ role สุดท้ายได้' });
-      return;
-    }
     if (!window.confirm(`ลบสิทธิ์ "${role}" จาก ${memberName}?`)) return;
-    setActing(`remove-${role}`);
-    setNotice(null);
-    const supabase = createSupabaseBrowserClient();
-    const { error } = await supabase.from('member_roles')
-      .delete().eq('member_id', memberId).eq('role', role);
+    setActing(`remove-${role}`); setNotice(null);
+    try {
+      await callRoleApi('remove', role);
+      setNotice({ type: 'ok', msg: `ลบสิทธิ์ ${role} แล้ว` });
+      onRolesUpdated();
+    } catch (e) {
+      setNotice({ type: 'err', msg: String(e) });
+    }
     setActing(null);
-    if (error) { setNotice({ type: 'err', msg: error.message }); return; }
-    setNotice({ type: 'ok', msg: `ลบสิทธิ์ ${role} แล้ว` });
-    onRolesUpdated();
   }
 
   async function setPrimary(role: string) {
     setActing(`primary-${role}`);
-    const supabase = createSupabaseBrowserClient();
-    await supabase.from('member_roles').update({ is_primary: false }).eq('member_id', memberId);
-    await supabase.from('member_roles').update({ is_primary: true }).eq('member_id', memberId).eq('role', role);
+    try {
+      await callRoleApi('set_primary', role);
+      setNotice({ type: 'ok', msg: `ตั้ง ${role} เป็นสิทธิ์หลักแล้ว` });
+      onRolesUpdated();
+    } catch (e) {
+      setNotice({ type: 'err', msg: String(e) });
+    }
     setActing(null);
-    setNotice({ type: 'ok', msg: `ตั้ง ${role} เป็นสิทธิ์หลักแล้ว` });
-    onRolesUpdated();
   }
 
   const addableRoles = ALL_ROLES.filter((r) => !roleNames.includes(r));

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 
-import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { ErrorState } from '@/shared/components/error-state';
 import { LoadingState } from '@/shared/components/loading-state';
 
@@ -36,19 +35,17 @@ export function AdminMemberDetail({ memberId }: { memberId: string }) {
   const [notice,   setNotice]   = useState<string | null>(null);
 
   async function load() {
-    setLoading(true);
-    const s = createSupabaseBrowserClient();
-    const [mR, pR, vR, rR] = await Promise.all([
-      s.from('members').select('*').eq('id', memberId).maybeSingle(),
-      s.from('plots').select('id,name,area_rai,lat,lng,status,province,land_doc_type').eq('member_id', memberId).is('deleted_at', null),
-      s.from('member_vehicles').select('id,vehicle_type,plate_number,brand,model,year_be').eq('member_id', memberId).is('deleted_at', null),
-      s.from('member_roles').select('role,is_primary').eq('member_id', memberId),
-    ]);
-    if (mR.error) { setError(mR.error.message); setLoading(false); return; }
-    setMember(mR.data as MemberDetail);
-    setPlots((pR.data as PlotRow[]) ?? []);
-    setVehicles((vR.data as VehicleRow[]) ?? []);
-    setRoles((rR.data as RoleRow[]) ?? []);
+    setLoading(true); setError(null);
+    const res = await fetch(`/api/admin/members/${memberId}`);
+    const payload = (await res.json()) as {
+      member?: MemberDetail; plots?: PlotRow[];
+      vehicles?: VehicleRow[]; roles?: RoleRow[]; error?: string;
+    };
+    if (!res.ok) { setError(payload.error ?? 'ไม่พบข้อมูลสมาชิก'); setLoading(false); return; }
+    setMember(payload.member ?? null);
+    setPlots(payload.plots ?? []);
+    setVehicles(payload.vehicles ?? []);
+    setRoles(payload.roles ?? []);
     setLoading(false);
   }
 
