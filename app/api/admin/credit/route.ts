@@ -81,14 +81,6 @@ export async function POST(request: Request) {
     }
 
     if (body.action === 'record_payment') {
-      const newDebit = Math.max(0, (current?.debit_balance ?? 0) - body.amount);
-      await s.from('member_credit_accounts').update({
-        debit_balance: newDebit,
-        total_paid: s.rpc as unknown as number,
-        last_activity: new Date().toISOString(),
-      }).eq('member_id', body.member_id);
-
-      // ใช้ raw update แทน
       const { data: currentAcct } = await s.from('member_credit_accounts')
         .select('total_paid, debit_balance').eq('member_id', body.member_id).single();
       const ca = currentAcct as { total_paid: number; debit_balance: number } | null;
