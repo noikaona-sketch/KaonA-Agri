@@ -15,7 +15,7 @@ type PlotRow = {
   land_doc_type: string | null;
   status: string;
   created_at: string;
-  members: { full_name: string } | null;
+  members: { full_name: string }[] | null;
 };
 
 const STATUS_BADGE: Record<string, string> = {
@@ -52,7 +52,7 @@ export function AdminPlotsList() {
   const filtered = plots.filter((p) =>
     !search ||
     p.name.toLowerCase().includes(search.toLowerCase()) ||
-    (p.members?.full_name ?? '').toLowerCase().includes(search.toLowerCase()) ||
+    (p.members?.[0]?.full_name ?? '').toLowerCase().includes(search.toLowerCase()) ||
     (p.province ?? '').includes(search)
   );
 
@@ -87,7 +87,7 @@ export function AdminPlotsList() {
               {filtered.map((p) => (
                 <tr key={p.id}>
                   <td style={{ fontWeight: 600 }}>{p.name}</td>
-                  <td>{p.members?.full_name ?? '—'}</td>
+                  <td>{p.members?.[0]?.full_name ?? '—'}</td>
                   <td>{p.area_rai}</td>
                   <td>{p.province ?? '—'}</td>
                   <td>{p.land_doc_type ? (LAND_DOC_TH[p.land_doc_type] ?? p.land_doc_type) : '—'}</td>
