@@ -7,14 +7,22 @@ import { LoadingState } from '@/shared/components/loading-state';
 import { UIButton } from '@/shared/components/ui-button';
 import { ErrorState } from '@/shared/components/error-state';
 
+type ProductRef = { name: string; seed_variety: string | null; days_to_harvest: number | null; planting_guide: string | null };
+type PlotRef = { id: string; name: string; province: string | null };
+
 type Cycle = {
   id: string; crop_name: string; season_year: number; status: string;
   planted_at: string | null; expected_harvest_at: string | null;
   area_planted_rai: number | null; estimated_yield_kg: number | null;
   quota_kg: number | null; source: string | null; confirmed_at: string | null;
   member_note: string | null; seed_qty_used: number | null;
-  products: { name: string; seed_variety: string | null; days_to_harvest: number | null; planting_guide: string | null } | null;
-  plots: { id: string; name: string; province: string | null } | null;
+  products: ProductRef | null;
+  plots: PlotRef | null;
+};
+
+type CycleQueryRow = Omit<Cycle, 'products' | 'plots'> & {
+  products: ProductRef | ProductRef[] | null;
+  plots: PlotRef | PlotRef[] | null;
 };
 
 type Progress = {
@@ -40,6 +48,19 @@ function daysUntil(d: string | null) {
   return Math.round((new Date(d).getTime() - Date.now()) / 86400000);
 }
 
+function firstRelation<T>(value: T | T[] | null): T | null {
+  return Array.isArray(value) ? (value[0] ?? null) : value;
+}
+
+function normalizeCycle(row: CycleQueryRow | null): Cycle | null {
+  if (!row) return null;
+  return {
+    ...row,
+    products: firstRelation(row.products),
+    plots: firstRelation(row.plots),
+  };
+}
+
 export function PlantingCycleDetail({ cycleId }: { cycleId: string }) {
   const member = useCurrentMember();
   const memberId = member?.member_id;
@@ -49,7 +70,6 @@ export function PlantingCycleDetail({ cycleId }: { cycleId: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState<string | null>(null);
 
-  // form states
   const [showConfirm, setShowConfirm]   = useState(false);
   const [showProgress, setShowProgress] = useState(false);
   const [selectedPlot, setSelectedPlot] = useState('');
@@ -75,14 +95,14 @@ export function PlantingCycleDetail({ cycleId }: { cycleId: string }) {
         : Promise.resolve({ data: [] }),
     ]);
     if (cRes.error) { setError(cRes.error.message); setLoading(false); return; }
-    setCycle(cRes.data as Cycle);
+    const normalizedCycle = normalizeCycle(cRes.data as unknown as CycleQueryRow | null);
+    setCycle(normalizedCycle);
     setProgress((pRes.data as Progress[]) ?? []);
     setPlots(((plotsRes as { data: unknown[] }).data as Plot[]) ?? []);
-    if (cRes.data) {
-      const c = cRes.data as Cycle;
-      setSelectedPlot(c.plots?.id ?? '');
-      setPlantedDate(c.planted_at?.slice(0, 10) ?? '');
-      setAreaRai(String(c.area_planted_rai ?? ''));
+    if (normalizedCycle) {
+      setSelectedPlot(normalizedCycle.plots?.id ?? '');
+      setPlantedDate(normalizedCycle.planted_at?.slice(0, 10) ?? '');
+      setAreaRai(String(normalizedCycle.area_planted_rai ?? ''));
     }
     setLoading(false);
   }
@@ -111,7 +131,6 @@ export function PlantingCycleDetail({ cycleId }: { cycleId: string }) {
       planting_cycle_id: cycleId, member_id: memberId,
       stage: newStage, description: stageDesc || null,
     });
-    // อัปเดต status ของ cycle ด้วย
     await s.from('planting_cycles').update({ status: newStage, updated_at: new Date().toISOString() }).eq('id', cycleId);
     setSaving(false);
     setNewStage(''); setStageDesc(''); setShowProgress(false);
@@ -127,8 +146,6 @@ export function PlantingCycleDetail({ cycleId }: { cycleId: string }) {
   return (
     <div className="mobile-stack" style={{ paddingBottom: 24 }}>
       {notice && <div style={{ background: '#e8f5e9', border: '1px solid #a5d6a7', borderRadius: 10, padding: '10px 14px', fontWeight: 600, color: '#1b5e20' }}>{notice}</div>}
-
-      {/* Hero */}
       <div style={{ background: 'linear-gradient(145deg,#1b5e20,#2e7d32)', borderRadius: 20, padding: 20, color: '#fff' }}>
         <p style={{ margin: '0 0 4px', fontSize: 13, opacity: 0.8 }}>{cycle.source === 'order' ? '🛒 จากคำสั่งซื้อ' : '✏️ สร้างเอง'}</p>
         <h2 style={{ margin: '0 0 6px', fontSize: 22, fontWeight: 900 }}>{cycle.crop_name} {cycle.season_year}</h2>
