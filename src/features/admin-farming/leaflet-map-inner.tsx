@@ -9,11 +9,13 @@ import L from 'leaflet';
 import { useEffect, useRef } from 'react';
 
 type MapPlot = {
-  cycle_id: string; crop_name: string; plot_name: string;
-  member_name: string; province: string | null;
-  harvest_date_estimated: string | null; days_to_harvest: number | null;
-  estimated_yield_kg: number | null; map_color: string;
-  lat: number; lng: number;
+  cycle_id: string; member_name: string; crop_name: string;
+  plot_name: string; province: string | null;
+  planted_at: string | null; harvest_date_estimated: string | null;
+  days_to_harvest: number | null; area_planted_rai: number | null;
+  estimated_yield_kg: number | null; estimated_revenue: number | null;
+  price_per_kg: number | null; map_color: string;
+  lat: number; lng: number; status: string;
 };
 
 type Props = {
