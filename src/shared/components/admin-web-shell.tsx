@@ -8,48 +8,27 @@ import { useEffect, useState } from 'react';
 
 type NavItem = { label: string; href: string; icon: string };
 
-// เมนูตาม permission
+// เมนูหลัก — กระชับ ใช้ tab ในหน้าแทนการแตก nav
 const ALL_NAV: NavItem[] = [
-  { label: 'แดชบอร์ด',       href: '/admin',                    icon: '📊' },
-  // สมาชิก
-  { label: 'คิวอนุมัติ',     href: '/admin/members/approvals',  icon: '✅' },
-  { label: 'สมาชิกทั้งหมด', href: '/admin/members',            icon: '👥' },
-  { label: 'จัดการ Role',    href: '/admin/roles',              icon: '🏷️' },
-  { label: 'จัดกลุ่ม',      href: '/admin/groups',             icon: '🗂️' },
-  { label: 'สร้าง PIN',      href: '/admin/invites',            icon: '🔑' },
-  // เกษตร
-  { label: 'ภาพรวมฟาร์ม',   href: '/admin/farming',            icon: '🗺️' },
-  { label: 'นัดขาย',         href: '/admin/appointments',       icon: '📅' },
-  { label: 'แปลงเกษตร',     href: '/admin/plots',              icon: '🌾' },
-  { label: 'รอบเพาะปลูก',   href: '/admin/planting',           icon: '🌱' },
-  { label: 'งดเผา',          href: '/admin/no-burn',            icon: '🔥' },
-  { label: 'งานตรวจ',        href: '/admin/inspections',        icon: '🔍' },
-  // ขาย/สต๊อก
-  { label: 'POS ขาย/จอง',     href: '/admin/pos',              icon: '💰' },
-  { label: 'นัดขายผลผลิต',    href: '/admin/appointments',     icon: '📅' },
-  { label: 'นัดรถเกี่ยว',     href: '/admin/harvest',          icon: '🚜' },
-  { label: 'คำสั่งซื้อ',      href: '/admin/orders',           icon: '📋' },
-  { label: 'สินค้า',           href: '/admin/products',         icon: '🛍️' },
-  { label: 'สต๊อก',            href: '/admin/stock',            icon: '📦' },
-  { label: 'Supplier เมล็ด',  href: '/admin/seed-suppliers',   icon: '🏪' },
-  { label: 'พันธุ์เมล็ด',     href: '/admin/seed-varieties',   icon: '🌾' },
-  { label: 'Stock LOT เมล็ด', href: '/admin/seed-lots',         icon: '🗄️' },
-  { label: 'คิวจองเมล็ด',    href: '/admin/seed-reservations',  icon: '📋' },
-  { label: 'เครดิต/ค้างชำระ', href: '/admin/credit',             icon: '💳' },
-  { label: 'เมล็ดพันธุ์',     href: '/admin/seeds',            icon: '🫘' },
-  // บริการ/ระบบ
-  { label: 'การจองบริการ',   href: '/admin/service',            icon: '🚜' },
-  { label: 'เจ้าหน้าที่',   href: '/admin/staff',              icon: '👤' },
+  { label: 'แดชบอร์ด', href: '/admin',          icon: '📊' },
+  { label: 'สมาชิก',   href: '/admin/members',   icon: '👥' },  // รวม: คิวอนุมัติ/roles/groups/PIN
+  { label: 'เกษตร',    href: '/admin/farming',   icon: '🗺️' },  // รวม: แผนที่/แปลง/รอบปลูก/งดเผา/ตรวจ/ตั้งค่า
+  { label: 'เมล็ด',    href: '/admin/seeds',     icon: '🌾' },  // รวม: supplier/variety/lot/จอง/คำสั่ง
+  { label: 'ขาย',      href: '/admin/sales',     icon: '💰' },  // รวม: POS/orders/appointments/products/stock
+  { label: 'รถเกี่ยว', href: '/admin/harvest',   icon: '🚜' },
+  { label: 'เครดิต',   href: '/admin/credit',    icon: '💳' },
+  { label: 'บริการ',   href: '/admin/service',   icon: '🔧' },
+  { label: 'เจ้าหน้าที่', href: '/admin/staff',  icon: '👤' },
 ];
 
 const DEPT_NAV: Record<string, string[]> = {
-  super_admin: ['แดชบอร์ด','คิวอนุมัติ','สมาชิกทั้งหมด','จัดการ Role','จัดกลุ่ม','สร้าง PIN','ภาพรวมฟาร์ม','แปลงเกษตร','รอบเพาะปลูก','งดเผา','งานตรวจ','POS ขาย/จอง','นัดขายผลผลิต','นัดรถเกี่ยว','คำสั่งซื้อ','สินค้า','สต๊อก','Supplier เมล็ด','พันธุ์เมล็ด','Stock LOT เมล็ด','คิวจองเมล็ด','เมล็ดพันธุ์','การจองบริการ','เจ้าหน้าที่'],
-  admin:       ['แดชบอร์ด','คิวอนุมัติ','สมาชิกทั้งหมด','จัดการ Role','จัดกลุ่ม','สร้าง PIN','ภาพรวมฟาร์ม','แปลงเกษตร','รอบเพาะปลูก','งดเผา','งานตรวจ','POS ขาย/จอง','นัดขายผลผลิต','นัดรถเกี่ยว','คำสั่งซื้อ','สินค้า','สต๊อก','Supplier เมล็ด','พันธุ์เมล็ด','Stock LOT เมล็ด','คิวจองเมล็ด','เมล็ดพันธุ์','การจองบริการ','เจ้าหน้าที่'],
-  field:       ['แดชบอร์ด','คิวอนุมัติ','สมาชิกทั้งหมด','จัดกลุ่ม','สร้าง PIN','ภาพรวมฟาร์ม','แปลงเกษตร','รอบเพาะปลูก','งดเผา','งานตรวจ','นัดรถเกี่ยว','การจองบริการ'],
-  sales:       ['แดชบอร์ด','สมาชิกทั้งหมด','แปลงเกษตร','รอบเพาะปลูก','POS ขาย/จอง','นัดขายผลผลิต','คำสั่งซื้อ','สินค้า','สต๊อก','เมล็ดพันธุ์','การจองบริการ'],
-  accounting:  ['แดชบอร์ด','สมาชิกทั้งหมด','คำสั่งซื้อ','สต๊อก','เมล็ดพันธุ์'],
-  finance:     ['แดชบอร์ด','สมาชิกทั้งหมด','คำสั่งซื้อ','สต๊อก'],
-  stock:       ['แดชบอร์ด','สินค้า','สต๊อก','เมล็ดพันธุ์'],
+  super_admin: ['แดชบอร์ด','สมาชิก','เกษตร','เมล็ด','ขาย','รถเกี่ยว','เครดิต','บริการ','เจ้าหน้าที่'],
+  admin:       ['แดชบอร์ด','สมาชิก','เกษตร','เมล็ด','ขาย','รถเกี่ยว','เครดิต','บริการ','เจ้าหน้าที่'],
+  field:       ['แดชบอร์ด','สมาชิก','เกษตร','รถเกี่ยว','บริการ'],
+  sales:       ['แดชบอร์ด','สมาชิก','เมล็ด','ขาย','เครดิต'],
+  accounting:  ['แดชบอร์ด','ขาย','เครดิต'],
+  finance:     ['แดชบอร์ด','ขาย','เครดิต'],
+  stock:       ['แดชบอร์ด','เมล็ด','ขาย'],
 };
 
 function getNavForDept(dept: string): NavItem[] {
