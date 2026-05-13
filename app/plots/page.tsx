@@ -35,20 +35,20 @@ export default function PlotsPage() {
   const [error, setError]     = useState<string | null>(null);
 
   useEffect(() => {
-    if (!member?.id) return;
+    if (!member?.member_id) return;
     void (async () => {
       const s = createSupabaseBrowserClient();
       const { data, error: err } = await s
         .from('plots')
         .select('id,name,area_rai,province,status,land_doc_type,lat,lng')
-        .eq('member_id', member.id)
+        .eq('member_id', member.member_id)
         .is('deleted_at', null)
         .order('created_at', { ascending: false });
       if (err) setError(err.message);
       else setPlots((data as Plot[]) ?? []);
       setLoading(false);
     })();
-  }, [member?.id]);
+  }, [member?.member_id]);
 
   return (
     <MobileAppShell title="แปลงของฉัน" subtitle="จัดการแปลงเกษตรทั้งหมด">
