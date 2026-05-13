@@ -13,8 +13,8 @@ type InspectionRow = {
   assigned_at: string | null;
   visited_at: string | null;
   created_at: string;
-  inspector: { full_name: string } | null;
-  plots: { name: string; province: string | null } | null;
+  inspector: { full_name: string }[] | null;
+  plots: { name: string; province: string | null }[] | null;
 };
 
 const STATUS_MAP: Record<string, { badge: string; label: string }> = {
@@ -73,8 +73,8 @@ export function AdminInspectionsList() {
                 const st = STATUS_MAP[r.result_status] ?? { badge: 'pending', label: r.result_status };
                 return (
                   <tr key={r.id}>
-                    <td style={{ fontWeight: 600 }}>{r.plots?.name ?? '—'} <span style={{ fontSize: 12, color: '#6b7280' }}>{r.plots?.province ?? ''}</span></td>
-                    <td>{r.inspector?.full_name ?? '—'}</td>
+                    <td style={{ fontWeight: 600 }}>{r.plots?.[0]?.name ?? '—'} <span style={{ fontSize: 12, color: '#6b7280' }}>{r.plots?.[0]?.province ?? ''}</span></td>
+                    <td>{r.inspector?.[0]?.full_name ?? '—'}</td>
                     <td style={{ fontSize: 13, color: '#6b7280', whiteSpace: 'nowrap' }}>{r.assigned_at ? new Date(r.assigned_at).toLocaleDateString('th-TH') : '—'}</td>
                     <td style={{ fontSize: 13, color: '#6b7280', whiteSpace: 'nowrap' }}>{r.visited_at ? new Date(r.visited_at).toLocaleDateString('th-TH') : '—'}</td>
                     <td><span className={`status-badge status-badge--${st.badge}`}>{st.label}</span></td>
