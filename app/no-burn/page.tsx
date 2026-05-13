@@ -9,7 +9,7 @@ import { UIButton } from '@/shared/components/ui-button';
 
 type NoBurnRequest = {
   id: string; status: string; submitted_at: string; review_note: string | null;
-  plots: { name: string }[] | null;
+  plots: { name: string } | null;
 };
 
 const STATUS_COLOR: Record<string, { bg: string; color: string; label: string }> = {
@@ -25,18 +25,18 @@ export default function NoBurnPage() {
   const [loading, setLoading]   = useState(true);
 
   useEffect(() => {
-    if (!member?.member_id) return;
+    if (!member?.id) return;
     void (async () => {
       const s = createSupabaseBrowserClient();
       const { data } = await s
         .from('no_burn_requests')
         .select('id,status,submitted_at,review_note,plots(name)')
-        .eq('member_id', member.member_id)
+        .eq('member_id', member.id)
         .order('submitted_at', { ascending: false });
       setRequests((data as NoBurnRequest[]) ?? []);
       setLoading(false);
     })();
-  }, [member?.member_id]);
+  }, [member?.id]);
 
   return (
     <MobileAppShell title="งดเผา" subtitle="ยื่นคำขอและดูสถานะการอนุมัติ">
@@ -68,7 +68,7 @@ export default function NoBurnPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
                   <p style={{ margin: 0, fontWeight: 700, fontSize: 15 }}>
-                    {req.plots?.[0]?.name ?? 'แปลงไม่ระบุ'}
+                    {req.plots?.name ?? 'แปลงไม่ระบุ'}
                   </p>
                   <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-secondary)' }}>
                     ยื่นเมื่อ {new Date(req.submitted_at).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}
