@@ -14,8 +14,8 @@ type CycleRow = {
   planted_at: string | null;
   expected_harvest_at: string | null;
   created_at: string;
-  members: { full_name: string } | null;
-  plots: { name: string; area_rai: number } | null;
+  members: { full_name: string }[] | null;
+  plots: { name: string; area_rai: number }[] | null;
 };
 
 const STATUS_MAP: Record<string, { badge: string; label: string }> = {
@@ -84,8 +84,8 @@ export function AdminPlantingList() {
                 const st = STATUS_MAP[r.status] ?? { badge: 'pending', label: r.status };
                 return (
                   <tr key={r.id}>
-                    <td style={{ fontWeight: 600 }}>{r.members?.full_name ?? '—'}</td>
-                    <td>{r.plots?.name ?? '—'} {r.plots?.area_rai ? <span style={{ fontSize: 12, color: '#6b7280' }}>({r.plots.area_rai} ไร่)</span> : null}</td>
+                    <td style={{ fontWeight: 600 }}>{r.members?.[0]?.full_name ?? '—'}</td>
+                    <td>{r.plots?.[0]?.name ?? '—'} {r.plots?.[0]?.area_rai ? <span style={{ fontSize: 12, color: '#6b7280' }}>({r.plots[0].area_rai} ไร่)</span> : null}</td>
                     <td style={{ fontWeight: 600 }}>{r.crop_name}</td>
                     <td>{r.season_year}</td>
                     <td style={{ fontSize: 13, color: '#6b7280', whiteSpace: 'nowrap' }}>{r.planted_at ? new Date(r.planted_at).toLocaleDateString('th-TH') : '—'}</td>
