@@ -11,12 +11,50 @@ Every time you write a type with nested Supabase relations, ask:
 
 ```
 Q: Is this field from a .select('relation(...)') ?
-   YES → must be array: relation: { ... }[] | null
+   YES → type must be: NestedRelation<{ ... }>  (i.e. { ... }[] | null)
    NO  → can be scalar
 
 Q: Am I accessing it?
-   YES → must use [0]: item.relation?.[0]?.field
+   YES → use first() helper:  const plot = first(item.plots);  plot?.name
    NO  → skip
+```
+
+### ✅ Preferred Pattern — use `first()` and `NestedRelation`
+
+```ts
+import { first, all, NestedRelation } from '@/lib/supabase/helpers';
+
+// Type definition — use NestedRelation<T> instead of T | null
+type Cycle = {
+  id: string;
+  plots:   NestedRelation<{ name: string; province: string | null }>;
+  members: NestedRelation<{ full_name: string; phone: string | null }>;
+};
+
+// Access — use first() instead of ?.[0]?.
+const plot   = first(cycle.plots);    // { name, province } | null
+const member = first(cycle.members);  // { full_name, phone } | null
+
+plot?.name       // ✅ clean
+member?.phone    // ✅ clean
+
+// Multiple items
+const plots = all(cycle.plots);  // { name, province }[]
+```
+
+### ⚠️ Old pattern still works but is verbose and error-prone
+
+```ts
+// ❌ Don't type as object
+plots: { name: string } | null
+
+// ❌ Don't access without [0]
+cycle.plots?.name
+
+// ⚠️ Works but verbose — prefer first() instead
+cycle.plots?.[0]?.name
+cycle.plots?.[0]?.province && <p>{cycle.plots[0].province}</p>
+//                                              ^^^ easy to forget [0] in body!
 ```
 
 ### ⚠️ Exception: `firstRelation()` helper
