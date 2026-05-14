@@ -5,16 +5,22 @@ import { LoadingState } from '@/shared/components/loading-state';
 import { ErrorState } from '@/shared/components/error-state';
 
 /* ─── Types ─── */
+// IMPORTANT: Supabase nested select ALWAYS returns array, even for FK (1:1)
+// Access with: item.members?.[0]?.full_name NOT item.members?.full_name
+// See: docs/SUPABASE_RULES.md
+
 type Group = {
   id: string; name: string; description: string | null; created_at: string;
-  created_by_member: { full_name: string } | null;
+  created_by_member: { full_name: string }[] | null;   // array — nested relation
   member_group_members: { count: number }[];
 };
-type GroupDetail = Group & {
+type GroupDetail = {
+  id: string; name: string; description: string | null; created_at: string;
+  created_by_member: { full_name: string }[] | null;
   member_group_members: {
     id: string; created_at: string;
-    members: { id: string; full_name: string; phone: string | null; status: string } | null;
-  }[];
+    members: { id: string; full_name: string; phone: string | null; status: string }[] | null;
+  }[];                                                  // members = array — nested relation
 };
 type SearchMember = { id: string; full_name: string; phone: string | null };
 
@@ -214,7 +220,7 @@ export function AdminGroups() {
             {searchRes.length > 0 && (
               <div style={{ marginTop: 6, display: 'grid', gap: 4 }}>
                 {searchRes.map((m) => {
-                  const alreadyIn = selected.member_group_members.some((x) => x.members?.id === m.id);
+                  const alreadyIn = selected.member_group_members.some((x) => x.members?.[0]?.id === m.id);
                   return (
                     <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', background: '#fff', borderRadius: 10, border: '1px solid #e8ede8' }}>
                       <div style={{ flex: 1 }}>
@@ -249,14 +255,14 @@ export function AdminGroups() {
               {selected.member_group_members.map((gm) => (
                 <div key={gm.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: '#fff', borderRadius: 10, border: '1px solid #e8ede8' }}>
                   <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#e8f5e9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 800, flexShrink: 0, color: '#2e7d32' }}>
-                    {gm.members?.full_name?.[0] ?? '?'}
+                    {gm.members?.[0]?.full_name?.[0] ?? '?'}
                   </div>
                   <div style={{ flex: 1 }}>
-                    <p style={{ margin: 0, fontWeight: 600, fontSize: 14 }}>{gm.members?.full_name ?? '—'}</p>
-                    <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>{gm.members?.phone ?? '—'}</p>
+                    <p style={{ margin: 0, fontWeight: 600, fontSize: 14 }}>{gm.members?.[0]?.full_name ?? '—'}</p>
+                    <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>{gm.members?.[0]?.phone ?? '—'}</p>
                   </div>
                   <button className="admin-btn admin-btn--danger"
-                    onClick={() => gm.members && removeMember(gm.members.id)}
+                    onClick={() => gm.members?.[0] && removeMember(gm.members[0].id)}
                     disabled={addingId !== null}
                     style={{ fontSize: 12, minHeight: 30, padding: '4px 8px', flexShrink: 0 }}>
                     ×
