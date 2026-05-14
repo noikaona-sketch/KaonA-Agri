@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 import { useAuth } from '@/providers/auth-provider';
 import { FarmerWizard } from '@/features/register-farmer/farmer-wizard';
@@ -43,9 +44,16 @@ const OPTIONS: { key: TabKey; icon: string; label: string; desc: string; color: 
 
 export function RegisterTabs() {
   const { member } = useAuth();
+  const params = useSearchParams();
   const [activeTab, setActiveTab] = useState<TabKey | null>(null);
   const [viewState, setViewState] = useState<ViewState>('choose');
   const [successRole, setSuccessRole] = useState('');
+
+  // อ่าน ?tab=pin จาก URL → เปิด form ทันที
+  useEffect(() => {
+    const tab = params.get('tab');
+    if (tab === 'pin') { setActiveTab('pin'); setViewState('form'); }
+  }, [params]);
 
   const lineUserId = member?.line_user_id ?? 'dev-mock-line-id';
 
