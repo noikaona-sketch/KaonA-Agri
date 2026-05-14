@@ -89,7 +89,7 @@ export function AdminSeedLots() {
     const v = varieties.find((x) => x.id === selVariety)!;
     const sup = suppliers.find((x) => x.id === selSupplier);
 
-    const { error: e } = await s.from('seed_stock_lots').insert({
+    const lotPayload = {
       variety_id:      selVariety,
       supplier_id:     selSupplier || v.supplier_id || null,
       variety_name:    v.variety_name,
@@ -101,9 +101,11 @@ export function AdminSeedLots() {
       bag_weight_kg:   Number(bagWeight) || 1,
       price_per_bag:   Number(pricePerBag) || 0,
       note:            formNote || null,
-    });
+    };
+    const res = await fetch('/api/admin/seed-lots', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(lotPayload) });
+    const d = (await res.json()) as { ok?: boolean; error?: string };
     setSaving(false);
-    if (e) { setNotice(`❌ ${e.message}`); return; }
+    if (!res.ok) { setNotice(`❌ ${d.error}`); return; }
     setNotice('✅ บันทึก LOT แล้ว');
     setShowForm(false);
     setSelSupplier(''); setSelVariety(''); setLotNo('');
@@ -113,8 +115,7 @@ export function AdminSeedLots() {
 
   async function toggleInactive(id: string) {
     if (!window.confirm('ยกเลิก LOT นี้? ถ้ามีการขายไปแล้วให้ใช้ "ยกเลิก" แทนการลบ')) return;
-    const s = createSupabaseBrowserClient();
-    await s.from('seed_stock_lots').update({ status: 'inactive' }).eq('id', id);
+    await fetch('/api/admin/seed-lots', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
     await load();
   }
 

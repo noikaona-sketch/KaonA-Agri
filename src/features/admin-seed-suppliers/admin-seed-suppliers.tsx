@@ -25,9 +25,9 @@ export function AdminSeedSuppliers() {
 
   async function load() {
     setLoading(true);
-    const s = createSupabaseBrowserClient();
-    const { data, error: e } = await s.from('seed_suppliers').select('*').order('supplier_name');
-    if (e) setError(e.message); else setRows((data as Supplier[]) ?? []);
+    const res = await fetch('/api/admin/seed-suppliers');
+    const d = (await res.json()) as { suppliers?: Supplier[]; error?: string };
+    if (!res.ok) setError(d.error ?? 'โหลดไม่สำเร็จ'); else setRows(d.suppliers ?? []);
     setLoading(false);
   }
   useEffect(() => { void load(); }, []);
@@ -47,20 +47,17 @@ export function AdminSeedSuppliers() {
   async function save() {
     if (!form.supplier_name.trim()) { setNotice('❌ กรุณากรอกชื่อ Supplier'); return; }
     setSaving(true); setNotice(null);
-    const s = createSupabaseBrowserClient();
-    const payload = { supplier_name: form.supplier_name.trim(), contact_name: form.contact_name || null, phone: form.phone || null, address: form.address || null, credit_terms: form.credit_terms || null, active_status: form.active_status };
-    const { error: e } = editId
-      ? await s.from('seed_suppliers').update(payload).eq('id', editId)
-      : await s.from('seed_suppliers').insert(payload);
+    const payload = { ...(editId ? { id: editId } : {}), supplier_name: form.supplier_name.trim(), contact_name: form.contact_name || null, phone: form.phone || null, address: form.address || null, credit_terms: form.credit_terms || null, active_status: form.active_status };
+    const res = await fetch('/api/admin/seed-suppliers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    const d = (await res.json()) as { ok?: boolean; error?: string };
     setSaving(false);
-    if (e) { setNotice(`❌ ${e.message}`); return; }
+    if (!res.ok) { setNotice(`❌ ${d.error}`); return; }
     setNotice(`✅ ${editId ? 'แก้ไข' : 'เพิ่ม'} Supplier แล้ว`);
     cancel(); await load();
   }
 
   async function toggleStatus(id: string, current: string) {
-    const s = createSupabaseBrowserClient();
-    await s.from('seed_suppliers').update({ active_status: current === 'active' ? 'inactive' : 'active' }).eq('id', id);
+    await fetch('/api/admin/seed-suppliers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, active_status: current === 'active' ? 'inactive' : 'active' }) });
     await load();
   }
 
