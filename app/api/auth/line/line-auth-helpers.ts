@@ -48,6 +48,23 @@ export function createServerSupabaseClient() {
   });
 }
 
+// ใช้สำหรับ signInWithPassword เท่านั้น — service_role ไม่รองรับ
+export function createAnonSupabaseClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey =
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
+    process.env.SUPABASE_ANON_KEY ??
+    process.env.SUPABASE_PUBLISHABLE_KEY;
+
+  if (!supabaseUrl || !anonKey) {
+    throw new Error('Missing Supabase anon environment variables');
+  }
+
+  return createClient(supabaseUrl, anonKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+}
+
 export function getLineChannelId(): string {
   const explicit = process.env.LINE_CHANNEL_ID ?? process.env.NEXT_PUBLIC_LINE_CHANNEL_ID;
   if (explicit) return explicit;

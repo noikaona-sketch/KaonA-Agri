@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-import { createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
+import { createServerSupabaseClient, createAnonSupabaseClient } from '../../auth/line/line-auth-helpers';
 
 const ADMIN_COOKIE   = 'kaona_admin_web';
 const DEPT_COOKIE    = 'kaona_admin_dept';
@@ -41,18 +41,21 @@ export async function POST(request: Request) {
     }
 
     // ── Supabase Auth + admin_users ────────────────────────────────────
-    const supabase = createServerSupabaseClient();
+    // signInWithPassword ต้องใช้ anon client (service_role ไม่รองรับ)
+    const anonClient    = createAnonSupabaseClient();
+    const serviceClient = createServerSupabaseClient();
 
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+    const { data: authData, error: authError } = await anonClient.auth.signInWithPassword({
       email: body.email,
       password: body.password,
     });
 
     if (authError || !authData.user) {
+      console.error('[ADMIN_LOGIN] signIn error:', authError?.message);
       return NextResponse.json({ error: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' }, { status: 401 });
     }
 
-    const { data: adminUser, error: adminError } = await supabase
+    const { data: adminUser, error: adminError } = await serviceClient
       .from('admin_users')
       .select('id, department, status, full_name')
       .eq('auth_user_id', authData.user.id)
