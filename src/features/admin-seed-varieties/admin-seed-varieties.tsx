@@ -12,6 +12,7 @@ type Variety = {
   seed_per_rai_kg: number | null; yield_per_rai: number | null;
   planting_spacing: string | null; season: string | null;
   bag_weight_kg: number; price_per_bag: number | null;
+  yield_ratio: number | null;   // กก.ผลผลิต / กก.เมล็ด
   planting_guide: string | null; notes: string | null;
   active_status: string; show_to_farmer: boolean; sort_order: number;
 };
@@ -19,7 +20,8 @@ const EMPTY = {
   variety_name: '', crop_type: 'ข้าวโพด', supplier_id: '',
   days_to_harvest: '', seed_per_rai_kg: '', yield_per_rai: '',
   planting_spacing: '', season: '', bag_weight_kg: '1',
-  price_per_bag: '', planting_guide: '', notes: '',
+  price_per_bag: '', yield_ratio: '600',
+  planting_guide: '', notes: '',
   active_status: 'active', show_to_farmer: true, sort_order: '0',
 };
 
@@ -55,7 +57,7 @@ export function AdminSeedVarieties() {
   function startAdd() { setEditId(null); setForm(EMPTY); setShowForm(true); }
   function startEdit(v: Variety) {
     setEditId(v.id);
-    setForm({ variety_name: v.variety_name, crop_type: v.crop_type, supplier_id: v.supplier_id ?? '', days_to_harvest: String(v.days_to_harvest ?? ''), seed_per_rai_kg: String(v.seed_per_rai_kg ?? ''), yield_per_rai: String(v.yield_per_rai ?? ''), planting_spacing: v.planting_spacing ?? '', season: v.season ?? '', bag_weight_kg: String(v.bag_weight_kg), price_per_bag: String(v.price_per_bag ?? ''), planting_guide: v.planting_guide ?? '', notes: v.notes ?? '', active_status: v.active_status, show_to_farmer: v.show_to_farmer, sort_order: String(v.sort_order) });
+    setForm({ variety_name: v.variety_name, crop_type: v.crop_type, supplier_id: v.supplier_id ?? '', days_to_harvest: String(v.days_to_harvest ?? ''), seed_per_rai_kg: String(v.seed_per_rai_kg ?? ''), yield_per_rai: String(v.yield_per_rai ?? ''), planting_spacing: v.planting_spacing ?? '', season: v.season ?? '', bag_weight_kg: String(v.bag_weight_kg), price_per_bag: String(v.price_per_bag ?? ''), yield_ratio: String(v.yield_ratio ?? 600), planting_guide: v.planting_guide ?? '', notes: v.notes ?? '', active_status: v.active_status, show_to_farmer: v.show_to_farmer, sort_order: String(v.sort_order) });
     setShowForm(true);
   }
 
@@ -73,6 +75,7 @@ export function AdminSeedVarieties() {
       season: form.season || null,
       bag_weight_kg: Number(form.bag_weight_kg) || 1,
       price_per_bag: form.price_per_bag ? Number(form.price_per_bag) : null,
+      yield_ratio: (form as Record<string,string>).yield_ratio ? Number((form as Record<string,string>).yield_ratio) : 600,
       planting_guide: form.planting_guide || null,
       notes: form.notes || null,
       active_status: form.active_status,
@@ -124,8 +127,12 @@ export function AdminSeedVarieties() {
                 <label className="reg-label">เมล็ด/ไร่ (กก.)
                   <input className="reg-input" type="number" step="0.1" value={form.seed_per_rai_kg} onChange={set('seed_per_rai_kg')} placeholder="3.5" />
                 </label>
-                <label className="reg-label">น้ำหนักถุง (กก.)
+                <label className="reg-label">น้ำหนักถุง (กก.) <span className="reg-required">*</span>
                   <input className="reg-input" type="number" step="0.1" value={form.bag_weight_kg} onChange={set('bag_weight_kg')} placeholder="1" />
+                </label>
+                <label className="reg-label">อัตราผลผลิต (กก./กก.เมล็ด)
+                  <input className="reg-input" type="number" step="1" value={(form as Record<string,string>).yield_ratio ?? '600'} onChange={set('yield_ratio')} placeholder="600" />
+                  <span className="reg-hint">เช่น 600 = เมล็ด 1 กก. → ข้าวโพด 600 กก.</span>
                 </label>
                 <label className="reg-label">ราคา/ถุง (บาท)
                   <input className="reg-input" type="number" value={form.price_per_bag} onChange={set('price_per_bag')} placeholder="850" />

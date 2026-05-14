@@ -8,11 +8,14 @@ import { AdminSeedLots } from '@/features/admin-seed-lots/admin-seed-lots';
 import { AdminSeedReservations } from '@/features/admin-seed-reservations/admin-seed-reservations';
 import { AdminSeedsList } from '@/features/admin-seeds/admin-seeds-list';
 
-type Tab = 'reservations' | 'orders' | 'lots' | 'varieties' | 'suppliers';
+import { StockMovementPanel } from '@/features/admin-stock-movements/stock-movement-panel';
+
+type Tab = 'reservations' | 'orders' | 'lots' | 'varieties' | 'suppliers' | 'movements';
 const TABS: { key: Tab; icon: string; label: string }[] = [
   { key: 'reservations', icon: '📋', label: 'คิวจอง' },
   { key: 'orders',       icon: '🫘', label: 'คำสั่งซื้อ' },
   { key: 'lots',         icon: '🗄️', label: 'Stock LOT' },
+  { key: 'movements',    icon: '📊', label: 'เคลื่อนไหว' },
   { key: 'varieties',    icon: '🌾', label: 'พันธุ์' },
   { key: 'suppliers',    icon: '🏪', label: 'Supplier' },
 ];
@@ -34,6 +37,7 @@ export default function AdminSeedsPage() {
       {tab === 'reservations' && <AdminSeedReservations />}
       {tab === 'orders'       && <AdminSeedsList />}
       {tab === 'lots'         && <AdminSeedLots />}
+      {tab === 'movements'    && <StockMovementPanel />}
       {tab === 'varieties'    && <AdminSeedVarieties />}
       {tab === 'suppliers'    && <AdminSeedSuppliers />}
     </AdminWebShell>
