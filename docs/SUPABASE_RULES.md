@@ -19,7 +19,27 @@ Q: Am I accessing it?
    NO  → skip
 ```
 
-### ⚠️ Tricky pattern — inside conditionals
+### ⚠️ Exception: `firstRelation()` helper
+
+`planting-cycle-detail.tsx` มี helper ที่ normalize array → object ก่อน:
+
+```ts
+function firstRelation<T>(value: T | T[] | null): T | null {
+  if (Array.isArray(value)) return value[0] ?? null;
+  return value;
+}
+
+// ใช้ตอน normalize:
+cycle = { ...row, plots: firstRelation(row.plots) }
+
+// ดังนั้น cycle.plots เป็น PlotRef | null (object แล้ว ไม่ใช่ array)
+// ✅ cycle.plots?.name   ← ถูก
+// ❌ cycle.plots?.[0]?.name ← ผิด (PlotRef ไม่มี index 0)
+```
+
+**กฎ**: ถ้าไฟล์มี `firstRelation()` normalize แล้ว → access เป็น object ปกติ ไม่ต้องใช้ `[0]`
+
+
 
 After checking `?.[0]?.field` in the condition, the JSX body MUST also use `[0]`:
 
