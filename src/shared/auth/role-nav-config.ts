@@ -15,18 +15,20 @@ export type RoleNavConfig = {
 // ยังไม่มี member — สมัครสมาชิก
 const GUEST_NAV: RoleNavConfig = {
   tabs: [
-    { label: 'สมัครสมาชิก', href: '/register',       iconKey: 'member'  },
-    { label: 'มี PIN',       href: '/register?tab=pin', iconKey: 'field'   },
+    { label: 'สมัครสมาชิก', href: '/register',             iconKey: 'member'  },
+    { label: 'มี PIN',       href: '/register?tab=pin',     iconKey: 'field'   },
     { label: 'ติดต่อ admin', href: '/register?tab=contact', iconKey: 'service' },
+    { label: 'เกี่ยวกับ',   href: '/register?tab=about',   iconKey: 'admin'   },
   ],
 };
 
 // pending / rejected / suspended — ดูสถานะ + แก้ไข
 const PENDING_NAV: RoleNavConfig = {
   tabs: [
-    { label: 'สถานะ',        href: '/',                    iconKey: 'member'  },
-    { label: 'แก้ไขข้อมูล', href: '/register?tab=edit',   iconKey: 'field'   },
+    { label: 'สถานะ',        href: '/',                     iconKey: 'member'  },
+    { label: 'แก้ไขข้อมูล', href: '/register?tab=edit',    iconKey: 'field'   },
     { label: 'ติดต่อ admin', href: '/register?tab=contact', iconKey: 'service' },
+    { label: 'โปรไฟล์',     href: '/profile',              iconKey: 'admin'   },
   ],
 };
 
