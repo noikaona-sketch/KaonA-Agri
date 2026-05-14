@@ -105,8 +105,8 @@ export function PlantingCycleList() {
                   <p style={{ margin: 0, fontWeight: 800, fontSize: 16 }}>
                     {st.icon} {c.crop_name} {c.season_year}
                   </p>
-                  {c.products?.[0]?.seed_variety && <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-secondary)' }}>พันธุ์ {c.products.seed_variety}</p>}
-                  {c.plots?.[0]?.name && <p style={{ margin: '2px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>📍 {c.plots.name}</p>}
+                  {c.products?.[0]?.seed_variety && <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-secondary)' }}>พันธุ์ {c.products[0].seed_variety}</p>}
+                  {c.plots?.[0]?.name && <p style={{ margin: '2px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>📍 {c.plots[0].name}</p>}
                 </div>
                 <span style={{ fontSize: 12, fontWeight: 700, padding: '4px 10px', borderRadius: 999, background: st.bg, color: st.color, whiteSpace: 'nowrap' }}>
                   {st.label}
