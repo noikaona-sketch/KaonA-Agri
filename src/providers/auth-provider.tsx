@@ -102,6 +102,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
       try {
         setBridgeDiagnostics(getCombinedDiagnostics());
 
+        // ── Session cache: โหลดข้อมูลเดิมก่อนเพื่อลด loading time ──
+        const CACHE_KEY = 'kaona_auth_cache';
+        const cached = sessionStorage.getItem(CACHE_KEY);
+        if (cached) {
+          try {
+            const { member, status: cachedStatus, ts } = JSON.parse(cached) as {
+              member: AuthBootstrapResult; status: string; ts: number;
+            };
+            // cache อายุ 10 นาที
+            if (Date.now() - ts < 10 * 60 * 1000 && member && cachedStatus === 'approved') {
+              setMember(member);
+              setStatus('approved');
+              // bootstrap ต่อใน background เพื่ออัปเดต cache
+            }
+          } catch { sessionStorage.removeItem(CACHE_KEY); }
+        }
+
         const snapshot = await getLiffBridgeSnapshot();
 
         if (isCancelled) {
@@ -168,6 +185,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         setMember(bootstrapResult);
         setErrorMessage(null);
+
+        // บันทึก cache สำหรับ approved member
+        if (bootstrapResult.is_approved) {
+          try {
+            sessionStorage.setItem('kaona_auth_cache', JSON.stringify({
+              member: bootstrapResult, status: 'approved', ts: Date.now(),
+            }));
+          } catch { /* sessionStorage full */ }
+        }
 
         if (bootstrapResult.status === 'pending') {
           setStatus('pending_approval');
