@@ -5,6 +5,31 @@
 
 ---
 
+## 🚨 Rule 0: Quick Checklist (read BEFORE writing any type)
+
+Every time you write a type with nested Supabase relations, ask:
+
+```
+Q: Is this field from a .select('relation(...)') ?
+   YES → must be array: relation: { ... }[] | null
+   NO  → can be scalar
+
+Q: Am I accessing it?
+   YES → must use [0]: item.relation?.[0]?.field
+   NO  → skip
+```
+
+**Common relations in this codebase:**
+```ts
+plots: { name: string; province: string | null }[] | null
+members: { full_name: string; phone: string | null }[] | null
+planting_cycles: { crop_name: string }[] | null
+no_burn_requests: { id: string; status: string }[] | null
+member_group_members: { id: string; members: { ... }[] | null }[]
+```
+
+---
+
 ## Rule 1: Nested Relations are ALWAYS Arrays
 
 Supabase `.select()` with nested relations **always returns an array**, even when the FK is a 1:1 relationship.
