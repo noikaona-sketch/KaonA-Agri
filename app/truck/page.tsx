@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useCurrentMember } from '@/providers/auth-provider';
-import { MobileAppShell } from '@/shared/components/mobile-app-shell';
+import { ProviderRatingForm } from '@/features/member-rating/provider-rating-form';
+
 import { LoadingState } from '@/shared/components/loading-state';
 import { UIButton } from '@/shared/components/ui-button';
 
