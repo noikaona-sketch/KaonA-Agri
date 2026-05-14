@@ -46,17 +46,13 @@ export function AdminSeedLots() {
 
   async function load() {
     setLoading(true);
-    const s = createSupabaseBrowserClient();
-    const [lotRes, sRes, vRes] = await Promise.all([
-      s.from('admin_seed_lot_status').select('*').limit(200),
-      s.from('seed_suppliers').select('id,supplier_name').eq('active_status','active').order('supplier_name'),
-      s.from('seed_varieties').select('id,variety_name,supplier_id,bag_weight_kg,price_per_bag,crop_type').eq('active_status','active').order('variety_name'),
-    ]);
-    if (lotRes.error) setError(lotRes.error.message);
+    const res = await fetch('/api/admin/seed-lots');
+    const d = (await res.json()) as { lots?: Lot[]; suppliers?: Supplier[]; varieties?: Variety[]; error?: string };
+    if (!res.ok) setError(d.error ?? 'โหลดไม่สำเร็จ');
     else {
-      setLots((lotRes.data as Lot[]) ?? []);
-      setSuppliers((sRes.data as Supplier[]) ?? []);
-      setVarieties((vRes.data as Variety[]) ?? []);
+      setLots(d.lots ?? []);
+      setSuppliers(d.suppliers ?? []);
+      setVarieties(d.varieties ?? []);
     }
     setLoading(false);
   }

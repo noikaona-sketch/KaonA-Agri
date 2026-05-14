@@ -45,13 +45,10 @@ export function AdminSeedVarieties() {
 
   async function load() {
     setLoading(true);
-    const s = createSupabaseBrowserClient();
-    const [vRes, sRes] = await Promise.all([
-      s.from('seed_varieties').select('*').order('sort_order').order('variety_name'),
-      s.from('seed_suppliers').select('id,supplier_name').eq('active_status','active').order('supplier_name'),
-    ]);
-    if (vRes.error) setError(vRes.error.message);
-    else { setVarieties((vRes.data as Variety[]) ?? []); setSuppliers((sRes.data as Supplier[]) ?? []); }
+    const res = await fetch('/api/admin/seed-varieties');
+    const d = (await res.json()) as { varieties?: Variety[]; suppliers?: Supplier[]; error?: string };
+    if (!res.ok) setError(d.error ?? 'โหลดไม่สำเร็จ');
+    else { setVarieties(d.varieties ?? []); setSuppliers(d.suppliers ?? []); }
     setLoading(false);
   }
   useEffect(() => { void load(); }, []);
@@ -71,8 +68,8 @@ export function AdminSeedVarieties() {
   async function save() {
     if (!form.variety_name.trim()) { setNotice('❌ กรุณากรอกชื่อพันธุ์'); return; }
     setSaving(true); setNotice(null);
-    const s = createSupabaseBrowserClient();
     const payload = {
+      ...(editId ? { id: editId } : {}),
       variety_name: form.variety_name.trim(), crop_type: form.crop_type,
       supplier_id: form.supplier_id || null,
       days_to_harvest: form.days_to_harvest ? Number(form.days_to_harvest) : null,
@@ -89,11 +86,14 @@ export function AdminSeedVarieties() {
       show_to_farmer: form.show_to_farmer,
       sort_order: Number(form.sort_order) || 0,
     };
-    const { error: e } = editId
-      ? await s.from('seed_varieties').update(payload).eq('id', editId)
-      : await s.from('seed_varieties').insert(payload);
+    const res = await fetch('/api/admin/seed-varieties', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const d = (await res.json()) as { ok?: boolean; error?: string };
     setSaving(false);
-    if (e) { setNotice(`❌ ${e.message}`); return; }
+    if (!res.ok) { setNotice(`❌ ${d.error}`); return; }
     setNotice(`✅ ${editId ? 'แก้ไข' : 'เพิ่ม'} พันธุ์แล้ว`);
     setShowForm(false); setEditId(null); await load();
   }
