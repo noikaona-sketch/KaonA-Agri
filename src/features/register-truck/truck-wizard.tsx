@@ -26,10 +26,15 @@ function maskId(v: string) {
 export function TruckWizard({ lineUserId, onSubmitted }: TruckWizardProps) {
   const ocr = useOcrIdCard();
   const [step, setStep] = useState<Step>('personal');
-  const [fullName, setFullName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [citizenId, setCitizenId] = useState('');
-  const [address, setAddress] = useState('');
+  const [fullName,    setFullName]    = useState('');
+  const [phone,       setPhone]       = useState('');
+  const [citizenId,   setCitizenId]   = useState('');
+  const [address,     setAddress]     = useState('');
+  const [houseNo,     setHouseNo]     = useState('');
+  const [moo,         setMoo]         = useState('');
+  const [subdistrict, setSubdistrict] = useState('');
+  const [district,    setDistrict]    = useState('');
+  const [province,    setProvince]    = useState('');
   const [vehicles, setVehicles] = useState<VehicleDraft[]>([newVehicleDraft()]);
   const [consent, setConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -38,9 +43,14 @@ export function TruckWizard({ lineUserId, onSubmitted }: TruckWizardProps) {
   function handleOcrScan(file: File) {
     void ocr.scan(file).then((res) => {
       if (!res) return;
-      if (res.fullName && !fullName) setFullName(res.fullName);
-      if (res.citizenId && !citizenId) setCitizenId(res.citizenId);
-      if (res.address && !address) setAddress(res.address);
+      if (res.fullName    && !fullName)    setFullName(res.fullName);
+      if (res.citizenId   && !citizenId)   setCitizenId(res.citizenId);
+      if (res.address     && !address)     setAddress(res.address);
+      if (res.houseNo     && !houseNo)     setHouseNo(res.houseNo);
+      if (res.moo         && !moo)         setMoo(res.moo);
+      if (res.subdistrict && !subdistrict) setSubdistrict(res.subdistrict);
+      if (res.district    && !district)    setDistrict(res.district);
+      if (res.province    && !province)    setProvince(res.province);
     });
   }
 
@@ -63,7 +73,12 @@ export function TruckWizard({ lineUserId, onSubmitted }: TruckWizardProps) {
       formData.append('fullName', fullName.trim());
       formData.append('phone', phone.trim());
       formData.append('citizenIdMasked', maskId(citizenId));
-      formData.append('address', address.trim());
+      formData.append('address',     address.trim());
+      formData.append('houseNo',     houseNo.trim());
+      formData.append('moo',         moo.trim());
+      formData.append('subdistrict', subdistrict.trim());
+      formData.append('district',    district.trim());
+      formData.append('province',    province.trim());
       formData.append('vehicles', JSON.stringify(vehicles.map((v) => ({
         vehicleType: v.vehicleType,
         plateNumber: v.plateNumber.trim().toUpperCase(),
@@ -109,8 +124,26 @@ export function TruckWizard({ lineUserId, onSubmitted }: TruckWizardProps) {
             <input className="reg-input" inputMode="numeric" maxLength={13} value={citizenId} onChange={(e) => setCitizenId(e.target.value)} placeholder="1234567890123" />
             {citizenId && <span className="reg-hint">แสดงผล: {maskId(citizenId)}</span>}
           </label>
-          <label className="reg-label">ที่อยู่
-            <textarea className="reg-input reg-textarea" rows={2} value={address} onChange={(e) => setAddress(e.target.value)} placeholder="จังหวัด / อำเภอ" />
+          <p className="reg-label" style={{ marginBottom: 4 }}>ที่อยู่ตามบัตร</p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <label className="reg-label">บ้านเลขที่
+              <input className="reg-input" value={houseNo} onChange={(e) => setHouseNo(e.target.value)} placeholder="123/4" />
+            </label>
+            <label className="reg-label">หมู่ที่
+              <input className="reg-input" value={moo} onChange={(e) => setMoo(e.target.value)} placeholder="5" />
+            </label>
+            <label className="reg-label">ตำบล/แขวง
+              <input className="reg-input" value={subdistrict} onChange={(e) => setSubdistrict(e.target.value)} placeholder="ตำบล" />
+            </label>
+            <label className="reg-label">อำเภอ/เขต
+              <input className="reg-input" value={district} onChange={(e) => setDistrict(e.target.value)} placeholder="อำเภอ" />
+            </label>
+          </div>
+          <label className="reg-label">จังหวัด
+            <input className="reg-input" value={province} onChange={(e) => setProvince(e.target.value)} placeholder="จังหวัด" />
+          </label>
+          <label className="reg-label">ที่อยู่เต็ม (จากบัตร)
+            <textarea className="reg-input reg-textarea" rows={2} value={address} onChange={(e) => setAddress(e.target.value)} placeholder="บ้านเลขที่ หมู่ ตำบล อำเภอ จังหวัด" />
           </label>
           <UIButton fullWidth onClick={() => setStep('vehicles')} disabled={!personalValid}>ถัดไป: ข้อมูลรถ →</UIButton>
         </div>
