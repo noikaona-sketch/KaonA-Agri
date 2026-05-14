@@ -23,7 +23,7 @@ type HarvestJob = {
     area_planted_rai: number | null;
     estimated_yield_kg: number | null;
     plots: { name: string; province: string | null; lat: number | null; lng: number | null }[] | null;
-  } | null;
+  }[] | null;  // array — nested relation
   members: { full_name: string; phone: string | null }[] | null;
 };
 
@@ -153,7 +153,7 @@ export default function TruckPage() {
                   <p style={{ margin: 0, fontWeight: 800, fontSize: 16 }}>{plot?.name ?? 'แปลงไม่ระบุ'}</p>
                   {plot?.province && <p style={{ margin: '2px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>{plot.province}</p>}
                   <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>
-                    {job.planting_cycles?.[0]?.crop_name} {job.planting_cycles?.[0]?.area_planted_rai ? `· ${job.planting_cycles.area_planted_rai} ไร่` : ''}
+                    {job.planting_cycles?.[0]?.crop_name} {job.planting_cycles?.[0]?.area_planted_rai ? `· ${job.planting_cycles[0].area_planted_rai} ไร่` : ''}
                   </p>
                   <p style={{ margin: '4px 0 0', fontSize: 13 }}>
                     👤 {job.members?.[0]?.full_name ?? '—'}
