@@ -37,10 +37,16 @@ export async function POST(request: Request) {
     });
 
     if (authError || !authUser.user) {
-      if (authError?.message.includes('already registered')) {
+      console.error('[ADMIN_REGISTER] authError:', authError?.message, authError?.status);
+      if (authError?.message?.includes('already registered') || authError?.message?.includes('already been registered')) {
         return NextResponse.json({ error: 'อีเมลนี้มีบัญชีอยู่แล้ว' }, { status: 409 });
       }
-      return NextResponse.json({ error: 'ไม่สามารถสร้างบัญชีได้' }, { status: 500 });
+      if (authError?.message?.includes('service_role') || authError?.status === 401) {
+        return NextResponse.json({ error: 'SUPABASE_SECRET_KEY ไม่ถูกต้อง กรุณาตรวจสอบใน Vercel' }, { status: 500 });
+      }
+      return NextResponse.json({
+        error: `สร้างบัญชีไม่สำเร็จ: ${authError?.message ?? 'unknown error'}`,
+      }, { status: 500 });
     }
 
     // สร้าง admin_users record (status = pending รอ super_admin อนุมัติ)
