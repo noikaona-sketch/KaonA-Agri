@@ -56,7 +56,7 @@ export default function InspectionTaskDetailPage({ params }: Props) {
       await s.from('no_burn_requests').update({
         status: result === 'pass' ? 'approved' : 'rejected',
         review_note: note || null,
-      }).eq('id', task.no_burn_requests.id);
+      }).eq('id', task.no_burn_requests?.[0]?.id);
     }
     setSaving(false);
     if (e) { setError(e.message); return; }
