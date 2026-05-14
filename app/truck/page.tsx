@@ -140,7 +140,7 @@ export default function TruckPage() {
         {jobs.map((job) => {
           const st = STATUS_CFG[job.status] ?? STATUS_CFG.pending;
           const isToday = job.scheduled_date === todayStr;
-          const plot = job.planting_cycles?.[0]?.plots;
+          const plot = job.planting_cycles?.[0]?.plots?.[0];
 
           return (
             <div key={job.id} className="kaona-card"
