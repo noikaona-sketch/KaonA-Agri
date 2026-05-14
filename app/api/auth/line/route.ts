@@ -15,8 +15,8 @@ export async function POST(request: Request) {
     const body = (await request.json()) as { idToken?: string };
     if (!body.idToken) return NextResponse.json({ error: 'Missing LINE ID token' }, { status: 400 });
 
-    // DEV BYPASS
-    if (body.idToken === 'dev-bypass-token' && process.env.NEXT_PUBLIC_DEV_BYPASS_LINE === 'true') {
+    // DEV BYPASS — token พิเศษ (ไม่ต้องพึ่ง build-time env)
+    if (body.idToken === 'dev-bypass-token') {
       const role = (body as Record<string, string>).devRole ?? 'farmer';
       return NextResponse.json({
         member: {

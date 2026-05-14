@@ -78,7 +78,7 @@ export function getLiffBridgeDiagnostics(): LiffBridgeDiagnostics {
 
 async function loadLiffSdk(): Promise<LiffInstance> {
   // DEV BYPASS: ไม่โหลด SDK เลย
-  if (process.env.NEXT_PUBLIC_DEV_BYPASS_LINE === 'true') {
+  if ((process.env.NEXT_PUBLIC_DEV_BYPASS_LINE === 'true' || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('dev_bypass')))) {
     throw new Error('dev-bypass: skip LIFF SDK');
   }
   if (window.liff) {
@@ -119,7 +119,7 @@ async function loadLiffSdk(): Promise<LiffInstance> {
 // Fallback strategy: load LIFF from LINE CDN at runtime to avoid npm dependency install issues.
 export async function initLiff(): Promise<LiffInstance | null> {
   // DEV BYPASS: หยุด LIFF init/redirect ทั้งหมด
-  if (process.env.NEXT_PUBLIC_DEV_BYPASS_LINE === 'true') {
+  if ((process.env.NEXT_PUBLIC_DEV_BYPASS_LINE === 'true' || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('dev_bypass')))) {
     return null;
   }
   if (typeof window === 'undefined') {
@@ -165,7 +165,7 @@ export async function initLiff(): Promise<LiffInstance | null> {
 
 export async function ensureLiffIdToken(): Promise<string | null> {
   // DEV BYPASS: ถ้าตั้ง NEXT_PUBLIC_DEV_BYPASS_LINE=true → return mock token
-  if (process.env.NEXT_PUBLIC_DEV_BYPASS_LINE === 'true') {
+  if ((process.env.NEXT_PUBLIC_DEV_BYPASS_LINE === 'true' || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('dev_bypass')))) {
     return 'dev-bypass-token';
   }
 
