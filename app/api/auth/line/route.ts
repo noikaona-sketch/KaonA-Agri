@@ -43,12 +43,22 @@ export async function POST(request: Request) {
 
     if (existing.data) {
       member = existing.data;
+      // อัปเดต LINE display name และ picture ทุกครั้งที่ login (อาจเปลี่ยน)
+      if (verifyData.name || verifyData.picture) {
+        await supabase.from('members').update({
+          line_display_name: verifyData.name ?? null,
+          line_picture_url:  verifyData.picture ?? null,
+          updated_at: new Date().toISOString(),
+        }).eq('id', existing.data.id);
+      }
     } else {
       const inserted = await supabase
         .from('members')
         .insert({
-          line_user_id: verifyData.sub,
-          full_name: verifyData.name ?? 'LINE Member',
+          line_user_id:       verifyData.sub,
+          full_name:          verifyData.name ?? 'LINE Member',
+          line_display_name:  verifyData.name ?? null,
+          line_picture_url:   verifyData.picture ?? null,
           citizen_id_masked: 'PENDING',
           status: 'pending',
         })

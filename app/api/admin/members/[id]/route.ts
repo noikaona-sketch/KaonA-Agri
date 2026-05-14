@@ -10,7 +10,7 @@ export async function GET(_req: Request, { params }: Params) {
 
     const [mRes, pRes, vRes, rRes] = await Promise.all([
       s.from('members')
-        .select('id,full_name,phone,citizen_id_masked,address,status,registration_type,line_user_id,created_at,updated_at')
+        .select('id,full_name,phone,citizen_id_masked,address,status,registration_type,line_user_id,line_display_name,line_picture_url,created_at,updated_at')
         .eq('id', id)
         .maybeSingle(),
       s.from('plots')

@@ -11,7 +11,10 @@ type MemberDetail = {
   id: string; full_name: string; phone: string | null;
   citizen_id_masked: string; address: string | null;
   status: string; registration_type: string | null;
-  line_user_id: string | null; created_at: string;
+  line_user_id: string | null;
+  line_display_name: string | null;
+  line_picture_url: string | null;
+  created_at: string;
 };
 type PlotRow    = { id: string; name: string; area_rai: number; lat: number; lng: number; status: string; province: string | null; land_doc_type: string | null };
 type VehicleRow = { id: string; vehicle_type: string; plate_number: string; brand: string | null; model: string | null; year_be: number | null };
@@ -73,6 +76,25 @@ export function AdminMemberDetail({ memberId }: { memberId: string }) {
   return (
     <div style={{ display: 'grid', gap: 28 }}>
 
+      {/* LINE Profile Header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        {member.line_picture_url ? (
+          <img src={member.line_picture_url} alt="LINE" width={52} height={52}
+            style={{ borderRadius: '50%', border: '2px solid #a5d6a7', flexShrink: 0 }} />
+        ) : (
+          <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#e8f5e9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0, border: '2px solid #a5d6a7' }}>
+            {member.full_name?.[0] ?? '?'}
+          </div>
+        )}
+        <div>
+          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800 }}>{member.full_name}</h2>
+          {member.line_display_name && member.line_display_name !== member.full_name && (
+            <p style={{ margin: '2px 0 0', fontSize: 13, color: '#6b7280' }}>
+              LINE: {member.line_display_name}
+            </p>
+          )}
+        </div>
+      </div>
       {notice && (
         <div style={{ background: '#e8f5e9', border: '1px solid #a5d6a7', borderRadius: 10, padding: '12px 16px', fontWeight: 600, color: '#1b5e20' }}>
           ✅ {notice}
@@ -101,15 +123,17 @@ export function AdminMemberDetail({ memberId }: { memberId: string }) {
             <tbody>
               {[
                 ['ชื่อ-นามสกุล', member.full_name],
+                ['ชื่อ LINE', member.line_display_name ?? '—'],
                 ['เบอร์โทร', member.phone ?? '—'],
                 ['เลขบัตรประชาชน', member.citizen_id_masked],
                 ['ที่อยู่', member.address ?? '—'],
                 ['ประเภทสมัคร', member.registration_type ?? '—'],
+                ['LINE User ID', member.line_user_id ?? '—'],
                 ['วันที่สมัคร', new Date(member.created_at).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' })],
               ].map(([label, val]) => (
                 <tr key={String(label)}>
                   <td style={{ width: 160, fontWeight: 600, color: '#4a6741', background: '#f7faf7', whiteSpace: 'nowrap' }}>{label}</td>
-                  <td>{val}</td>
+                  <td style={{ fontSize: label === 'LINE User ID' ? 12 : 14, fontFamily: label === 'LINE User ID' ? 'monospace' : 'inherit', color: label === 'LINE User ID' ? '#6b7280' : 'inherit' }}>{val}</td>
                 </tr>
               ))}
             </tbody>
