@@ -20,7 +20,8 @@ function maskId(id: string) {
 }
 
 export function OcrIdCardStep({ status, result, error, onScan, onReset }: OcrIdCardStepProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef   = useRef<HTMLInputElement>(null);
+  const galleryRef  = useRef<HTMLInputElement>(null);
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -65,25 +66,20 @@ export function OcrIdCardStep({ status, result, error, onScan, onReset }: OcrIdC
       )}
 
       {/* hidden inputs */}
-      <input ref={inputRef} type="file" accept="image/*" capture="environment" onChange={handleFile} style={{ display: 'none' }} />
+      {/* 2 inputs แยก — ไม่สลับ attribute */}
+      <input ref={inputRef}        type="file" accept="image/*" capture="environment" onChange={handleFile} style={{ display: 'none' }} />
+      <input ref={galleryRef}      type="file" accept="image/*"                       onChange={handleFile} style={{ display: 'none' }} />
 
       {/* ปุ่มแบบธนาคาร */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <button onClick={() => inputRef.current?.click()}
-          style={{ border: '2px dashed #a5d6a7', borderRadius: 16, padding: '20px 12px', background: '#f1f8f1', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, transition: 'all 0.15s' }}>
+          style={{ border: '2px dashed #a5d6a7', borderRadius: 16, padding: '20px 12px', background: '#f1f8f1', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 36 }}>📷</span>
           <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--primary)' }}>ถ่ายรูป</span>
           <span style={{ fontSize: 12, color: '#6b7280' }}>เปิดกล้อง</span>
         </button>
-        <button onClick={() => {
-          if (inputRef.current) {
-            inputRef.current.removeAttribute('capture');
-            inputRef.current.click();
-            // restore capture after click
-            setTimeout(() => inputRef.current?.setAttribute('capture', 'environment'), 500);
-          }
-        }}
-          style={{ border: '2px dashed #90caf9', borderRadius: 16, padding: '20px 12px', background: '#e3f2fd', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, transition: 'all 0.15s' }}>
+        <button onClick={() => galleryRef.current?.click()}
+          style={{ border: '2px dashed #90caf9', borderRadius: 16, padding: '20px 12px', background: '#e3f2fd', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 36 }}>🖼️</span>
           <span style={{ fontWeight: 700, fontSize: 14, color: '#1565c0' }}>เลือกรูป</span>
           <span style={{ fontSize: 12, color: '#6b7280' }}>จากคลัง</span>
