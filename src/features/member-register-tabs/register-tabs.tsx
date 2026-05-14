@@ -47,9 +47,9 @@ export function RegisterTabs() {
   const [viewState, setViewState] = useState<ViewState>('choose');
   const [successRole, setSuccessRole] = useState('');
 
-  const lineUserId = member?.line_user_id;
+  const lineUserId = member?.line_user_id ?? 'dev-mock-line-id';
 
-  if (!lineUserId) {
+  if (!lineUserId && !member) {
     return <ErrorState title="ไม่พบข้อมูล LINE" detail="กรุณาปิดและเปิด Mini App ใหม่จาก LINE" />;
   }
 
