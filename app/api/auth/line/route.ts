@@ -43,30 +43,51 @@ export async function POST(request: Request) {
 
     if (existing.data) {
       member = existing.data;
-      // อัปเดต LINE display name และ picture ทุกครั้งที่ login (อาจเปลี่ยน)
-      if (verifyData.name || verifyData.picture) {
+      // อัปเดต LINE display name และ picture ทุกครั้งที่ login
+      try {
         await supabase.from('members').update({
           line_display_name: verifyData.name ?? null,
           line_picture_url:  verifyData.picture ?? null,
           updated_at: new Date().toISOString(),
         }).eq('id', existing.data.id);
-      }
+      } catch { /* column อาจยังไม่มี — ข้าม */ }
     } else {
-      const inserted = await supabase
+      // สร้าง member ใหม่ — ลอง insert พร้อม LINE fields ก่อน
+      let insertResult = await supabase
         .from('members')
         .insert({
           line_user_id:       verifyData.sub,
           full_name:          verifyData.name ?? 'LINE Member',
           line_display_name:  verifyData.name ?? null,
           line_picture_url:   verifyData.picture ?? null,
-          citizen_id_masked: 'PENDING',
+          citizen_id_masked:  'PENDING',
           status: 'pending',
         })
         .select('id, auth_user_id, line_user_id, status, full_name')
         .single();
 
-      if (inserted.error || !inserted.data) return NextResponse.json({ error: 'Failed to create member profile' }, { status: 500 });
-      member = inserted.data;
+      // ถ้า fail อาจเพราะ column ยังไม่มี — ลอง insert แบบ minimal
+      if (insertResult.error) {
+        console.error('[LINE_AUTH] insert with LINE fields failed:', insertResult.error.message, '— retrying minimal');
+        insertResult = await supabase
+          .from('members')
+          .insert({
+            line_user_id:      verifyData.sub,
+            full_name:         verifyData.name ?? 'LINE Member',
+            citizen_id_masked: 'PENDING',
+            status: 'pending',
+          })
+          .select('id, auth_user_id, line_user_id, status, full_name')
+          .single();
+      }
+
+      if (insertResult.error || !insertResult.data) {
+        console.error('[LINE_AUTH] insert failed:', insertResult.error?.message);
+        return NextResponse.json({
+          error: `Failed to create member profile: ${insertResult.error?.message ?? 'unknown'}`,
+        }, { status: 500 });
+      }
+      member = insertResult.data;
 
       await supabase.from('member_roles').upsert(
         { member_id: member.id, role: 'farmer', is_primary: true },
