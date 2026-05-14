@@ -4,9 +4,15 @@ import { useState } from 'react';
 
 export type OcrResult = {
   fullName: string;
+  fullNameEn: string;
   citizenId: string;
-  address: string;
   dateOfBirth: string;
+  address: string;
+  houseNo: string;
+  moo: string;
+  subdistrict: string;
+  district: string;
+  province: string;
   confidence: number;
 };
 
