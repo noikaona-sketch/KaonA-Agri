@@ -150,7 +150,7 @@ export function PlantingCycleDetail({ cycleId }: { cycleId: string }) {
         <p style={{ margin: '0 0 4px', fontSize: 13, opacity: 0.8 }}>{cycle.source === 'order' ? '🛒 จากคำสั่งซื้อ' : '✏️ สร้างเอง'}</p>
         <h2 style={{ margin: '0 0 6px', fontSize: 22, fontWeight: 900 }}>{cycle.crop_name} {cycle.season_year}</h2>
         {cycle.products?.seed_variety && <p style={{ margin: '0 0 10px', fontSize: 14, opacity: 0.85 }}>พันธุ์ {cycle.products.seed_variety}</p>}
-        {cycle.plots?.[0] && <p style={{ margin: '0 0 4px', fontSize: 14 }}>📍 {cycle.plots[0].name} {cycle.plots[0].province ? `(${cycle.plots[0].province})` : ''}</p>}
+        {cycle.plots && <p style={{ margin: '0 0 4px', fontSize: 14 }}>📍 {cycle.plots.name} {cycle.plots.province ? `(${cycle.plots.province})` : ''}</p>}
         {days !== null && (
           <p style={{ margin: '8px 0 0', fontSize: 15, fontWeight: 700, background: 'rgba(255,255,255,0.15)', borderRadius: 10, padding: '8px 12px', display: 'inline-block' }}>
             {days > 0 ? `🌽 เก็บเกี่ยวใน ${days} วัน` : days === 0 ? '🎉 เก็บเกี่ยวได้วันนี้!' : '⚠️ เลยวันเก็บเกี่ยวแล้ว'}
