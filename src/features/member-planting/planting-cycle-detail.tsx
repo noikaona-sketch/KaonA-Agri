@@ -283,10 +283,10 @@ export function PlantingCycleDetail({ cycleId }: { cycleId: string }) {
               ← ยกเลิก
             </button>
             <HarvestRatingForm
-              bookingId={cycle.source_order_id ?? cycle.id}
+              bookingId={cycle.id}
               providerMemberId="unknown"
               providerName="ผู้ให้บริการ"
-              ratedByMemberId={cycle.member_id ?? ''}
+              ratedByMemberId={memberId ?? ''}
               onDone={() => { setShowRating(false); }}
             />
           </div>
