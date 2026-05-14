@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useCurrentMember } from '@/providers/auth-provider';
 import { LoadingState } from '@/shared/components/loading-state';
-import { UIButton } from '@/shared/components/ui-button';
+import { HarvestRatingForm } from '@/features/service-rating/harvest-rating-form';
 import { ErrorState } from '@/shared/components/error-state';
 
 type ProductRef = { name: string; seed_variety: string | null; days_to_harvest: number | null; planting_guide: string | null };
@@ -72,6 +72,7 @@ export function PlantingCycleDetail({ cycleId }: { cycleId: string }) {
 
   const [showConfirm, setShowConfirm]   = useState(false);
   const [showProgress, setShowProgress] = useState(false);
+  const [showRating, setShowRating]     = useState(false);
   const [selectedPlot, setSelectedPlot] = useState('');
   const [plantedDate, setPlantedDate]   = useState('');
   const [areaRai, setAreaRai]           = useState('');
@@ -224,6 +225,13 @@ export function PlantingCycleDetail({ cycleId }: { cycleId: string }) {
         </UIButton>
       )}
 
+      {/* ปุ่มประเมินผู้ให้บริการ — แสดงเมื่อเกี่ยวเสร็จ */}
+      {cycle.status === 'harvested' && (
+        <UIButton fullWidth variant="secondary" onClick={() => setShowRating(true)}>
+          ⭐ ประเมินผู้ให้บริการ
+        </UIButton>
+      )}
+
       {showProgress && (
         <div className="kaona-card">
           <p style={{ margin: '0 0 12px', fontWeight: 700, fontSize: 15 }}>📸 บันทึกสถานะล่าสุด</p>
@@ -263,6 +271,24 @@ export function PlantingCycleDetail({ cycleId }: { cycleId: string }) {
               </div>
             );
           })}
+        </div>
+      )}
+      {/* Rating modal */}
+      {showRating && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, overflowY: 'auto', padding: '16px' }}>
+          <div style={{ maxWidth: 480, margin: '0 auto' }}>
+            <button onClick={() => setShowRating(false)}
+              style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', fontWeight: 700, fontSize: 15, padding: '8px 16px', borderRadius: 10, cursor: 'pointer', marginBottom: 12 }}>
+              ← ยกเลิก
+            </button>
+            <HarvestRatingForm
+              bookingId={cycle.source_order_id ?? cycle.id}
+              providerMemberId="unknown"
+              providerName="ผู้ให้บริการ"
+              ratedByMemberId={cycle.member_id ?? ''}
+              onDone={() => { setShowRating(false); }}
+            />
+          </div>
         </div>
       )}
     </div>
