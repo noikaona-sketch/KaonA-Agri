@@ -60,7 +60,9 @@ export function MobileBottomNav() {
     <nav className="mobile-bottom-nav" aria-label="เมนูหลัก" style={NAV_STYLE}>
       {tabs.map((tab) => {
         const isActive =
-          pathname === tab.href || (tab.href !== '/' && pathname.startsWith(tab.href));
+          tab.href === '/'
+            ? pathname === '/'   // home ต้อง exact match เท่านั้น
+            : pathname === tab.href || pathname.startsWith(tab.href + '/');
 
         return (
           <Link
