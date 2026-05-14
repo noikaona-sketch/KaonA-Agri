@@ -54,7 +54,7 @@ export function MobileBottomNav() {
   const pathname = usePathname();
   const { status } = useAuth();
   const effectiveRole = useEffectiveRole();
-  const { tabs } = getNavConfig(status, effectiveRole);
+  const { tabs } = getNavConfig(status, effectiveRole, pathname);
 
   return (
     <nav className="mobile-bottom-nav" aria-label="เมนูหลัก" style={NAV_STYLE}>

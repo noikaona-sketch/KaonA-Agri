@@ -91,7 +91,14 @@ export function getNavConfigForRole(role: AppRole | null): RoleNavConfig {
 }
 
 // ใช้ทั้ง status + role เพื่อได้ nav ที่ถูกต้อง
-export function getNavConfig(status: AuthStatus, role: AppRole | null): RoleNavConfig {
+export function getNavConfig(status: AuthStatus, role: AppRole | null, pathname?: string): RoleNavConfig {
+  // ถ้าอยู่หน้า /register → ใช้ nav พิเศษเสมอ ไม่ว่า status จะเป็นอะไร
+  if (pathname?.startsWith('/register')) {
+    if (status === 'pending_approval' || status === 'rejected' || status === 'suspended') {
+      return PENDING_NAV;
+    }
+    return GUEST_NAV;
+  }
   if (status === 'loading' || status === 'unauthenticated' || status === 'no_member' || status === 'error') {
     return GUEST_NAV;
   }
