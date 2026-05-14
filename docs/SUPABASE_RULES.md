@@ -19,6 +19,19 @@ Q: Am I accessing it?
    NO  → skip
 ```
 
+### ⚠️ Tricky pattern — inside conditionals
+
+After checking `?.[0]?.field` in the condition, the JSX body MUST also use `[0]`:
+
+```tsx
+// ❌ WRONG — condition uses [0] but body doesn't
+{task.plots?.[0]?.province && <p>{task.plots.province}</p>}
+//                                          ^ missing [0]!
+
+// ✅ CORRECT
+{task.plots?.[0]?.province && <p>{task.plots[0].province}</p>}
+```
+
 **Common relations in this codebase:**
 ```ts
 plots: { name: string; province: string | null }[] | null
