@@ -74,3 +74,14 @@ Never call `decrement_lot_balance()` or any stock-modifying RPC from the browser
 ```bash
 npx tsc --noEmit   # must pass with 0 errors
 ```
+
+## ⚠️ Missing Import Bug
+
+`npx tsc --noEmit` อาจผ่าน แต่ Next.js build fail เพราะ missing import
+
+**สาเหตุ:** TypeScript ตรวจ type แต่ webpack bundle หา module จริง
+
+**ป้องกัน:** ก่อน commit ตรวจ imports ที่ใช้ใน JSX ทุกตัว:
+```bash
+npx next build  # หรือดู Vercel build log
+```
