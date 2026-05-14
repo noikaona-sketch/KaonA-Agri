@@ -77,6 +77,10 @@ export function getLiffBridgeDiagnostics(): LiffBridgeDiagnostics {
 }
 
 async function loadLiffSdk(): Promise<LiffInstance> {
+  // DEV BYPASS: ไม่โหลด SDK เลย
+  if (process.env.NEXT_PUBLIC_DEV_BYPASS_LINE === 'true') {
+    throw new Error('dev-bypass: skip LIFF SDK');
+  }
   if (window.liff) {
     diagnostics.liffSdkLoad = 'success';
     diagnostics.liffWindowPresent = true;
@@ -114,6 +118,10 @@ async function loadLiffSdk(): Promise<LiffInstance> {
 
 // Fallback strategy: load LIFF from LINE CDN at runtime to avoid npm dependency install issues.
 export async function initLiff(): Promise<LiffInstance | null> {
+  // DEV BYPASS: หยุด LIFF init/redirect ทั้งหมด
+  if (process.env.NEXT_PUBLIC_DEV_BYPASS_LINE === 'true') {
+    return null;
+  }
   if (typeof window === 'undefined') {
     return null;
   }
