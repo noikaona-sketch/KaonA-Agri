@@ -5,6 +5,7 @@ import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useCurrentMember } from '@/providers/auth-provider';
 import { ProviderRatingForm } from '@/features/member-rating/provider-rating-form';
 
+import { MobileAppShell } from '@/shared/components/mobile-app-shell';
 import { LoadingState } from '@/shared/components/loading-state';
 import { UIButton } from '@/shared/components/ui-button';
 
