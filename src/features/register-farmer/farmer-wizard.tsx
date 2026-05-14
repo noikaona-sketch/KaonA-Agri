@@ -93,7 +93,9 @@ export function FarmerWizard({ lineUserId, onSubmitted }: FarmerWizardProps) {
         lat: p.lat, lng: p.lng, accuracy: p.accuracy,
         landDocType: p.landDocType || null,
         landDocNumber: p.landDocNumber || null,
-        province: p.province || null,
+        subdistrict: p.subdistrict || null,
+        district:    p.district    || null,
+        province:    p.province    || null,
       }))));
 
       plots.forEach((p, i) => {

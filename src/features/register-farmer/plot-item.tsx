@@ -13,6 +13,8 @@ export type PlotDraft = {
   accuracy: number | null;
   landDocType: string;
   landDocNumber: string;
+  subdistrict: string;
+  district: string;
   province: string;
   photoFile: File | null;
   photoName: string;
@@ -24,6 +26,7 @@ export function newPlotDraft(): PlotDraft {
     name: '', areaRai: '',
     lat: null, lng: null, accuracy: null,
     landDocType: '', landDocNumber: '',
+    subdistrict: '', district: '',
     province: '', photoFile: null, photoName: '',
   };
 }
@@ -47,18 +50,37 @@ type PlotItemProps = {
 
 export function PlotItem({ plot, index, onChange, onRemove, canRemove }: PlotItemProps) {
   const [gpsCapturing, setGpsCapturing] = useState(false);
+  const [geocoding,    setGeocoding]    = useState(false);
 
   function set(field: keyof PlotDraft, value: string) {
     onChange({ ...plot, [field]: value });
   }
 
-  function captureGPS() {
+  async function captureGPS() {
     if (!navigator.geolocation) return;
     setGpsCapturing(true);
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        onChange({ ...plot, lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy });
+      async (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        onChange({ ...plot, lat, lng, accuracy: pos.coords.accuracy });
         setGpsCapturing(false);
+
+        // reverse geocoding — แปลง GPS → ตำบล/อำเภอ/จังหวัด
+        setGeocoding(true);
+        try {
+          const res = await fetch(`/api/geocode/reverse?lat=${lat}&lng=${lng}`);
+          const geo = (await res.json()) as {
+            subdistrict?: string; district?: string; province?: string;
+          };
+          onChange({
+            ...plot, lat, lng, accuracy: pos.coords.accuracy,
+            subdistrict: geo.subdistrict || plot.subdistrict,
+            district:    geo.district    || plot.district,
+            province:    geo.province    || plot.province,
+          });
+        } catch { /* ถ้า geocode ไม่ได้ — ข้าม */ }
+        setGeocoding(false);
       },
       () => setGpsCapturing(false),
       { enableHighAccuracy: true, timeout: 15000 }
@@ -88,8 +110,14 @@ export function PlotItem({ plot, index, onChange, onRemove, canRemove }: PlotIte
           <label className="reg-label">พื้นที่ (ไร่) <span className="reg-required">*</span>
             <input className="reg-input" type="number" inputMode="decimal" min="0" step="0.01" value={plot.areaRai} onChange={(e) => set('areaRai', e.target.value)} placeholder="0.00" />
           </label>
+          <label className="reg-label">ตำบล
+            <input className="reg-input" value={plot.subdistrict} onChange={(e) => set('subdistrict', e.target.value)} placeholder={geocoding ? '📍 กำลังค้นหา…' : 'ตำบล'} />
+          </label>
+          <label className="reg-label">อำเภอ
+            <input className="reg-input" value={plot.district} onChange={(e) => set('district', e.target.value)} placeholder={geocoding ? '📍 กำลังค้นหา…' : 'อำเภอ'} />
+          </label>
           <label className="reg-label">จังหวัด
-            <input className="reg-input" value={plot.province} onChange={(e) => set('province', e.target.value)} placeholder="เช่น บุรีรัมย์" />
+            <input className="reg-input" value={plot.province} onChange={(e) => set('province', e.target.value)} placeholder="จังหวัด" />
           </label>
         </div>
 
@@ -108,8 +136,15 @@ export function PlotItem({ plot, index, onChange, onRemove, canRemove }: PlotIte
 
         {/* GPS */}
         <div>
-          <UIButton variant="secondary" fullWidth onClick={captureGPS} loading={gpsCapturing} disabled={gpsCapturing}>
-            {plot.lat ? `📍 ${plot.lat.toFixed(5)}, ${plot.lng!.toFixed(5)}` : '📍 จับพิกัด GPS'}
+          <UIButton variant="secondary" fullWidth onClick={captureGPS} loading={gpsCapturing || geocoding} disabled={gpsCapturing || geocoding}>
+            {geocoding
+              ? '📍 กำลังค้นหาที่อยู่…'
+              : gpsCapturing
+              ? '📍 กำลังจับพิกัด…'
+              : plot.lat
+              ? `✅ ${plot.lat.toFixed(5)}, ${plot.lng!.toFixed(5)}${plot.subdistrict ? ` · ${plot.subdistrict}` : ''}`
+              : '📍 จับพิกัด GPS (แปลงเป็นที่อยู่อัตโนมัติ)'
+            }
           </UIButton>
           {plot.accuracy && <p className="reg-hint" style={{ textAlign: 'center', marginTop: 4 }}>ความแม่นยำ ±{Math.round(plot.accuracy)} ม.</p>}
         </div>
