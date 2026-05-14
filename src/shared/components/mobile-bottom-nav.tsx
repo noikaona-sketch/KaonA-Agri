@@ -31,16 +31,24 @@ function getTabStyle(isActive: boolean) {
   } as const;
 }
 
-function NavIcon({ iconKey }: { iconKey: keyof typeof iconPaths.nav }) {
-  const src = iconPaths.nav[iconKey];
+function NavIcon({ iconKey }: { iconKey: string }) {
+  // ถ้าเป็น emoji (unicode) → แสดงโดยตรง
+  const isEmoji = /\p{Emoji}/u.test(iconKey) && !['member','field','service','admin'].includes(iconKey);
+  if (isEmoji) {
+    return (
+      <span style={{ display: 'block', lineHeight: 1, fontSize: 22, textAlign: 'center' }} aria-hidden="true">
+        {iconKey}
+      </span>
+    );
+  }
 
+  // SVG mask icon เดิม
+  const src = iconPaths.nav[iconKey as keyof typeof iconPaths.nav] ?? iconPaths.nav.member;
   return (
     <span style={{ display: 'block', lineHeight: 1 }} aria-hidden="true">
       <span
         style={{
-          display: 'block',
-          width: 32,
-          height: 32,
+          display: 'block', width: 32, height: 32,
           backgroundColor: 'currentColor',
           WebkitMask: `url(${src}) center / contain no-repeat`,
           mask: `url(${src}) center / contain no-repeat`,

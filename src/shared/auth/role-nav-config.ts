@@ -1,6 +1,6 @@
 import type { AppRole, AuthStatus } from '@/shared/auth/auth-types';
 
-export type NavIconKey = 'member' | 'service' | 'field' | 'admin';
+export type NavIconKey = 'member' | 'service' | 'field' | 'admin' | string;
 
 export type NavTab = {
   label: string;
@@ -35,34 +35,34 @@ const PENDING_NAV: RoleNavConfig = {
 const ROLE_NAV_MAP: Record<AppRole, RoleNavConfig> = {
   farmer: {
     tabs: [
-      { label: 'หน้าหลัก',    href: '/',                  iconKey: 'member'  },
-      { label: 'แปลง',        href: '/plots',             iconKey: 'field'   },
-      { label: 'รอบปลูก',     href: '/planting-cycles',   iconKey: 'service' },
-      { label: 'โปรไฟล์',    href: '/profile',            iconKey: 'admin'   },
+      { label: 'หน้าหลัก',  href: '/',                iconKey: '🏠' },
+      { label: 'แปลง',      href: '/plots',           iconKey: '🌾' },
+      { label: 'รอบปลูก',   href: '/planting-cycles', iconKey: '🌱' },
+      { label: 'โปรไฟล์',  href: '/profile',          iconKey: '👤' },
     ],
   },
   leader: {
     tabs: [
-      { label: 'หน้าหลัก',  href: '/',                iconKey: 'member'  },
-      { label: 'ทีมของฉัน', href: '/team',            iconKey: 'field'   },
-      { label: 'รอบปลูก',   href: '/planting-cycles', iconKey: 'service' },
-      { label: 'โปรไฟล์',  href: '/profile',          iconKey: 'admin'   },
+      { label: 'หน้าหลัก',  href: '/',                iconKey: '🏠' },
+      { label: 'ทีมของฉัน', href: '/team',            iconKey: '👥' },
+      { label: 'รอบปลูก',   href: '/planting-cycles', iconKey: '🌱' },
+      { label: 'โปรไฟล์',  href: '/profile',          iconKey: '👤' },
     ],
   },
   inspector: {
     tabs: [
-      { label: 'หน้าหลัก', href: '/', iconKey: 'member' },
-      { label: 'งานตรวจ', href: '/inspection/tasks', iconKey: 'field' },
-      { label: 'ภาคสนาม', href: '/field',            iconKey: 'service' },
-      { label: 'โปรไฟล์', href: '/profile',          iconKey: 'admin' },
+      { label: 'หน้าหลัก', href: '/', iconKey: '🏠' },
+      { label: 'งานตรวจ', href: '/inspection/tasks', iconKey: '🔍' },
+      { label: 'แผนที่', href: '/field',              iconKey: '🗺️' },
+      { label: 'โปรไฟล์', href: '/profile',          iconKey: '👤' },
     ],
   },
   truck_owner: {
     tabs: [
-      { label: 'หน้าหลัก',   href: '/',        iconKey: 'member'  },
-      { label: 'งานรถเกี่ยว', href: '/truck',   iconKey: 'field'   },
-      { label: 'งดเผา',      href: '/no-burn', iconKey: 'service' },
-      { label: 'โปรไฟล์',   href: '/profile', iconKey: 'admin'   },
+      { label: 'หน้าหลัก',   href: '/',        iconKey: '🏠' },
+      { label: 'งานรถเกี่ยว', href: '/truck',   iconKey: '🚜' },
+      { label: 'งดเผา',      href: '/no-burn', iconKey: '🔥' },
+      { label: 'โปรไฟล์',   href: '/profile', iconKey: '👤' },
     ],
   },
   staff: {
