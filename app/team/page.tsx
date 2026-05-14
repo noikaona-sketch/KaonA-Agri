@@ -47,7 +47,7 @@ export default function TeamPage() {
         .eq('member_id', member.member_id)
         .limit(1);
 
-      const group = myGroups?.[0]?.member_groups as { id: string; name: string } | null;
+      const group = (myGroups?.[0]?.member_groups as { id: string; name: string }[] | null)?.[0] ?? null;
       if (!group) { setLoading(false); return; }
 
       setGroupName(group.name);
@@ -57,7 +57,7 @@ export default function TeamPage() {
         .select('members(id, full_name, phone, status)')
         .eq('group_id', group.id);
 
-      const memberList = (groupMembers ?? []).map((gm: { members: TeamMember | null }) => gm.members).filter(Boolean) as TeamMember[];
+      const memberList = (groupMembers ?? []).map((gm: { members: TeamMember[] | null }) => gm.members?.[0] ?? null).filter(Boolean) as TeamMember[];
       setMembers(memberList);
 
       // ดึงรอบปลูกของสมาชิกในกลุ่ม
