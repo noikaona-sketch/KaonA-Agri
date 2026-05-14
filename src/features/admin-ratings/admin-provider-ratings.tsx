@@ -154,7 +154,7 @@ export function AdminProviderRatings() {
           <div style={{ background: '#fff', borderRadius: 12, padding: 16, border: '1px solid #e4ebe4' }}>
             <p style={{ margin: '0 0 12px', fontWeight: 700, fontSize: 14 }}>📊 คะแนนเฉลี่ยรายด้าน</p>
             {SCORE_DIMS.map((d) => {
-              const val = (selected as Record<string, number | null>)[d.key] ?? 0;
+              const val = (selected as unknown as Record<string, number | null>)[d.key] ?? 0;
               const pct = ((val / 5) * 100).toFixed(0);
               return (
                 <div key={d.key} style={{ marginBottom: 8 }}>
