@@ -7,10 +7,12 @@ import { AdminOrdersList } from '@/features/admin-orders/admin-orders-list';
 import { AdminProductsList } from '@/features/admin-products/admin-products-list';
 import { AdminStockList } from '@/features/admin-stock/admin-stock-list';
 import { AppointmentsList } from '@/features/admin-appointments/appointments-list';
+import { AdminSeedReservations } from '@/features/admin-seed-reservations/admin-seed-reservations';
 
-type Tab = 'pos' | 'orders' | 'appointments' | 'products' | 'stock';
+type Tab = 'pos' | 'reservations' | 'orders' | 'appointments' | 'products' | 'stock';
 const TABS: { key: Tab; icon: string; label: string }[] = [
   { key: 'pos',          icon: '💰', label: 'POS ขาย' },
+  { key: 'reservations', icon: '📋', label: 'คิวจองเมล็ด' },
   { key: 'orders',       icon: '📋', label: 'คำสั่งซื้อ' },
   { key: 'appointments', icon: '📅', label: 'นัดขาย' },
   { key: 'products',     icon: '🛍️', label: 'สินค้า' },
@@ -32,6 +34,7 @@ export default function AdminSalesPage() {
         ))}
       </div>
       {tab === 'pos'          && <AdminPos />}
+      {tab === 'reservations' && <AdminSeedReservations />}
       {tab === 'orders'       && <AdminOrdersList />}
       {tab === 'appointments' && <AppointmentsList />}
       {tab === 'products'     && <AdminProductsList />}
