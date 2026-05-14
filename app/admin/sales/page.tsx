@@ -6,7 +6,7 @@ import { AdminPos } from '@/features/admin-pos/admin-pos';
 import { AdminOrdersList } from '@/features/admin-orders/admin-orders-list';
 import { AdminProductsList } from '@/features/admin-products/admin-products-list';
 import { AdminStockList } from '@/features/admin-stock/admin-stock-list';
-import { AdminAppointmentsList } from '@/features/admin-appointments/appointments-list';
+import { AppointmentsList } from '@/features/admin-appointments/appointments-list';
 
 type Tab = 'pos' | 'orders' | 'appointments' | 'products' | 'stock';
 const TABS: { key: Tab; icon: string; label: string }[] = [
@@ -33,7 +33,7 @@ export default function AdminSalesPage() {
       </div>
       {tab === 'pos'          && <AdminPos />}
       {tab === 'orders'       && <AdminOrdersList />}
-      {tab === 'appointments' && <AdminAppointmentsList />}
+      {tab === 'appointments' && <AppointmentsList />}
       {tab === 'products'     && <AdminProductsList />}
       {tab === 'stock'        && <AdminStockList />}
     </AdminWebShell>
