@@ -90,7 +90,7 @@ export function AdminNoBurnList() {
                       <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>{r.members?.[0]?.phone ?? ''}</p>
                     </td>
                     <td>{r.plots?.[0]?.name ?? '—'} {r.plots?.[0]?.area_rai ? `(${r.plots.area_rai} ไร่)` : ''}</td>
-                    <td>{r.planting_cycles ? `${r.planting_cycles.crop_name} ${r.planting_cycles.season_year}` : '—'}</td>
+                    <td>{r.planting_cycles?.[0] ? `${r.planting_cycles[0].crop_name} ${r.planting_cycles[0].season_year}` : '—'}</td>
                     <td><span className={`status-badge status-badge--${st.badge}`}>{st.label}</span></td>
                     <td style={{ fontSize: 13, color: '#6b7280', whiteSpace: 'nowrap' }}>{new Date(r.submitted_at).toLocaleDateString('th-TH')}</td>
                     <td>

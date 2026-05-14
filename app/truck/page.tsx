@@ -158,7 +158,7 @@ export default function TruckPage() {
                   <p style={{ margin: '4px 0 0', fontSize: 13 }}>
                     👤 {job.members?.[0]?.full_name ?? '—'}
                     {job.members?.[0]?.phone && (
-                      <a href={`tel:${job.members.phone}`} style={{ marginLeft: 8, color: 'var(--primary)', fontWeight: 700 }}>
+                      <a href={`tel:${job.members[0].phone}`} style={{ marginLeft: 8, color: 'var(--primary)', fontWeight: 700 }}>
                         📞 โทร
                       </a>
                     )}

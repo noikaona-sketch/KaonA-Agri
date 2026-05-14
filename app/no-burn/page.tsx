@@ -170,9 +170,9 @@ export default function NoBurnPage() {
                   <p style={{ margin: 0, fontWeight: 700, fontSize: 15 }}>
                     {req.plots?.[0]?.name ?? 'แปลงไม่ระบุ'}
                   </p>
-                  {req.planting_cycles && (
+                  {req.planting_cycles?.[0] && (
                     <p style={{ margin: '2px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>
-                      🌱 {req.planting_cycles.crop_name} ปี {req.planting_cycles.season_year}
+                      🌱 {req.planting_cycles[0].crop_name} ปี {req.planting_cycles[0].season_year}
                     </p>
                   )}
                   <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-secondary)' }}>

@@ -57,7 +57,7 @@ export function AppointmentDetail({ appointmentId }: Props) {
     if (!moisture || !appt?.planting_cycles?.[0]?.product_id) return;
     const s = createSupabaseBrowserClient();
     const { data } = await s.rpc('calc_quality_grade', {
-      p_product_id: appt.planting_cycles.product_id,
+      p_product_id: appt.planting_cycles?.[0]?.product_id,
       p_moisture_pct: Number(moisture),
     });
     setGradeResult(data as typeof gradeResult);
