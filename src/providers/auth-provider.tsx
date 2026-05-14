@@ -101,7 +101,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       (process.env.NEXT_PUBLIC_DEV_BYPASS_LINE === 'true' ||
        (process.env.NODE_ENV === 'development' && !window.location.hostname.includes('vercel')));
 
-    if (isDevBypass && typeof window !== 'undefined' && !window.liff?.isInClient?.()) {
+    if (isDevBypass && typeof window !== 'undefined') {
       const mockRole = (new URLSearchParams(window.location.search).get('role') ?? 'farmer') as AppRole;
       const mockMember: AuthBootstrapResult = {
         member_id:    'dev-mock-member',
