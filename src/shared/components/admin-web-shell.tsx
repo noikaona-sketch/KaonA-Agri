@@ -72,38 +72,30 @@ export function AdminWebShell({ title, subtitle, roleBadge, children }: AdminWeb
         </p>
 
         <nav className="admin-web-shell__nav" aria-label="เมนูหลังบ้าน">
-          {navItems.map((item, idx) => {
+          {navItems.map((item) => {
             const isActive = pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href));
-            // เพิ่ม divider ก่อน section ใหม่
-            const prevItem = navItems[idx - 1];
-            const sections: Record<string, string[]> = {
-              agri: ['แปลงเกษตร','รอบเพาะปลูก','เมล็ดพันธุ์','งดเผา','งานตรวจ'],
-              service: ['การจองบริการ'],
-              system: ['เจ้าหน้าที่'],
-            };
-            const isNewSection = idx > 0 && Object.values(sections).some(
-              (s) => s.includes(item.label) && !s.includes(prevItem?.label ?? '')
-            );
             return (
-              <div key={item.href}>
-                {isNewSection && <div style={{ borderTop: '1px solid rgba(255,255,255,0.12)', margin: '6px 0' }} />}
-                <Link
-                  href={item.href}
-                  className={`admin-web-shell__nav-item${isActive ? ' admin-web-shell__nav-item--active' : ''}`}
-                  aria-current={isActive ? 'page' : undefined}
-                >
-                  <span style={{ marginRight: 8 }}>{item.icon}</span>{item.label}
-                </Link>
-              </div>
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`admin-web-shell__nav-item${isActive ? ' admin-web-shell__nav-item--active' : ''}`}
+                aria-current={isActive ? 'page' : undefined}
+              >
+                <span className="admin-nav-icon">{item.icon}</span>
+                {item.label}
+              </Link>
             );
           })}
-
-          <div style={{ borderTop: '1px solid rgba(255,255,255,0.12)', marginTop: 12, paddingTop: 12 }}>
-            <Link href="/api/admin-auth/logout" className="admin-web-shell__nav-item" style={{ color: '#fca5a5' }}>
-              <span style={{ marginRight: 8 }}>🚪</span>ออกจากระบบ
-            </Link>
-          </div>
         </nav>
+
+        <div className="admin-nav-logout">
+          <Link href="/api/admin-auth/logout"
+            className="admin-web-shell__nav-item"
+            style={{ color: 'rgba(255,255,255,0.5)' }}>
+            <span className="admin-nav-icon" style={{ background: 'rgba(239,68,68,0.15)' }}>🚪</span>
+            ออกจากระบบ
+          </Link>
+        </div>
       </aside>
 
       <section className="admin-web-shell__content-card">
@@ -112,7 +104,9 @@ export function AdminWebShell({ title, subtitle, roleBadge, children }: AdminWeb
             <h1 className="admin-web-shell__title">{title}</h1>
             <p className="admin-web-shell__subtitle">{subtitle}</p>
           </div>
-          {roleBadge && <span className="role-badge">{roleBadge ?? deptLabel[dept]}</span>}
+          <span style={{ fontSize: 12, fontWeight: 700, padding: '5px 12px', borderRadius: 999, background: '#e8f5e9', color: '#1b5e20', border: '1.5px solid #a5d6a7', whiteSpace: 'nowrap', alignSelf: 'flex-start' }}>
+            {roleBadge ?? deptLabel[dept] ?? dept}
+          </span>
         </header>
         <div className="admin-web-shell__content">{children}</div>
       </section>
