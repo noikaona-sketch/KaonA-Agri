@@ -14,7 +14,7 @@ type SeedOrder = {
   status: string;
   note: string | null;
   created_at: string;
-  members: { full_name: string; phone: string | null } | null;
+  members: { full_name: string; phone: string | null }[] | null;
 };
 
 const STATUS_MAP: Record<string, { badge: string; label: string }> = {
@@ -94,8 +94,8 @@ export function AdminSeedsList() {
                 return (
                   <tr key={o.id}>
                     <td>
-                      <p style={{ margin: 0, fontWeight: 600 }}>{o.members?.full_name ?? '—'}</p>
-                      <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>{o.members?.phone ?? ''}</p>
+                      <p style={{ margin: 0, fontWeight: 600 }}>{o.members?.[0]?.full_name ?? '—'}</p>
+                      <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>{o.members?.[0]?.phone ?? ''}</p>
                     </td>
                     <td style={{ fontWeight: 600 }}>{o.seed_type}</td>
                     <td>{o.quantity_kg.toLocaleString()}</td>

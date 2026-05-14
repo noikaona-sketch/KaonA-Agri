@@ -11,8 +11,8 @@ import { ProtectedRoute } from '@/shared/components/protected-route';
 type Task = {
   id: string; result_status: string; result_note: string | null;
   assigned_at: string; visited_at: string | null;
-  plots: { name: string; province: string | null; lat: number | null; lng: number | null } | null;
-  members: { full_name: string; phone: string | null } | null;
+  plots: { name: string; province: string | null; lat: number | null; lng: number | null }[] | null;
+  members: { full_name: string; phone: string | null }[] | null;
 };
 
 const STATUS_CFG: Record<string, { icon: string; label: string; color: string }> = {
@@ -71,15 +71,15 @@ function TaskList() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div>
                     <p style={{ margin: 0, fontWeight: 800, fontSize: 15 }}>
-                      {t.plots?.name ?? '—'} {t.plots?.province ? `(${t.plots.province})` : ''}
+                      {t.plots?.[0]?.name ?? '—'} {t.plots?.[0]?.province ? `(${t.plots.province})` : ''}
                     </p>
                     <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>
-                      👤 {t.members?.full_name ?? '—'}
+                      👤 {t.members?.[0]?.full_name ?? '—'}
                     </p>
                     <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-secondary)' }}>
                       📅 {new Date(t.assigned_at).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </p>
-                    {t.plots?.lat && t.plots?.lng && (
+                    {t.plots?.[0]?.lat && t.plots?.[0]?.lng && (
                       <a href={`https://maps.google.com/?q=${t.plots.lat},${t.plots.lng}`} target="_blank" rel="noopener noreferrer"
                         style={{ fontSize: 12, color: 'var(--primary)', fontWeight: 600, marginTop: 4, display: 'block' }}
                         onClick={(e) => e.stopPropagation()}>

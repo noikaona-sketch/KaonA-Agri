@@ -15,7 +15,7 @@ type BookingRow = {
   status: string;
   note: string | null;
   created_at: string;
-  members: { full_name: string; phone: string | null } | null;
+  members: { full_name: string; phone: string | null }[] | null;
   assigned_to: { full_name: string } | null;
 };
 
@@ -102,8 +102,8 @@ export function AdminServiceList() {
                 return (
                   <tr key={r.id}>
                     <td>
-                      <p style={{ margin: 0, fontWeight: 600 }}>{r.members?.full_name ?? '—'}</p>
-                      <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>{r.members?.phone ?? ''}</p>
+                      <p style={{ margin: 0, fontWeight: 600 }}>{r.members?.[0]?.full_name ?? '—'}</p>
+                      <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>{r.members?.[0]?.phone ?? ''}</p>
                     </td>
                     <td>{SERVICE_LABELS[r.service_type] ?? r.service_type}</td>
                     <td style={{ fontSize: 13, color: '#6b7280', whiteSpace: 'nowrap' }}>{r.scheduled_date ? new Date(r.scheduled_date).toLocaleDateString('th-TH') : '—'}</td>

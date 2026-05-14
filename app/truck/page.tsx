@@ -22,9 +22,9 @@ type HarvestJob = {
     crop_name: string;
     area_planted_rai: number | null;
     estimated_yield_kg: number | null;
-    plots: { name: string; province: string | null; lat: number | null; lng: number | null } | null;
+    plots: { name: string; province: string | null; lat: number | null; lng: number | null }[] | null;
   } | null;
-  members: { full_name: string; phone: string | null } | null;
+  members: { full_name: string; phone: string | null }[] | null;
 };
 
 const STATUS_CFG: Record<string, { label: string; color: string; bg: string }> = {
@@ -140,7 +140,7 @@ export default function TruckPage() {
         {jobs.map((job) => {
           const st = STATUS_CFG[job.status] ?? STATUS_CFG.pending;
           const isToday = job.scheduled_date === todayStr;
-          const plot = job.planting_cycles?.plots;
+          const plot = job.planting_cycles?.[0]?.plots;
 
           return (
             <div key={job.id} className="kaona-card"
@@ -153,11 +153,11 @@ export default function TruckPage() {
                   <p style={{ margin: 0, fontWeight: 800, fontSize: 16 }}>{plot?.name ?? 'แปลงไม่ระบุ'}</p>
                   {plot?.province && <p style={{ margin: '2px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>{plot.province}</p>}
                   <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>
-                    {job.planting_cycles?.crop_name} {job.planting_cycles?.area_planted_rai ? `· ${job.planting_cycles.area_planted_rai} ไร่` : ''}
+                    {job.planting_cycles?.[0]?.crop_name} {job.planting_cycles?.[0]?.area_planted_rai ? `· ${job.planting_cycles.area_planted_rai} ไร่` : ''}
                   </p>
                   <p style={{ margin: '4px 0 0', fontSize: 13 }}>
-                    👤 {job.members?.full_name ?? '—'}
-                    {job.members?.phone && (
+                    👤 {job.members?.[0]?.full_name ?? '—'}
+                    {job.members?.[0]?.phone && (
                       <a href={`tel:${job.members.phone}`} style={{ marginLeft: 8, color: 'var(--primary)', fontWeight: 700 }}>
                         📞 โทร
                       </a>
@@ -206,7 +206,7 @@ export default function TruckPage() {
               {job.status === 'confirmed' && (
                 <div style={{ marginTop: 10 }}>
                   <UIButton fullWidth variant="secondary"
-                    onClick={() => { setActiveJob(job); setYieldKg(String(job.planting_cycles?.estimated_yield_kg ?? '')); setShowResult(true); }}>
+                    onClick={() => { setActiveJob(job); setYieldKg(String(job.planting_cycles?.[0]?.estimated_yield_kg ?? '')); setShowResult(true); }}>
                     📝 บันทึกผลการเกี่ยว
                   </UIButton>
                 </div>
@@ -233,11 +233,11 @@ export default function TruckPage() {
             <div style={{ background: '#fff', borderRadius: '20px 20px 12px 12px', padding: '24px 20px', width: '100%', maxWidth: 480, margin: '0 auto', display: 'grid', gap: 14 }}>
               <p style={{ margin: 0, fontWeight: 800, fontSize: 17 }}>📝 บันทึกผลการเกี่ยว</p>
               <p style={{ margin: 0, fontSize: 14, color: 'var(--text-secondary)' }}>
-                {activeJob.planting_cycles?.plots?.name} · {activeJob.planting_cycles?.crop_name}
+                {activeJob.planting_cycles?.[0]?.plots?.[0]?.name} · {activeJob.planting_cycles?.[0]?.crop_name}
               </p>
               <label className="reg-label">ผลผลิตจริง (กก.)
                 <input className="reg-input" type="number" value={yieldKg} onChange={(e) => setYieldKg(e.target.value)}
-                  placeholder={`คาด ${activeJob.planting_cycles?.estimated_yield_kg ?? '—'} กก.`} />
+                  placeholder={`คาด ${activeJob.planting_cycles?.[0]?.estimated_yield_kg ?? '—'} กก.`} />
               </label>
               <label className="reg-label">ความชื้น (%)
                 <input className="reg-input" type="number" step="0.1" value={moisture} onChange={(e) => setMoisture(e.target.value)} placeholder="14.5" />

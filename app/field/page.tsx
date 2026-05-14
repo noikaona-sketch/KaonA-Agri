@@ -10,8 +10,8 @@ import { LoadingState } from '@/shared/components/loading-state';
 type InspectionTask = {
   id: string; result_status: string;
   assigned_at: string; visited_at: string | null;
-  plots: { name: string; province: string | null } | null;
-  members: { full_name: string; phone: string | null } | null;
+  plots: { name: string; province: string | null }[] | null;   // array
+  members: { full_name: string; phone: string | null }[] | null; // array
 };
 
 const STATUS_CFG: Record<string, { icon: string; label: string; color: string; bg: string }> = {
@@ -82,11 +82,11 @@ export default function FieldPage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div>
                     <p style={{ margin: 0, fontWeight: 800, fontSize: 15 }}>
-                      {t.plots?.name ?? 'แปลงไม่ระบุ'}
-                      {t.plots?.province ? ` (${t.plots.province})` : ''}
+                      {t.plots?.[0]?.name ?? 'แปลงไม่ระบุ'}
+                      {t.plots?.[0]?.province ? ` (${t.plots[0].province})` : ''}
                     </p>
                     <p style={{ margin: '2px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>
-                      👤 {t.members?.full_name ?? '—'} {t.members?.phone ? `· ${t.members.phone}` : ''}
+                      👤 {t.members?.[0]?.full_name ?? '—'} {t.members?.[0]?.phone ? `· ${t.members[0].phone}` : ''}
                     </p>
                     <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-secondary)' }}>
                       {isToday ? '📅 วันนี้' : new Date(t.assigned_at).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}

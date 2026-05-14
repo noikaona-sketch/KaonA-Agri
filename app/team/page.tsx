@@ -14,8 +14,8 @@ type TeamCycle = {
   id: string; crop_name: string; season_year: number; status: string;
   planted_at: string | null; expected_harvest_at: string | null;
   estimated_yield_kg: number | null;
-  plots: { name: string } | null;
-  members: { full_name: string } | null;
+  plots: { name: string }[] | null;
+  members: { full_name: string }[] | null;
 };
 
 const CYCLE_STATUS: Record<string, { icon: string; color: string }> = {
@@ -157,7 +157,7 @@ export default function TeamPage() {
                           <div>
                             <p style={{ margin: 0, fontWeight: 800, fontSize: 15 }}>{st.icon} {c.crop_name} {c.season_year}</p>
                             <p style={{ margin: '2px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>
-                              👤 {c.members?.full_name} · {c.plots?.name ?? '—'}
+                              👤 {c.members?.[0]?.full_name} · {c.plots?.[0]?.name ?? '—'}
                             </p>
                             {c.estimated_yield_kg && (
                               <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-secondary)' }}>

@@ -9,8 +9,8 @@ import { UIButton } from '@/shared/components/ui-button';
 
 type NoBurnRequest = {
   id: string; status: string; submitted_at: string; review_note: string | null;
-  plots: { name: string } | null;
-  planting_cycles: { crop_name: string; season_year: number } | null;
+  plots: { name: string }[] | null;
+  planting_cycles: { crop_name: string; season_year: number }[] | null;
 };
 type Plot = { id: string; name: string; province: string | null };
 type Cycle = { id: string; crop_name: string; season_year: number; status: string };
@@ -168,7 +168,7 @@ export default function NoBurnPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
                   <p style={{ margin: 0, fontWeight: 700, fontSize: 15 }}>
-                    {req.plots?.name ?? 'แปลงไม่ระบุ'}
+                    {req.plots?.[0]?.name ?? 'แปลงไม่ระบุ'}
                   </p>
                   {req.planting_cycles && (
                     <p style={{ margin: '2px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>

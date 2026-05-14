@@ -12,9 +12,9 @@ type NoBurnRow = {
   status: string;
   submitted_at: string;
   review_note: string | null;
-  members: { full_name: string; phone: string | null } | null;
-  plots: { name: string; area_rai: number } | null;
-  planting_cycles: { crop_name: string; season_year: number } | null;
+  members: { full_name: string; phone: string | null }[] | null;
+  plots: { name: string; area_rai: number }[] | null;
+  planting_cycles: { crop_name: string; season_year: number }[] | null;
 };
 
 const STATUS_MAP: Record<string, { badge: string; label: string }> = {
@@ -86,10 +86,10 @@ export function AdminNoBurnList() {
                 return (
                   <tr key={r.id}>
                     <td>
-                      <p style={{ margin: 0, fontWeight: 600 }}>{r.members?.full_name ?? '—'}</p>
-                      <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>{r.members?.phone ?? ''}</p>
+                      <p style={{ margin: 0, fontWeight: 600 }}>{r.members?.[0]?.full_name ?? '—'}</p>
+                      <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>{r.members?.[0]?.phone ?? ''}</p>
                     </td>
-                    <td>{r.plots?.name ?? '—'} {r.plots?.area_rai ? `(${r.plots.area_rai} ไร่)` : ''}</td>
+                    <td>{r.plots?.[0]?.name ?? '—'} {r.plots?.[0]?.area_rai ? `(${r.plots.area_rai} ไร่)` : ''}</td>
                     <td>{r.planting_cycles ? `${r.planting_cycles.crop_name} ${r.planting_cycles.season_year}` : '—'}</td>
                     <td><span className={`status-badge status-badge--${st.badge}`}>{st.label}</span></td>
                     <td style={{ fontSize: 13, color: '#6b7280', whiteSpace: 'nowrap' }}>{new Date(r.submitted_at).toLocaleDateString('th-TH')}</td>

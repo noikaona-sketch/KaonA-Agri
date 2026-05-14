@@ -12,9 +12,9 @@ import { UIButton } from '@/shared/components/ui-button';
 type Task = {
   id: string; result_status: string; result_note: string | null;
   assigned_at: string; visited_at: string | null;
-  plots: { id: string; name: string; province: string | null; area_rai: number | null; lat: number | null; lng: number | null } | null;
-  members: { full_name: string; phone: string | null } | null;
-  no_burn_requests: { id: string; status: string } | null;
+  plots: { id: string; name: string; province: string | null; area_rai: number | null; lat: number | null; lng: number | null }[] | null;
+  members: { full_name: string; phone: string | null }[] | null;
+  no_burn_requests: { id: string; status: string }[] | null;
 };
 
 type Props = { params: { id: string } };
@@ -52,7 +52,7 @@ export default function InspectionTaskDetailPage({ params }: Props) {
       visited_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }).eq('id', task.id);
-    if (!e && task.no_burn_requests?.id) {
+    if (!e && task.no_burn_requests?.[0]?.id) {
       await s.from('no_burn_requests').update({
         status: result === 'pass' ? 'approved' : 'rejected',
         review_note: note || null,
@@ -81,16 +81,16 @@ export default function InspectionTaskDetailPage({ params }: Props) {
 
         {/* Task info */}
         <div className="kaona-card" style={{ background: 'linear-gradient(135deg,#1b5e20,#2e7d32)', color: '#fff' }}>
-          <p style={{ margin: 0, fontSize: 20, fontWeight: 900 }}>{task.plots?.name ?? '—'}</p>
-          {task.plots?.province && <p style={{ margin: '2px 0 0', fontSize: 14, opacity: 0.85 }}>{task.plots.province}</p>}
+          <p style={{ margin: 0, fontSize: 20, fontWeight: 900 }}>{task.plots?.[0]?.name ?? '—'}</p>
+          {task.plots?.[0]?.province && <p style={{ margin: '2px 0 0', fontSize: 14, opacity: 0.85 }}>{task.plots.province}</p>}
           <p style={{ margin: '8px 0 0', fontSize: 14, opacity: 0.85 }}>
-            👤 {task.members?.full_name ?? '—'} {task.members?.phone ? `· ${task.members.phone}` : ''}
+            👤 {task.members?.[0]?.full_name ?? '—'} {task.members?.[0]?.phone ? `· ${task.members.phone}` : ''}
           </p>
-          {task.plots?.area_rai && <p style={{ margin: '2px 0 0', fontSize: 14, opacity: 0.85 }}>พื้นที่ {task.plots.area_rai} ไร่</p>}
+          {task.plots?.[0]?.area_rai && <p style={{ margin: '2px 0 0', fontSize: 14, opacity: 0.85 }}>พื้นที่ {task.plots.area_rai} ไร่</p>}
         </div>
 
         {/* GPS */}
-        {task.plots?.lat && task.plots?.lng && (
+        {task.plots?.[0]?.lat && task.plots?.[0]?.lng && (
           <a href={`https://maps.google.com/?q=${task.plots.lat},${task.plots.lng}`} target="_blank" rel="noopener noreferrer"
             className="kaona-card" style={{ display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none', color: 'var(--text-primary)' }}>
             <span style={{ fontSize: 24 }}>📍</span>

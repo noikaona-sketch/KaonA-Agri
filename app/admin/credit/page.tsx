@@ -7,7 +7,7 @@ import { LoadingState } from '@/shared/components/loading-state';
 type CreditRow = {
   member_id: string; balance: number; debit_balance: number;
   total_spent: number; total_paid: number;
-  members: { full_name: string; phone: string | null } | null;
+  members: { full_name: string; phone: string | null }[] | null;
 };
 
 export default function AdminCreditPage() {
@@ -61,8 +61,8 @@ export default function AdminCreditPage() {
               {rows.map((r) => (
                 <tr key={r.member_id}>
                   <td>
-                    <p style={{ margin: 0, fontWeight: 700 }}>{r.members?.full_name ?? '—'}</p>
-                    <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>{r.members?.phone ?? ''}</p>
+                    <p style={{ margin: 0, fontWeight: 700 }}>{r.members?.[0]?.full_name ?? '—'}</p>
+                    <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>{r.members?.[0]?.phone ?? ''}</p>
                   </td>
                   <td style={{ fontWeight: 800, color: r.debit_balance > 0 ? '#c62828' : '#2e7d32', fontSize: 16 }}>
                     {r.debit_balance.toLocaleString()} บาท
@@ -71,8 +71,8 @@ export default function AdminCreditPage() {
                   <td style={{ color: '#6b7280' }}>{r.total_paid.toLocaleString()} บาท</td>
                   <td>
                     <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
-                      <button className="admin-btn admin-btn--success" onClick={() => setModal({ memberId: r.member_id, name: r.members?.full_name ?? '', action: 'record_payment' })} disabled={acting !== null} style={{ fontSize: 12, minHeight: 30, padding: '4px 8px' }}>💵 รับชำระ</button>
-                      <button className="admin-btn admin-btn--secondary" onClick={() => setModal({ memberId: r.member_id, name: r.members?.full_name ?? '', action: 'add_credit' })} disabled={acting !== null} style={{ fontSize: 12, minHeight: 30, padding: '4px 8px' }}>💳 เติมเครดิต</button>
+                      <button className="admin-btn admin-btn--success" onClick={() => setModal({ memberId: r.member_id, name: r.members?.[0]?.full_name ?? '', action: 'record_payment' })} disabled={acting !== null} style={{ fontSize: 12, minHeight: 30, padding: '4px 8px' }}>💵 รับชำระ</button>
+                      <button className="admin-btn admin-btn--secondary" onClick={() => setModal({ memberId: r.member_id, name: r.members?.[0]?.full_name ?? '', action: 'add_credit' })} disabled={acting !== null} style={{ fontSize: 12, minHeight: 30, padding: '4px 8px' }}>💳 เติมเครดิต</button>
                     </div>
                   </td>
                 </tr>

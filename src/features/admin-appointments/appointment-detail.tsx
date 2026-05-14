@@ -13,8 +13,8 @@ type Appt = {
   price_per_kg: number; total_amount: number;
   paid_amount: number; location_note: string | null; note: string | null;
   quota_remaining_kg: number | null;
-  members: { full_name: string; phone: string | null } | null;
-  planting_cycles: { crop_name: string; season_year: number; product_id: string | null } | null;
+  members: { full_name: string; phone: string | null }[] | null;
+  planting_cycles: { crop_name: string; season_year: number; product_id: string | null }[] | null;
 };
 
 const GRADE_COLORS: Record<string, string> = { A: '#1b5e20', B: '#e65100', C: '#c62828', reject: '#616161' };
@@ -54,7 +54,7 @@ export function AppointmentDetail({ appointmentId }: Props) {
 
   // ตรวจ moisture → grade
   async function checkGrade() {
-    if (!moisture || !appt?.planting_cycles?.product_id) return;
+    if (!moisture || !appt?.planting_cycles?.[0]?.product_id) return;
     const s = createSupabaseBrowserClient();
     const { data } = await s.rpc('calc_quality_grade', {
       p_product_id: appt.planting_cycles.product_id,
@@ -110,8 +110,8 @@ export function AppointmentDetail({ appointmentId }: Props) {
           <table className="admin-table">
             <tbody>
               {[
-                ['สมาชิก', `${appt.members?.full_name ?? '—'} (${appt.members?.phone ?? '—'})`],
-                ['พืช/ฤดูกาล', `${appt.planting_cycles?.crop_name ?? '—'} ปี ${appt.planting_cycles?.season_year ?? '—'}`],
+                ['สมาชิก', `${appt.members?.[0]?.full_name ?? '—'} (${appt.members?.[0]?.phone ?? '—'})`],
+                ['พืช/ฤดูกาล', `${appt.planting_cycles?.[0]?.crop_name ?? '—'} ปี ${appt.planting_cycles?.[0]?.season_year ?? '—'}`],
                 ['ปริมาณคาด', `${appt.estimated_qty_kg.toLocaleString()} กก.`],
                 ['สถานที่', appt.location_note ?? '—'],
                 ['หมายเหตุ', appt.note ?? '—'],
@@ -124,7 +124,7 @@ export function AppointmentDetail({ appointmentId }: Props) {
       </section>
 
       {/* ตรวจคุณภาพ */}
-      {appt.planting_cycles?.product_id && appt.status !== 'completed' && (
+      {appt.planting_cycles?.[0]?.product_id && appt.status !== 'completed' && (
         <section style={{ background: '#fff8e1', border: '1px solid #ffe082', borderRadius: 12, padding: 16 }}>
           <h3 style={{ margin: '0 0 12px', fontSize: 15, fontWeight: 700, color: '#e65100' }}>🌽 ตรวจคุณภาพข้าวโพด</h3>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 12, alignItems: 'end' }}>
