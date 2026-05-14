@@ -5,6 +5,7 @@ import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useCurrentMember } from '@/providers/auth-provider';
 import { LoadingState } from '@/shared/components/loading-state';
 import { HarvestRatingForm } from '@/features/service-rating/harvest-rating-form';
+import { UIButton } from '@/shared/components/ui-button';
 import { ErrorState } from '@/shared/components/error-state';
 
 type ProductRef = { name: string; seed_variety: string | null; days_to_harvest: number | null; planting_guide: string | null };
