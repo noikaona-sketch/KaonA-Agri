@@ -71,7 +71,7 @@ function TaskList() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div>
                     <p style={{ margin: 0, fontWeight: 800, fontSize: 15 }}>
-                      {t.plots?.[0]?.name ?? '—'} {t.plots?.[0]?.province ? `(${t.plots.province})` : ''}
+                      {t.plots?.[0]?.name ?? '—'} {t.plots?.[0]?.province ? `(${t.plots[0].province})` : ''}
                     </p>
                     <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>
                       👤 {t.members?.[0]?.full_name ?? '—'}
@@ -80,7 +80,7 @@ function TaskList() {
                       📅 {new Date(t.assigned_at).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </p>
                     {t.plots?.[0]?.lat && t.plots?.[0]?.lng && (
-                      <a href={`https://maps.google.com/?q=${t.plots.lat},${t.plots.lng}`} target="_blank" rel="noopener noreferrer"
+                      <a href={`https://maps.google.com/?q=${t.plots[0].lat},${t.plots[0].lng}`} target="_blank" rel="noopener noreferrer"
                         style={{ fontSize: 12, color: 'var(--primary)', fontWeight: 600, marginTop: 4, display: 'block' }}
                         onClick={(e) => e.stopPropagation()}>
                         📍 เปิดใน Google Maps
