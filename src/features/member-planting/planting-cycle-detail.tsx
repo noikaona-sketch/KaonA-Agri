@@ -6,6 +6,8 @@ import { useCurrentMember } from '@/providers/auth-provider';
 import { LoadingState } from '@/shared/components/loading-state';
 import { HarvestRatingForm } from '@/features/service-rating/harvest-rating-form';
 import { UIButton } from '@/shared/components/ui-button';
+import { HarvestBookingForm } from './harvest-booking-form';
+import { SaleAppointmentForm } from './sale-appointment-form';
 import { ErrorState } from '@/shared/components/error-state';
 
 type ProductRef = { name: string; seed_variety: string | null; days_to_harvest: number | null; planting_guide: string | null };
@@ -73,7 +75,9 @@ export function PlantingCycleDetail({ cycleId }: { cycleId: string }) {
 
   const [showConfirm, setShowConfirm]   = useState(false);
   const [showProgress, setShowProgress] = useState(false);
-  const [showRating, setShowRating]     = useState(false);
+  const [showRating,   setShowRating]   = useState(false);
+  const [showBooking,  setShowBooking]  = useState(false);
+  const [showSale,     setShowSale]     = useState(false);
   const [selectedPlot, setSelectedPlot] = useState('');
   const [plantedDate, setPlantedDate]   = useState('');
   const [areaRai, setAreaRai]           = useState('');
@@ -226,7 +230,22 @@ export function PlantingCycleDetail({ cycleId }: { cycleId: string }) {
         </UIButton>
       )}
 
-      {/* ปุ่มประเมินผู้ให้บริการ — แสดงเมื่อเกี่ยวเสร็จ */}
+      {/* นัดรถเกี่ยว — เมื่อใกล้เก็บเกี่ยว (≤30 วัน) หรือ status = ready */}
+      {cycle.confirmed_at && cycle.expected_harvest_at &&
+       !['harvested','cancelled'].includes(cycle.status) && (
+        <UIButton fullWidth onClick={() => setShowBooking(true)}>
+          🚜 นัดรถเกี่ยว
+        </UIButton>
+      )}
+
+      {/* นัดขาย — เมื่อ confirmed แล้ว */}
+      {cycle.confirmed_at && !['cancelled'].includes(cycle.status) && (
+        <UIButton fullWidth variant="secondary" onClick={() => setShowSale(true)}>
+          🌽 นัดวันขายผลผลิต
+        </UIButton>
+      )}
+
+      {/* ประเมิน — เมื่อเกี่ยวเสร็จ */}
       {cycle.status === 'harvested' && (
         <UIButton fullWidth variant="secondary" onClick={() => setShowRating(true)}>
           ⭐ ประเมินผู้ให้บริการ
@@ -274,6 +293,49 @@ export function PlantingCycleDetail({ cycleId }: { cycleId: string }) {
           })}
         </div>
       )}
+      {/* Harvest Booking modal */}
+      {showBooking && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, overflowY: 'auto', padding: 16 }}>
+          <div style={{ maxWidth: 480, margin: '0 auto' }}>
+            <button onClick={() => setShowBooking(false)}
+              style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', fontWeight: 700, fontSize: 15, padding: '8px 16px', borderRadius: 10, cursor: 'pointer', marginBottom: 12 }}>
+              ← ยกเลิก
+            </button>
+            <HarvestBookingForm
+              cycleId={cycle.id}
+              memberId={memberId ?? ''}
+              plotId={cycle.plots?.id ?? null}
+              expectedHarvestAt={cycle.expected_harvest_at}
+              cropName={cycle.crop_name}
+              estimatedYieldKg={cycle.estimated_yield_kg}
+              onDone={() => { setShowBooking(false); }}
+              onCancel={() => setShowBooking(false)}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Sale Appointment modal */}
+      {showSale && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, overflowY: 'auto', padding: 16 }}>
+          <div style={{ maxWidth: 480, margin: '0 auto' }}>
+            <button onClick={() => setShowSale(false)}
+              style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', fontWeight: 700, fontSize: 15, padding: '8px 16px', borderRadius: 10, cursor: 'pointer', marginBottom: 12 }}>
+              ← ยกเลิก
+            </button>
+            <SaleAppointmentForm
+              cycleId={cycle.id}
+              memberId={memberId ?? ''}
+              cropName={cycle.crop_name}
+              estimatedYieldKg={cycle.estimated_yield_kg}
+              quotaKg={cycle.quota_kg}
+              onDone={() => { setShowSale(false); }}
+              onCancel={() => setShowSale(false)}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Rating modal */}
       {showRating && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, overflowY: 'auto', padding: '16px' }}>
