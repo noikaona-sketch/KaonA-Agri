@@ -156,6 +156,11 @@ export async function initLiff(): Promise<LiffInstance | null> {
 }
 
 export async function ensureLiffIdToken(): Promise<string | null> {
+  // DEV BYPASS: ถ้าตั้ง NEXT_PUBLIC_DEV_BYPASS_LINE=true → return mock token
+  if (process.env.NEXT_PUBLIC_DEV_BYPASS_LINE === 'true') {
+    return 'dev-bypass-token';
+  }
+
   const liff = await initLiff();
 
   if (!liff) {

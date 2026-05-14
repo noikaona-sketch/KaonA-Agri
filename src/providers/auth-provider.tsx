@@ -93,31 +93,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
   useEffect(() => {
     if (isAdminWebPath(pathname)) return; // handled above
 
-    // ── DEV BYPASS: เมื่อเปิดจาก browser ตรงๆ (ไม่ใช่ LINE LIFF) ──
-    // ใช้ได้เฉพาะ development หรือเมื่อ DEV_BYPASS_LINE=true
-    // ไม่มีผลใน production ที่ไม่ได้ตั้ง env นี้
-    const isDevBypass =
-      typeof window !== 'undefined' &&
-      (process.env.NEXT_PUBLIC_DEV_BYPASS_LINE === 'true' ||
-       (process.env.NODE_ENV === 'development' && !window.location.hostname.includes('vercel')));
-
-    if (isDevBypass && typeof window !== 'undefined') {
-      const mockRole = (new URLSearchParams(window.location.search).get('role') ?? 'farmer') as AppRole;
-      const mockMember: AuthBootstrapResult = {
-        member_id:    'dev-mock-member',
-        auth_user_id: null,
-        line_user_id: 'dev-mock-line-id',
-        full_name:    `Dev ${mockRole}`,
-        status:       'approved',
-        is_approved:  true,
-        effective_role: mockRole,
-        roles:         [mockRole],
-      };
-      setMember(mockMember);
-      setStatus('approved');
-      return;
-    }
-
     const isPublicRegistrationPath =
       pathname === '/service/register' || pathname === '/field/assist-registration' || pathname === '/field/register-role';
 
@@ -166,10 +141,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         const response = await fetch('/api/auth/line', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ idToken }),
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            idToken,
+            devRole: typeof window !== 'undefined'
+              ? (new URLSearchParams(window.location.search).get('role') ?? 'farmer')
+              : 'farmer',
+          }),
         });
 
         const payload = (await response.json()) as {

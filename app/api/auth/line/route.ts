@@ -15,6 +15,24 @@ export async function POST(request: Request) {
     const body = (await request.json()) as { idToken?: string };
     if (!body.idToken) return NextResponse.json({ error: 'Missing LINE ID token' }, { status: 400 });
 
+    // DEV BYPASS
+    if (body.idToken === 'dev-bypass-token' && process.env.NEXT_PUBLIC_DEV_BYPASS_LINE === 'true') {
+      const role = (body as Record<string, string>).devRole ?? 'farmer';
+      return NextResponse.json({
+        member: {
+          member_id:      'dev-mock-member-id',
+          auth_user_id:   null,
+          line_user_id:   'dev-mock-line-id',
+          full_name:      `Dev ${role}`,
+          status:         'approved',
+          is_approved:    true,
+          effective_role: role,
+          roles:          [role],
+        },
+        lineProfile: { name: `Dev ${role}`, picture: null, email: null },
+      });
+    }
+
     const lineChannelId = getLineChannelId();
     if (!lineChannelId) return NextResponse.json({ error: 'LINE channel id is not configured' }, { status: 500 });
 
