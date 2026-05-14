@@ -12,23 +12,21 @@ export type RoleNavConfig = {
   tabs: readonly [NavTab, NavTab, NavTab, NavTab];
 };
 
-// ยังไม่มี role — สมัครสมาชิก / บริการ
+// ยังไม่มี member — สมัครสมาชิก
 const GUEST_NAV: RoleNavConfig = {
   tabs: [
-    { label: 'หน้าหลัก',     href: '/',         iconKey: 'member'  },
-    { label: 'สมัครสมาชิก', href: '/register',  iconKey: 'field'   },
-    { label: 'บริการ',       href: '/register?tab=pin', iconKey: 'service' },
-    { label: 'โปรไฟล์',     href: '/profile',   iconKey: 'admin'   },
+    { label: 'สมัครสมาชิก', href: '/register',       iconKey: 'member'  },
+    { label: 'มี PIN',       href: '/register?tab=pin', iconKey: 'field'   },
+    { label: 'ติดต่อ admin', href: '/register?tab=contact', iconKey: 'service' },
   ],
 };
 
-// pending / rejected / suspended — จำกัดเมนู
+// pending / rejected / suspended — ดูสถานะ + แก้ไข
 const PENDING_NAV: RoleNavConfig = {
   tabs: [
-    { label: 'หน้าหลัก',  href: '/',        iconKey: 'member'  },
-    { label: 'สถานะ',     href: '/',        iconKey: 'field'   },
-    { label: 'บริการ',    href: '/register?tab=pin', iconKey: 'service' },
-    { label: 'โปรไฟล์',  href: '/profile', iconKey: 'admin'   },
+    { label: 'สถานะ',        href: '/',                    iconKey: 'member'  },
+    { label: 'แก้ไขข้อมูล', href: '/register?tab=edit',   iconKey: 'field'   },
+    { label: 'ติดต่อ admin', href: '/register?tab=contact', iconKey: 'service' },
   ],
 };
 

@@ -64,19 +64,33 @@ export function OcrIdCardStep({ status, result, error, onScan, onReset }: OcrIdC
         <p style={{ margin: '0 0 8px', fontSize: 13, color: 'var(--danger)' }}>⚠️ {error}</p>
       )}
 
+      {/* hidden inputs */}
       <input ref={inputRef} type="file" accept="image/*" capture="environment" onChange={handleFile} style={{ display: 'none' }} />
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-        <UIButton variant="secondary" onClick={() => inputRef.current?.click()}>
-          📷 ถ่ายรูป
-        </UIButton>
-        <UIButton variant="ghost" onClick={() => {
-          if (inputRef.current) { inputRef.current.removeAttribute('capture'); inputRef.current.click(); }
-        }}>
-          📁 เลือกไฟล์
-        </UIButton>
+      {/* ปุ่มแบบธนาคาร */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <button onClick={() => inputRef.current?.click()}
+          style={{ border: '2px dashed #a5d6a7', borderRadius: 16, padding: '20px 12px', background: '#f1f8f1', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, transition: 'all 0.15s' }}>
+          <span style={{ fontSize: 36 }}>📷</span>
+          <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--primary)' }}>ถ่ายรูป</span>
+          <span style={{ fontSize: 12, color: '#6b7280' }}>เปิดกล้อง</span>
+        </button>
+        <button onClick={() => {
+          if (inputRef.current) {
+            inputRef.current.removeAttribute('capture');
+            inputRef.current.click();
+            // restore capture after click
+            setTimeout(() => inputRef.current?.setAttribute('capture', 'environment'), 500);
+          }
+        }}
+          style={{ border: '2px dashed #90caf9', borderRadius: 16, padding: '20px 12px', background: '#e3f2fd', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, transition: 'all 0.15s' }}>
+          <span style={{ fontSize: 36 }}>🖼️</span>
+          <span style={{ fontWeight: 700, fontSize: 14, color: '#1565c0' }}>เลือกรูป</span>
+          <span style={{ fontSize: 12, color: '#6b7280' }}>จากคลัง</span>
+        </button>
       </div>
-      <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--text-secondary)', textAlign: 'center' }}>
+
+      <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-secondary)', textAlign: 'center' }}>
         หรือกรอกข้อมูลด้วยตนเองด้านล่าง
       </p>
     </div>
