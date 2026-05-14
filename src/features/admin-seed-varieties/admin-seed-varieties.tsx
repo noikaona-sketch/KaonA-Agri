@@ -23,6 +23,13 @@ const EMPTY = {
   price_per_bag: '', yield_ratio: '600',
   planting_guide: '', notes: '',
   active_status: 'active', show_to_farmer: true, sort_order: '0',
+} as {
+  variety_name: string; crop_type: string; supplier_id: string;
+  days_to_harvest: string; seed_per_rai_kg: string; yield_per_rai: string;
+  planting_spacing: string; season: string; bag_weight_kg: string;
+  price_per_bag: string; yield_ratio: string;
+  planting_guide: string; notes: string;
+  active_status: string; show_to_farmer: boolean; sort_order: string;
 };
 
 export function AdminSeedVarieties() {
@@ -75,7 +82,7 @@ export function AdminSeedVarieties() {
       season: form.season || null,
       bag_weight_kg: Number(form.bag_weight_kg) || 1,
       price_per_bag: form.price_per_bag ? Number(form.price_per_bag) : null,
-      yield_ratio: (form as Record<string,string>).yield_ratio ? Number((form as Record<string,string>).yield_ratio) : 600,
+      yield_ratio: form.yield_ratio ? Number(form.yield_ratio) : 600,
       planting_guide: form.planting_guide || null,
       notes: form.notes || null,
       active_status: form.active_status,
@@ -131,7 +138,7 @@ export function AdminSeedVarieties() {
                   <input className="reg-input" type="number" step="0.1" value={form.bag_weight_kg} onChange={set('bag_weight_kg')} placeholder="1" />
                 </label>
                 <label className="reg-label">อัตราผลผลิต (กก./กก.เมล็ด)
-                  <input className="reg-input" type="number" step="1" value={(form as Record<string,string>).yield_ratio ?? '600'} onChange={set('yield_ratio')} placeholder="600" />
+                  <input className="reg-input" type="number" step="1" value={form.yield_ratio ?? '600'} onChange={set('yield_ratio')} placeholder="600" />
                   <span className="reg-hint">เช่น 600 = เมล็ด 1 กก. → ข้าวโพด 600 กก.</span>
                 </label>
                 <label className="reg-label">ราคา/ถุง (บาท)
