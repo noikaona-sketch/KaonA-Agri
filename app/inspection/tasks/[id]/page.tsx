@@ -82,21 +82,21 @@ export default function InspectionTaskDetailPage({ params }: Props) {
         {/* Task info */}
         <div className="kaona-card" style={{ background: 'linear-gradient(135deg,#1b5e20,#2e7d32)', color: '#fff' }}>
           <p style={{ margin: 0, fontSize: 20, fontWeight: 900 }}>{task.plots?.[0]?.name ?? '—'}</p>
-          {task.plots?.[0]?.province && <p style={{ margin: '2px 0 0', fontSize: 14, opacity: 0.85 }}>{task.plots.province}</p>}
+          {task.plots?.[0]?.province && <p style={{ margin: '2px 0 0', fontSize: 14, opacity: 0.85 }}>{task.plots[0].province}</p>}
           <p style={{ margin: '8px 0 0', fontSize: 14, opacity: 0.85 }}>
-            👤 {task.members?.[0]?.full_name ?? '—'} {task.members?.[0]?.phone ? `· ${task.members.phone}` : ''}
+            👤 {task.members?.[0]?.full_name ?? '—'} {task.members?.[0]?.phone ? `· ${task.members[0].phone}` : ''}
           </p>
-          {task.plots?.[0]?.area_rai && <p style={{ margin: '2px 0 0', fontSize: 14, opacity: 0.85 }}>พื้นที่ {task.plots.area_rai} ไร่</p>}
+          {task.plots?.[0]?.area_rai && <p style={{ margin: '2px 0 0', fontSize: 14, opacity: 0.85 }}>พื้นที่ {task.plots[0].area_rai} ไร่</p>}
         </div>
 
         {/* GPS */}
         {task.plots?.[0]?.lat && task.plots?.[0]?.lng && (
-          <a href={`https://maps.google.com/?q=${task.plots.lat},${task.plots.lng}`} target="_blank" rel="noopener noreferrer"
+          <a href={`https://maps.google.com/?q=${task.plots[0].lat},${task.plots[0].lng}`} target="_blank" rel="noopener noreferrer"
             className="kaona-card" style={{ display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none', color: 'var(--text-primary)' }}>
             <span style={{ fontSize: 24 }}>📍</span>
             <div>
               <p style={{ margin: 0, fontWeight: 700, fontSize: 14 }}>เปิดใน Google Maps</p>
-              <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)' }}>{task.plots.lat.toFixed(5)}, {task.plots.lng.toFixed(5)}</p>
+              <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)' }}>{task.plots[0].lat!.toFixed(5)}, {task.plots[0].lng!.toFixed(5)}</p>
             </div>
             <span style={{ marginLeft: 'auto', fontSize: 18, color: 'var(--text-secondary)' }}>›</span>
           </a>
