@@ -35,13 +35,13 @@ export async function POST(request: Request) {
         const nextStart = new Date(period.end_date);
         nextStart.setDate(nextStart.getDate() + 1);
         const nextEnd = new Date(nextStart.getFullYear(), nextStart.getMonth() + 1, 0);
-        await s.from('accounting_periods').insert({
+        await s.from('accounting_periods').upsert({
           period_year:  nextStart.getFullYear(),
           period_month: nextStart.getMonth() + 1,
           start_date:   nextStart.toISOString().slice(0, 10),
           end_date:     nextEnd.toISOString().slice(0, 10),
           status:       'open',
-        }).onConflict('period_year,period_month').ignoreDuplicates();
+        }, { onConflict: 'period_year,period_month', ignoreDuplicates: true });
       }
 
       return NextResponse.json({ ok: true });
