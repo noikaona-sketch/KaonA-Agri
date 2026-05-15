@@ -116,13 +116,13 @@ export function AdminPos() {
   useEffect(() => {
     if (!selWH) return;
     setLoading(true);
-    void fetch(`/api/admin/pos-items?warehouse_id=${selWH}`)
+    void fetch(`/api/admin/pos-items?warehouse_id=${selWH}&mode=${mode}`)
       .then((r) => r.json())
       .then((d: { items?: PosItem[] }) => {
         setItems(d.items ?? []);
         setLoading(false);
       });
-  }, [selWH]);
+  }, [selWH, mode]);
 
   // cart helpers
   const addItem = useCallback((item: PosItem) => {
