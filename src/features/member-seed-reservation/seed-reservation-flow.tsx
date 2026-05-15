@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useCurrentMember } from '@/providers/auth-provider';
 import { LoadingState } from '@/shared/components/loading-state';
 
@@ -57,20 +56,15 @@ export function SeedReservationFlow() {
   // ── load ─────────────────────────────────────────────────────────
   async function load() {
     setLoading(true);
-    const s = createSupabaseBrowserClient();
-    const { data } = await s
-      .from('seed_stock_lots')
-      .select(`
-        id, lot_no, variety_name, quantity_balance, bag_weight_kg,
-        price_per_bag, status, variety_id,
-        seed_varieties(crop_type, days_to_harvest, notes, planting_guide),
-        seed_suppliers(supplier_name)
-      `)
-      .in('status', ['available', 'low'])
-      .gt('quantity_balance', 0)
-      .order('variety_name');
+    const [lotsRes, resRes, slotRes] = await Promise.all([
+      fetch('/api/member/seed-lots').then((r) => r.json()) as Promise<{ lots: Record<string, unknown>[] }>,
+      member?.member_id
+        ? fetch(`/api/member/seed-reservation?member_id=${member.member_id}`).then((r) => r.json()) as Promise<{ reservations: Reservation[] }>
+        : Promise.resolve({ reservations: [] }),
+      fetch('/api/member/pickup-slots').then((r) => r.json()) as Promise<{ slots: Slot[] }>,
+    ]);
 
-    setVarieties((data ?? []).map((l: Record<string, unknown>) => ({
+    setVarieties((lotsRes.lots ?? []).map((l) => ({
       id:               l.variety_id as string,
       variety_name:     l.variety_name as string,
       supplier_name:    ((l.seed_suppliers as { supplier_name: string }[] | null)?.[0]?.supplier_name ?? '—'),
@@ -85,16 +79,8 @@ export function SeedReservationFlow() {
       quantity_balance: l.quantity_balance as number,
       lot_status:       l.status as string,
     })));
-
-    if (member?.member_id) {
-      const res = await fetch(`/api/member/seed-reservation?member_id=${member.member_id}`);
-      const d = (await res.json()) as { reservations: Reservation[] };
-      setReservations(d.reservations ?? []);
-    }
-    // โหลด pickup slots
-    const slotRes = await fetch('/api/member/pickup-slots');
-    const slotD = (await slotRes.json()) as { slots: Slot[] };
-    setSlots(slotD.slots ?? []);
+    setReservations(resRes.reservations ?? []);
+    setSlots(slotRes.slots ?? []);
     setLoading(false);
   }
 

@@ -10,23 +10,23 @@ import { iconPaths } from '@/shared/design/icon-tokens';
 const NAV_STYLE = {
   background: 'linear-gradient(180deg, #1e7a32 0%, #0f4f1f 100%)',
   border: 0,
-  borderRadius: 16,
-  boxShadow: '0 8px 24px rgba(15, 79, 31, 0.28)',
-  padding: '6px 4px',
+  borderRadius: 14,
+  boxShadow: '0 4px 16px rgba(15, 79, 31, 0.25)',
+  padding: '4px 2px',
 } as const;
 
 function getTabStyle(isActive: boolean) {
   return {
-    minHeight: 52,
+    minHeight: 44,
     display: 'grid',
     placeItems: 'center',
-    gap: 2,
-    padding: '5px 2px',
+    gap: 1,
+    padding: '4px 2px',
     textDecoration: 'none',
-    borderRadius: 12,
+    borderRadius: 10,
     background: isActive ? '#FFFFFF' : 'transparent',
     color: isActive ? '#2E7D32' : '#FFFFFF',
-    boxShadow: isActive ? '0 4px 12px rgba(0,0,0,0.15)' : 'none',
+    boxShadow: isActive ? '0 2px 8px rgba(0,0,0,0.12)' : 'none',
     fontWeight: 700,
   } as const;
 }
