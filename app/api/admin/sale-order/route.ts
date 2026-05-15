@@ -37,8 +37,9 @@ export async function POST(request: Request) {
       status:          body.order_type === 'sale' ? 'completed' : 'pending',
       payment_method:  body.payment_method,
       paid_amount:     body.paid_amount,
-      total_amount:    total,
+      subtotal:        body.items.reduce((sum, i) => sum + i.qty * i.unit_price, 0),
       discount:        body.discount ?? 0,
+      total:           total,
       note:            body.note ?? null,
     }).select('id').single();
 
