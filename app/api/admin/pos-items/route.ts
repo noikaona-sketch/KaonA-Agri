@@ -28,9 +28,9 @@ export async function GET(request: Request) {
   const seeds = (lotsRes.data ?? []).map((l) => ({
     id: l.id, type: 'seed', variety_id: l.variety_id, lot_id: l.id, lot_no: l.lot_no,
     name: l.variety_name,
-    category: (l.seed_varieties as { crop_type: string } | null)?.crop_type ?? 'เมล็ดพันธุ์',
-    supplier: (l.seed_suppliers as { supplier_name: string } | null)?.supplier_name ?? '',
-    image_url: (l.seed_varieties as { image_url: string | null } | null)?.image_url ?? null,
+    category: ((l.seed_varieties as unknown as { crop_type: string } | null))?.crop_type ?? 'เมล็ดพันธุ์',
+    supplier: ((l.seed_suppliers as unknown as { supplier_name: string } | null))?.supplier_name ?? '',
+    image_url: ((l.seed_varieties as unknown as { image_url: string | null } | null))?.image_url ?? null,
     unit: 'ถุง', unit_price: l.price_per_bag, bag_weight: l.bag_weight_kg,
     qty_available: l.quantity_balance, status: l.status,
   }));
