@@ -1,9 +1,15 @@
+'use client';
+
 import { MobileAppShell } from '@/shared/components/mobile-app-shell';
-import { MemberSeedReservation } from '@/features/member-shop/member-seed-reservation';
-export default function Page() {
+import { ProtectedRoute } from '@/shared/components/protected-route';
+import { SeedReservationFlow } from '@/features/member-seed-reservation/seed-reservation-flow';
+
+export default function SeedReservationsPage() {
   return (
-    <MobileAppShell title="จองเมล็ดพันธุ์" subtitle="เลือก LOT ราคาตรง ยืนยันโดย admin">
-      <MemberSeedReservation />
-    </MobileAppShell>
+    <ProtectedRoute>
+      <MobileAppShell title="🌾 จองเมล็ดพันธุ์" subtitle="เลือก Supplier → พันธุ์ → จอง">
+        <SeedReservationFlow />
+      </MobileAppShell>
+    </ProtectedRoute>
   );
 }
