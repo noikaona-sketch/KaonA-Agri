@@ -85,7 +85,7 @@ export function AdminPos() {
   const [catFilter,  setCatFilter]  = useState('ทั้งหมด');
   const [member,     setMember]     = useState<Member | null>(null);
   const [cart,       setCart]       = useState<CartItem[]>([]);
-  const [mode,       setMode]       = useState<'sale' | 'reserve'>('sale');
+  const [mode,       setMode]       = useState<'sale' | 'reservation'>('sale');
   const [payMethod,  setPayMethod]  = useState<'cash' | 'transfer' | 'credit'>('cash');
   const [cashReceived, setCashReceived] = useState('');
   const [discount,   setDiscount]   = useState('0');
@@ -93,18 +93,22 @@ export function AdminPos() {
   const [submitting, setSubmitting] = useState(false);
   const [receipt,    setReceipt]    = useState<{ order_no: string; total: number; change: number } | null>(null);
   const [session,    setSession]    = useState<Session | null>(null);
+  const [slots,      setSlots]      = useState<{ id: string; pickup_date: string; pickup_time: string; pickup_locations: { name: string; address: string | null } | null }[]>([]);
+  const [selSlot,    setSelSlot]    = useState('');
 
   // load warehouses + session
   useEffect(() => {
     void (async () => {
-      const [whRes, sessRes] = await Promise.all([
+      const [whRes, sessRes, slotRes] = await Promise.all([
         fetch('/api/admin/warehouses').then((r) => r.json()),
         fetch('/api/admin/cashier?status=open').then((r) => r.json()),
+        fetch('/api/member/pickup-slots').then((r) => r.json()),
       ]);
       const whs: Warehouse[] = whRes.warehouses ?? [];
       setWarehouses(whs);
       if (whs[0]) setSelWH(whs[0].id);
       setSession((sessRes.sessions ?? [])[0] ?? null);
+      setSlots((slotRes as { slots?: typeof slots }).slots ?? []);
     })();
   }, []);
 
@@ -199,10 +203,18 @@ export function AdminPos() {
     const orderRes = await fetch('/api/admin/sale-order', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        member_id:      member.id,
-        order_type:     mode,
-        warehouse_id:   selWH,
-        items:          cart.map((c) => ({ product_id: c.product_id, variety_id: c.variety_id, qty: c.qty, unit_price: c.unit_price, product_name: c.name })),
+        member_id:       member.id,
+        order_type:      mode,
+        warehouse_id:    selWH,
+        pickup_slot_id:  mode === 'reservation' ? selSlot || null : null,
+        items: cart.map((c) => ({
+          product_id:   c.product_id ?? null,
+          variety_id:   c.variety_id ?? null,
+          lot_no:       c.lot_no     ?? null,
+          product_name: c.name,
+          qty:          c.qty,
+          unit_price:   c.unit_price,
+        })),
         payment_method: payMethod,
         paid_amount:    payMethod === 'cash' ? Number(cashReceived) : total,
         discount:       discountAmt,
@@ -257,7 +269,7 @@ export function AdminPos() {
             {warehouses.map((w) => <option key={w.id} value={w.id}>🏭 {w.name}</option>)}
           </select>
           {/* mode */}
-          {(['sale','reserve'] as const).map((m) => (
+          {(['sale','reservation'] as const).map((m) => (
             <button key={m} onClick={() => setMode(m)}
               style={{ padding: '6px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 13, background: mode === m ? (m === 'sale' ? '#1b5e20' : '#1565c0') : '#f0f4f0', color: mode === m ? '#fff' : 'inherit' }}>
               {m === 'sale' ? '💰 ขาย' : '📋 จอง'}
@@ -366,6 +378,29 @@ export function AdminPos() {
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 18, fontWeight: 900, color: '#1b5e20' }}>
             <span>ชำระ</span><span>{total.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท</span>
           </div>
+
+          {/* slot selector สำหรับการจอง */}
+          {mode === 'reservation' && (
+            <div>
+              <p style={{ margin: '0 0 6px', fontSize: 12, color: '#6b7280', fontWeight: 700 }}>📅 รอบนัดรับสินค้า</p>
+              {slots.length === 0 ? (
+                <p style={{ fontSize: 12, color: '#e65100', background: '#fff8e1', padding: '8px 10px', borderRadius: 8, margin: 0 }}>ยังไม่มีรอบที่เปิด</p>
+              ) : (
+                <select value={selSlot} onChange={(e) => setSelSlot(e.target.value)}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 13 }}>
+                  <option value="">— ไม่ระบุรอบ —</option>
+                  {slots.map((sl) => {
+                    const loc = sl.pickup_locations;
+                    return (
+                      <option key={sl.id} value={sl.id}>
+                        {new Date(sl.pickup_date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })} {sl.pickup_time} · {loc?.name ?? ''}
+                      </option>
+                    );
+                  })}
+                </select>
+              )}
+            </div>
+          )}
 
           {/* payment method */}
           <div style={{ display: 'flex', gap: 6 }}>
