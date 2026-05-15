@@ -3,7 +3,7 @@ import { createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
 
 type OrderItem = {
   product_id?: string; variety_id?: string;
-  lot_id?: string; lot_no?: string;
+  lot_id?: string; lot_no?: string; unit?: string;
   product_name: string; qty: number; unit_price: number;
 };
 
@@ -51,10 +51,11 @@ export async function POST(request: Request) {
       product_id:   item.product_id  ?? null,
       variety_id:   item.variety_id  ?? null,
       product_name: item.product_name,
+      product_unit: item.unit ?? 'ถุง',
       lot_no:       item.lot_no      ?? null,
       qty:          item.qty,
       unit_price:   item.unit_price,
-      total_price:  item.qty * item.unit_price,
+      subtotal:     item.qty * item.unit_price,
     }));
 
     const { error: itemErr } = await s.from('order_items').insert(itemRows);
