@@ -7,9 +7,7 @@ export async function GET(request: Request) {
   const mode        = searchParams.get('mode') ?? 'sale'; // sale | reservation
   const s = createServerSupabaseClient();
 
-  // เมล็ดพันธุ์
-  // mode=sale → ดึงจาก seed_stock_lots (มีสต๊อกจริง)
-  // mode=reservation → ดึงจาก seed_varieties (ทุกพันธุ์ ไม่สนสต๊อก)
+  // เมล็ดพันธุ์ (MVP): ใช้ระดับพันธุ์เท่านั้น ไม่ใช้ Lot workflow
   let seedItems: Record<string, unknown>[] = [];
 
   if (mode === 'reservation') {
@@ -30,19 +28,18 @@ export async function GET(request: Request) {
     }));
   } else {
     const { data } = await s
-      .from('seed_stock_lots')
-      .select('id,lot_no,variety_name,quantity_balance,bag_weight_kg,price_per_bag,status,variety_id,seed_varieties(crop_type,image_url),seed_suppliers(supplier_name)')
-      .in('status', ['available','low'])
-      .gt('quantity_balance', 0)
+      .from('admin_seed_lot_status')
+      .select('variety_id,variety_name,crop_type,supplier_name,price_per_bag,qty_available,image_url')
+      .gt('qty_available', 0)
       .order('variety_name');
-    seedItems = (data ?? []).map((l) => ({
-      id: l.id, type: 'seed', variety_id: l.variety_id, lot_id: l.id, lot_no: l.lot_no,
-      name: l.variety_name,
-      category: ((l.seed_varieties as unknown as { crop_type: string } | null))?.crop_type ?? 'เมล็ดพันธุ์',
-      supplier: ((l.seed_suppliers as unknown as { supplier_name: string } | null))?.supplier_name ?? '',
-      image_url: ((l.seed_varieties as unknown as { image_url: string | null } | null))?.image_url ?? null,
-      unit: 'ถุง', unit_price: l.price_per_bag as number, bag_weight: l.bag_weight_kg as number,
-      qty_available: l.quantity_balance as number, status: l.status as string,
+    seedItems = (data ?? []).map((v) => ({
+      id: v.variety_id, type: 'seed', variety_id: v.variety_id, lot_id: null, lot_no: null,
+      name: v.variety_name,
+      category: (v.crop_type as string) || 'เมล็ดพันธุ์',
+      supplier: (v.supplier_name as string | null) ?? '',
+      image_url: (v.image_url as string | null) ?? null,
+      unit: 'ถุง', unit_price: v.price_per_bag as number,
+      qty_available: v.qty_available as number, status: 'available',
     }));
   }
 

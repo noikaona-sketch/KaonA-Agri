@@ -195,7 +195,7 @@ export function AdminPos() {
 
   // cart helpers
   const addItem = useCallback((item: PosItem) => {
-    const key = item.type === 'seed' ? `s-${item.lot_id}` : `p-${item.product_id}`;
+    const key = item.type === 'seed' ? `s-${item.variety_id}` : `p-${item.product_id}`;
     setCart((prev) => {
       const exists = prev.find((c) => c.key === key);
       if (exists) return prev.map((c) => c.key === key ? { ...c, qty: c.qty + 1 } : c);
@@ -221,7 +221,7 @@ export function AdminPos() {
   const categories = ['ทั้งหมด', ...new Set(items.map((s) => s.category))];
 
   const filtered = items.filter((s) => {
-    const matchSearch = !search || s.name.toLowerCase().includes(search.toLowerCase()) || (s.lot_no ?? '').includes(search);
+    const matchSearch = !search || s.name.toLowerCase().includes(search.toLowerCase());
     const matchCat    = catFilter === 'ทั้งหมด' || s.category === catFilter;
     return matchSearch && matchCat;
   });
@@ -234,10 +234,9 @@ export function AdminPos() {
     }
     setSubmitting(true); setNotice(null);
 
-    // บันทึก stock movements + ตัดสต๊อก lot
+    // บันทึก stock movements (MVP ไม่ใช้ Lot workflow)
     for (const item of cart) {
-      if (item.type === 'seed' && item.lot_id) {
-        // ตัดสต๊อกจาก seed_stock_lots โดยตรง
+      if (item.type === 'seed') {
         await fetch('/api/admin/stock-movements', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -248,7 +247,7 @@ export function AdminPos() {
             unit: item.unit, qty: item.qty,
             unit_price: item.unit_price,
             ref_type: mode === 'sale' ? 'pos_sale' : 'pos_reserve',
-            note: `LOT: ${item.lot_no ?? ''} | สมาชิก: ${member.full_name}`,
+            note: `สมาชิก: ${member.full_name}`,
           }),
         });
       } else {
@@ -365,7 +364,7 @@ export function AdminPos() {
           {loading && <p style={{ color: '#9ca3af', gridColumn: '1/-1' }}>กำลังโหลด…</p>}
           {!loading && filtered.length === 0 && <p style={{ color: '#9ca3af', gridColumn: '1/-1' }}>ไม่พบสินค้า</p>}
           {filtered.map((s) => {
-            const key    = s.type === 'seed' ? `s-${s.lot_id}` : `p-${s.product_id}`;
+            const key    = s.type === 'seed' ? `s-${s.variety_id}` : `p-${s.product_id}`;
             const inCart = cart.find((c) => c.key === key);
             return (
               <button key={s.id} onClick={() => addItem(s)} disabled={s.qty_available <= 0}
@@ -376,7 +375,6 @@ export function AdminPos() {
                   : <div style={{ width: '100%', height: 40, background: '#e8f5e9', borderRadius: 8, marginBottom: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>🌾</div>
                 }
                 <p style={{ margin: '0 0 2px', fontWeight: 800, fontSize: 13, lineHeight: 1.2 }}>{s.name}</p>
-                {s.lot_no && <p style={{ margin: '0 0 2px', fontSize: 10, color: '#9ca3af', fontFamily: 'monospace' }}>{s.lot_no}</p>}
                 {s.supplier && <p style={{ margin: '0 0 2px', fontSize: 11, color: '#6b7280' }}>{s.supplier}</p>}
                 <p style={{ margin: 0, fontSize: 15, fontWeight: 900, color: '#c62828' }}>{(s.unit_price ?? 0).toLocaleString()} ฿</p>
                 <p style={{ margin: '2px 0 0', fontSize: 11, color: s.qty_available <= 5 ? '#c62828' : '#9ca3af' }}>
