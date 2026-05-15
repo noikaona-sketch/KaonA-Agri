@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
 
 type OrderItem = {
-  product_id?: string; variety_id?: string;
-  lot_id?: string; lot_no?: string; unit?: string;
+  product_id?: string;
+  unit?: string;
   product_name: string; qty: number; unit_price: number;
 };
 
@@ -19,6 +19,8 @@ export async function POST(request: Request) {
       paid_amount:     number;
       discount:        number;
       note?:           string;
+      source_type?:    'walk_in' | 'reservation';
+      reservation_id?: string | null;
     };
 
     const s      = createServerSupabaseClient();
@@ -41,6 +43,8 @@ export async function POST(request: Request) {
       discount:        body.discount ?? 0,
       total:           total,
       note:            body.note ?? null,
+      source_type:     body.source_type ?? (body.order_type === 'reservation' ? 'reservation' : 'walk_in'),
+      reservation_id:  body.reservation_id ?? null,
     }).select('id').single();
 
     if (orderErr) return NextResponse.json({ error: orderErr.message }, { status: 500 });
@@ -49,10 +53,9 @@ export async function POST(request: Request) {
     const itemRows = body.items.map((item) => ({
       order_id:     order!.id,
       product_id:   item.product_id  ?? null,
-      variety_id:   item.variety_id  ?? null,
+      product_name_snapshot: item.product_name,
       product_name: item.product_name,
-      product_unit: item.unit ?? 'ถุง',
-      lot_no:       item.lot_no      ?? null,
+      product_unit: item.unit ?? 'ชิ้น',
       qty:          item.qty,
       unit_price:   item.unit_price,
       subtotal:     item.qty * item.unit_price,
@@ -78,6 +81,10 @@ export async function POST(request: Request) {
           p_qty:     totalQty,
         }).maybeSingle();
       } catch { /* RPC ไม่มีก็ไม่เป็นไร */ }
+    }
+
+    if (body.source_type === 'reservation' && body.reservation_id) {
+      await s.from('seed_reservations').update({ status: 'converted' }).eq('id', body.reservation_id);
     }
 
     return NextResponse.json({ ok: true, order_number, total });
