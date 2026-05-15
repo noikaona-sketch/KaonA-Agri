@@ -8,7 +8,6 @@ type StockItem = {
   id: string; qty_on_hand: number; qty_reserved: number; qty_available: number; unit: string;
   warehouses: { id: string; code: string; name: string } | null;
   products:       { id: string; name: string; category: string; price_per_unit: number } | null;
-  seed_varieties: { id: string; variety_name: string; crop_type: string; price_per_bag: number } | null;
 };
 type Movement = {
   id: string; movement_no: string; movement_type: string; product_name: string;
@@ -31,16 +30,15 @@ const TYPE_CFG: Record<string, { icon: string; label: string; color: string }> =
 };
 
 type ReceiveForm = {
-  warehouse_id: string; product_id: string; variety_id: string;
-  product_name: string; unit: string; qty: string; unit_cost: string; note: string;
+  warehouse_id: string; product_type: string; product_id: string;
+  unit: string; qty: string; unit_cost: string; note: string;
 };
 
 export function AdminStockDashboard() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [stock,      setStock]      = useState<StockItem[]>([]);
   const [movements,  setMovements]  = useState<Movement[]>([]);
-  const [products,   setProducts]   = useState<{ id: string; name: string; unit: string; category: string }[]>([]);
-  const [varieties,  setVarieties]  = useState<{ id: string; variety_name: string; bag_weight_kg: number }[]>([]);
+  const [products,   setProducts]   = useState<{ id: string; name: string; unit: string; category: string; product_type?: string | null }[]>([]);
   const [loading,    setLoading]    = useState(true);
   const [selWH,      setSelWH]      = useState('');
   const [tab,        setTab]        = useState<'stock' | 'receive' | 'transfer' | 'movements'>('stock');
@@ -48,27 +46,25 @@ export function AdminStockDashboard() {
   const [saving,     setSaving]     = useState(false);
 
   const [rf, setRf] = useState<ReceiveForm>({
-    warehouse_id: '', product_id: '', variety_id: '',
-    product_name: '', unit: 'ถุง', qty: '', unit_cost: '', note: '',
+    warehouse_id: '', product_type: '', product_id: '',
+    unit: 'ชิ้น', qty: '', unit_cost: '', note: '',
   });
 
   // transfer form
-  const [tf, setTf] = useState({ from_wh: '', to_wh: '', product_id: '', variety_id: '', product_name: '', unit: 'ถุง', qty: '', note: '' });
+  const [tf, setTf] = useState({ from_wh: '', to_wh: '', product_id: '', product_name: '', unit: 'ชิ้น', qty: '', note: '' });
 
   async function load() {
     setLoading(true);
-    const [whRes, stockRes, mvRes, prodRes, varRes] = await Promise.all([
+    const [whRes, stockRes, mvRes, prodRes] = await Promise.all([
       fetch('/api/admin/warehouses').then((r) => r.json()),
       fetch(`/api/admin/stock-movements/summary${selWH ? `?warehouse_id=${selWH}` : ''}`).then((r) => r.json()),
       fetch(`/api/admin/stock-movements?limit=50${selWH ? `&warehouse_id=${selWH}` : ''}`).then((r) => r.json()),
       fetch('/api/admin/products').then((r) => r.json()),
-      fetch('/api/member/seed-lots').then((r) => r.json()),
     ]);
     setWarehouses(whRes.warehouses ?? []);
     setStock(stockRes.stock ?? []);
     setMovements(mvRes.movements ?? []);
     setProducts(prodRes.products ?? []);
-    setVarieties(varRes.lots ?? []);
     if (!selWH && whRes.warehouses?.[0]) setSelWH(whRes.warehouses[0].id);
     setLoading(false);
   }
@@ -76,7 +72,7 @@ export function AdminStockDashboard() {
   useEffect(() => { void load(); }, [selWH]);
 
   async function receive() {
-    if (!rf.warehouse_id || !rf.qty || (!rf.product_id && !rf.variety_id)) {
+    if (!rf.warehouse_id || !rf.product_id || !rf.qty || !rf.product_type) {
       setNotice('❌ กรุณากรอกข้อมูลให้ครบ'); return;
     }
     setSaving(true); setNotice(null);
@@ -84,9 +80,8 @@ export function AdminStockDashboard() {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         movement_type: 'receive', warehouse_id: rf.warehouse_id,
-        product_id:    rf.product_id  || null,
-        variety_id:    rf.variety_id  || null,
-        product_name:  rf.product_name,
+        product_id:    rf.product_id,
+        product_name:  products.find((p) => p.id === rf.product_id)?.name ?? '',
         unit: rf.unit, qty: Number(rf.qty),
         unit_cost: rf.unit_cost ? Number(rf.unit_cost) : null,
         note: rf.note || null,
@@ -96,12 +91,12 @@ export function AdminStockDashboard() {
     setSaving(false);
     if (!res.ok) { setNotice(`❌ ${d.error}`); return; }
     setNotice('✅ รับเข้าสต๊อกแล้ว');
-    setRf({ warehouse_id: '', product_id: '', variety_id: '', product_name: '', unit: 'ถุง', qty: '', unit_cost: '', note: '' });
+    setRf({ warehouse_id: '', product_type: '', product_id: '', unit: 'ชิ้น', qty: '', unit_cost: '', note: '' });
     void load();
   }
 
   async function transfer() {
-    if (!tf.from_wh || !tf.to_wh || !tf.qty || (!tf.product_id && !tf.variety_id)) {
+    if (!tf.from_wh || !tf.to_wh || !tf.qty || !tf.product_id) {
       setNotice('❌ กรุณากรอกข้อมูลให้ครบ'); return;
     }
     if (tf.from_wh === tf.to_wh) { setNotice('❌ คลังต้น-ปลายทางต้องต่างกัน'); return; }
@@ -111,8 +106,7 @@ export function AdminStockDashboard() {
       body: JSON.stringify({
         movement_type: 'transfer_out', warehouse_id: tf.from_wh,
         dest_warehouse_id: tf.to_wh,
-        product_id:    tf.product_id  || null,
-        variety_id:    tf.variety_id  || null,
+        product_id:    tf.product_id,
         product_name:  tf.product_name,
         unit: tf.unit, qty: Number(tf.qty),
         note: tf.note || null,
@@ -122,7 +116,7 @@ export function AdminStockDashboard() {
     setSaving(false);
     if (!res.ok) { setNotice(`❌ ${d.error}`); return; }
     setNotice('✅ โอนสต๊อกแล้ว');
-    setTf({ from_wh: '', to_wh: '', product_id: '', variety_id: '', product_name: '', unit: 'ถุง', qty: '', note: '' });
+    setTf({ from_wh: '', to_wh: '', product_id: '', product_name: '', unit: 'ชิ้น', qty: '', note: '' });
     void load();
   }
 
@@ -169,8 +163,8 @@ export function AdminStockDashboard() {
             <tbody>
               {stock.length === 0 && <tr><td colSpan={6} style={{ textAlign: 'center', padding: 32, color: '#9ca3af' }}>ยังไม่มีสต๊อก</td></tr>}
               {stock.map((s) => {
-                const name = s.products?.name ?? s.seed_varieties?.variety_name ?? '—';
-                const cat  = s.products?.category ?? s.seed_varieties?.crop_type ?? '';
+                const name = s.products?.name ?? '—';
+                const cat  = s.products?.category ?? '';
                 return (
                   <tr key={s.id}>
                     <td>
@@ -201,19 +195,16 @@ export function AdminStockDashboard() {
                 {warehouses.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
               </select>
             </label>
-            <label className="reg-label">ประเภท
-              <select className="reg-input" onChange={(e) => {
-                const [type, id, name, unit] = e.target.value.split('|');
-                if (type === 'variety') setRf((p) => ({ ...p, variety_id: id, product_id: '', product_name: name, unit: unit ?? 'ถุง' }));
-                else setRf((p) => ({ ...p, product_id: id, variety_id: '', product_name: name, unit: unit ?? 'ถุง' }));
-              }}>
+            <label className="reg-label">ประเภทสินค้า <span className="reg-required">*</span>
+              <select className="reg-input" value={rf.product_type} onChange={(e) => setRf((p) => ({ ...p, product_type: e.target.value, product_id: '' }))}>
+                <option value="">เลือกประเภท</option>
+                {[...new Set(products.map((p) => p.product_type || 'other'))].map((cat) => <option key={cat} value={cat}>{cat}</option>)}
+              </select>
+            </label>
+            <label className="reg-label">สินค้า <span className="reg-required">*</span>
+              <select className="reg-input" value={rf.product_id} onChange={(e) => { const id=e.target.value; const prod=products.find((x)=>x.id===id); setRf((p)=>({ ...p, product_id:id, unit:prod?.unit ?? 'ชิ้น' })); }}>
                 <option value="">เลือกสินค้า</option>
-                <optgroup label="🌾 เมล็ดพันธุ์">
-                  {varieties.map((v) => <option key={v.id} value={`variety|${v.id}|${v.variety_name}|ถุง`}>{v.variety_name}</option>)}
-                </optgroup>
-                <optgroup label="🛍️ สินค้าอื่น">
-                  {products.map((p) => <option key={p.id} value={`product|${p.id}|${p.name}|${p.unit}`}>{p.name}</option>)}
-                </optgroup>
+                {products.filter((p) => (p.product_type || 'other') === rf.product_type).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
             </label>
             <label className="reg-label">จำนวน <span className="reg-required">*</span>
@@ -253,18 +244,9 @@ export function AdminStockDashboard() {
               </select>
             </label>
             <label className="reg-label" style={{ gridColumn: '1/-1' }}>สินค้า <span className="reg-required">*</span>
-              <select className="reg-input" onChange={(e) => {
-                const [type, id, name, unit] = e.target.value.split('|');
-                if (type === 'variety') setTf((p) => ({ ...p, variety_id: id, product_id: '', product_name: name, unit: unit ?? 'ถุง' }));
-                else setTf((p) => ({ ...p, product_id: id, variety_id: '', product_name: name, unit: unit ?? 'ถุง' }));
-              }}>
+              <select className="reg-input" value={tf.product_id} onChange={(e) => { const id=e.target.value; const prod=products.find((x)=>x.id===id); setTf((p)=>({ ...p, product_id:id, product_name:prod?.name ?? '', unit:prod?.unit ?? 'ชิ้น' })); }}>
                 <option value="">เลือกสินค้า</option>
-                <optgroup label="🌾 เมล็ดพันธุ์">
-                  {varieties.map((v) => <option key={v.id} value={`variety|${v.id}|${v.variety_name}|ถุง`}>{v.variety_name}</option>)}
-                </optgroup>
-                <optgroup label="🛍️ สินค้าอื่น">
-                  {products.map((p) => <option key={p.id} value={`product|${p.id}|${p.name}|${p.unit}`}>{p.name}</option>)}
-                </optgroup>
+                {products.map((p) => <option key={p.id} value={p.id}>{p.name} ({p.category})</option>)}
               </select>
             </label>
             <label className="reg-label">จำนวน <span className="reg-required">*</span>

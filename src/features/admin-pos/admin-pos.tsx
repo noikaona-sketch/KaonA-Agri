@@ -6,8 +6,8 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 type Warehouse = { id: string; code: string; name: string };
 
 type PosItem = {
-  id: string; type: 'seed' | 'product';
-  variety_id?: string; lot_id?: string; lot_no?: string; product_id?: string;
+  id: string; type: 'product';
+  product_id?: string;
   name: string; category: string; supplier: string; image_url: string | null;
   unit: string; unit_price: number; qty_available: number; status: string;
 };
@@ -16,11 +16,8 @@ type Member = { id: string; full_name: string; member_number?: string; phone?: s
 
 type CartItem = {
   key: string;
-  type: 'seed' | 'product';
-  lot_id?: string;
-  lot_no?: string;
+  type: 'product';
   product_id?: string;
-  variety_id?: string;
   name: string;
   category: string;
   unit: string;
@@ -164,6 +161,25 @@ export function AdminPos() {
   const [session,    setSession]    = useState<Session | null>(null);
   const [slots,      setSlots]      = useState<{ id: string; pickup_date: string; pickup_time: string; status: string; pickup_locations: { name: string; address: string | null } | null }[]>([]);
   const [selSlot,    setSelSlot]    = useState('');
+  const [reservationNo, setReservationNo] = useState('');
+  const [reservationId, setReservationId] = useState<string | null>(null);
+
+  async function loadReservationToCart() {
+    if (!reservationNo.trim()) { setNotice('❌ กรุณากรอกเลขที่การจอง'); return; }
+    const res = await fetch('/api/admin/seed-reservations?status=confirmed');
+    const payload = (await res.json()) as { items?: Array<{ id: string; reservation_no: string; product_id?: string | null; qty_reserved?: number; product_name_snapshot?: string | null }>; error?: string };
+    if (!res.ok) { setNotice(`❌ ${payload.error ?? 'โหลดรายการจองไม่สำเร็จ'}`); return; }
+    const r = (payload.items ?? []).find((x) => x.reservation_no === reservationNo.trim());
+    if (!r) { setNotice('❌ ไม่พบรายการจองที่ยืนยันแล้ว'); return; }
+    if (!r.product_id) { setNotice('❌ รายการจองนี้ยังไม่มี product_id'); return; }
+    const item = items.find((i) => i.product_id === r.product_id);
+    if (!item) { setNotice('❌ สินค้านี้ไม่มีในคลังที่เลือก กรุณาเปลี่ยนคลังหรือรับสต๊อกเข้าคลังก่อน'); return; }
+    addItem(item);
+    if ((r.qty_reserved ?? 1) > 1) updateQty(`p-${r.product_id}`, Number(r.qty_reserved ?? 1));
+    setReservationId(r.id);
+    setNotice(`✅ โหลดการจอง ${r.reservation_no} แล้ว`);
+  }
+
 
   // load warehouses + session
   useEffect(() => {
@@ -195,7 +211,7 @@ export function AdminPos() {
 
   // cart helpers
   const addItem = useCallback((item: PosItem) => {
-    const key = item.type === 'seed' ? `s-${item.lot_id}` : `p-${item.product_id}`;
+    const key = `p-${item.product_id}`;
     setCart((prev) => {
       const exists = prev.find((c) => c.key === key);
       if (exists) return prev.map((c) => c.key === key ? { ...c, qty: c.qty + 1 } : c);
@@ -203,8 +219,7 @@ export function AdminPos() {
         key, type: item.type, name: item.name,
         category: item.category, unit: item.unit, unit_price: item.unit_price,
         qty: 1,
-        ...(item.type === 'seed'    ? { lot_id: item.lot_id, variety_id: item.variety_id, lot_no: item.lot_no } : {}),
-        ...(item.type === 'product' ? { product_id: item.product_id } : {}),
+        product_id: item.product_id,
       }];
     });
   }, []);
@@ -221,7 +236,7 @@ export function AdminPos() {
   const categories = ['ทั้งหมด', ...new Set(items.map((s) => s.category))];
 
   const filtered = items.filter((s) => {
-    const matchSearch = !search || s.name.toLowerCase().includes(search.toLowerCase()) || (s.lot_no ?? '').includes(search);
+    const matchSearch = !search || s.name.toLowerCase().includes(search.toLowerCase());
     const matchCat    = catFilter === 'ทั้งหมด' || s.category === catFilter;
     return matchSearch && matchCat;
   });
@@ -234,38 +249,21 @@ export function AdminPos() {
     }
     setSubmitting(true); setNotice(null);
 
-    // บันทึก stock movements + ตัดสต๊อก lot
+    // บันทึก stock movements
     for (const item of cart) {
-      if (item.type === 'seed' && item.lot_id) {
-        // ตัดสต๊อกจาก seed_stock_lots โดยตรง
-        await fetch('/api/admin/stock-movements', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            movement_type: mode === 'sale' ? 'sale' : 'reservation',
-            warehouse_id:  selWH,
-            variety_id:    item.variety_id ?? null,
-            product_name:  item.name,
-            unit: item.unit, qty: item.qty,
-            unit_price: item.unit_price,
-            ref_type: mode === 'sale' ? 'pos_sale' : 'pos_reserve',
-            note: `LOT: ${item.lot_no ?? ''} | สมาชิก: ${member.full_name}`,
-          }),
-        });
-      } else {
-        await fetch('/api/admin/stock-movements', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            movement_type: mode === 'sale' ? 'sale' : 'reservation',
-            warehouse_id:  selWH,
-            product_id:    item.product_id ?? null,
-            product_name:  item.name,
-            unit: item.unit, qty: item.qty,
-            unit_price: item.unit_price,
-            ref_type: mode === 'sale' ? 'pos_sale' : 'pos_reserve',
-            note: `สมาชิก: ${member.full_name}`,
-          }),
-        });
-      }
+      await fetch('/api/admin/stock-movements', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          movement_type: mode === 'sale' ? 'sale' : 'reservation',
+          warehouse_id:  selWH,
+          product_id:    item.product_id ?? null,
+          product_name:  item.name,
+          unit: item.unit, qty: item.qty,
+          unit_price: item.unit_price,
+          ref_type: mode === 'sale' ? 'pos_sale' : 'pos_reserve',
+          note: `สมาชิก: ${member.full_name}`,
+        }),
+      });
     }
 
     // สร้าง sale order
@@ -278,13 +276,13 @@ export function AdminPos() {
         pickup_slot_id:  mode === 'reservation' ? selSlot || null : null,
         items: cart.map((c) => ({
           product_id:   c.product_id ?? null,
-          variety_id:   c.variety_id ?? null,
-          lot_no:       c.lot_no     ?? null,
           product_name: c.name,
           qty:          c.qty,
           unit_price:   c.unit_price,
         })),
         payment_method: payMethod,
+        source_type: reservationId ? 'reservation' : 'walk_in',
+        reservation_id: reservationId,
         paid_amount:    payMethod === 'cash' ? Number(cashReceived) : total,
         discount:       discountAmt,
       }),
@@ -294,7 +292,7 @@ export function AdminPos() {
     if (!orderRes.ok) { setNotice(`❌ ${d.error}`); return; }
 
     setReceipt({ order_no: d.order_number ?? '', total, change });
-    setCart([]); setCashReceived(''); setDiscount('0');
+    setCart([]); setCashReceived(''); setDiscount('0'); setReservationId(null); setReservationNo('');
   }
 
   // Receipt screen
@@ -365,7 +363,7 @@ export function AdminPos() {
           {loading && <p style={{ color: '#9ca3af', gridColumn: '1/-1' }}>กำลังโหลด…</p>}
           {!loading && filtered.length === 0 && <p style={{ color: '#9ca3af', gridColumn: '1/-1' }}>ไม่พบสินค้า</p>}
           {filtered.map((s) => {
-            const key    = s.type === 'seed' ? `s-${s.lot_id}` : `p-${s.product_id}`;
+            const key    = `p-${s.product_id}`;
             const inCart = cart.find((c) => c.key === key);
             return (
               <button key={s.id} onClick={() => addItem(s)} disabled={s.qty_available <= 0}
@@ -376,7 +374,6 @@ export function AdminPos() {
                   : <div style={{ width: '100%', height: 40, background: '#e8f5e9', borderRadius: 8, marginBottom: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>🌾</div>
                 }
                 <p style={{ margin: '0 0 2px', fontWeight: 800, fontSize: 13, lineHeight: 1.2 }}>{s.name}</p>
-                {s.lot_no && <p style={{ margin: '0 0 2px', fontSize: 10, color: '#9ca3af', fontFamily: 'monospace' }}>{s.lot_no}</p>}
                 {s.supplier && <p style={{ margin: '0 0 2px', fontSize: 11, color: '#6b7280' }}>{s.supplier}</p>}
                 <p style={{ margin: 0, fontSize: 15, fontWeight: 900, color: '#c62828' }}>{(s.unit_price ?? 0).toLocaleString()} ฿</p>
                 <p style={{ margin: '2px 0 0', fontSize: 11, color: s.qty_available <= 5 ? '#c62828' : '#9ca3af' }}>
@@ -392,6 +389,11 @@ export function AdminPos() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, background: '#f7faf7', borderRadius: 16, padding: 16, border: '1.5px solid #e4ebe4', overflow: 'hidden' }}>
         {/* member */}
         <MemberSearch onSelect={setMember} />
+
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <input value={reservationNo} onChange={(e) => setReservationNo(e.target.value)} placeholder="เลขที่จอง (เช่น RV-...)" style={{ flex: 1, padding: '8px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 13 }} />
+          <button onClick={loadReservationToCart} style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid #1565c0', background: '#e3f2fd', color: '#1565c0', fontWeight: 700, cursor: 'pointer' }}>โหลดจอง</button>
+        </div>
 
         {/* cart items */}
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
