@@ -29,9 +29,11 @@ export async function POST(request: Request) {
     const pricePerKg = price?.price_per_kg ?? 8.0;
 
     // สร้าง appointment number
-    const seqRes = await s.rpc('nextval', { seq: 'sale_appointment_seq' }).maybeSingle()
-      .catch(() => ({ data: null }));
-    const seqNum = (seqRes.data as number | null) ?? Date.now();
+    let seqNum = Date.now();
+    try {
+      const seqRes = await s.rpc('nextval', { seq: 'sale_appointment_seq' }).maybeSingle();
+      if (seqRes.data) seqNum = seqRes.data as number;
+    } catch { /* ใช้ timestamp แทน */ }
     const apptNo = `SA-${new Date().getFullYear() + 543}-${String(seqNum).padStart(5, '0')}`;
 
     const { data, error } = await s.from('sale_appointments').insert({
