@@ -138,7 +138,7 @@ export function SeedReservationFlow() {
       nos.push(d.reservation_no ?? '');
     }
     setSaving(false);
-    setCart([]); setPickupDate(''); setNote('');
+    setCart([]); setNote('');
     setSuccessNos(nos); setScreen('success');
     await load();
   }
