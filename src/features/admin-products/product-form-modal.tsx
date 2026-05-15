@@ -2,8 +2,6 @@
 
 import { useEffect, useState } from 'react';
 
-import { createSupabaseBrowserClient } from '@/lib/supabase/client';
-
 type ProductCategory = 'seed' | 'fertilizer' | 'pesticide' | 'equipment' | 'other';
 type ProductType = 'seed' | 'fertilizer' | 'chemical' | 'other';
 
@@ -60,7 +58,6 @@ export function ProductFormModal({ product, onClose, onSaved }: Props) {
       setError('กรุณากรอกชื่อสินค้าและราคา'); return;
     }
     setSaving(true); setError(null);
-    const s = createSupabaseBrowserClient();
     const payload = {
       name: draft.name.trim(),
       category: draft.category,
@@ -70,12 +67,16 @@ export function ProductFormModal({ product, onClose, onSaved }: Props) {
       is_active: draft.is_active,
     };
 
-    let err;
-    if (isEdit) ({ error: err } = await s.from('products').update(payload).eq('id', product!.id));
-    else ({ error: err } = await s.from('products').insert(payload));
+    const res = await fetch('/api/admin/products', {
+      method: isEdit ? 'PATCH' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(isEdit ? { id: String(product?.id ?? ''), ...payload } : payload),
+    });
+
+    const data = (await res.json()) as { error?: string };
 
     setSaving(false);
-    if (err) { setError(err.message); return; }
+    if (!res.ok) { setError(data.error ?? 'บันทึกสินค้าไม่สำเร็จ'); return; }
     onSaved();
   }
 
