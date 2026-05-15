@@ -117,7 +117,8 @@ export function AdminPickupSlots() {
             {slots.length === 0 && <tr><td colSpan={6} style={{ textAlign: 'center', color: '#9ca3af', padding: 32 }}>ยังไม่มีรอบรับสินค้า</td></tr>}
             {slots.map((slot) => {
               const st  = STATUS_CFG[slot.status] ?? STATUS_CFG.closed;
-              const loc = slot.pickup_locations?.[0];
+              const locRaw = slot.pickup_locations;
+              const loc = Array.isArray(locRaw) ? locRaw[0] : locRaw;
               const pct = slot.capacity_qty > 0 ? Math.round((slot.booked_qty / slot.capacity_qty) * 100) : 0;
               return (
                 <tr key={slot.id}>

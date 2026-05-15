@@ -17,7 +17,7 @@ type CartItem = { variety: Variety; qty: number };
 type Slot = {
   id: string; pickup_date: string; pickup_time: string;
   capacity_qty: number; booked_qty: number; note: string | null;
-  pickup_locations: { id: string; name: string; address: string | null; map_url: string | null }[] | null;
+  pickup_locations: { id: string; name: string; address: string | null; map_url: string | null } | null;
 };
 type Reservation = {
   id: string; reservation_no: string; status: string;
@@ -314,7 +314,7 @@ export function SeedReservationFlow() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {slots.map((slot) => {
-                const loc     = slot.pickup_locations?.[0];
+                const loc     = slot.pickup_locations;
                 const remain  = slot.capacity_qty - slot.booked_qty;
                 const selected = selSlotId === slot.id;
                 const full    = remain <= 0;

@@ -54,7 +54,7 @@ export async function POST(request: Request) {
       variety_id:      body.variety_id,
       variety_name:    body.variety_name,
       supplier_name:   body.supplier_name ?? null,
-      lot_id:          body.variety_id,   // ชั่วคราว ก่อน admin assign lot จริง
+      lot_id:          null,   // จะ assign จริงตอน admin ยืนยัน
       lot_no:          'TBD',
       qty_reserved:    body.qty_reserved,
       price_per_bag:   body.price_per_bag,
