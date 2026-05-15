@@ -11,10 +11,11 @@ type NavItem = { label: string; href: string; icon: string };
 // เมนูหลัก — กระชับ ใช้ tab ในหน้าแทนการแตก nav
 const ALL_NAV: NavItem[] = [
   { label: 'แดชบอร์ด', href: '/admin',          icon: '📊' },
-  { label: 'สมาชิก',   href: '/admin/members',   icon: '👥' },  // รวม: คิวอนุมัติ/roles/groups/PIN
-  { label: 'เกษตร',    href: '/admin/farming',   icon: '🗺️' },  // รวม: แผนที่/แปลง/รอบปลูก/งดเผา/ตรวจ/ตั้งค่า
-  { label: 'เมล็ด',    href: '/admin/seeds',     icon: '🌾' },  // รวม: supplier/variety/lot/จอง/คำสั่ง
-  { label: 'ขาย',      href: '/admin/sales',     icon: '💰' },  // รวม: POS/orders/appointments/products/stock
+  { label: 'สมาชิก',   href: '/admin/members',   icon: '👥' },
+  { label: 'เกษตร',    href: '/admin/farming',   icon: '🗺️' },
+  { label: 'เมล็ด',    href: '/admin/seeds',     icon: '🌾' },
+  { label: 'ขาย',      href: '/admin/sales',     icon: '💰' },
+  { label: 'คลัง',     href: '/admin/stock',     icon: '📦' },
   { label: 'รถเกี่ยว',    href: '/admin/harvest',  icon: '🚜' },
   { label: 'คะแนนบริการ', href: '/admin/ratings',  icon: '⭐' },
   { label: 'เครดิต',   href: '/admin/credit',    icon: '💳' },

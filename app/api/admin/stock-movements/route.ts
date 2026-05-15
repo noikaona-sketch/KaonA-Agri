@@ -1,0 +1,69 @@
+import { NextResponse } from 'next/server';
+import { createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
+
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const warehouseId = searchParams.get('warehouse_id');
+  const type        = searchParams.get('type');
+  const dateFrom    = searchParams.get('date_from');
+  const dateTo      = searchParams.get('date_to');
+  const limit       = Number(searchParams.get('limit') ?? 100);
+
+  const s = createServerSupabaseClient();
+  let q = s.from('stock_movements')
+    .select('*, warehouses!warehouse_id(name), dest_wh:warehouses!dest_warehouse_id(name)')
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (warehouseId) q = q.eq('warehouse_id', warehouseId);
+  if (type)        q = q.eq('movement_type', type);
+  if (dateFrom)    q = q.gte('created_at', dateFrom);
+  if (dateTo)      q = q.lte('created_at', dateTo + 'T23:59:59');
+
+  const { data, error } = await q;
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ movements: data ?? [] });
+}
+
+export async function POST(request: Request) {
+  try {
+    const body = (await request.json()) as {
+      movement_type:     string;
+      warehouse_id:      string;
+      dest_warehouse_id?: string;
+      product_id?:       string;
+      variety_id?:       string;
+      product_name:      string;
+      unit:              string;
+      qty:               number;
+      unit_cost?:        number;
+      unit_price?:       number;
+      ref_type?:         string;
+      ref_id?:           string;
+      ref_no?:           string;
+      note?:             string;
+      created_by?:       string;
+    };
+
+    const s = createServerSupabaseClient();
+    const { data, error } = await s.rpc('create_stock_movement', {
+      p_type:               body.movement_type,
+      p_warehouse_id:       body.warehouse_id,
+      p_dest_warehouse_id:  body.dest_warehouse_id ?? null,
+      p_product_id:         body.product_id  ?? null,
+      p_variety_id:         body.variety_id  ?? null,
+      p_product_name:       body.product_name,
+      p_unit:               body.unit,
+      p_qty:                body.qty,
+      p_unit_cost:          body.unit_cost   ?? null,
+      p_unit_price:         body.unit_price  ?? null,
+      p_ref_type:           body.ref_type    ?? null,
+      p_ref_id:             body.ref_id      ?? null,
+      p_ref_no:             body.ref_no      ?? null,
+      p_note:               body.note        ?? null,
+      p_created_by:         body.created_by  ?? null,
+    });
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true, movement_id: data });
+  } catch (e) { return NextResponse.json({ error: String(e) }, { status: 500 }); }
+}

@@ -1,0 +1,313 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { LoadingState } from '@/shared/components/loading-state';
+
+type Warehouse = { id: string; code: string; name: string };
+type StockItem = {
+  id: string; qty_on_hand: number; qty_reserved: number; qty_available: number; unit: string;
+  warehouses: { id: string; code: string; name: string } | null;
+  products:       { id: string; name: string; category: string; price_per_unit: number } | null;
+  seed_varieties: { id: string; variety_name: string; crop_type: string; price_per_bag: number } | null;
+};
+type Movement = {
+  id: string; movement_no: string; movement_type: string; product_name: string;
+  unit: string; qty: number; unit_cost: number | null; unit_price: number | null;
+  total_amount: number | null; ref_no: string | null; note: string | null; created_at: string;
+  warehouses: { name: string } | null;
+};
+
+const TYPE_CFG: Record<string, { icon: string; label: string; color: string }> = {
+  receive:      { icon: '📥', label: 'รับเข้า',    color: '#2e7d32' },
+  sale:         { icon: '💰', label: 'ขายออก',    color: '#c62828' },
+  reservation:  { icon: '📋', label: 'จอง',        color: '#e65100' },
+  cancel_res:   { icon: '↩️', label: 'ยกเลิกจอง', color: '#9e9e9e' },
+  transfer_out: { icon: '📤', label: 'โอนออก',     color: '#1565c0' },
+  transfer_in:  { icon: '📨', label: 'โอนเข้า',    color: '#1565c0' },
+  adjust_add:   { icon: '➕', label: 'ปรับเพิ่ม',  color: '#2e7d32' },
+  adjust_sub:   { icon: '➖', label: 'ปรับลด',     color: '#c62828' },
+  return:       { icon: '↩️', label: 'รับคืน',     color: '#6a1b9a' },
+  opening:      { icon: '🏁', label: 'ยอดยกมา',   color: '#455a64' },
+};
+
+type ReceiveForm = {
+  warehouse_id: string; product_id: string; variety_id: string;
+  product_name: string; unit: string; qty: string; unit_cost: string; note: string;
+};
+
+export function AdminStockDashboard() {
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [stock,      setStock]      = useState<StockItem[]>([]);
+  const [movements,  setMovements]  = useState<Movement[]>([]);
+  const [products,   setProducts]   = useState<{ id: string; name: string; unit: string; category: string }[]>([]);
+  const [varieties,  setVarieties]  = useState<{ id: string; variety_name: string; bag_weight_kg: number }[]>([]);
+  const [loading,    setLoading]    = useState(true);
+  const [selWH,      setSelWH]      = useState('');
+  const [tab,        setTab]        = useState<'stock' | 'receive' | 'transfer' | 'movements'>('stock');
+  const [notice,     setNotice]     = useState<string | null>(null);
+  const [saving,     setSaving]     = useState(false);
+
+  const [rf, setRf] = useState<ReceiveForm>({
+    warehouse_id: '', product_id: '', variety_id: '',
+    product_name: '', unit: 'ถุง', qty: '', unit_cost: '', note: '',
+  });
+
+  // transfer form
+  const [tf, setTf] = useState({ from_wh: '', to_wh: '', product_id: '', variety_id: '', product_name: '', unit: 'ถุง', qty: '', note: '' });
+
+  async function load() {
+    setLoading(true);
+    const [whRes, stockRes, mvRes, prodRes, varRes] = await Promise.all([
+      fetch('/api/admin/warehouses').then((r) => r.json()),
+      fetch(`/api/admin/stock-movements/summary${selWH ? `?warehouse_id=${selWH}` : ''}`).then((r) => r.json()),
+      fetch(`/api/admin/stock-movements?limit=50${selWH ? `&warehouse_id=${selWH}` : ''}`).then((r) => r.json()),
+      fetch('/api/admin/products').then((r) => r.json()),
+      fetch('/api/member/seed-lots').then((r) => r.json()),
+    ]);
+    setWarehouses(whRes.warehouses ?? []);
+    setStock(stockRes.stock ?? []);
+    setMovements(mvRes.movements ?? []);
+    setProducts(prodRes.products ?? []);
+    setVarieties(varRes.lots ?? []);
+    if (!selWH && whRes.warehouses?.[0]) setSelWH(whRes.warehouses[0].id);
+    setLoading(false);
+  }
+
+  useEffect(() => { void load(); }, [selWH]);
+
+  async function receive() {
+    if (!rf.warehouse_id || !rf.qty || (!rf.product_id && !rf.variety_id)) {
+      setNotice('❌ กรุณากรอกข้อมูลให้ครบ'); return;
+    }
+    setSaving(true); setNotice(null);
+    const res = await fetch('/api/admin/stock-movements', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        movement_type: 'receive', warehouse_id: rf.warehouse_id,
+        product_id:    rf.product_id  || null,
+        variety_id:    rf.variety_id  || null,
+        product_name:  rf.product_name,
+        unit: rf.unit, qty: Number(rf.qty),
+        unit_cost: rf.unit_cost ? Number(rf.unit_cost) : null,
+        note: rf.note || null,
+      }),
+    });
+    const d = (await res.json()) as { ok?: boolean; error?: string };
+    setSaving(false);
+    if (!res.ok) { setNotice(`❌ ${d.error}`); return; }
+    setNotice('✅ รับเข้าสต๊อกแล้ว');
+    setRf({ warehouse_id: '', product_id: '', variety_id: '', product_name: '', unit: 'ถุง', qty: '', unit_cost: '', note: '' });
+    void load();
+  }
+
+  async function transfer() {
+    if (!tf.from_wh || !tf.to_wh || !tf.qty || (!tf.product_id && !tf.variety_id)) {
+      setNotice('❌ กรุณากรอกข้อมูลให้ครบ'); return;
+    }
+    if (tf.from_wh === tf.to_wh) { setNotice('❌ คลังต้น-ปลายทางต้องต่างกัน'); return; }
+    setSaving(true); setNotice(null);
+    const res = await fetch('/api/admin/stock-movements', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        movement_type: 'transfer_out', warehouse_id: tf.from_wh,
+        dest_warehouse_id: tf.to_wh,
+        product_id:    tf.product_id  || null,
+        variety_id:    tf.variety_id  || null,
+        product_name:  tf.product_name,
+        unit: tf.unit, qty: Number(tf.qty),
+        note: tf.note || null,
+      }),
+    });
+    const d = (await res.json()) as { ok?: boolean; error?: string };
+    setSaving(false);
+    if (!res.ok) { setNotice(`❌ ${d.error}`); return; }
+    setNotice('✅ โอนสต๊อกแล้ว');
+    setTf({ from_wh: '', to_wh: '', product_id: '', variety_id: '', product_name: '', unit: 'ถุง', qty: '', note: '' });
+    void load();
+  }
+
+  if (loading) return <LoadingState label="กำลังโหลดสต๊อก…" />;
+
+  return (
+    <div>
+      {notice && (
+        <div style={{ background: notice.startsWith('✅') ? '#e8f5e9' : '#ffebee', border: `1px solid ${notice.startsWith('✅') ? '#a5d6a7' : '#ef9a9a'}`, borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontWeight: 600 }}>
+          {notice}
+        </div>
+      )}
+
+      {/* warehouse selector */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+        {warehouses.map((wh) => (
+          <button key={wh.id} onClick={() => setSelWH(wh.id)}
+            style={{ padding: '6px 16px', borderRadius: 20, border: '1.5px solid', borderColor: selWH === wh.id ? 'var(--primary)' : '#e0e0e0', background: selWH === wh.id ? 'var(--primary)' : '#fff', color: selWH === wh.id ? '#fff' : 'inherit', fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>
+            🏭 {wh.name}
+          </button>
+        ))}
+      </div>
+
+      {/* tabs */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 16, borderBottom: '1px solid #e0e0e0', paddingBottom: 8 }}>
+        {([
+          { key: 'stock',     label: '📦 สต๊อก' },
+          { key: 'receive',   label: '📥 รับเข้า' },
+          { key: 'transfer',  label: '📤 โอน' },
+          { key: 'movements', label: '📊 เคลื่อนไหว' },
+        ] as const).map((t) => (
+          <button key={t.key} onClick={() => setTab(t.key)}
+            style={{ padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 13, background: tab === t.key ? 'var(--primary)' : '#f0f4f0', color: tab === t.key ? '#fff' : 'inherit' }}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* STOCK tab */}
+      {tab === 'stock' && (
+        <div className="admin-table-wrap">
+          <table className="admin-table">
+            <thead><tr><th>สินค้า/พันธุ์</th><th>คลัง</th><th>มีในมือ</th><th>จอง</th><th>พร้อมขาย</th><th>หน่วย</th></tr></thead>
+            <tbody>
+              {stock.length === 0 && <tr><td colSpan={6} style={{ textAlign: 'center', padding: 32, color: '#9ca3af' }}>ยังไม่มีสต๊อก</td></tr>}
+              {stock.map((s) => {
+                const name = s.products?.name ?? s.seed_varieties?.variety_name ?? '—';
+                const cat  = s.products?.category ?? s.seed_varieties?.crop_type ?? '';
+                return (
+                  <tr key={s.id}>
+                    <td>
+                      <p style={{ margin: 0, fontWeight: 700 }}>{name}</p>
+                      {cat && <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>{cat}</p>}
+                    </td>
+                    <td>{s.warehouses?.name ?? '—'}</td>
+                    <td style={{ fontWeight: 800, color: '#1b5e20' }}>{s.qty_on_hand.toLocaleString()}</td>
+                    <td style={{ color: '#e65100' }}>{s.qty_reserved.toLocaleString()}</td>
+                    <td style={{ fontWeight: 800, color: s.qty_available <= 0 ? '#c62828' : '#1b5e20' }}>{s.qty_available.toLocaleString()}</td>
+                    <td>{s.unit}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* RECEIVE tab */}
+      {tab === 'receive' && (
+        <div className="kaona-card">
+          <p style={{ margin: '0 0 14px', fontWeight: 700, fontSize: 15 }}>📥 รับเข้าสต๊อก</p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <label className="reg-label">คลัง <span className="reg-required">*</span>
+              <select className="reg-input" value={rf.warehouse_id} onChange={(e) => setRf((p) => ({ ...p, warehouse_id: e.target.value }))}>
+                <option value="">เลือกคลัง</option>
+                {warehouses.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
+              </select>
+            </label>
+            <label className="reg-label">ประเภท
+              <select className="reg-input" onChange={(e) => {
+                const [type, id, name, unit] = e.target.value.split('|');
+                if (type === 'variety') setRf((p) => ({ ...p, variety_id: id, product_id: '', product_name: name, unit: unit ?? 'ถุง' }));
+                else setRf((p) => ({ ...p, product_id: id, variety_id: '', product_name: name, unit: unit ?? 'ถุง' }));
+              }}>
+                <option value="">เลือกสินค้า</option>
+                <optgroup label="🌾 เมล็ดพันธุ์">
+                  {varieties.map((v) => <option key={v.id} value={`variety|${v.id}|${v.variety_name}|ถุง`}>{v.variety_name}</option>)}
+                </optgroup>
+                <optgroup label="🛍️ สินค้าอื่น">
+                  {products.map((p) => <option key={p.id} value={`product|${p.id}|${p.name}|${p.unit}`}>{p.name}</option>)}
+                </optgroup>
+              </select>
+            </label>
+            <label className="reg-label">จำนวน <span className="reg-required">*</span>
+              <input className="reg-input" type="number" value={rf.qty} onChange={(e) => setRf((p) => ({ ...p, qty: e.target.value }))} placeholder="0" />
+            </label>
+            <label className="reg-label">หน่วย
+              <input className="reg-input" value={rf.unit} onChange={(e) => setRf((p) => ({ ...p, unit: e.target.value }))} />
+            </label>
+            <label className="reg-label">ราคาทุน/หน่วย
+              <input className="reg-input" type="number" value={rf.unit_cost} onChange={(e) => setRf((p) => ({ ...p, unit_cost: e.target.value }))} placeholder="0.00" />
+            </label>
+            <label className="reg-label">หมายเหตุ
+              <input className="reg-input" value={rf.note} onChange={(e) => setRf((p) => ({ ...p, note: e.target.value }))} />
+            </label>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
+            <button className="admin-btn admin-btn--primary" onClick={receive} disabled={saving}>{saving ? 'กำลังบันทึก…' : '📥 บันทึกรับเข้า'}</button>
+          </div>
+        </div>
+      )}
+
+      {/* TRANSFER tab */}
+      {tab === 'transfer' && (
+        <div className="kaona-card">
+          <p style={{ margin: '0 0 14px', fontWeight: 700, fontSize: 15 }}>📤 โอนสต๊อกระหว่างคลัง</p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <label className="reg-label">จากคลัง <span className="reg-required">*</span>
+              <select className="reg-input" value={tf.from_wh} onChange={(e) => setTf((p) => ({ ...p, from_wh: e.target.value }))}>
+                <option value="">เลือกคลัง</option>
+                {warehouses.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
+              </select>
+            </label>
+            <label className="reg-label">ไปคลัง <span className="reg-required">*</span>
+              <select className="reg-input" value={tf.to_wh} onChange={(e) => setTf((p) => ({ ...p, to_wh: e.target.value }))}>
+                <option value="">เลือกคลัง</option>
+                {warehouses.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
+              </select>
+            </label>
+            <label className="reg-label" style={{ gridColumn: '1/-1' }}>สินค้า <span className="reg-required">*</span>
+              <select className="reg-input" onChange={(e) => {
+                const [type, id, name, unit] = e.target.value.split('|');
+                if (type === 'variety') setTf((p) => ({ ...p, variety_id: id, product_id: '', product_name: name, unit: unit ?? 'ถุง' }));
+                else setTf((p) => ({ ...p, product_id: id, variety_id: '', product_name: name, unit: unit ?? 'ถุง' }));
+              }}>
+                <option value="">เลือกสินค้า</option>
+                <optgroup label="🌾 เมล็ดพันธุ์">
+                  {varieties.map((v) => <option key={v.id} value={`variety|${v.id}|${v.variety_name}|ถุง`}>{v.variety_name}</option>)}
+                </optgroup>
+                <optgroup label="🛍️ สินค้าอื่น">
+                  {products.map((p) => <option key={p.id} value={`product|${p.id}|${p.name}|${p.unit}`}>{p.name}</option>)}
+                </optgroup>
+              </select>
+            </label>
+            <label className="reg-label">จำนวน <span className="reg-required">*</span>
+              <input className="reg-input" type="number" value={tf.qty} onChange={(e) => setTf((p) => ({ ...p, qty: e.target.value }))} />
+            </label>
+            <label className="reg-label">หมายเหตุ
+              <input className="reg-input" value={tf.note} onChange={(e) => setTf((p) => ({ ...p, note: e.target.value }))} />
+            </label>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
+            <button className="admin-btn admin-btn--primary" onClick={transfer} disabled={saving}>{saving ? 'กำลังโอน…' : '📤 ยืนยันโอน'}</button>
+          </div>
+        </div>
+      )}
+
+      {/* MOVEMENTS tab */}
+      {tab === 'movements' && (
+        <div className="admin-table-wrap">
+          <table className="admin-table">
+            <thead><tr><th>เลขที่</th><th>ประเภท</th><th>สินค้า</th><th>คลัง</th><th>จำนวน</th><th>ยอดเงิน</th><th>วันที่</th></tr></thead>
+            <tbody>
+              {movements.length === 0 && <tr><td colSpan={7} style={{ textAlign: 'center', padding: 32, color: '#9ca3af' }}>ยังไม่มีรายการ</td></tr>}
+              {movements.map((mv) => {
+                const cfg = TYPE_CFG[mv.movement_type] ?? { icon: '•', label: mv.movement_type, color: '#666' };
+                const isOut = ['sale','transfer_out','adjust_sub','reservation'].includes(mv.movement_type);
+                return (
+                  <tr key={mv.id}>
+                    <td style={{ fontFamily: 'monospace', fontSize: 12 }}>{mv.movement_no}</td>
+                    <td><span style={{ color: cfg.color, fontWeight: 700 }}>{cfg.icon} {cfg.label}</span></td>
+                    <td>{mv.product_name}</td>
+                    <td style={{ fontSize: 12 }}>{mv.warehouses?.name ?? '—'}</td>
+                    <td style={{ fontWeight: 800, color: isOut ? '#c62828' : '#2e7d32' }}>
+                      {isOut ? '−' : '+'}{mv.qty.toLocaleString()} {mv.unit}
+                    </td>
+                    <td>{mv.total_amount ? mv.total_amount.toLocaleString('th-TH', { minimumFractionDigits: 2 }) : '—'}</td>
+                    <td style={{ fontSize: 12 }}>{new Date(mv.created_at).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
