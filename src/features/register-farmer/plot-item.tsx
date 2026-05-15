@@ -87,9 +87,17 @@ export function PlotItem({ plot, index, onChange, onRemove, canRemove }: PlotIte
     );
   }
 
-  function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0] ?? null;
-    onChange({ ...plot, photoFile: file, photoName: file?.name ?? '' });
+    if (!file) return;
+    try {
+      const { compressGeneral } = await import('@/lib/image/compress');
+      const blob = await compressGeneral(file, 1200);
+      const out  = new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' });
+      onChange({ ...plot, photoFile: out, photoName: out.name });
+    } catch {
+      onChange({ ...plot, photoFile: file, photoName: file.name });
+    }
   }
 
   return (

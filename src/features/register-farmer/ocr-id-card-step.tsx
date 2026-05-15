@@ -1,6 +1,7 @@
 'use client';
 
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
+import { compressIdCard, compressGeneral, formatBytes } from '@/lib/image/compress';
 
 import { LoadingState } from '@/shared/components/loading-state';
 import { UIButton } from '@/shared/components/ui-button';
@@ -22,13 +23,23 @@ function maskId(id: string) {
 export function OcrIdCardStep({ status, result, error, onScan, onReset }: OcrIdCardStepProps) {
   const inputRef   = useRef<HTMLInputElement>(null);
   const galleryRef  = useRef<HTMLInputElement>(null);
+  const [compressing, setCompressing] = useState(false);
 
-  function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (file) onScan(file);
+    if (!file) return;
     e.target.value = '';
+    setCompressing(true);
+    try {
+      const compressed = await compressIdCard(file);
+      const out = new File([compressed], file.name.replace(/\.[^.]+$/, '') + '_id.jpg', { type: 'image/jpeg' });
+      console.log(`[ID-OCR] ${formatBytes(file.size)} → ${formatBytes(compressed.size)}`);
+      onScan(out);
+    } catch { onScan(file); }
+    setCompressing(false);
   }
 
+  if (compressing) return <LoadingState label="กำลังบีบอัดและตัดขอบภาพ…" />;
   if (status === 'scanning') {
     return <LoadingState label="กำลังอ่านบัตรประชาชน…" />;
   }

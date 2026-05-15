@@ -191,8 +191,15 @@ export function AdminSeedVarieties() {
                         onChange={async (e) => {
                           const file = e.target.files?.[0];
                           if (!file) return;
+                          // compress ก่อน upload
+                          let uploadFile: File = file;
+                          try {
+                            const { compressGeneral, blobToFile } = await import('@/lib/image/compress');
+                            const blob = await compressGeneral(file, 800);
+                            uploadFile = blobToFile(blob, file.name, '_variety');
+                          } catch { /* ใช้ file เดิม */ }
                           const fd = new FormData();
-                          fd.append('file', file);
+                          fd.append('file', uploadFile);
                           fd.append('bucket', 'seed-images');
                           fd.append('folder', 'varieties');
                           const res = await fetch('/api/admin/upload-image', { method: 'POST', body: fd });
