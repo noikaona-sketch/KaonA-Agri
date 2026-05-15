@@ -67,3 +67,77 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, movement_id: data });
   } catch (e) { return NextResponse.json({ error: String(e) }, { status: 500 }); }
 }
+
+export async function PATCH(request: Request) {
+  try {
+    const body = (await request.json()) as {
+      movement_id: string;
+      qty?: number;
+      unit_cost?: number | null;
+      note?: string | null;
+    };
+
+    if (!body.movement_id) {
+      return NextResponse.json({ error: 'invalid payload' }, { status: 400 });
+    }
+
+    const s = createServerSupabaseClient();
+    const { data: mv, error: mvErr } = await s
+      .from('stock_movements')
+      .select('id,movement_no,movement_type,warehouse_id,product_id,variety_id,product_name,unit,qty,unit_cost,note,is_locked')
+      .eq('id', body.movement_id)
+      .maybeSingle();
+    if (mvErr) return NextResponse.json({ error: mvErr.message }, { status: 500 });
+    if (!mv) return NextResponse.json({ error: 'movement not found' }, { status: 404 });
+    if (mv.movement_type !== 'receive') {
+      return NextResponse.json({ error: 'แก้ไขได้เฉพาะรายการรับเข้า' }, { status: 400 });
+    }
+    if (mv.is_locked) return NextResponse.json({ error: 'รายการถูกปิดงวดแล้ว' }, { status: 400 });
+
+    const oldQty = Number(mv.qty);
+    const newQty = body.qty == null ? oldQty : Number(body.qty);
+    if (!newQty || newQty <= 0) {
+      return NextResponse.json({ error: 'จำนวนต้องมากกว่า 0' }, { status: 400 });
+    }
+    const diff = Number((newQty - oldQty).toFixed(2));
+    const oldNote = mv.note ?? '';
+    const newNote = body.note ?? '';
+    const noteChanged = oldNote !== newNote;
+
+    if (diff === 0 && noteChanged) {
+      const { error: upErr } = await s.from('stock_movements').update({
+        note: body.note ?? null,
+      }).eq('id', mv.id);
+      if (upErr) return NextResponse.json({ error: upErr.message }, { status: 500 });
+      return NextResponse.json({ ok: true, diff: 0, mode: 'note_only' });
+    }
+
+    if (diff === 0 && !noteChanged) {
+      return NextResponse.json({ ok: true, diff: 0, mode: 'no_change' });
+    }
+
+    const adjType = diff > 0 ? 'adjust_add' : 'adjust_sub';
+    const { error: adjErr } = await s.rpc('create_stock_movement', {
+      p_type: adjType,
+      p_warehouse_id: mv.warehouse_id,
+      p_dest_warehouse_id: null,
+      p_product_id: mv.product_id,
+      p_variety_id: mv.variety_id,
+      p_product_name: mv.product_name,
+      p_unit: mv.unit,
+      p_qty: Math.abs(diff),
+      p_unit_cost: body.unit_cost ?? mv.unit_cost ?? null,
+      p_unit_price: null,
+      p_ref_type: 'receive_correction',
+      p_ref_id: mv.id,
+      p_ref_no: mv.movement_no,
+      p_note: `Correction from ${oldQty} to ${newQty}${body.note ? ` | ${body.note}` : ''}`,
+      p_created_by: null,
+    });
+    if (adjErr) return NextResponse.json({ error: adjErr.message }, { status: 500 });
+
+    return NextResponse.json({ ok: true, diff, mode: 'movement_correction' });
+  } catch (e) {
+    return NextResponse.json({ error: String(e) }, { status: 500 });
+  }
+}

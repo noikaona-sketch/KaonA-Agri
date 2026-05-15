@@ -15,6 +15,7 @@ type Movement = {
   total_amount: number | null; ref_no: string | null; note: string | null; created_at: string;
   warehouses: { name: string } | null;
 };
+type ReceiveEdit = { id: string; movement_no: string; qty: string; unit_cost: string; note: string } | null;
 
 const TYPE_CFG: Record<string, { icon: string; label: string; color: string }> = {
   receive:      { icon: '📥', label: 'รับเข้า',    color: '#2e7d32' },
@@ -44,6 +45,7 @@ export function AdminStockDashboard() {
   const [tab,        setTab]        = useState<'stock' | 'receive' | 'transfer' | 'movements'>('stock');
   const [notice,     setNotice]     = useState<string | null>(null);
   const [saving,     setSaving]     = useState(false);
+  const [editingReceive, setEditingReceive] = useState<ReceiveEdit>(null);
 
   const [rf, setRf] = useState<ReceiveForm>({
     warehouse_id: '', product_type: '', product_id: '',
@@ -120,6 +122,29 @@ export function AdminStockDashboard() {
     void load();
   }
 
+  async function saveReceiveCorrection() {
+    if (!editingReceive) return;
+    const qty = Number(editingReceive.qty);
+    if (!qty || qty <= 0) { setNotice('❌ จำนวนต้องมากกว่า 0'); return; }
+    setSaving(true); setNotice(null);
+    const res = await fetch('/api/admin/stock-movements', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        movement_id: editingReceive.id,
+        qty,
+        unit_cost: editingReceive.unit_cost ? Number(editingReceive.unit_cost) : null,
+        note: editingReceive.note || null,
+      }),
+    });
+    const d = (await res.json()) as { ok?: boolean; error?: string };
+    setSaving(false);
+    if (!res.ok) { setNotice(`❌ ${d.error ?? 'แก้ไขไม่สำเร็จ'}`); return; }
+    setEditingReceive(null);
+    setNotice('✅ บันทึกการแก้ไขรับเข้าแล้ว');
+    void load();
+  }
+
   if (loading) return <LoadingState label="กำลังโหลดสต๊อก…" />;
 
   return (
@@ -186,6 +211,7 @@ export function AdminStockDashboard() {
 
       {/* RECEIVE tab */}
       {tab === 'receive' && (
+        <div style={{ display: 'grid', gap: 12 }}>
         <div className="kaona-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
             <p style={{ margin: 0, fontWeight: 700, fontSize: 15 }}>📥 รับเข้าสต๊อก</p>
@@ -228,6 +254,33 @@ export function AdminStockDashboard() {
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
             <button className="admin-btn admin-btn--primary" onClick={receive} disabled={saving}>{saving ? 'กำลังบันทึก…' : '📥 บันทึกรับเข้า'}</button>
           </div>
+        </div>
+        <div className="admin-table-wrap">
+          <table className="admin-table">
+            <thead><tr><th>เลขที่</th><th>สินค้า</th><th>จำนวน</th><th>ทุน/หน่วย</th><th>หมายเหตุ</th><th>เวลา</th><th /></tr></thead>
+            <tbody>
+              {movements.filter((m) => m.movement_type === 'receive').slice(0, 20).map((mv) => (
+                <tr key={mv.id}>
+                  <td style={{ fontFamily: 'monospace', fontSize: 12 }}>{mv.movement_no}</td>
+                  <td>{mv.product_name}</td>
+                  <td style={{ fontWeight: 700 }}>{mv.qty.toLocaleString()} {mv.unit}</td>
+                  <td>{mv.unit_cost ? mv.unit_cost.toLocaleString() : '—'}</td>
+                  <td style={{ maxWidth: 200 }}>{mv.note || '—'}</td>
+                  <td style={{ fontSize: 12 }}>{new Date(mv.created_at).toLocaleString('th-TH')}</td>
+                  <td>
+                    <button className="admin-btn admin-btn--secondary" style={{ fontSize: 12, minHeight: 30, padding: '4px 8px' }}
+                      onClick={() => setEditingReceive({ id: mv.id, movement_no: mv.movement_no, qty: String(mv.qty), unit_cost: mv.unit_cost ? String(mv.unit_cost) : '', note: mv.note ?? '' })}>
+                      ✏️ แก้ไข
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {movements.filter((m) => m.movement_type === 'receive').length === 0 && (
+                <tr><td colSpan={7} style={{ textAlign: 'center', padding: 20, color: '#9ca3af' }}>ยังไม่มีประวัติรับเข้า</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
         </div>
       )}
 
@@ -293,6 +346,35 @@ export function AdminStockDashboard() {
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {editingReceive && (
+        <div className="admin-modal-backdrop" onClick={(e) => e.target === e.currentTarget && setEditingReceive(null)}>
+          <div className="admin-modal" style={{ maxWidth: 420 }}>
+            <div className="admin-modal__header">
+              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>✏️ แก้ไขรับเข้า {editingReceive.movement_no}</h2>
+              <button className="admin-modal__close" onClick={() => setEditingReceive(null)}>×</button>
+            </div>
+            <div className="admin-modal__body">
+              <p style={{ margin: '0 0 8px', fontSize: 12, color: '#6b7280' }}>
+                ระบบจะไม่แก้รายการเดิม แต่จะสร้างรายการปรับแก้เพื่อเก็บประวัติ
+              </p>
+              <label className="reg-label">จำนวนใหม่
+                <input className="reg-input" type="number" value={editingReceive.qty} onChange={(e) => setEditingReceive((p) => p ? { ...p, qty: e.target.value } : p)} />
+              </label>
+              <label className="reg-label">ราคาทุน/หน่วย
+                <input className="reg-input" type="number" value={editingReceive.unit_cost} onChange={(e) => setEditingReceive((p) => p ? { ...p, unit_cost: e.target.value } : p)} />
+              </label>
+              <label className="reg-label">หมายเหตุแก้ไข
+                <input className="reg-input" value={editingReceive.note} onChange={(e) => setEditingReceive((p) => p ? { ...p, note: e.target.value } : p)} />
+              </label>
+            </div>
+            <div className="admin-modal__footer">
+              <button className="admin-btn admin-btn--secondary" onClick={() => setEditingReceive(null)}>ยกเลิก</button>
+              <button className="admin-btn admin-btn--primary" onClick={saveReceiveCorrection} disabled={saving}>{saving ? 'กำลังบันทึก…' : '💾 บันทึกแก้ไข'}</button>
+            </div>
+          </div>
         </div>
       )}
     </div>
