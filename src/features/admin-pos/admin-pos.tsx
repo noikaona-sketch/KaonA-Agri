@@ -16,6 +16,9 @@ type Member = { id: string; full_name: string; member_number?: string; phone?: s
 
 type CartItem = {
   key: string;
+  type: 'seed' | 'product';
+  lot_id?: string;
+  lot_no?: string;
   product_id?: string;
   variety_id?: string;
   name: string;
