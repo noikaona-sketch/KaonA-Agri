@@ -17,6 +17,7 @@ export async function POST(request: Request) {
       note?: string;
     };
 
+    // Legacy compatibility only: older clients may still send variety_id.
     const productId = body.product_id ?? body.variety_id;
     if (!body.member_id || !productId || !body.qty_reserved) {
       return NextResponse.json({ error: 'ข้อมูลไม่ครบ' }, { status: 400 });
