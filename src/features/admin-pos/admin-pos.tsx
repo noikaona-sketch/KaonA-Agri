@@ -6,8 +6,8 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 type Warehouse = { id: string; code: string; name: string };
 
 type PosItem = {
-  id: string; type: 'seed' | 'product';
-  variety_id?: string; lot_id?: string; lot_no?: string; product_id?: string;
+  id: string; type: 'product';
+  product_id?: string;
   name: string; category: string; supplier: string; image_url: string | null;
   unit: string; unit_price: number; qty_available: number; status: string;
 };
@@ -16,11 +16,8 @@ type Member = { id: string; full_name: string; member_number?: string; phone?: s
 
 type CartItem = {
   key: string;
-  type: 'seed' | 'product';
-  lot_id?: string;
-  lot_no?: string;
+  type: 'product';
   product_id?: string;
-  variety_id?: string;
   name: string;
   category: string;
   unit: string;
@@ -195,7 +192,7 @@ export function AdminPos() {
 
   // cart helpers
   const addItem = useCallback((item: PosItem) => {
-    const key = item.type === 'seed' ? `s-${item.variety_id}` : `p-${item.product_id}`;
+    const key = `p-${item.product_id}`;
     setCart((prev) => {
       const exists = prev.find((c) => c.key === key);
       if (exists) return prev.map((c) => c.key === key ? { ...c, qty: c.qty + 1 } : c);
@@ -203,8 +200,7 @@ export function AdminPos() {
         key, type: item.type, name: item.name,
         category: item.category, unit: item.unit, unit_price: item.unit_price,
         qty: 1,
-        ...(item.type === 'seed'    ? { lot_id: item.lot_id, variety_id: item.variety_id, lot_no: item.lot_no } : {}),
-        ...(item.type === 'product' ? { product_id: item.product_id } : {}),
+        product_id: item.product_id,
       }];
     });
   }, []);
@@ -234,37 +230,21 @@ export function AdminPos() {
     }
     setSubmitting(true); setNotice(null);
 
-    // บันทึก stock movements (MVP ไม่ใช้ Lot workflow)
+    // บันทึก stock movements
     for (const item of cart) {
-      if (item.type === 'seed') {
-        await fetch('/api/admin/stock-movements', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            movement_type: mode === 'sale' ? 'sale' : 'reservation',
-            warehouse_id:  selWH,
-            variety_id:    item.variety_id ?? null,
-            product_name:  item.name,
-            unit: item.unit, qty: item.qty,
-            unit_price: item.unit_price,
-            ref_type: mode === 'sale' ? 'pos_sale' : 'pos_reserve',
-            note: `สมาชิก: ${member.full_name}`,
-          }),
-        });
-      } else {
-        await fetch('/api/admin/stock-movements', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            movement_type: mode === 'sale' ? 'sale' : 'reservation',
-            warehouse_id:  selWH,
-            product_id:    item.product_id ?? null,
-            product_name:  item.name,
-            unit: item.unit, qty: item.qty,
-            unit_price: item.unit_price,
-            ref_type: mode === 'sale' ? 'pos_sale' : 'pos_reserve',
-            note: `สมาชิก: ${member.full_name}`,
-          }),
-        });
-      }
+      await fetch('/api/admin/stock-movements', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          movement_type: mode === 'sale' ? 'sale' : 'reservation',
+          warehouse_id:  selWH,
+          product_id:    item.product_id ?? null,
+          product_name:  item.name,
+          unit: item.unit, qty: item.qty,
+          unit_price: item.unit_price,
+          ref_type: mode === 'sale' ? 'pos_sale' : 'pos_reserve',
+          note: `สมาชิก: ${member.full_name}`,
+        }),
+      });
     }
 
     // สร้าง sale order
@@ -277,8 +257,6 @@ export function AdminPos() {
         pickup_slot_id:  mode === 'reservation' ? selSlot || null : null,
         items: cart.map((c) => ({
           product_id:   c.product_id ?? null,
-          variety_id:   c.variety_id ?? null,
-          lot_no:       c.lot_no     ?? null,
           product_name: c.name,
           qty:          c.qty,
           unit_price:   c.unit_price,
@@ -364,7 +342,7 @@ export function AdminPos() {
           {loading && <p style={{ color: '#9ca3af', gridColumn: '1/-1' }}>กำลังโหลด…</p>}
           {!loading && filtered.length === 0 && <p style={{ color: '#9ca3af', gridColumn: '1/-1' }}>ไม่พบสินค้า</p>}
           {filtered.map((s) => {
-            const key    = s.type === 'seed' ? `s-${s.variety_id}` : `p-${s.product_id}`;
+            const key    = `p-${s.product_id}`;
             const inCart = cart.find((c) => c.key === key);
             return (
               <button key={s.id} onClick={() => addItem(s)} disabled={s.qty_available <= 0}
