@@ -4,7 +4,7 @@ import { createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
 export async function GET(request: Request) {
   try {
     const url    = new URL(request.url);
-    const search = url.searchParams.get('search') ?? '';
+    const search = url.searchParams.get('q') ?? url.searchParams.get('search') ?? '';
     const limit  = Math.min(Number(url.searchParams.get('limit') ?? '20'), 50);
     const status = url.searchParams.get('status') ?? '';
 
