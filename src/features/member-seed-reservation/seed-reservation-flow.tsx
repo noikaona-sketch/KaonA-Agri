@@ -14,6 +14,11 @@ type Variety = {
   lot_id: string; lot_no: string; quantity_balance: number; lot_status: string;
 };
 type CartItem = { variety: Variety; qty: number };
+type Slot = {
+  id: string; pickup_date: string; pickup_time: string;
+  capacity_qty: number; booked_qty: number; note: string | null;
+  pickup_locations: { id: string; name: string; address: string | null; map_url: string | null }[] | null;
+};
 type Reservation = {
   id: string; reservation_no: string; status: string;
   variety_name: string; lot_no: string; supplier_name: string | null;
@@ -37,9 +42,10 @@ export function SeedReservationFlow() {
   const [screen, setScreen]   = useState<Screen>('shop');
   const [varieties, setVarieties] = useState<Variety[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [slots, setSlots]     = useState<Slot[]>([]);
   const [loading, setLoading] = useState(true);
   const [cart, setCart]       = useState<CartItem[]>([]);
-  const [pickupDate, setPickupDate] = useState('');
+  const [selSlotId, setSelSlotId] = useState('');
   const [note, setNote]       = useState('');
   const [saving, setSaving]   = useState(false);
   const [error, setError]     = useState<string | null>(null);
@@ -85,6 +91,10 @@ export function SeedReservationFlow() {
       const d = (await res.json()) as { reservations: Reservation[] };
       setReservations(d.reservations ?? []);
     }
+    // โหลด pickup slots
+    const slotRes = await fetch('/api/member/pickup-slots');
+    const slotD = (await slotRes.json()) as { slots: Slot[] };
+    setSlots(slotD.slots ?? []);
     setLoading(false);
   }
 
@@ -111,10 +121,17 @@ export function SeedReservationFlow() {
     if (cart.length === 0 || !member?.member_id) return;
     setSaving(true); setError(null);
     const nos: string[] = [];
+    const selSlot = slots.find((s) => s.id === selSlotId);
     for (const item of cart) {
       const res = await fetch('/api/member/seed-reservation', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ member_id: member.member_id, lot_id: item.variety.lot_id, qty_reserved: item.qty, pickup_date: pickupDate || null, note: note || null }),
+        body: JSON.stringify({
+          member_id: member.member_id, lot_id: item.variety.lot_id,
+          qty_reserved: item.qty,
+          pickup_date: selSlot?.pickup_date ?? null,
+          pickup_slot_id: selSlotId || null,
+          note: note || null,
+        }),
       });
       const d = (await res.json()) as { ok?: boolean; error?: string; reservation_no?: string };
       if (!res.ok) { setError(d.error ?? 'จองไม่สำเร็จ'); setSaving(false); return; }
@@ -293,11 +310,43 @@ export function SeedReservationFlow() {
       {/* pickup date + note */}
       {varieties.length > 0 && (
         <div style={{ background: '#fff', borderRadius: 18, border: '1.5px solid #e8ede8', padding: '16px' }}>
-          <p style={{ margin: '0 0 12px', fontWeight: 700, fontSize: 15 }}>📅 นัดรับสินค้า</p>
-          <label className="reg-label">วันที่ต้องการรับสินค้า
-            <input className="reg-input" type="date" value={pickupDate} onChange={(e) => setPickupDate(e.target.value)} min={new Date().toISOString().slice(0, 10)} />
-          </label>
-          <label className="reg-label" style={{ marginTop: 8 }}>หมายเหตุ
+          <p style={{ margin: '0 0 12px', fontWeight: 700, fontSize: 15 }}>📅 เลือกรอบรับสินค้า</p>
+          {slots.length === 0 ? (
+            <div style={{ background: '#fff8e1', borderRadius: 12, padding: '12px 14px', fontSize: 14, color: '#e65100' }}>
+              ⏳ ยังไม่มีรอบรับสินค้าที่เปิด — admin จะแจ้งให้ทราบ
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {slots.map((slot) => {
+                const loc     = slot.pickup_locations?.[0];
+                const remain  = slot.capacity_qty - slot.booked_qty;
+                const selected = selSlotId === slot.id;
+                const full    = remain <= 0;
+                return (
+                  <button key={slot.id} onClick={() => !full && setSelSlotId(selected ? '' : slot.id)} disabled={full}
+                    style={{ textAlign: 'left', padding: '12px 14px', borderRadius: 14, border: `2px solid ${selected ? 'var(--primary)' : '#e4ebe4'}`, background: selected ? '#e8f5e9' : full ? '#f5f5f5' : '#fff', cursor: full ? 'not-allowed' : 'pointer', opacity: full ? 0.6 : 1 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <div>
+                        <p style={{ margin: 0, fontWeight: 800, fontSize: 14 }}>📅 {new Date(slot.pickup_date).toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                        <p style={{ margin: '2px 0 0', fontSize: 13, color: '#4a6741' }}>⏰ {slot.pickup_time}</p>
+                        <p style={{ margin: '2px 0 0', fontSize: 12, color: '#6b7280' }}>📍 {loc?.name ?? '—'}{loc?.address ? ` · ${loc.address}` : ''}</p>
+                        {slot.note && <p style={{ margin: '2px 0 0', fontSize: 12, color: '#9ca3af' }}>{slot.note}</p>}
+                      </div>
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: full ? '#c62828' : '#2e7d32' }}>{full ? 'เต็ม' : `เหลือ ${remain} ถุง`}</p>
+                        {selected && <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--primary)', fontWeight: 700 }}>✓ เลือกแล้ว</p>}
+                        {loc?.map_url && (
+                          <a href={loc.map_url} target="_blank" rel="noopener noreferrer"
+                            style={{ fontSize: 12, color: '#1565c0', textDecoration: 'none', fontWeight: 600 }}>🗺️ แผนที่</a>
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          <label className="reg-label" style={{ marginTop: 12 }}>หมายเหตุ
             <textarea className="reg-input reg-textarea" rows={2} value={note} onChange={(e) => setNote(e.target.value)} placeholder="เช่น ให้หัวหน้าทีมรับแทน..." />
           </label>
         </div>

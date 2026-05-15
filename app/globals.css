@@ -51,7 +51,7 @@ body {
   background: var(--surface);
   box-shadow: var(--shadow-2);
   border: 1px solid var(--border);
-  padding: 20px;
+  padding: 14px 16px;
   overflow: hidden;
 }
 
@@ -65,9 +65,9 @@ body {
 .mobile-shell__brand { display: inline-flex; align-items: center; gap: 8px; }
 .mobile-shell__brand img:first-child { width: var(--logo-mark-size); height: var(--logo-mark-size); }
 .mobile-shell__brand img:last-child { width: var(--logo-wordmark-width); height: auto; }
-.mobile-shell__title { margin: 12px 0 8px; font-size: 24px; line-height: 32px; }
-.mobile-shell__subtitle { margin: 0; color: var(--text-secondary); }
-.mobile-shell__content { margin-top: 16px; }
+.mobile-shell__title { margin: 8px 0 4px; font-size: 20px; line-height: 28px; }
+.mobile-shell__subtitle { margin: 0; color: var(--text-secondary); font-size: 13px; }
+.mobile-shell__content { margin-top: 12px; }
 
 .info-card { border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
 .info-card__header { display: flex; justify-content: space-between; gap: 12px; }

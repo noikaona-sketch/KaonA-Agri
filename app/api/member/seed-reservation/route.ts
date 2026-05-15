@@ -8,6 +8,7 @@ export async function POST(request: Request) {
       lot_id: string;
       qty_reserved: number;
       pickup_date?: string;
+      pickup_slot_id?: string;
       note?: string;
     };
 
@@ -16,6 +17,20 @@ export async function POST(request: Request) {
     }
 
     const s = createServerSupabaseClient();
+
+    // อัปเดต booked_qty ใน slot ถ้าเลือก slot
+    if (body.pickup_slot_id) {
+      const { data: slot } = await s.from('pickup_slots')
+        .select('booked_qty, capacity_qty, status').eq('id', body.pickup_slot_id).single();
+      if (slot) {
+        const next = (slot.booked_qty ?? 0) + body.qty_reserved;
+        await s.from('pickup_slots').update({
+          booked_qty: next,
+          status: next >= (slot.capacity_qty ?? 999) ? 'full' : slot.status,
+        }).eq('id', body.pickup_slot_id);
+      }
+    }
+
     const { data, error } = await s.rpc('create_seed_reservation', {
       p_member_id:   body.member_id,
       p_lot_id:      body.lot_id,

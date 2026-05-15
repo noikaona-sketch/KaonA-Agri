@@ -3,14 +3,16 @@
 import { useState } from 'react';
 import { AdminWebShell } from '@/shared/components/admin-web-shell';
 import { AdminSeedLots } from '@/features/admin-seed-lots/admin-seed-lots';
+import { AdminPickupSlots } from '@/features/admin-seed-lots/admin-pickup-slots';
 import { AdminSeedVarieties } from '@/features/admin-seed-varieties/admin-seed-varieties';
 import { AdminSeedSuppliers } from '@/features/admin-seed-suppliers/admin-seed-suppliers';
 import { StockMovementPanel } from '@/features/admin-stock-movements/stock-movement-panel';
 
-type Tab = 'lots' | 'movements' | 'varieties' | 'suppliers';
+type Tab = 'lots' | 'movements' | 'pickup' | 'varieties' | 'suppliers';
 const TABS: { key: Tab; icon: string; label: string }[] = [
   { key: 'lots',      icon: '🗄️', label: 'Stock LOT' },
   { key: 'movements', icon: '📊', label: 'เคลื่อนไหว' },
+  { key: 'pickup',    icon: '📅', label: 'รอบรับสินค้า' },
   { key: 'varieties', icon: '🌾', label: 'พันธุ์' },
   { key: 'suppliers', icon: '🏪', label: 'Supplier' },
 ];
@@ -31,6 +33,7 @@ export default function AdminSeedsPage() {
       </div>
       {tab === 'lots'      && <AdminSeedLots />}
       {tab === 'movements' && <StockMovementPanel />}
+      {tab === 'pickup'    && <AdminPickupSlots />}
       {tab === 'varieties' && <AdminSeedVarieties />}
       {tab === 'suppliers' && <AdminSeedSuppliers />}
     </AdminWebShell>
