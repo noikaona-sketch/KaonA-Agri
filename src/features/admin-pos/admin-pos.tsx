@@ -12,15 +12,6 @@ type PosItem = {
   unit: string; unit_price: number; qty_available: number; status: string;
 };
 
-type Member = { id: string; full_name: string; phone?: string | null };
-
-type CartItem = {
-  key: string; type: 'seed' | 'product';
-  lot_id?: string; variety_id?: string; product_id?: string;
-  name: string; lot_no?: string; category: string; unit: string;
-  unit_price: number; qty: number;
-};
-
 type Member = { id: string; full_name: string; member_number?: string; phone?: string | null };
 
 type CartItem = {
