@@ -12,8 +12,10 @@ type Variety = {
   seed_per_rai_kg: number | null; yield_per_rai: number | null;
   planting_spacing: string | null; season: string | null;
   bag_weight_kg: number; price_per_bag: number | null;
-  yield_ratio: number | null;   // กก.ผลผลิต / กก.เมล็ด
+  yield_ratio: number | null;
   planting_guide: string | null; notes: string | null;
+  mentor_name: string | null; mentor_phone: string | null;
+  planting_steps: unknown[] | null;
   active_status: string; show_to_farmer: boolean; sort_order: number;
 };
 const EMPTY = {
@@ -63,7 +65,7 @@ export function AdminSeedVarieties() {
   function startAdd() { setEditId(null); setForm(EMPTY); setShowForm(true); }
   function startEdit(v: Variety) {
     setEditId(v.id);
-    setForm({ variety_name: v.variety_name, crop_type: v.crop_type, supplier_id: v.supplier_id ?? '', days_to_harvest: String(v.days_to_harvest ?? ''), seed_per_rai_kg: String(v.seed_per_rai_kg ?? ''), yield_per_rai: String(v.yield_per_rai ?? ''), planting_spacing: v.planting_spacing ?? '', season: v.season ?? '', bag_weight_kg: String(v.bag_weight_kg), price_per_bag: String(v.price_per_bag ?? ''), yield_ratio: String(v.yield_ratio ?? 600), planting_guide: v.planting_guide ?? '', notes: v.notes ?? '', active_status: v.active_status, show_to_farmer: v.show_to_farmer, sort_order: String(v.sort_order) });
+    setForm({ variety_name: v.variety_name, crop_type: v.crop_type, supplier_id: v.supplier_id ?? '', days_to_harvest: String(v.days_to_harvest ?? ''), seed_per_rai_kg: String(v.seed_per_rai_kg ?? ''), yield_per_rai: String(v.yield_per_rai ?? ''), planting_spacing: v.planting_spacing ?? '', season: v.season ?? '', bag_weight_kg: String(v.bag_weight_kg), price_per_bag: String(v.price_per_bag ?? ''), yield_ratio: String(v.yield_ratio ?? 600), planting_guide: v.planting_guide ?? '', notes: v.notes ?? '', mentor_name: (v as Record<string,unknown>).mentor_name as string ?? '', mentor_phone: (v as Record<string,unknown>).mentor_phone as string ?? '', planting_steps_json: JSON.stringify((v as Record<string,unknown>).planting_steps ?? []), active_status: v.active_status, show_to_farmer: v.show_to_farmer, sort_order: String(v.sort_order) });
     setShowForm(true);
   }
 
