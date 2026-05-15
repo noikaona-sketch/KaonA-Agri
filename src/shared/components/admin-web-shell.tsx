@@ -16,7 +16,7 @@ const ALL_NAV: NavItem[] = [
   { label: 'เมล็ด',    href: '/admin/seeds',     icon: '🌾' },
   { label: 'ขาย',      href: '/admin/sales',     icon: '💰' },
   { label: 'คลัง',     href: '/admin/stock',     icon: '📦' },
-  { label: 'Product Master', href: '/admin/product-master', icon: '🧾' },
+  { label: 'Product Master', href: '/admin/products', icon: '🧾' },
   { label: 'รถเกี่ยว',    href: '/admin/harvest',  icon: '🚜' },
   { label: 'คะแนนบริการ', href: '/admin/ratings',  icon: '⭐' },
   { label: 'เครดิต',   href: '/admin/credit',    icon: '💳' },

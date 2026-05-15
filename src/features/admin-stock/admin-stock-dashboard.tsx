@@ -189,7 +189,7 @@ export function AdminStockDashboard() {
         <div className="kaona-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
             <p style={{ margin: 0, fontWeight: 700, fontSize: 15 }}>📥 รับเข้าสต๊อก</p>
-            <a href="/admin/product-master" className="admin-btn admin-btn--ghost" style={{ textDecoration: 'none' }}>
+            <a href="/admin/products" className="admin-btn admin-btn--ghost" style={{ textDecoration: 'none' }}>
               🧾 Product Master
             </a>
           </div>
