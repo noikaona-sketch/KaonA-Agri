@@ -161,6 +161,25 @@ export function AdminPos() {
   const [session,    setSession]    = useState<Session | null>(null);
   const [slots,      setSlots]      = useState<{ id: string; pickup_date: string; pickup_time: string; status: string; pickup_locations: { name: string; address: string | null } | null }[]>([]);
   const [selSlot,    setSelSlot]    = useState('');
+  const [reservationNo, setReservationNo] = useState('');
+  const [reservationId, setReservationId] = useState<string | null>(null);
+
+  async function loadReservationToCart() {
+    if (!reservationNo.trim()) { setNotice('❌ กรุณากรอกเลขที่การจอง'); return; }
+    const res = await fetch('/api/admin/seed-reservations?status=confirmed');
+    const payload = (await res.json()) as { items?: Array<{ id: string; reservation_no: string; product_id?: string | null; qty_reserved?: number; product_name_snapshot?: string | null }>; error?: string };
+    if (!res.ok) { setNotice(`❌ ${payload.error ?? 'โหลดรายการจองไม่สำเร็จ'}`); return; }
+    const r = (payload.items ?? []).find((x) => x.reservation_no === reservationNo.trim());
+    if (!r) { setNotice('❌ ไม่พบรายการจองที่ยืนยันแล้ว'); return; }
+    if (!r.product_id) { setNotice('❌ รายการจองนี้ยังไม่มี product_id'); return; }
+    const item = items.find((i) => i.product_id === r.product_id);
+    if (!item) { setNotice('❌ ไม่พบสินค้าในคลังที่เลือก'); return; }
+    addItem(item);
+    if ((r.qty_reserved ?? 1) > 1) updateQty(`p-${r.product_id}`, Number(r.qty_reserved ?? 1));
+    setReservationId(r.id);
+    setNotice(`✅ โหลดการจอง ${r.reservation_no} แล้ว`);
+  }
+
 
   // load warehouses + session
   useEffect(() => {
@@ -262,6 +281,8 @@ export function AdminPos() {
           unit_price:   c.unit_price,
         })),
         payment_method: payMethod,
+        source_type: reservationId ? 'reservation' : 'walk_in',
+        reservation_id: reservationId,
         paid_amount:    payMethod === 'cash' ? Number(cashReceived) : total,
         discount:       discountAmt,
       }),
@@ -271,7 +292,7 @@ export function AdminPos() {
     if (!orderRes.ok) { setNotice(`❌ ${d.error}`); return; }
 
     setReceipt({ order_no: d.order_number ?? '', total, change });
-    setCart([]); setCashReceived(''); setDiscount('0');
+    setCart([]); setCashReceived(''); setDiscount('0'); setReservationId(null); setReservationNo('');
   }
 
   // Receipt screen
@@ -368,6 +389,11 @@ export function AdminPos() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, background: '#f7faf7', borderRadius: 16, padding: 16, border: '1.5px solid #e4ebe4', overflow: 'hidden' }}>
         {/* member */}
         <MemberSearch onSelect={setMember} />
+
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <input value={reservationNo} onChange={(e) => setReservationNo(e.target.value)} placeholder="เลขที่จอง (เช่น RV-...)" style={{ flex: 1, padding: '8px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 13 }} />
+          <button onClick={loadReservationToCart} style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid #1565c0', background: '#e3f2fd', color: '#1565c0', fontWeight: 700, cursor: 'pointer' }}>โหลดจอง</button>
+        </div>
 
         {/* cart items */}
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>

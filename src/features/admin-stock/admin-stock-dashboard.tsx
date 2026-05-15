@@ -38,7 +38,7 @@ export function AdminStockDashboard() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [stock,      setStock]      = useState<StockItem[]>([]);
   const [movements,  setMovements]  = useState<Movement[]>([]);
-  const [products,   setProducts]   = useState<{ id: string; name: string; unit: string; category: string }[]>([]);
+  const [products,   setProducts]   = useState<{ id: string; name: string; unit: string; category: string; product_type?: string | null }[]>([]);
   const [loading,    setLoading]    = useState(true);
   const [selWH,      setSelWH]      = useState('');
   const [tab,        setTab]        = useState<'stock' | 'receive' | 'transfer' | 'movements'>('stock');
@@ -198,13 +198,13 @@ export function AdminStockDashboard() {
             <label className="reg-label">ประเภทสินค้า <span className="reg-required">*</span>
               <select className="reg-input" value={rf.product_type} onChange={(e) => setRf((p) => ({ ...p, product_type: e.target.value, product_id: '' }))}>
                 <option value="">เลือกประเภท</option>
-                {[...new Set(products.map((p) => p.category || 'อื่นๆ'))].map((cat) => <option key={cat} value={cat}>{cat}</option>)}
+                {[...new Set(products.map((p) => p.product_type || 'other'))].map((cat) => <option key={cat} value={cat}>{cat}</option>)}
               </select>
             </label>
             <label className="reg-label">สินค้า <span className="reg-required">*</span>
               <select className="reg-input" value={rf.product_id} onChange={(e) => { const id=e.target.value; const prod=products.find((x)=>x.id===id); setRf((p)=>({ ...p, product_id:id, unit:prod?.unit ?? 'ชิ้น' })); }}>
                 <option value="">เลือกสินค้า</option>
-                {products.filter((p) => (p.category || 'อื่นๆ') === rf.product_type).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                {products.filter((p) => (p.product_type || 'other') === rf.product_type).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
             </label>
             <label className="reg-label">จำนวน <span className="reg-required">*</span>
