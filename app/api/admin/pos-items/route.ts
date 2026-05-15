@@ -28,7 +28,7 @@ export async function GET(request: Request) {
   type ProductRow = { id: string; name: string; category: string; unit: string; price_per_unit: number; product_type: string; seed_variety_id: string | null; seed_varieties: SeedVariety | null };
   type StockRow = { id: string; qty_on_hand: number; qty_available: number; unit: string; products: ProductRow | null };
 
-  const allItems = ((stockData ?? []) as StockRow[])
+  const allItems = ((stockData ?? []) as unknown as StockRow[])
     .filter((s) => !!s.products)
     .map((s) => {
       const p  = s.products!;
