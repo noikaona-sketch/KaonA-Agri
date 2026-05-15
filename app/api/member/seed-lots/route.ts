@@ -26,10 +26,6 @@ export async function GET() {
       planting_guide: p.planting_guide,
       image_url: p.image_url,
       product_id: p.id,
-      lot_id: p.id,
-      lot_no: '-',
-      quantity_balance: 9999,
-      lot_status: p.is_active ? 'available' : 'inactive',
     })),
   });
 }

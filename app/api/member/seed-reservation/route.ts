@@ -70,8 +70,8 @@ export async function POST(request: Request) {
       variety_id:      null,
       variety_name:    varietyName,
       supplier_name:   supplierName,
-      lot_id:          null,   // จะ assign จริงตอน admin ยืนยัน
-      lot_no:          'TBD',
+      lot_id:          null,
+      lot_no:          null,
       qty_reserved:    body.qty_reserved,
       price_per_bag:   pricePerBag,
       pickup_date:     body.pickup_date ?? null,

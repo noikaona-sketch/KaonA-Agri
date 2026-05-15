@@ -12,7 +12,6 @@ type Variety = {
   notes: string | null; planting_guide: string | null;
   image_url: string | null;
   product_id?: string;
-  lot_id: string; lot_no: string; quantity_balance: number; lot_status: string;
 };
 type CartItem = { variety: Variety; qty: number };
 type Slot = {
@@ -69,7 +68,7 @@ export function SeedReservationFlow() {
     setVarieties((lotsRes.lots ?? []).map((l) => ({
       id:               l.id as string,
       variety_name:     l.variety_name as string,
-      supplier_name:    ((l.seed_suppliers as { supplier_name: string } | null)?.supplier_name ?? '—'),
+      supplier_name:    (l.supplier_name as string) ?? '—',
       price_per_bag:    (l.price_per_bag as number) ?? 0,
       bag_weight_kg:    (l.bag_weight_kg as number) ?? 1,
       crop_type:        (l.crop_type as string) ?? '',
@@ -77,10 +76,7 @@ export function SeedReservationFlow() {
       notes:            (l.notes as string | null) ?? null,
       planting_guide:   (l.planting_guide as string | null) ?? null,
       image_url:        (l.image_url as string | null) ?? null,
-      lot_id:           l.id as string,   // ใช้ variety id แทน lot
-      lot_no:           '',
-      quantity_balance: 9999,             // ไม่จำกัด — admin จัดการ stock
-      lot_status:       'available',
+      product_id:       (l.product_id as string | undefined) ?? (l.id as string),
     })));
     setReservations(resRes.reservations ?? []);
     setSlots(slotRes.slots ?? []);
@@ -91,15 +87,15 @@ export function SeedReservationFlow() {
 
   // ── cart ─────────────────────────────────────────────────────────
   function setQty(variety: Variety, qty: number) {
-    const safe = Math.max(0, Math.min(variety.quantity_balance, qty));
+    const safe = Math.max(0, qty);
     setCart((prev) => {
-      const exists = prev.find((c) => c.variety.lot_id === variety.lot_id);
-      if (safe === 0) return prev.filter((c) => c.variety.lot_id !== variety.lot_id);
-      if (exists) return prev.map((c) => c.variety.lot_id === variety.lot_id ? { ...c, qty: safe } : c);
+      const exists = prev.find((c) => c.variety.id === variety.id);
+      if (safe === 0) return prev.filter((c) => c.variety.id !== variety.id);
+      if (exists) return prev.map((c) => c.variety.id === variety.id ? { ...c, qty: safe } : c);
       return [...prev, { variety, qty: safe }];
     });
   }
-  function getQty(lotId: string) { return cart.find((c) => c.variety.lot_id === lotId)?.qty ?? 0; }
+  function getQty(varietyId: string) { return cart.find((c) => c.variety.id === varietyId)?.qty ?? 0; }
 
   const totalBaht = cart.reduce((s, c) => s + c.qty * c.variety.price_per_bag, 0);
   const totalBags = cart.reduce((s, c) => s + c.qty, 0);
@@ -211,7 +207,8 @@ export function SeedReservationFlow() {
               ))}
             </div>
             <p style={{ margin: '8px 0 0', fontSize: 12, color: '#6b7280' }}>
-              🏪 {r.supplier_name ?? '—'} · LOT: {r.lot_no}
+              🏪 {r.supplier_name ?? '—'}
+              {r.lot_no && !['TBD', '-'].includes(r.lot_no) ? ` · LOT: ${r.lot_no}` : ''}
               {r.pickup_date ? ` · 📅 ${new Date(r.pickup_date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}` : ''}
             </p>
           </div>
@@ -242,10 +239,10 @@ export function SeedReservationFlow() {
 
       {/* variety list */}
       {filtered.map((v) => {
-        const qty     = getQty(v.lot_id);
-        const expanded = expandedId === v.lot_id;
+        const qty     = getQty(v.id);
+        const expanded = expandedId === v.id;
         return (
-          <div key={v.lot_id} style={{ background: '#fff', borderRadius: 18, border: `1.5px solid ${qty > 0 ? '#a5d6a7' : '#e8ede8'}`, boxShadow: qty > 0 ? '0 2px 12px rgba(46,125,50,0.1)' : '0 1px 4px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+          <div key={v.id} style={{ background: '#fff', borderRadius: 18, border: `1.5px solid ${qty > 0 ? '#a5d6a7' : '#e8ede8'}`, boxShadow: qty > 0 ? '0 2px 12px rgba(46,125,50,0.1)' : '0 1px 4px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
             {/* main row */}
             <div style={{ padding: '14px 16px', display: 'flex', gap: 12, alignItems: 'center' }}>
               <div style={{ width: 52, height: 52, borderRadius: 14, background: '#e8f5e9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, flexShrink: 0, overflow: 'hidden' }}>
@@ -277,7 +274,7 @@ export function SeedReservationFlow() {
             </div>
 
             {/* expand detail */}
-            <button onClick={() => setExpandedId(expanded ? null : v.lot_id)}
+            <button onClick={() => setExpandedId(expanded ? null : v.id)}
               style={{ width: '100%', padding: '8px 16px', background: '#f7faf7', border: 'none', borderTop: '1px solid #f0f4f0', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, color: '#4a6741', fontWeight: 600 }}>
               <span>ℹ️ รายละเอียดพันธุ์{v.days_to_harvest ? ` · ${v.days_to_harvest} วัน` : ''}</span>
               <span style={{ fontSize: 16, transform: expanded ? 'rotate(180deg)' : 'none', transition: '0.2s' }}>⌄</span>
@@ -285,15 +282,14 @@ export function SeedReservationFlow() {
 
             {expanded && (
               <div style={{ padding: '12px 16px', background: '#f7faf7', borderTop: '1px solid #eee', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8 }}>
                   {[
                     { label: 'อายุปลูก', value: v.days_to_harvest ? `${v.days_to_harvest} วัน` : '—' },
                     { label: 'น้ำหนัก/ถุง', value: `${v.bag_weight_kg} กก.` },
-                    { label: 'LOT', value: v.lot_no },
                   ].map((s) => (
                     <div key={s.label} style={{ background: '#fff', borderRadius: 10, padding: '8px', textAlign: 'center' }}>
                       <p style={{ margin: 0, fontSize: 11, color: '#6b7280' }}>{s.label}</p>
-                      <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 700, fontFamily: s.label === 'LOT' ? 'monospace' : 'inherit' }}>{s.value}</p>
+                      <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 700 }}>{s.value}</p>
                     </div>
                   ))}
                 </div>
