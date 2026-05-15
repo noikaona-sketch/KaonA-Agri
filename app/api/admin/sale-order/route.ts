@@ -70,10 +70,12 @@ export async function POST(request: Request) {
         booked_qty: s.from('pickup_slots').select('booked_qty'),
       }).eq('id', body.pickup_slot_id);
       // อัปเดต booked_qty แบบ safe
-      await s.rpc('increment_pickup_booked', {
-        p_slot_id: body.pickup_slot_id,
-        p_qty:     totalQty,
-      }).maybeSingle().catch(() => null);
+      try {
+        await s.rpc('increment_pickup_booked', {
+          p_slot_id: body.pickup_slot_id,
+          p_qty:     totalQty,
+        }).maybeSingle();
+      } catch { /* RPC ไม่มีก็ไม่เป็นไร */ }
     }
 
     return NextResponse.json({ ok: true, order_number, total });
