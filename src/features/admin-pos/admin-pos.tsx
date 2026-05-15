@@ -5,10 +5,20 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 // ── Types ────────────────────────────────────────────────────────────
 type Warehouse = { id: string; code: string; name: string };
 
-type StockItem = {
-  id: string; qty_on_hand: number; qty_available: number; unit: string;
-  products:       { id: string; name: string; category: string; unit: string; price_per_unit: number } | null;
-  seed_varieties: { id: string; variety_name: string; crop_type: string; price_per_bag: number; bag_weight_kg: number } | null;
+type PosItem = {
+  id: string; type: 'seed' | 'product';
+  variety_id?: string; lot_id?: string; lot_no?: string; product_id?: string;
+  name: string; category: string; supplier: string; image_url: string | null;
+  unit: string; unit_price: number; qty_available: number; status: string;
+};
+
+type Member = { id: string; full_name: string; phone?: string | null };
+
+type CartItem = {
+  key: string; type: 'seed' | 'product';
+  lot_id?: string; variety_id?: string; product_id?: string;
+  name: string; lot_no?: string; category: string; unit: string;
+  unit_price: number; qty: number;
 };
 
 type Member = { id: string; full_name: string; member_number?: string; phone?: string | null };
@@ -75,7 +85,7 @@ function MemberSearch({ onSelect }: { onSelect: (m: Member | null) => void }) {
 export function AdminPos() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [selWH,      setSelWH]      = useState('');
-  const [stock,      setStock]      = useState<StockItem[]>([]);
+  const [items,      setItems]      = useState<PosItem[]>([]);
   const [loading,    setLoading]    = useState(true);
   const [search,     setSearch]     = useState('');
   const [catFilter,  setCatFilter]  = useState('ทั้งหมด');
@@ -104,33 +114,30 @@ export function AdminPos() {
     })();
   }, []);
 
-  // load stock เมื่อ warehouse เปลี่ยน
+  // load items เมื่อ warehouse เปลี่ยน
   useEffect(() => {
     if (!selWH) return;
     setLoading(true);
-    void fetch(`/api/admin/stock-movements/summary?warehouse_id=${selWH}`)
+    void fetch(`/api/admin/pos-items?warehouse_id=${selWH}`)
       .then((r) => r.json())
-      .then((d: { stock?: StockItem[] }) => {
-        setStock(d.stock ?? []);
+      .then((d: { items?: PosItem[] }) => {
+        setItems(d.items ?? []);
         setLoading(false);
       });
   }, [selWH]);
 
   // cart helpers
-  const addItem = useCallback((item: StockItem) => {
-    const isVariety = !!item.seed_varieties;
-    const id        = isVariety ? item.seed_varieties!.id : item.products!.id;
-    const name      = isVariety ? item.seed_varieties!.variety_name : item.products!.name;
-    const price     = isVariety ? item.seed_varieties!.price_per_bag : item.products!.price_per_unit;
-    const unit      = item.unit ?? (isVariety ? 'ถุง' : item.products!.unit);
-    const cat       = isVariety ? item.seed_varieties!.crop_type : item.products!.category;
-    const key       = isVariety ? `v-${id}` : `p-${id}`;
+  const addItem = useCallback((item: PosItem) => {
+    const key = item.type === 'seed' ? `s-${item.lot_id}` : `p-${item.product_id}`;
     setCart((prev) => {
       const exists = prev.find((c) => c.key === key);
       if (exists) return prev.map((c) => c.key === key ? { ...c, qty: c.qty + 1 } : c);
       return [...prev, {
-        key, name, category: cat, unit, unit_price: price, qty: 1,
-        ...(isVariety ? { variety_id: id } : { product_id: id }),
+        key, type: item.type, name: item.name,
+        category: item.category, unit: item.unit, unit_price: item.unit_price,
+        qty: 1,
+        ...(item.type === 'seed'    ? { lot_id: item.lot_id, variety_id: item.variety_id, lot_no: item.lot_no } : {}),
+        ...(item.type === 'product' ? { product_id: item.product_id } : {}),
       }];
     });
   }, []);
@@ -144,15 +151,11 @@ export function AdminPos() {
   const change      = payMethod === 'cash' ? Math.max(0, (Number(cashReceived) || 0) - total) : 0;
 
   // categories
-  const categories = ['ทั้งหมด', ...new Set(stock.map((s) =>
-    s.seed_varieties ? s.seed_varieties.crop_type || 'เมล็ดพันธุ์' : s.products?.category ?? 'อื่นๆ'
-  ))];
+  const categories = ['ทั้งหมด', ...new Set(items.map((s) => s.category))];
 
-  const filtered = stock.filter((s) => {
-    const name = s.seed_varieties?.variety_name ?? s.products?.name ?? '';
-    const cat  = s.seed_varieties ? (s.seed_varieties.crop_type || 'เมล็ดพันธุ์') : (s.products?.category ?? 'อื่นๆ');
-    const matchSearch = !search || name.toLowerCase().includes(search.toLowerCase());
-    const matchCat    = catFilter === 'ทั้งหมด' || cat === catFilter;
+  const filtered = items.filter((s) => {
+    const matchSearch = !search || s.name.toLowerCase().includes(search.toLowerCase()) || (s.lot_no ?? '').includes(search);
+    const matchCat    = catFilter === 'ทั้งหมด' || s.category === catFilter;
     return matchSearch && matchCat;
   });
 
@@ -164,23 +167,38 @@ export function AdminPos() {
     }
     setSubmitting(true); setNotice(null);
 
-    // บันทึก stock movements สำหรับแต่ละรายการ
+    // บันทึก stock movements + ตัดสต๊อก lot
     for (const item of cart) {
-      await fetch('/api/admin/stock-movements', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          movement_type:  mode === 'sale' ? 'sale' : 'reservation',
-          warehouse_id:   selWH,
-          product_id:     item.product_id  ?? null,
-          variety_id:     item.variety_id  ?? null,
-          product_name:   item.name,
-          unit:           item.unit,
-          qty:            item.qty,
-          unit_price:     item.unit_price,
-          ref_type:       mode === 'sale' ? 'pos_sale' : 'pos_reserve',
-          note:           `สมาชิก: ${member.full_name}`,
-        }),
-      });
+      if (item.type === 'seed' && item.lot_id) {
+        // ตัดสต๊อกจาก seed_stock_lots โดยตรง
+        await fetch('/api/admin/stock-movements', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            movement_type: mode === 'sale' ? 'sale' : 'reservation',
+            warehouse_id:  selWH,
+            variety_id:    item.variety_id ?? null,
+            product_name:  item.name,
+            unit: item.unit, qty: item.qty,
+            unit_price: item.unit_price,
+            ref_type: mode === 'sale' ? 'pos_sale' : 'pos_reserve',
+            note: `LOT: ${item.lot_no ?? ''} | สมาชิก: ${member.full_name}`,
+          }),
+        });
+      } else {
+        await fetch('/api/admin/stock-movements', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            movement_type: mode === 'sale' ? 'sale' : 'reservation',
+            warehouse_id:  selWH,
+            product_id:    item.product_id ?? null,
+            product_name:  item.name,
+            unit: item.unit, qty: item.qty,
+            unit_price: item.unit_price,
+            ref_type: mode === 'sale' ? 'pos_sale' : 'pos_reserve',
+            note: `สมาชิก: ${member.full_name}`,
+          }),
+        });
+      }
     }
 
     // สร้าง sale order
@@ -272,19 +290,23 @@ export function AdminPos() {
           {loading && <p style={{ color: '#9ca3af', gridColumn: '1/-1' }}>กำลังโหลด…</p>}
           {!loading && filtered.length === 0 && <p style={{ color: '#9ca3af', gridColumn: '1/-1' }}>ไม่พบสินค้า</p>}
           {filtered.map((s) => {
-            const isVariety = !!s.seed_varieties;
-            const name      = isVariety ? s.seed_varieties!.variety_name : s.products!.name;
-            const price     = isVariety ? s.seed_varieties!.price_per_bag : s.products!.price_per_unit;
-            const unit      = s.unit ?? (isVariety ? 'ถุง' : s.products!.unit);
-            const avail     = s.qty_available;
-            const inCart    = cart.find((c) => c.key === (isVariety ? `v-${s.seed_varieties!.id}` : `p-${s.products!.id}`));
+            const key    = s.type === 'seed' ? `s-${s.lot_id}` : `p-${s.product_id}`;
+            const inCart = cart.find((c) => c.key === key);
             return (
-              <button key={s.id} onClick={() => addItem(s)} disabled={avail <= 0}
-                style={{ padding: '12px 10px', borderRadius: 14, border: `2px solid ${inCart ? 'var(--primary)' : '#e4ebe4'}`, background: inCart ? '#e8f5e9' : avail <= 0 ? '#f5f5f5' : '#fff', cursor: avail <= 0 ? 'not-allowed' : 'pointer', textAlign: 'left', position: 'relative', opacity: avail <= 0 ? 0.5 : 1, transition: 'all 0.1s' }}>
+              <button key={s.id} onClick={() => addItem(s)} disabled={s.qty_available <= 0}
+                style={{ padding: '12px 10px', borderRadius: 14, border: `2px solid ${inCart ? 'var(--primary)' : '#e4ebe4'}`, background: inCart ? '#e8f5e9' : s.qty_available <= 0 ? '#f5f5f5' : '#fff', cursor: s.qty_available <= 0 ? 'not-allowed' : 'pointer', textAlign: 'left', position: 'relative', opacity: s.qty_available <= 0 ? 0.5 : 1 }}>
                 {inCart && <span style={{ position: 'absolute', top: 6, right: 8, background: 'var(--primary)', color: '#fff', borderRadius: '50%', width: 20, height: 20, fontSize: 11, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{inCart.qty}</span>}
-                <p style={{ margin: '0 0 4px', fontWeight: 800, fontSize: 14, lineHeight: 1.2 }}>{name}</p>
-                <p style={{ margin: 0, fontSize: 16, fontWeight: 900, color: '#c62828' }}>{price.toLocaleString()} ฿</p>
-                <p style={{ margin: '2px 0 0', fontSize: 11, color: avail <= 5 ? '#c62828' : '#9ca3af' }}>{unit} · เหลือ {avail.toLocaleString()}</p>
+                {s.image_url
+                  ? <img src={s.image_url} alt={s.name} style={{ width: '100%', height: 60, objectFit: 'cover', borderRadius: 8, marginBottom: 6 }} />
+                  : <div style={{ width: '100%', height: 40, background: '#e8f5e9', borderRadius: 8, marginBottom: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>🌾</div>
+                }
+                <p style={{ margin: '0 0 2px', fontWeight: 800, fontSize: 13, lineHeight: 1.2 }}>{s.name}</p>
+                {s.lot_no && <p style={{ margin: '0 0 2px', fontSize: 10, color: '#9ca3af', fontFamily: 'monospace' }}>{s.lot_no}</p>}
+                {s.supplier && <p style={{ margin: '0 0 2px', fontSize: 11, color: '#6b7280' }}>{s.supplier}</p>}
+                <p style={{ margin: 0, fontSize: 15, fontWeight: 900, color: '#c62828' }}>{(s.unit_price ?? 0).toLocaleString()} ฿</p>
+                <p style={{ margin: '2px 0 0', fontSize: 11, color: s.qty_available <= 5 ? '#c62828' : '#9ca3af' }}>
+                  {s.unit} · เหลือ {s.qty_available.toLocaleString()}
+                </p>
               </button>
             );
           })}
