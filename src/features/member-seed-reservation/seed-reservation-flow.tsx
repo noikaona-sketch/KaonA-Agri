@@ -65,19 +65,19 @@ export function SeedReservationFlow() {
     ]);
 
     setVarieties((lotsRes.lots ?? []).map((l) => ({
-      id:               l.variety_id as string,
+      id:               l.id as string,
       variety_name:     l.variety_name as string,
       supplier_name:    ((l.seed_suppliers as { supplier_name: string } | null)?.supplier_name ?? '—'),
-      price_per_bag:    l.price_per_bag as number,
-      bag_weight_kg:    l.bag_weight_kg as number,
-      crop_type:        ((l.seed_varieties as { crop_type: string } | null)?.crop_type ?? ''),
-      days_to_harvest:  ((l.seed_varieties as { days_to_harvest: number } | null)?.days_to_harvest ?? null),
-      notes:            ((l.seed_varieties as { notes: string } | null)?.notes ?? null),
-      planting_guide:   ((l.seed_varieties as { planting_guide: string } | null)?.planting_guide ?? null),
-      lot_id:           l.id as string,
-      lot_no:           l.lot_no as string,
-      quantity_balance: l.quantity_balance as number,
-      lot_status:       l.status as string,
+      price_per_bag:    (l.price_per_bag as number) ?? 0,
+      bag_weight_kg:    (l.bag_weight_kg as number) ?? 1,
+      crop_type:        (l.crop_type as string) ?? '',
+      days_to_harvest:  (l.days_to_harvest as number | null) ?? null,
+      notes:            (l.notes as string | null) ?? null,
+      planting_guide:   (l.planting_guide as string | null) ?? null,
+      lot_id:           l.id as string,   // ใช้ variety id แทน lot
+      lot_no:           '',
+      quantity_balance: 9999,             // ไม่จำกัด — admin จัดการ stock
+      lot_status:       'available',
     })));
     setReservations(resRes.reservations ?? []);
     setSlots(slotRes.slots ?? []);
@@ -112,9 +112,14 @@ export function SeedReservationFlow() {
       const res = await fetch('/api/member/seed-reservation', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          member_id: member.member_id, lot_id: item.variety.lot_id,
+          member_id:    member.member_id,
+          variety_id:   item.variety.id,
+          variety_name: item.variety.variety_name,
+          supplier_name: item.variety.supplier_name,
           qty_reserved: item.qty,
-          pickup_date: selSlot?.pickup_date ?? null,
+          price_per_bag: item.variety.price_per_bag,
+          bag_weight_kg: item.variety.bag_weight_kg,
+          pickup_date:   selSlot?.pickup_date ?? null,
           pickup_slot_id: selSlotId || null,
           note: note || null,
         }),
@@ -246,8 +251,7 @@ export function SeedReservationFlow() {
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
                   <span style={{ fontSize: 16, fontWeight: 900, color: '#c62828' }}>{v.price_per_bag.toLocaleString()} บาท</span>
                   <span style={{ fontSize: 12, color: '#6b7280' }}>{v.bag_weight_kg}กก./ถุง</span>
-                  <span style={{ fontSize: 12, color: v.quantity_balance <= 5 ? '#c62828' : '#9ca3af' }}>เหลือ {v.quantity_balance} ถุง</span>
-                  {v.lot_status === 'low' && <span style={{ fontSize: 10, background: '#ffebee', color: '#c62828', padding: '2px 6px', borderRadius: 8, fontWeight: 700 }}>ใกล้หมด</span>}
+                  <span style={{ fontSize: 12, color: '#9ca3af' }}>{v.days_to_harvest ? `${v.days_to_harvest} วัน` : ''}</span>
                 </div>
               </div>
               {/* qty controls */}
