@@ -357,6 +357,9 @@ export function AdminStockDashboard() {
               <button className="admin-modal__close" onClick={() => setEditingReceive(null)}>×</button>
             </div>
             <div className="admin-modal__body">
+              <p style={{ margin: '0 0 8px', fontSize: 12, color: '#6b7280' }}>
+                ระบบจะไม่แก้รายการเดิม แต่จะสร้างรายการปรับแก้เพื่อเก็บประวัติ
+              </p>
               <label className="reg-label">จำนวนใหม่
                 <input className="reg-input" type="number" value={editingReceive.qty} onChange={(e) => setEditingReceive((p) => p ? { ...p, qty: e.target.value } : p)} />
               </label>
