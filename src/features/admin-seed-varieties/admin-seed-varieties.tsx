@@ -22,6 +22,7 @@ const EMPTY = {
   planting_spacing: '', season: '', bag_weight_kg: '1',
   price_per_bag: '', yield_ratio: '600',
   planting_guide: '', notes: '',
+  mentor_name: '', mentor_phone: '', planting_steps_json: '[]',
   active_status: 'active', show_to_farmer: true, sort_order: '0',
 } as {
   variety_name: string; crop_type: string; supplier_id: string;
@@ -29,6 +30,7 @@ const EMPTY = {
   planting_spacing: string; season: string; bag_weight_kg: string;
   price_per_bag: string; yield_ratio: string;
   planting_guide: string; notes: string;
+  mentor_name: string; mentor_phone: string; planting_steps_json: string;
   active_status: string; show_to_farmer: boolean; sort_order: string;
 };
 
@@ -82,10 +84,10 @@ export function AdminSeedVarieties() {
       yield_ratio: form.yield_ratio ? Number(form.yield_ratio) : 600,
       planting_guide: form.planting_guide || null,
       notes: form.notes || null,
-      mentor_name:  (form as Record<string,string>).mentor_name  || null,
-      mentor_phone: (form as Record<string,string>).mentor_phone || null,
+      mentor_name:  form.mentor_name  || null,
+      mentor_phone: form.mentor_phone || null,
       planting_steps: (() => {
-        try { return JSON.parse((form as Record<string,string>).planting_steps_json ?? '[]'); }
+        try { return JSON.parse(form.planting_steps_json ?? '[]'); }
         catch { return []; }
       })(),
       active_status: form.active_status,
@@ -168,8 +170,8 @@ export function AdminSeedVarieties() {
                 </label>
                 <label className="reg-label" style={{ gridColumn: '1/-1' }}>พี่เลี้ยง / เจ้าหน้าที่ดูแล
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                    <input className="reg-input" value={(form as Record<string,string>).mentor_name ?? ''} onChange={(e) => setForm((p) => ({ ...p, mentor_name: e.target.value }))} placeholder="ชื่อพี่เลี้ยง" />
-                    <input className="reg-input" type="tel" value={(form as Record<string,string>).mentor_phone ?? ''} onChange={(e) => setForm((p) => ({ ...p, mentor_phone: e.target.value }))} placeholder="เบอร์โทร" />
+                    <input className="reg-input" value={form.mentor_name ?? ''} onChange={(e) => setForm((p) => ({ ...p, mentor_name: e.target.value }))} placeholder="ชื่อพี่เลี้ยง" />
+                    <input className="reg-input" type="tel" value={form.mentor_phone ?? ''} onChange={(e) => setForm((p) => ({ ...p, mentor_phone: e.target.value }))} placeholder="เบอร์โทร" />
                   </div>
                 </label>
                 <label className="reg-label" style={{ gridColumn: '1/-1' }}>คู่มือการปลูก
@@ -177,7 +179,7 @@ export function AdminSeedVarieties() {
                 </label>
                 <label className="reg-label" style={{ gridColumn: '1/-1' }}>ขั้นตอนการปลูก (JSON)
                   <textarea className="reg-input reg-textarea" rows={4}
-                    value={(form as Record<string,string>).planting_steps_json ?? '[]'}
+                    value={form.planting_steps_json ?? '[]'}
                     onChange={(e) => setForm((p) => ({ ...p, planting_steps_json: e.target.value }))}
                     placeholder='[{"day":"วันที่ 0","title":"เตรียมดิน","description":"...","icon":"🌱"}]' />
                   <span className="reg-hint">format: JSON array [{day, title, description, icon}]</span>
