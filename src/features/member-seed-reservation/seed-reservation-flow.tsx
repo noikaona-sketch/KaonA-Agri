@@ -11,6 +11,7 @@ type Variety = {
   crop_type: string; days_to_harvest: number | null;
   notes: string | null; planting_guide: string | null;
   image_url: string | null;
+  product_id?: string;
   lot_id: string; lot_no: string; quantity_balance: number; lot_status: string;
 };
 type CartItem = { variety: Variety; qty: number };
@@ -115,6 +116,7 @@ export function SeedReservationFlow() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           member_id:    member.member_id,
+          product_id:   item.variety.product_id ?? item.variety.id,
           variety_id:   item.variety.id,
           variety_name: item.variety.variety_name,
           supplier_name: item.variety.supplier_name,

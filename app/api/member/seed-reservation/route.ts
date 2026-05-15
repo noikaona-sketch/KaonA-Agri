@@ -5,7 +5,8 @@ export async function POST(request: Request) {
   try {
     const body = (await request.json()) as {
       member_id: string;
-      variety_id: string;
+      product_id?: string;
+      variety_id?: string;
       variety_name: string;
       supplier_name?: string;
       qty_reserved: number;
@@ -16,7 +17,8 @@ export async function POST(request: Request) {
       note?: string;
     };
 
-    if (!body.member_id || !body.variety_id || !body.qty_reserved) {
+    const productId = body.product_id ?? body.variety_id;
+    if (!body.member_id || !productId || !body.qty_reserved) {
       return NextResponse.json({ error: 'ข้อมูลไม่ครบ' }, { status: 400 });
     }
 
@@ -27,6 +29,16 @@ export async function POST(request: Request) {
     }
 
     const s = createServerSupabaseClient();
+    const { data: product, error: productError } = await s
+      .from('products')
+      .select('id,name,seed_variety,brand,price_per_unit,bag_weight_kg,product_type,is_active,deleted_at')
+      .eq('id', productId)
+      .maybeSingle();
+
+    if (productError) return NextResponse.json({ error: productError.message }, { status: 500 });
+    if (!product || product.deleted_at || !product.is_active || product.product_type !== 'seed') {
+      return NextResponse.json({ error: 'ไม่พบสินค้าเมล็ดพันธุ์ใน Product Master' }, { status: 400 });
+    }
 
     // อัปเดต booked_qty ใน slot
     if (body.pickup_slot_id) {
@@ -46,18 +58,22 @@ export async function POST(request: Request) {
     const seq  = Date.now() % 100000;
     const reservation_no = `RV-${year}-${String(seq).padStart(5, '0')}`;
 
-    const totalAmount = body.qty_reserved * body.price_per_bag;
+    const varietyName = product.seed_variety ?? body.variety_name ?? product.name;
+    const supplierName = body.supplier_name ?? product.brand ?? null;
+    const pricePerBag = Number(product.price_per_unit ?? body.price_per_bag ?? 0);
+    const totalAmount = body.qty_reserved * pricePerBag;
 
     const { error } = await s.from('seed_reservations').insert({
       reservation_no,
       member_id:       body.member_id,
-      variety_id:      body.variety_id,
-      variety_name:    body.variety_name,
-      supplier_name:   body.supplier_name ?? null,
+      product_id:      product.id,
+      variety_id:      null,
+      variety_name:    varietyName,
+      supplier_name:   supplierName,
       lot_id:          null,   // จะ assign จริงตอน admin ยืนยัน
       lot_no:          'TBD',
       qty_reserved:    body.qty_reserved,
-      price_per_bag:   body.price_per_bag,
+      price_per_bag:   pricePerBag,
       pickup_date:     body.pickup_date ?? null,
       pickup_slot_id:  body.pickup_slot_id ?? null,
       note:            body.note ?? null,
