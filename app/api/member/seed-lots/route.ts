@@ -5,7 +5,7 @@ export async function GET() {
   const s = createServerSupabaseClient();
   const { data, error } = await s
     .from('seed_varieties')
-    .select('id,variety_name,crop_type,days_to_harvest,bag_weight_kg,price_per_bag,yield_ratio,notes,planting_guide,season,planting_spacing,supplier_id,seed_suppliers(supplier_name)')
+    .select('id,variety_name,crop_type,days_to_harvest,bag_weight_kg,price_per_bag,yield_ratio,notes,planting_guide,season,planting_spacing,image_url,supplier_id,seed_suppliers(supplier_name)')
     .eq('active_status', 'active')
     .eq('show_to_farmer', true)
     .order('sort_order')

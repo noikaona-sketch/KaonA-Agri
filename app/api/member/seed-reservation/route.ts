@@ -20,6 +20,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'ข้อมูลไม่ครบ' }, { status: 400 });
     }
 
+    // DEV BYPASS — mock member ไม่บันทึกจริง
+    if (body.member_id === 'dev-mock-member-id') {
+      const year = new Date().getFullYear() + 543;
+      return NextResponse.json({ ok: true, reservation_no: `RV-${year}-99999`, total_amount: body.qty_reserved * body.price_per_bag });
+    }
+
     const s = createServerSupabaseClient();
 
     // อัปเดต booked_qty ใน slot

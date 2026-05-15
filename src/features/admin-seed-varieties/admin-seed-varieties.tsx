@@ -16,6 +16,7 @@ type Variety = {
   planting_guide: string | null; notes: string | null;
   mentor_name: string | null; mentor_phone: string | null;
   planting_steps: unknown[] | null;
+  image_url: string | null;
   active_status: string; show_to_farmer: boolean; sort_order: number;
 };
 const EMPTY = {
@@ -25,6 +26,7 @@ const EMPTY = {
   price_per_bag: '', yield_ratio: '600',
   planting_guide: '', notes: '',
   mentor_name: '', mentor_phone: '', planting_steps_json: '[]',
+  image_url: '',
   active_status: 'active', show_to_farmer: true, sort_order: '0',
 } as {
   variety_name: string; crop_type: string; supplier_id: string;
@@ -33,6 +35,7 @@ const EMPTY = {
   price_per_bag: string; yield_ratio: string;
   planting_guide: string; notes: string;
   mentor_name: string; mentor_phone: string; planting_steps_json: string;
+  image_url: string;
   active_status: string; show_to_farmer: boolean; sort_order: string;
 };
 
@@ -65,7 +68,7 @@ export function AdminSeedVarieties() {
   function startAdd() { setEditId(null); setForm(EMPTY); setShowForm(true); }
   function startEdit(v: Variety) {
     setEditId(v.id);
-    setForm({ variety_name: v.variety_name, crop_type: v.crop_type, supplier_id: v.supplier_id ?? '', days_to_harvest: String(v.days_to_harvest ?? ''), seed_per_rai_kg: String(v.seed_per_rai_kg ?? ''), yield_per_rai: String(v.yield_per_rai ?? ''), planting_spacing: v.planting_spacing ?? '', season: v.season ?? '', bag_weight_kg: String(v.bag_weight_kg), price_per_bag: String(v.price_per_bag ?? ''), yield_ratio: String(v.yield_ratio ?? 600), planting_guide: v.planting_guide ?? '', notes: v.notes ?? '', mentor_name: (v as Record<string,unknown>).mentor_name as string ?? '', mentor_phone: (v as Record<string,unknown>).mentor_phone as string ?? '', planting_steps_json: JSON.stringify((v as Record<string,unknown>).planting_steps ?? []), active_status: v.active_status, show_to_farmer: v.show_to_farmer, sort_order: String(v.sort_order) });
+    setForm({ variety_name: v.variety_name, crop_type: v.crop_type, supplier_id: v.supplier_id ?? '', days_to_harvest: String(v.days_to_harvest ?? ''), seed_per_rai_kg: String(v.seed_per_rai_kg ?? ''), yield_per_rai: String(v.yield_per_rai ?? ''), planting_spacing: v.planting_spacing ?? '', season: v.season ?? '', bag_weight_kg: String(v.bag_weight_kg), price_per_bag: String(v.price_per_bag ?? ''), yield_ratio: String(v.yield_ratio ?? 600), planting_guide: v.planting_guide ?? '', notes: v.notes ?? '', mentor_name: v.mentor_name as string ?? '', mentor_phone: v.mentor_phone as string ?? '', planting_steps_json: JSON.stringify((v as Record<string,unknown>).planting_steps ?? []), image_url: v.image_url ?? '', active_status: v.active_status, show_to_farmer: v.show_to_farmer, sort_order: String(v.sort_order) });
     setShowForm(true);
   }
 
@@ -88,6 +91,7 @@ export function AdminSeedVarieties() {
       notes: form.notes || null,
       mentor_name:  form.mentor_name  || null,
       mentor_phone: form.mentor_phone || null,
+      image_url:    form.image_url    || null,
       planting_steps: (() => {
         try { return JSON.parse(form.planting_steps_json ?? '[]'); }
         catch { return []; }
@@ -174,6 +178,37 @@ export function AdminSeedVarieties() {
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                     <input className="reg-input" value={form.mentor_name ?? ''} onChange={(e) => setForm((p) => ({ ...p, mentor_name: e.target.value }))} placeholder="ชื่อพี่เลี้ยง" />
                     <input className="reg-input" type="tel" value={form.mentor_phone ?? ''} onChange={(e) => setForm((p) => ({ ...p, mentor_phone: e.target.value }))} placeholder="เบอร์โทร" />
+                  </div>
+                </label>
+                <label className="reg-label" style={{ gridColumn: '1/-1' }}>รูปภาพเมล็ดพันธุ์
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginTop: 4 }}>
+                    {form.image_url && (
+                      <img src={form.image_url} alt="preview"
+                        style={{ width: 80, height: 80, borderRadius: 12, objectFit: 'cover', border: '1.5px solid #a5d6a7', flexShrink: 0 }} />
+                    )}
+                    <div style={{ flex: 1 }}>
+                      <input type="file" accept="image/*"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const fd = new FormData();
+                          fd.append('file', file);
+                          fd.append('bucket', 'seed-images');
+                          fd.append('folder', 'varieties');
+                          const res = await fetch('/api/admin/upload-image', { method: 'POST', body: fd });
+                          const d = (await res.json()) as { url?: string; error?: string };
+                          if (d.url) setForm((p) => ({ ...p, image_url: d.url! }));
+                          else setNotice(`❌ อัปโหลดรูปไม่สำเร็จ: ${d.error}`);
+                        }}
+                        style={{ display: 'block', fontSize: 13, color: '#4a6741' }} />
+                      {form.image_url && (
+                        <button type="button" onClick={() => setForm((p) => ({ ...p, image_url: '' }))}
+                          style={{ marginTop: 4, fontSize: 12, color: '#c62828', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                          ✕ ลบรูป
+                        </button>
+                      )}
+                      <p style={{ margin: '4px 0 0', fontSize: 11, color: '#9ca3af' }}>JPG/PNG ขนาดไม่เกิน 5MB</p>
+                    </div>
                   </div>
                 </label>
                 <label className="reg-label" style={{ gridColumn: '1/-1' }}>คู่มือการปลูก

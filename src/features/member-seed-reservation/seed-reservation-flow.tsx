@@ -10,6 +10,7 @@ type Variety = {
   price_per_bag: number; bag_weight_kg: number;
   crop_type: string; days_to_harvest: number | null;
   notes: string | null; planting_guide: string | null;
+  image_url: string | null;
   lot_id: string; lot_no: string; quantity_balance: number; lot_status: string;
 };
 type CartItem = { variety: Variety; qty: number };
@@ -74,6 +75,7 @@ export function SeedReservationFlow() {
       days_to_harvest:  (l.days_to_harvest as number | null) ?? null,
       notes:            (l.notes as string | null) ?? null,
       planting_guide:   (l.planting_guide as string | null) ?? null,
+      image_url:        (l.image_url as string | null) ?? null,
       lot_id:           l.id as string,   // ใช้ variety id แทน lot
       lot_no:           '',
       quantity_balance: 9999,             // ไม่จำกัด — admin จัดการ stock
@@ -244,7 +246,11 @@ export function SeedReservationFlow() {
           <div key={v.lot_id} style={{ background: '#fff', borderRadius: 18, border: `1.5px solid ${qty > 0 ? '#a5d6a7' : '#e8ede8'}`, boxShadow: qty > 0 ? '0 2px 12px rgba(46,125,50,0.1)' : '0 1px 4px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
             {/* main row */}
             <div style={{ padding: '14px 16px', display: 'flex', gap: 12, alignItems: 'center' }}>
-              <div style={{ width: 52, height: 52, borderRadius: 14, background: '#e8f5e9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, flexShrink: 0 }}>🌾</div>
+              <div style={{ width: 52, height: 52, borderRadius: 14, background: '#e8f5e9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, flexShrink: 0, overflow: 'hidden' }}>
+                {v.image_url
+                  ? <img src={v.image_url} alt={v.variety_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : '🌾'}
+              </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ margin: 0, fontWeight: 800, fontSize: 15 }}>{v.variety_name}</p>
                 <p style={{ margin: '2px 0', fontSize: 12, color: '#6b7280' }}>🏪 {v.supplier_name}</p>
