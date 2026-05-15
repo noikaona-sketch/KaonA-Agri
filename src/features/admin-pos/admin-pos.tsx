@@ -41,14 +41,10 @@ export function AdminPos() {
 
   useEffect(() => {
     void (async () => {
-      const s = createSupabaseBrowserClient();
-      const { data, error: err } = await s
-        .from('products')
-        .select('id,name,brand,category,unit,price_per_unit,stock_qty,is_low_stock,is_active,crop_type,seed_variety')
-        .is('deleted_at', null).eq('is_active', true)
-        .order('sort_order').order('name');
-      if (err) setError(err.message);
-      else setProducts((data as Product[]) ?? []);
+      const res = await fetch('/api/admin/products');
+      const d = (await res.json()) as { products?: Product[]; error?: string };
+      if (!res.ok) setError(d.error ?? 'โหลดสินค้าไม่สำเร็จ');
+      else setProducts(d.products ?? []);
       setLoading(false);
     })();
   }, []);
@@ -70,21 +66,22 @@ export function AdminPos() {
   async function handleSubmit() {
     if (!member || cart.length === 0) return;
     setSubmitting(true); setNotice(null);
-    const s = createSupabaseBrowserClient();
-    const items = cart.map((i) => ({ product_id: i.product_id, qty: i.qty, unit_price: i.unit_price }));
-    const { data, error: err } = await s.rpc('create_sale_order', {
-      p_member_id: member.id,
-      p_order_type: orderType,
-      p_items: items,
-      p_payment_method: paymentMethod,
-      p_paid_amount: orderType === 'sale' ? cart.reduce((s, i) => s + i.qty * i.unit_price, 0) - (Number(discount) || 0) : 0,
-      p_discount: Number(discount) || 0,
-      p_pickup_date: pickupDate || null,
+    const total = cart.reduce((s, i) => s + i.qty * i.unit_price, 0);
+    const res = await fetch('/api/admin/sale-order', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        member_id: member.id, order_type: orderType,
+        items: cart.map((i) => ({ product_id: i.product_id, qty: i.qty, unit_price: i.unit_price })),
+        payment_method: paymentMethod,
+        paid_amount: orderType === 'sale' ? total - (Number(discount) || 0) : 0,
+        discount: Number(discount) || 0,
+        pickup_date: pickupDate || null,
+      }),
     });
+    const d = (await res.json()) as OrderResult & { error?: string };
     setSubmitting(false);
-    if (err) { setNotice(`❌ ${err.message}`); return; }
-    const result = data as OrderResult;
-    setReceipt({ ...result, member, items: [...cart], paymentMethod });
+    if (!res.ok) { setNotice(`❌ ${d.error}`); return; }
+    setReceipt({ ...d, member, items: [...cart], paymentMethod });
     setCart([]); setDiscount(''); setPickupDate('');
   }
 
