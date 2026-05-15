@@ -93,7 +93,7 @@ export function AdminPos() {
   const [submitting, setSubmitting] = useState(false);
   const [receipt,    setReceipt]    = useState<{ order_no: string; total: number; change: number } | null>(null);
   const [session,    setSession]    = useState<Session | null>(null);
-  const [slots,      setSlots]      = useState<{ id: string; pickup_date: string; pickup_time: string; pickup_locations: { name: string; address: string | null } | null }[]>([]);
+  const [slots,      setSlots]      = useState<{ id: string; pickup_date: string; pickup_time: string; status: string; pickup_locations: { name: string; address: string | null } | null }[]>([]);
   const [selSlot,    setSelSlot]    = useState('');
 
   // load warehouses + session
@@ -102,7 +102,7 @@ export function AdminPos() {
       const [whRes, sessRes, slotRes] = await Promise.all([
         fetch('/api/admin/warehouses').then((r) => r.json()),
         fetch('/api/admin/cashier?status=open').then((r) => r.json()),
-        fetch('/api/member/pickup-slots').then((r) => r.json()),
+        fetch('/api/admin/pickup-slots-all').then((r) => r.json()),
       ]);
       const whs: Warehouse[] = whRes.warehouses ?? [];
       setWarehouses(whs);
@@ -391,9 +391,10 @@ export function AdminPos() {
                   <option value="">— ไม่ระบุรอบ —</option>
                   {slots.map((sl) => {
                     const loc = sl.pickup_locations;
+                    const statusLabel = sl.status === 'open' ? '🟢' : sl.status === 'full' ? '🔴' : '🟡';
                     return (
                       <option key={sl.id} value={sl.id}>
-                        {new Date(sl.pickup_date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })} {sl.pickup_time} · {loc?.name ?? ''}
+                        {statusLabel} {new Date(sl.pickup_date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })} {sl.pickup_time} · {loc?.name ?? ''}
                       </option>
                     );
                   })}
