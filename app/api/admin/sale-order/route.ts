@@ -83,6 +83,8 @@ export async function POST(request: Request) {
       } catch { /* RPC ไม่มีก็ไม่เป็นไร */ }
     }
 
+    // Backward compatibility: reservation status update still targets legacy seed_reservations table.
+    // Active sale/order path is product_id-based (no lot_id/lot_no/variety_id in new path).
     if (body.source_type === 'reservation' && body.reservation_id) {
       await s.from('seed_reservations').update({ status: 'converted' }).eq('id', body.reservation_id);
     }

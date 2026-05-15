@@ -173,7 +173,7 @@ export function AdminPos() {
     if (!r) { setNotice('❌ ไม่พบรายการจองที่ยืนยันแล้ว'); return; }
     if (!r.product_id) { setNotice('❌ รายการจองนี้ยังไม่มี product_id'); return; }
     const item = items.find((i) => i.product_id === r.product_id);
-    if (!item) { setNotice('❌ ไม่พบสินค้าในคลังที่เลือก'); return; }
+    if (!item) { setNotice('❌ สินค้านี้ไม่มีในคลังที่เลือก กรุณาเปลี่ยนคลังหรือรับสต๊อกเข้าคลังก่อน'); return; }
     addItem(item);
     if ((r.qty_reserved ?? 1) > 1) updateQty(`p-${r.product_id}`, Number(r.qty_reserved ?? 1));
     setReservationId(r.id);
