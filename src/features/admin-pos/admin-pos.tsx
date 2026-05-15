@@ -40,7 +40,7 @@ function MemberSearch({ onSelect }: { onSelect: (m: Member | null) => void }) {
 
   useEffect(() => {
     clearTimeout(timer.current);
-    if (q.length < 2) { setResults([]); setOpen(false); return; }
+    if (q.length < 1) { setResults([]); setOpen(false); return; }
     setLoading(true);
     timer.current = setTimeout(async () => {
       const res = await fetch(`/api/admin/members?q=${encodeURIComponent(q)}&limit=8`);

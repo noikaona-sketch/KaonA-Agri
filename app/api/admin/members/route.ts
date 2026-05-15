@@ -15,7 +15,7 @@ export async function GET(request: Request) {
       .limit(limit);
 
     if (search) {
-      q = q.or(`full_name.ilike.%${search}%,phone.ilike.%${search}%`);
+      q = q.or(`full_name.ilike.*${search}*,phone.ilike.*${search}*`);
     }
     if (status) {
       q = q.eq('status', status);
