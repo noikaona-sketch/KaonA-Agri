@@ -187,7 +187,12 @@ export function AdminStockDashboard() {
       {/* RECEIVE tab */}
       {tab === 'receive' && (
         <div className="kaona-card">
-          <p style={{ margin: '0 0 14px', fontWeight: 700, fontSize: 15 }}>📥 รับเข้าสต๊อก</p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
+            <p style={{ margin: 0, fontWeight: 700, fontSize: 15 }}>📥 รับเข้าสต๊อก</p>
+            <a href="/admin/product-master" className="admin-btn admin-btn--ghost" style={{ textDecoration: 'none' }}>
+              🧾 Product Master
+            </a>
+          </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <label className="reg-label">คลัง <span className="reg-required">*</span>
               <select className="reg-input" value={rf.warehouse_id} onChange={(e) => setRf((p) => ({ ...p, warehouse_id: e.target.value }))}>
