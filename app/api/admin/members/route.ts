@@ -10,12 +10,12 @@ export async function GET(request: Request) {
 
     const s = createServerSupabaseClient();
     let q = s.from('members')
-      .select('id, full_name, phone, status, created_at')
+      .select('id, full_name, phone, status, citizen_id_masked, created_at')
       .order('full_name')
       .limit(limit);
 
     if (search) {
-      q = q.or(`full_name.ilike.*${search}*,phone.ilike.*${search}*`);
+      q = q.or(`full_name.ilike.*${search}*,phone.ilike.*${search}*,citizen_id_masked.ilike.*${search}*`);
     }
     if (status) {
       q = q.eq('status', status);

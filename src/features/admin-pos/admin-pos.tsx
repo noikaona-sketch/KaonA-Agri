@@ -12,7 +12,7 @@ type PosItem = {
   unit: string; unit_price: number; qty_available: number; status: string;
 };
 
-type Member = { id: string; full_name: string; member_number?: string; phone?: string | null };
+type Member = { id: string; full_name: string; member_number?: string; phone?: string | null; citizen_id_masked?: string | null };
 
 type CartItem = {
   key: string;
@@ -32,41 +32,110 @@ type Session = { id: string; session_no: string; opening_cash: number; status: s
 
 // ── Member search ────────────────────────────────────────────────────
 function MemberSearch({ onSelect }: { onSelect: (m: Member | null) => void }) {
-  const [q, setQ]           = useState('');
+  const [q, setQ]             = useState('');
   const [results, setResults] = useState<Member[]>([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen]       = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout>>();
+  const [scanMode, setScanMode] = useState(false);
+  const [selected, setSelected] = useState<Member | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const timer    = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
     clearTimeout(timer.current);
     if (q.length < 1) { setResults([]); setOpen(false); return; }
     setLoading(true);
     timer.current = setTimeout(async () => {
-      const res = await fetch(`/api/admin/members?q=${encodeURIComponent(q)}&limit=8`);
+      const res = await fetch(`/api/admin/members?q=${encodeURIComponent(q)}&limit=10&status=approved`);
       const d = (await res.json()) as { members?: Member[] };
       setResults(d.members ?? []);
       setOpen(true);
       setLoading(false);
-    }, 300);
+    }, 200);
   }, [q]);
+
+  function pick(m: Member) {
+    setSelected(m); onSelect(m);
+    setQ(''); setResults([]); setOpen(false);
+  }
+
+  function clear() {
+    setSelected(null); onSelect(null); setQ('');
+  }
+
+  // QR scan handler — รับ barcode/QR จาก input แบบ hidden
+  function handleQrInput(e: React.ChangeEvent<HTMLInputElement>) {
+    const val = e.target.value.trim();
+    if (!val) return;
+    // ค้นหาทันที
+    setQ(val);
+    e.target.value = '';
+    setScanMode(false);
+  }
+
+  if (selected) return (
+    <div style={{ background: '#e8f5e9', borderRadius: 12, padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div>
+        <p style={{ margin: 0, fontWeight: 800, fontSize: 15 }}>👤 {selected.full_name}</p>
+        <p style={{ margin: '2px 0 0', fontSize: 12, color: '#4a6741' }}>
+          {selected.phone ?? ''}
+          {selected.citizen_id_masked ? ` · ${selected.citizen_id_masked}` : ''}
+        </p>
+      </div>
+      <button onClick={clear} style={{ background: 'none', border: 'none', color: '#c62828', cursor: 'pointer', fontSize: 20, padding: '0 4px' }}>✕</button>
+    </div>
+  );
 
   return (
     <div style={{ position: 'relative' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, border: '1.5px solid #e0e0e0', borderRadius: 10, padding: '8px 12px', background: '#fff' }}>
-        <span>👤</span>
-        <input value={q} onChange={(e) => setQ(e.target.value)}
-          placeholder="พิมพ์ชื่อหรือรหัสสมาชิก…"
-          style={{ border: 'none', outline: 'none', flex: 1, fontSize: 14 }} />
-        {loading && <span style={{ fontSize: 12, color: '#9ca3af' }}>…</span>}
+      <div style={{ display: 'flex', gap: 6 }}>
+        {/* input ค้นหา */}
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, border: `1.5px solid ${open ? 'var(--primary)' : '#e0e0e0'}`, borderRadius: 10, padding: '8px 12px', background: '#fff', transition: 'border-color 0.15s' }}>
+          <span style={{ fontSize: 16 }}>👤</span>
+          <input ref={inputRef} value={q} onChange={(e) => setQ(e.target.value)}
+            placeholder="ชื่อ / หมายเลขบัตร / เบอร์โทร…"
+            style={{ border: 'none', outline: 'none', flex: 1, fontSize: 14 }}
+            onFocus={() => q.length >= 1 && setOpen(true)}
+            onBlur={() => setTimeout(() => setOpen(false), 200)} />
+          {loading && <span style={{ fontSize: 12, color: '#9ca3af', flexShrink: 0 }}>⏳</span>}
+          {q && <button onClick={() => setQ('')} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: 16, padding: 0, flexShrink: 0 }}>✕</button>}
+        </div>
+        {/* QR button */}
+        <button onClick={() => { setScanMode(!scanMode); setTimeout(() => document.getElementById('qr-input')?.focus(), 100); }}
+          title="สแกน QR / บาร์โค้ด"
+          style={{ padding: '8px 12px', borderRadius: 10, border: `1.5px solid ${scanMode ? 'var(--primary)' : '#e0e0e0'}`, background: scanMode ? '#e8f5e9' : '#fff', cursor: 'pointer', fontSize: 20, color: scanMode ? 'var(--primary)' : '#666', flexShrink: 0 }}>
+          📷
+        </button>
       </div>
-      {open && results.length > 0 && (
-        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #e0e0e0', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 100, maxHeight: 280, overflowY: 'auto', marginTop: 4 }}>
+
+      {/* QR hidden input */}
+      {scanMode && (
+        <div style={{ marginTop: 6, background: '#e8f5e9', borderRadius: 10, padding: '10px 14px', fontSize: 13, color: '#2e7d32' }}>
+          <p style={{ margin: '0 0 6px', fontWeight: 700 }}>📷 พร้อมสแกน QR / บาร์โค้ด</p>
+          <input id="qr-input" autoFocus onChange={handleQrInput}
+            placeholder="วางหน้ากล้องหรือเสียบ barcode reader…"
+            style={{ width: '100%', padding: '6px 10px', borderRadius: 8, border: '1px solid #a5d6a7', fontSize: 14 }} />
+          <p style={{ margin: '4px 0 0', fontSize: 11, color: '#4a6741' }}>รองรับ LINE QR, บาร์โค้ดบัตร, หมายเลขสมาชิก</p>
+        </div>
+      )}
+
+      {/* dropdown results */}
+      {open && (
+        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1.5px solid var(--primary)', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 200, maxHeight: 320, overflowY: 'auto', marginTop: 4 }}>
+          {results.length === 0 && !loading && (
+            <p style={{ padding: '14px 16px', margin: 0, color: '#9ca3af', fontSize: 13 }}>ไม่พบสมาชิก "{q}"</p>
+          )}
           {results.map((m) => (
-            <button key={m.id} onClick={() => { onSelect(m); setQ(m.full_name); setOpen(false); }}
-              style={{ width: '100%', textAlign: 'left', padding: '10px 14px', border: 'none', background: 'none', cursor: 'pointer', borderBottom: '1px solid #f5f5f5', fontSize: 14 }}>
-              <span style={{ fontWeight: 700 }}>{m.full_name}</span>
-              <span style={{ color: '#6b7280', fontSize: 12, marginLeft: 8 }}>{m.phone ?? ''}</span>
+            <button key={m.id} onMouseDown={() => pick(m)}
+              style={{ width: '100%', textAlign: 'left', padding: '10px 16px', border: 'none', background: 'none', cursor: 'pointer', borderBottom: '1px solid #f0f4f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <p style={{ margin: 0, fontWeight: 700, fontSize: 14 }}>{m.full_name}</p>
+                <p style={{ margin: '1px 0 0', fontSize: 12, color: '#6b7280' }}>
+                  {m.phone ?? ''}
+                  {m.citizen_id_masked ? ` · 🪪 ${m.citizen_id_masked}` : ''}
+                </p>
+              </div>
+              <span style={{ fontSize: 18, color: 'var(--primary)', flexShrink: 0 }}>›</span>
             </button>
           ))}
         </div>
@@ -323,15 +392,6 @@ export function AdminPos() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, background: '#f7faf7', borderRadius: 16, padding: 16, border: '1.5px solid #e4ebe4', overflow: 'hidden' }}>
         {/* member */}
         <MemberSearch onSelect={setMember} />
-        {member && (
-          <div style={{ background: '#e8f5e9', borderRadius: 10, padding: '8px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <p style={{ margin: 0, fontWeight: 700, fontSize: 14 }}>{member.full_name}</p>
-              <p style={{ margin: 0, fontSize: 12, color: '#4a6741' }}>{member.phone ?? ''}</p>
-            </div>
-            <button onClick={() => setMember(null)} style={{ background: 'none', border: 'none', color: '#c62828', cursor: 'pointer', fontSize: 18 }}>✕</button>
-          </div>
-        )}
 
         {/* cart items */}
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
