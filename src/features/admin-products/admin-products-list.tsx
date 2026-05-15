@@ -15,6 +15,7 @@ type Product = {
   is_active: boolean; is_visible_to_members: boolean;
   crop_type: string | null; seed_variety: string | null;
   days_to_harvest: number | null;
+  bag_weight_kg: number | null;
 };
 
 const CAT_ICON: Record<string, string> = { seed: '🌾', fertilizer: '🧪', pesticide: '💊', equipment: '🔧', other: '📦' };
@@ -34,7 +35,7 @@ export function AdminProductsList() {
     const s = createSupabaseBrowserClient();
     const { data, error: err } = await s
       .from('products')
-      .select('id,name,brand,category,unit,price_per_unit,stock_qty,min_stock_alert,is_low_stock,is_active,is_visible_to_members,crop_type,seed_variety,days_to_harvest')
+      .select('id,name,brand,category,unit,price_per_unit,stock_qty,min_stock_alert,is_low_stock,is_active,is_visible_to_members,crop_type,seed_variety,days_to_harvest,bag_weight_kg')
       .is('deleted_at', null)
       .order('sort_order').order('category').order('name')
       .limit(300);
@@ -105,6 +106,7 @@ export function AdminProductsList() {
                   <td style={{ fontSize: 13, color: '#6b7280' }}>
                     {p.crop_type ?? '—'} {p.seed_variety ? `(${p.seed_variety})` : ''}
                     {p.days_to_harvest ? <span style={{ display: 'block', fontSize: 11 }}>{p.days_to_harvest} วัน</span> : null}
+                    {p.bag_weight_kg ? <span style={{ display: 'block', fontSize: 11 }}>น้ำหนักถุง {p.bag_weight_kg} กก.</span> : null}
                   </td>
                   <td style={{ textAlign: 'center' }}>{p.is_visible_to_members ? '👁️' : '—'}</td>
                   <td>

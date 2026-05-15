@@ -19,6 +19,10 @@ type ProductDraft = {
   product_type: ProductType;
   unit: string;
   price_per_unit: string;
+  crop_type: string;
+  seed_variety: string;
+  days_to_harvest: string;
+  bag_weight_kg: string;
   is_active: boolean;
 };
 
@@ -28,6 +32,10 @@ const EMPTY: ProductDraft = {
   product_type: 'seed',
   unit: 'kg',
   price_per_unit: '',
+  crop_type: '',
+  seed_variety: '',
+  days_to_harvest: '',
+  bag_weight_kg: '',
   is_active: true,
 };
 
@@ -48,6 +56,10 @@ export function ProductFormModal({ product, onClose, onSaved }: Props) {
         product_type: (String(product.product_type ?? PRODUCT_TYPE_BY_CATEGORY[category]) as ProductType),
         unit: String(product.unit ?? 'kg'),
         price_per_unit: String(product.price_per_unit ?? ''),
+        crop_type: String(product.crop_type ?? ''),
+        seed_variety: String(product.seed_variety ?? ''),
+        days_to_harvest: String(product.days_to_harvest ?? ''),
+        bag_weight_kg: String(product.bag_weight_kg ?? ''),
         is_active: Boolean(product.is_active ?? true),
       });
     }
@@ -64,6 +76,10 @@ export function ProductFormModal({ product, onClose, onSaved }: Props) {
       product_type: draft.product_type,
       unit: draft.unit,
       price_per_unit: Number(draft.price_per_unit),
+      crop_type: draft.crop_type.trim() || null,
+      seed_variety: draft.seed_variety.trim() || null,
+      days_to_harvest: draft.days_to_harvest ? Number(draft.days_to_harvest) : null,
+      bag_weight_kg: draft.bag_weight_kg ? Number(draft.bag_weight_kg) : null,
       is_active: draft.is_active,
     };
 
@@ -121,6 +137,18 @@ export function ProductFormModal({ product, onClose, onSaved }: Props) {
               <select className="reg-input" value={draft.unit} onChange={(e) => setDraft((p) => ({ ...p, unit: e.target.value }))}>
                 <option value="kg">กิโลกรัม (kg)</option><option value="g">กรัม (g)</option><option value="bag">ถุง/ซอง</option><option value="bottle">ขวด</option><option value="box">กล่อง</option><option value="liter">ลิตร</option><option value="piece">ชิ้น</option>
               </select>
+            </label>
+            <label className="reg-label">ชนิดพืช
+              <input className="reg-input" value={draft.crop_type} onChange={(e) => setDraft((p) => ({ ...p, crop_type: e.target.value }))} placeholder="เช่น ข้าวโพด" />
+            </label>
+            <label className="reg-label">สายพันธุ์เมล็ด
+              <input className="reg-input" value={draft.seed_variety} onChange={(e) => setDraft((p) => ({ ...p, seed_variety: e.target.value }))} placeholder="เช่น 789" />
+            </label>
+            <label className="reg-label">อายุเก็บเกี่ยว (วัน)
+              <input className="reg-input" type="number" min="0" step="1" value={draft.days_to_harvest} onChange={(e) => setDraft((p) => ({ ...p, days_to_harvest: e.target.value }))} placeholder="เช่น 110" />
+            </label>
+            <label className="reg-label">น้ำหนักต่อถุง (กก.)
+              <input className="reg-input" type="number" min="0" step="0.01" value={draft.bag_weight_kg} onChange={(e) => setDraft((p) => ({ ...p, bag_weight_kg: e.target.value }))} placeholder="เช่น 1" />
             </label>
           </div>
           <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 14, cursor: 'pointer', marginTop: 10 }}>

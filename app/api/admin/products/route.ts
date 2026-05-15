@@ -27,7 +27,7 @@ export async function GET() {
   const s = createServerSupabaseClient();
   const { data, error } = await s
     .from('products')
-    .select('id,name,brand,category,product_type,unit,price_per_unit,stock_qty,is_active,crop_type,seed_variety,sort_order')
+    .select('id,name,brand,category,product_type,unit,price_per_unit,stock_qty,is_active,crop_type,seed_variety,days_to_harvest,bag_weight_kg,sort_order')
     .is('deleted_at', null)
     .order('sort_order')
     .order('name');
@@ -44,6 +44,10 @@ export async function POST(req: NextRequest) {
     product_type: toValidProductType(body.product_type, category),
     unit: String(body.unit ?? 'piece'),
     price_per_unit: Number(body.price_per_unit ?? 0),
+    crop_type: body.crop_type ? String(body.crop_type).trim() : null,
+    seed_variety: body.seed_variety ? String(body.seed_variety).trim() : null,
+    days_to_harvest: body.days_to_harvest ? Number(body.days_to_harvest) : null,
+    bag_weight_kg: body.bag_weight_kg ? Number(body.bag_weight_kg) : null,
     is_active: Boolean(body.is_active ?? true),
   };
   if (!payload.name) return NextResponse.json({ error: 'name is required' }, { status: 400 });
@@ -65,6 +69,10 @@ export async function PATCH(req: NextRequest) {
     product_type: toValidProductType(body.product_type, category),
     unit: String(body.unit ?? 'piece'),
     price_per_unit: Number(body.price_per_unit ?? 0),
+    crop_type: body.crop_type ? String(body.crop_type).trim() : null,
+    seed_variety: body.seed_variety ? String(body.seed_variety).trim() : null,
+    days_to_harvest: body.days_to_harvest ? Number(body.days_to_harvest) : null,
+    bag_weight_kg: body.bag_weight_kg ? Number(body.bag_weight_kg) : null,
     is_active: Boolean(body.is_active ?? true),
   };
 
