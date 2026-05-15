@@ -4,33 +4,57 @@ import { createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const warehouseId = searchParams.get('warehouse_id') ?? '';
+  const mode        = searchParams.get('mode') ?? 'sale';
+
   const s = createServerSupabaseClient();
 
-  const [prodsRes, stockRes] = await Promise.all([
-    s.from('products').select('id,name,category,unit,price_per_unit,is_active').is('deleted_at', null).eq('is_active', true).order('sort_order'),
-    warehouseId
-      ? s.from('product_stock').select('product_id,qty_available').eq('warehouse_id', warehouseId).not('product_id','is',null)
-      : Promise.resolve({ data: [] }),
-  ]);
+  let stockQuery = s.from('product_stock')
+    .select(`
+      id, qty_on_hand, qty_available, qty_reserved, unit,
+      products(
+        id, name, category, unit, price_per_unit,
+        product_type, seed_variety_id,
+        seed_varieties(variety_name, crop_type, days_to_harvest, image_url, mentor_name)
+      )
+    `)
+    .not('product_id', 'is', null)
+    .gt('qty_available', 0);
 
-  const stockMap = new Map(
-    ((stockRes as { data: { product_id: string; qty_available: number }[] | null }).data ?? [])
-      .map((ps) => [ps.product_id, ps.qty_available])
-  );
+  if (warehouseId) stockQuery = stockQuery.eq('warehouse_id', warehouseId);
 
-  const items = (prodsRes.data ?? []).map((p) => ({
-    id: p.id,
-    type: 'product',
-    product_id: p.id,
-    name: p.name,
-    category: p.category ?? 'อื่นๆ',
-    supplier: '',
-    image_url: null,
-    unit: p.unit ?? 'ชิ้น',
-    unit_price: p.price_per_unit,
-    qty_available: stockMap.get(p.id) ?? 0,
-    status: 'available',
-  }));
+  const { data: stockData } = await stockQuery;
+
+  type SeedVariety = { variety_name: string; crop_type: string; days_to_harvest: number | null; image_url: string | null; mentor_name: string | null };
+  type ProductRow = { id: string; name: string; category: string; unit: string; price_per_unit: number; product_type: string; seed_variety_id: string | null; seed_varieties: SeedVariety | null };
+  type StockRow = { id: string; qty_on_hand: number; qty_available: number; unit: string; products: ProductRow | null };
+
+  const allItems = ((stockData ?? []) as StockRow[])
+    .filter((s) => !!s.products)
+    .map((s) => {
+      const p  = s.products!;
+      const sv = p.seed_varieties;
+      return {
+        id:            s.id,
+        product_id:    p.id,
+        name:          p.name,
+        category:      p.category ?? p.product_type,
+        product_type:  p.product_type,
+        unit:          s.unit || p.unit || 'ชิ้น',
+        unit_price:    p.price_per_unit,
+        qty_available: s.qty_available,
+        qty_on_hand:   s.qty_on_hand,
+        variety_name:    sv?.variety_name    ?? null,
+        crop_type:       sv?.crop_type       ?? null,
+        days_to_harvest: sv?.days_to_harvest ?? null,
+        image_url:       sv?.image_url       ?? null,
+        mentor_name:     sv?.mentor_name     ?? null,
+        seed_variety_id: p.seed_variety_id   ?? null,
+      };
+    });
+
+  const items = mode === 'reservation'
+    ? allItems.filter((i) => i.product_type === 'seed')
+    : allItems;
 
   return NextResponse.json({ items });
 }
