@@ -10,23 +10,23 @@ import { iconPaths } from '@/shared/design/icon-tokens';
 const NAV_STYLE = {
   background: 'linear-gradient(180deg, #1e7a32 0%, #0f4f1f 100%)',
   border: 0,
-  borderRadius: 18,
-  boxShadow: '0 14px 34px rgba(15, 79, 31, 0.28)',
-  padding: 10,
+  borderRadius: 16,
+  boxShadow: '0 8px 24px rgba(15, 79, 31, 0.28)',
+  padding: '6px 4px',
 } as const;
 
 function getTabStyle(isActive: boolean) {
   return {
-    minHeight: 62,
+    minHeight: 52,
     display: 'grid',
     placeItems: 'center',
-    gap: 3,
-    padding: '7px 2px',
+    gap: 2,
+    padding: '5px 2px',
     textDecoration: 'none',
-    borderRadius: 14,
+    borderRadius: 12,
     background: isActive ? '#FFFFFF' : 'transparent',
     color: isActive ? '#2E7D32' : '#FFFFFF',
-    boxShadow: isActive ? '0 8px 20px rgba(0, 0, 0, 0.18)' : 'none',
+    boxShadow: isActive ? '0 4px 12px rgba(0,0,0,0.15)' : 'none',
     fontWeight: 700,
   } as const;
 }
@@ -36,7 +36,7 @@ function NavIcon({ iconKey }: { iconKey: string }) {
   const isEmoji = /\p{Emoji}/u.test(iconKey) && !['member','field','service','admin'].includes(iconKey);
   if (isEmoji) {
     return (
-      <span style={{ display: 'block', lineHeight: 1, fontSize: 22, textAlign: 'center' }} aria-hidden="true">
+      <span style={{ display: 'block', lineHeight: 1, fontSize: 20, textAlign: 'center' }} aria-hidden="true">
         {iconKey}
       </span>
     );
@@ -86,9 +86,7 @@ export function MobileBottomNav() {
             aria-current={isActive ? 'page' : undefined}
           >
             <NavIcon iconKey={tab.iconKey} />
-            <span
-              style={{ display: 'block', fontSize: 11, lineHeight: 1.15, whiteSpace: 'nowrap' }}
-            >
+            <span style={{ display: 'block', fontSize: 10, lineHeight: 1.2, whiteSpace: 'nowrap' }}>
               {tab.label}
             </span>
           </Link>

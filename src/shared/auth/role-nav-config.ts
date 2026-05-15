@@ -9,7 +9,7 @@ export type NavTab = {
 };
 
 export type RoleNavConfig = {
-  tabs: readonly [NavTab, NavTab, NavTab, NavTab];
+  tabs: readonly NavTab[];
 };
 
 // ยังไม่มี member — สมัครสมาชิก
@@ -35,10 +35,11 @@ const PENDING_NAV: RoleNavConfig = {
 const ROLE_NAV_MAP: Record<AppRole, RoleNavConfig> = {
   farmer: {
     tabs: [
-      { label: 'หน้าหลัก',  href: '/',                        iconKey: '🏠' },
-      { label: 'รอบปลูก',   href: '/planting-cycles',         iconKey: '🌱' },
-      { label: 'จองเมล็ด',  href: '/service/reservations',    iconKey: '🌾' },
-      { label: 'โปรไฟล์',  href: '/profile',                  iconKey: '👤' },
+      { label: 'หน้าแรก',  href: '/',                        iconKey: '🏠' },
+      { label: 'จองเมล็ด', href: '/service/reservations',    iconKey: '🌾' },
+      { label: 'แจ้งปลูก', href: '/planting-cycles',         iconKey: '🌱' },
+      { label: 'ไม่เผา',   href: '/no-burn',                 iconKey: '🚫' },
+      { label: 'ราคา',      href: '/planting-cycles',         iconKey: '💲' },
     ],
   },
   leader: {
