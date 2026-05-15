@@ -184,7 +184,7 @@ export function AdminSeedVarieties() {
                     value={form.planting_steps_json ?? '[]'}
                     onChange={(e) => setForm((p) => ({ ...p, planting_steps_json: e.target.value }))}
                     placeholder='[{"day":"วันที่ 0","title":"เตรียมดิน","description":"...","icon":"🌱"}]' />
-                  <span className="reg-hint">format: JSON array [{day, title, description, icon}]</span>
+                  <span className="reg-hint">format: JSON array [{'{'}"day","title","description","icon"{'}'}]</span>
                 </label>
                 <label className="reg-label" style={{ gridColumn: '1/-1' }}>หมายเหตุ
                   <textarea className="reg-input reg-textarea" rows={2} value={form.notes} onChange={set('notes')} placeholder="คำแนะนำพิเศษ..." />
