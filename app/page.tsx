@@ -165,10 +165,11 @@ function StaffHome({ name, role }: { name: string; role: string }) {
     inspector: '🔍 ผู้ตรวจ', staff: '👷 เจ้าหน้าที่', leader: '👥 หัวหน้ากลุ่ม',
   };
   const MENU = [
-    { href: '/inspection/tasks', icon: '🔍', label: 'งานตรวจ',    desc: 'รายการงานตรวจ',  bg: '#e8f5e9', iconBg: '#a5d6a7' },
-    { href: '/field',            icon: '🗺️', label: 'แผนที่',     desc: 'สมาชิกบนแผนที่',  bg: '#e3f2fd', iconBg: '#90caf9' },
-    { href: '/notifications',    icon: '🔔', label: 'แจ้งเตือน', desc: 'ข่าวสาร',          bg: '#fff8e1', iconBg: '#ffe082' },
-    { href: '/profile',          icon: '👤', label: 'โปรไฟล์',   desc: 'ข้อมูลและสิทธิ์', bg: '#f3e5f5', iconBg: '#ce93d8' },
+    { href: '/inspection/tasks', icon: '🔍', label: 'งานตรวจ',    desc: 'รายการงานตรวจ',      bg: '#e8f5e9', iconBg: '#a5d6a7' },
+    { href: '/field',            icon: '🗺️', label: 'ภาคสนาม',   desc: 'แผนที่+จองเมล็ด',    bg: '#e3f2fd', iconBg: '#90caf9' },
+    { href: '/field#reservation',icon: '🌾', label: 'จองเมล็ด',  desc: 'จองให้สมาชิก',        bg: '#fff8e1', iconBg: '#ffe082' },
+    { href: '/notifications',    icon: '🔔', label: 'แจ้งเตือน', desc: 'ข่าวสาร',              bg: '#fff8e1', iconBg: '#ffe082' },
+    { href: '/profile',          icon: '👤', label: 'โปรไฟล์',   desc: 'ข้อมูลและสิทธิ์',     bg: '#f3e5f5', iconBg: '#ce93d8' },
   ];
   return (
     <MobileAppShell title="" subtitle="">
@@ -179,7 +180,7 @@ function StaffHome({ name, role }: { name: string; role: string }) {
           <div style={{ marginTop: 8, background: 'rgba(255,255,255,0.2)', borderRadius: 20, padding: '4px 14px', display: 'inline-block', fontSize: 13, fontWeight: 700 }}>{ROLE_TH[role] ?? role}</div>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 10 }}>
-          {MENU.map((item) => <MenuCard key={item.href} {...item} />)}
+          {MENU.map((item) => <MenuCard key={item.href + item.label} {...item} />)}
         </div>
       </div>
     </MobileAppShell>
@@ -244,6 +245,6 @@ export default function HomePage() {
 
   const name = member?.full_name ?? 'สมาชิก';
   if (effectiveRole === 'truck_owner') return <TruckHome name={name} />;
-  if (effectiveRole === 'inspector' || effectiveRole === 'staff') return <StaffHome name={name} role={effectiveRole} />;
+  if (effectiveRole === 'inspector' || effectiveRole === 'staff' || effectiveRole === 'leader') return <StaffHome name={name} role={effectiveRole} />;
   return <FarmerHome name={name} memberId={member?.member_id ?? ''} />;
 }
