@@ -40,9 +40,9 @@ export async function GET(request: Request) {
     // ค้นหาสมาชิก
     if (search) {
       const { data } = await s.from('members')
-        .select('id,full_name,phone,member_number,status')
+        .select('id,full_name,phone,status')
         .eq('status', 'approved')
-        .or(`full_name.ilike.%${search}%,phone.ilike.%${search}%,member_number.ilike.%${search}%`)
+        .or(`full_name.ilike.%${search}%,phone.ilike.%${search}%`)
         .limit(10);
       return NextResponse.json({ members: data ?? [] });
     }
