@@ -13,6 +13,11 @@ type SeedReservation = {
   source_channel: string | null;
   member?: { full_name: string; phone: string | null } | null;
 };
+type PickupSlot = {
+  id: string; pickup_date: string; pickup_time: string;
+  capacity_qty: number; booked_qty: number; status: string;
+  pickup_locations: { name: string; address: string | null } | null;
+};
 
 const STATUS_CFG: Record<string, { icon: string; label: string; color: string; bg: string }> = {
   pending:   { icon: '⏳', label: 'รอยืนยัน',   color: '#e65100', bg: '#fff8e1' },
@@ -41,6 +46,8 @@ export function FieldSeedReservation() {
   const [qty,         setQty]         = useState('1');
   const [note,        setNote]        = useState('');
   const [channel,     setChannel]     = useState('ภาคสนาม');
+  const [slots,       setSlots]       = useState<PickupSlot[]>([]);
+  const [selSlot,     setSelSlot]     = useState('');
   const [submitting,  setSubmitting]  = useState(false);
   const [notice,      setNotice]      = useState<string | null>(null);
   const [myHistory,   setMyHistory]   = useState<SeedReservation[]>([]);
@@ -50,6 +57,8 @@ export function FieldSeedReservation() {
   useEffect(() => {
     void fetch('/api/member/seed-lots').then((r) => r.json())
       .then((d: { lots?: SeedProduct[] }) => { setProducts(d.lots ?? []); setLoadingProd(false); });
+    void fetch('/api/member/pickup-slots').then((r) => r.json())
+      .then((d: { slots?: PickupSlot[] }) => setSlots(d.slots ?? []));
   }, []);
 
   useEffect(() => {
@@ -87,13 +96,13 @@ export function FieldSeedReservation() {
     setSubmitting(true); setNotice(null);
     const res = await fetch('/api/field/seed-reservation', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ staff_id: staffId, member_id: selMember.id, product_id: selProduct.product_id, qty: Number(qty), note: note || null, source_channel: channel }),
+      body: JSON.stringify({ staff_id: staffId, member_id: selMember.id, product_id: selProduct.product_id, qty: Number(qty), note: note || null, source_channel: channel, pickup_slot_id: selSlot || null }),
     });
     const d = (await res.json()) as { ok?: boolean; reservation_no?: string; error?: string };
     setSubmitting(false);
     if (!res.ok) { setNotice(`❌ ${d.error}`); return; }
     setNotice(`✅ จองแล้ว ${d.reservation_no ?? ''} — รอยืนยัน`);
-    setSelProduct(null); setQty('1'); setNote('');
+    setSelProduct(null); setQty('1'); setNote(''); setSelSlot('');
     const upd = await fetch(`/api/field/seed-reservation?staff_id=${staffId}&member_id=${selMember.id}`)
       .then((r) => r.json()) as { reservations?: SeedReservation[] };
     setMemberRes(upd.reservations ?? []);
@@ -228,6 +237,23 @@ export function FieldSeedReservation() {
                               </select>
                             </label>
                           </div>
+
+                          {/* วันนัดรับ */}
+                          <label className="reg-label" style={{ fontSize: 13, marginBottom: 10 }}>📅 วันนัดรับสินค้า
+                            <select className="reg-input" value={selSlot} onChange={(e) => setSelSlot(e.target.value)}>
+                              <option value="">— ไม่ระบุรอบ —</option>
+                              {slots.map((sl) => {
+                                const loc     = sl.pickup_locations;
+                                const remain  = (sl.capacity_qty ?? 0) - (sl.booked_qty ?? 0);
+                                const dateStr = new Date(sl.pickup_date).toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+                                return (
+                                  <option key={sl.id} value={sl.id} disabled={remain <= 0}>
+                                    {dateStr} {sl.pickup_time} · {loc?.name ?? ''} {remain > 0 ? `(เหลือ ${remain} ถุง)` : '(เต็ม)'}
+                                  </option>
+                                );
+                              })}
+                            </select>
+                          </label>
                           {Number(qty) > 0 && (
                             <div style={{ background: 'var(--primary)', borderRadius: 10, padding: '10px 14px', marginBottom: 10, display: 'flex', justifyContent: 'space-between', color: '#fff' }}>
                               <span style={{ fontWeight: 700 }}>ยอดรวม</span>
