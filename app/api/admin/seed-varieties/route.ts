@@ -1,10 +1,17 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
 
-export async function GET() {
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const activeOnly = searchParams.get('active') === 'true';
   const s = createServerSupabaseClient();
   const [varieties, suppliers] = await Promise.all([
-    s.from('seed_varieties').select('*').order('sort_order').order('variety_name'),
+    (activeOnly
+      ? s.from('seed_varieties')
+          .select('id,variety_name,crop_type,days_to_harvest,seed_per_rai_kg,planting_spacing,season,bag_weight_kg,price_per_bag')
+          .eq('active_status', 'active')
+      : s.from('seed_varieties').select('*')
+    ).order('sort_order').order('variety_name'),
     s.from('seed_suppliers').select('id, supplier_name').order('supplier_name'),
   ]);
   return NextResponse.json({ varieties: varieties.data ?? [], suppliers: suppliers.data ?? [] });

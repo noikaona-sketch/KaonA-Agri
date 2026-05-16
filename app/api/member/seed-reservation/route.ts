@@ -38,7 +38,7 @@ export async function POST(request: Request) {
 
     const s = createServerSupabaseClient();
     const { data: product, error: pErr } = await s.from('products')
-      .select('id,name,seed_variety,brand,price_per_unit,product_type,is_active,deleted_at')
+      .select('id,name,seed_variety,brand,price_per_unit,product_type,is_active,deleted_at,seed_variety_id')
       .eq('id', productId).maybeSingle();
 
     if (pErr) return NextResponse.json({ error: pErr.message }, { status: 500 });
@@ -63,6 +63,8 @@ export async function POST(request: Request) {
 
     const { error } = await s.from('seed_reservations').insert({
       reservation_no, member_id: body.member_id, product_id: product.id,
+      // seed_variety_id snapshot — from product.seed_variety_id at booking time, immutable after
+      seed_variety_id: (product as unknown as Record<string, unknown>).seed_variety_id as string | null ?? null,
       variety_id: null, lot_id: null, lot_no: null,
       variety_name:   product.seed_variety ?? body.variety_name ?? product.name,
       supplier_name:  body.supplier_name ?? product.brand ?? null,
