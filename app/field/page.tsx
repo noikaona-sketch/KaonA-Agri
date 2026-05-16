@@ -27,7 +27,10 @@ export default function FieldPage() {
   const member = useCurrentMember();
   const [tasks, setTasks]     = useState<InspectionTask[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<'tasks' | 'map' | 'reservation'>('tasks');
+  const [tab, setTab] = useState<'tasks' | 'map' | 'reservation'>(() => {
+    if (typeof window !== 'undefined' && window.location.hash === '#reservation') return 'reservation';
+    return 'tasks';
+  });
   const [today]               = useState(new Date().toISOString().slice(0, 10));
 
   useEffect(() => {
