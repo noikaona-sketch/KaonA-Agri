@@ -59,7 +59,8 @@ function buildHtml(props: Omit<Props,'onNew'>, type: 'sale' | 'reservation'): st
   body { font-family: 'Sarabun', 'Tahoma', sans-serif; font-size: 13px; color: #111; margin: 0; }
   .header { text-align: center; border-bottom: 2px solid #111; padding-bottom: 8px; margin-bottom: 10px; }
   .header h2 { margin: 0 0 2px; font-size: 18px; }
-  .header h3 { margin: 0; font-size: 14px; color: ${isRes ? '#1565c0' : '#1b5e20'}; }
+  .header h3 { margin: 0; font-size: 14px; }
+  ${isRes ? `.reservation-watermark { text-align:center; font-size:11px; color:#1565c0; border:2px dashed #1565c0; border-radius:6px; padding:4px; margin:6px 0; font-weight:700; letter-spacing:1px; }` : ''}
   .meta { font-size: 12px; margin-bottom: 8px; line-height: 1.6; }
   .meta .row { display: flex; justify-content: space-between; }
   table { width: 100%; border-collapse: collapse; margin: 8px 0; }
@@ -79,8 +80,12 @@ function buildHtml(props: Omit<Props,'onNew'>, type: 'sale' | 'reservation'): st
 <div class="header">
   <h2>${SHOP_NAME}</h2>
   ${SHOP_TEL ? `<p style="margin:2px 0;font-size:12px">โทร ${SHOP_TEL}</p>` : ''}
-  <h3>${isRes ? '📋 ใบจองสินค้า' : '🧾 ใบรับเงิน'}</h3>
+  <h3>${isRes
+    ? '<span style="color:#1565c0;font-size:16px;letter-spacing:1px">📋 ใบจองสินค้า</span>'
+    : '<span style="color:#1b5e20">🧾 ใบรับเงิน</span>'}</h3>
 </div>
+
+${isRes ? `<div class="reservation-watermark">⚠️ เอกสารนี้เป็นใบจองเท่านั้น — ยังไม่ใช่ใบเสร็จรับเงิน</div>` : ''}
 
 <div class="meta">
   <div class="row"><span><strong>เลขที่:</strong> ${receipt.order_no}</span><span>${now}</span></div>

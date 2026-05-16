@@ -12,6 +12,7 @@ export type Reservation = {
   variety_name: string | null; crop_type: string | null;
   variety_name_snapshot: string | null; supplier_name: string | null;
   created_at: string; stock_deducted: boolean;
+  _source?: 'seed_reservation' | 'sale_order';
 };
 
 const STATUS_MAP: Record<string, { badge: string; label: string }> = {

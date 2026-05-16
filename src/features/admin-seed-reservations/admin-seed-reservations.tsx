@@ -35,12 +35,13 @@ export function AdminSeedReservations() {
   useEffect(() => { void load(); }, [statusFilter]);
 
   async function doAction(action: 'confirm' | 'cancel', id: string) {
-    if (action === 'confirm') { setConfirmId(id); return; }   // open confirm modal
+    if (action === 'confirm') { setConfirmId(id); return; }
     if (!window.confirm('ยกเลิกการจองนี้?')) return;
     setActing(id); setNotice(null);
+    const item = items.find((r) => r.id === id);
     const res = await fetch('/api/admin/seed-reservations', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'cancel', reservation_id: id }),
+      body: JSON.stringify({ action: 'cancel', reservation_id: id, source: item?._source ?? 'seed_reservation' }),
     });
     const payload = (await res.json()) as { ok?: boolean; error?: string };
     setActing(null);
@@ -52,10 +53,12 @@ export function AdminSeedReservations() {
   async function submitConfirm() {
     if (!confirmId) return;
     setActing(confirmId); setNotice(null);
+    const item = items.find((r) => r.id === confirmId);
     const res = await fetch('/api/admin/seed-reservations', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         action: 'confirm', reservation_id: confirmId,
+        source: item?._source ?? 'seed_reservation',
         source_channel:  sourceChannel,
         attachment_url:  attachment?.url  ?? null,
         attachment_path: attachment?.path ?? null,
