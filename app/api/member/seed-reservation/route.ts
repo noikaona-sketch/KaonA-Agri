@@ -1,32 +1,39 @@
 import { NextResponse }               from 'next/server';
 import { createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
 
-async function getAuthMemberId(): Promise<string | null> {
+// Option A: accept member_id from caller (useCurrentMember), validate server-side
+// TODO: migrate to cookie-based session auth once server auth is implemented
+
+async function validateMember(memberId: string): Promise<boolean> {
+  if (!memberId) return false;
   const s = createServerSupabaseClient();
-  const { data: { user } } = await s.auth.getUser();
-  if (!user) return null;
   const { data } = await s
-    .from('members').select('id').eq('auth_user_id', user.id).maybeSingle();
-  return (data as { id: string } | null)?.id ?? null;
+    .from('members')
+    .select('id,status')
+    .eq('id', memberId)
+    .maybeSingle();
+  return !!(data && (data as { status: string }).status === 'approved');
 }
 
 type ReservationBody = {
+  member_id: string;
   product_id?: string; variety_id?: string;
   variety_name: string; supplier_name?: string;
   qty_reserved: number; price_per_bag: number; bag_weight_kg: number;
   pickup_date?: string; pickup_slot_id?: string; note?: string;
 };
 
-// POST — สร้างการจองเมล็ดพันธุ์ (product_id path, auth via session)
+// POST — สร้างการจองเมล็ดพันธุ์
 export async function POST(request: Request) {
   try {
-    const memberId = await getAuthMemberId();
-    if (!memberId) return NextResponse.json({ error: 'กรุณาเข้าสู่ระบบ' }, { status: 401 });
+    const body = (await request.json()) as ReservationBody;
+    const productId = body.product_id ?? body.variety_id;
 
-    const body       = (await request.json()) as ReservationBody;
-    const productId  = body.product_id ?? body.variety_id;
-    if (!productId || !body.qty_reserved || body.qty_reserved <= 0)
+    if (!body.member_id || !productId || !body.qty_reserved || body.qty_reserved <= 0)
       return NextResponse.json({ error: 'ข้อมูลไม่ครบ' }, { status: 400 });
+
+    const valid = await validateMember(body.member_id);
+    if (!valid) return NextResponse.json({ error: 'สมาชิกไม่ถูกต้องหรือยังไม่ได้รับอนุมัติ' }, { status: 403 });
 
     const s = createServerSupabaseClient();
     const { data: product, error: pErr } = await s.from('products')
@@ -54,14 +61,14 @@ export async function POST(request: Request) {
     const pricePerBag    = Number(product.price_per_unit ?? body.price_per_bag ?? 0);
 
     const { error } = await s.from('seed_reservations').insert({
-      reservation_no, member_id: memberId, product_id: product.id,
+      reservation_no, member_id: body.member_id, product_id: product.id,
       variety_id: null, lot_id: null, lot_no: null,
-      variety_name:  product.seed_variety ?? body.variety_name ?? product.name,
-      supplier_name: body.supplier_name ?? product.brand ?? null,
-      qty_reserved:  body.qty_reserved,  price_per_bag: pricePerBag,
-      pickup_date:   body.pickup_date ?? null,
+      variety_name:   product.seed_variety ?? body.variety_name ?? product.name,
+      supplier_name:  body.supplier_name ?? product.brand ?? null,
+      qty_reserved:   body.qty_reserved, price_per_bag: pricePerBag,
+      pickup_date:    body.pickup_date ?? null,
       pickup_slot_id: body.pickup_slot_id ?? null,
-      note: body.note ?? null, status: 'pending',
+      note:           body.note ?? null, status: 'pending',
     });
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -69,15 +76,19 @@ export async function POST(request: Request) {
   } catch (e) { return NextResponse.json({ error: String(e) }, { status: 500 }); }
 }
 
-// GET — ประวัติการจองของสมาชิก (session-based)
-export async function GET() {
+// GET — ประวัติการจองของสมาชิก (member_id จาก query param)
+export async function GET(request: Request) {
   try {
-    const memberId = await getAuthMemberId();
-    if (!memberId) return NextResponse.json({ error: 'กรุณาเข้าสู่ระบบ' }, { status: 401 });
+    const { searchParams } = new URL(request.url);
+    const memberId = searchParams.get('member_id') ?? '';
+    if (!memberId) return NextResponse.json({ reservations: [] });
+
+    const valid = await validateMember(memberId);
+    if (!valid) return NextResponse.json({ error: 'สมาชิกไม่ถูกต้อง' }, { status: 403 });
 
     const s = createServerSupabaseClient();
     const { data, error } = await s.from('seed_reservations')
-      .select('id,reservation_no,status,qty_reserved,total_amount,pickup_date,variety_name,created_at')
+      .select('id,reservation_no,status,qty_reserved,total_amount,pickup_date,variety_name,lot_no,supplier_name,created_at,seed_stock_lots(bag_weight_kg)')
       .eq('member_id', memberId)
       .order('created_at', { ascending: false }).limit(50);
 
