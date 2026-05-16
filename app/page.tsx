@@ -243,8 +243,12 @@ export default function HomePage() {
     </MobileAppShell>
   );
 
-  const name = member?.full_name ?? 'สมาชิก';
+  const name  = member?.full_name ?? 'สมาชิก';
+  const roles = member?.roles ?? [];
+  const isStaff = ['inspector','staff','leader','admin'].some((r) => roles.includes(r as never));
+
   if (effectiveRole === 'truck_owner') return <TruckHome name={name} />;
-  if (effectiveRole === 'inspector' || effectiveRole === 'staff' || effectiveRole === 'leader') return <StaffHome name={name} role={effectiveRole} />;
+  if (effectiveRole === 'inspector' || effectiveRole === 'staff' || effectiveRole === 'leader' || (isStaff && effectiveRole === 'farmer'))
+    return <StaffHome name={name} role={effectiveRole === 'farmer' ? (roles.find((r) => ['inspector','staff','leader'].includes(r as string)) ?? 'staff') as string : effectiveRole} />;
   return <FarmerHome name={name} memberId={member?.member_id ?? ''} />;
 }
