@@ -22,6 +22,9 @@ type Props = {
   onDiscount: (v: string) => void;
   onPayMethod: (v: 'cash' | 'transfer' | 'credit') => void;
   onCashReceived: (v: string) => void;
+  resNote: string; resChannel: string;
+  onResNote: (v: string) => void;
+  onResChannel: (v: string) => void;
   onSubmit: () => void;
 };
 
@@ -29,7 +32,7 @@ const MODE_COLOR = { sale: '#1b5e20', reservation: '#1565c0' };
 const MODE_BG    = { sale: '#e8f5e9', reservation: '#e3f2fd' };
 
 export function PosCartPanel(p: Props) {
-  const { mode, cart, memberReservations, reservationId, slots, selSlot, discount, payMethod, cashReceived, submitting, notice, subtotal, total, change, discountAmt } = p;
+  const { mode, cart, memberReservations, reservationId, slots, selSlot, discount, payMethod, cashReceived, submitting, notice, subtotal, total, change, discountAmt, resNote, resChannel } = p;
   const color = MODE_COLOR[mode];
   const bg    = MODE_BG[mode];
 
@@ -101,14 +104,30 @@ export function PosCartPanel(p: Props) {
         </div>
 
         {mode === 'reservation' && (
-          <select value={selSlot} onChange={(e) => p.onSelSlot(e.target.value)}
-            style={{ width: '100%', padding: '7px 10px', borderRadius: 8, border: '1.5px solid #90caf9', fontSize: 13 }}>
-            <option value="">📅 ไม่ระบุรอบนัดรับ</option>
-            {slots.map((sl) => {
-              const loc = sl.pickup_locations;
-              return <option key={sl.id} value={sl.id}>{sl.status === 'open' ? '🟢' : '🔴'} {new Date(sl.pickup_date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })} {sl.pickup_time} · {loc?.name ?? ''}</option>;
-            })}
-          </select>
+          <>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <label style={{ flex: 1, fontSize: 12, color: '#6b7280', display: 'flex', flexDirection: 'column', gap: 3 }}>ช่องทางจอง
+                <select value={resChannel} onChange={(e) => p.onResChannel(e.target.value)}
+                  style={{ padding: '6px 8px', borderRadius: 7, border: '1.5px solid #90caf9', fontSize: 13 }}>
+                  {['หน้าร้าน','โทรศัพท์','Line','Facebook','อื่นๆ'].map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </label>
+            </div>
+            <label style={{ fontSize: 12, color: '#6b7280', display: 'flex', flexDirection: 'column', gap: 3 }}>หมายเหตุการจอง
+              <textarea value={resNote} onChange={(e) => p.onResNote(e.target.value)}
+                placeholder="เช่น ลูกค้าโทรจอง, ต้องการสีขาว, นัดรับวันจันทร์…"
+                rows={2}
+                style={{ padding: '6px 8px', borderRadius: 7, border: '1.5px solid #90caf9', fontSize: 13, resize: 'none', fontFamily: 'inherit' }} />
+            </label>
+            <select value={selSlot} onChange={(e) => p.onSelSlot(e.target.value)}
+              style={{ width: '100%', padding: '7px 10px', borderRadius: 8, border: '1.5px solid #90caf9', fontSize: 13 }}>
+              <option value="">📅 ไม่ระบุรอบนัดรับ</option>
+              {slots.map((sl) => {
+                const loc = sl.pickup_locations;
+                return <option key={sl.id} value={sl.id}>{sl.status === 'open' ? '🟢' : '🔴'} {new Date(sl.pickup_date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })} {sl.pickup_time} · {loc?.name ?? ''}</option>;
+              })}
+            </select>
+          </>
         )}
 
         <div style={{ display: 'flex', gap: 5 }}>

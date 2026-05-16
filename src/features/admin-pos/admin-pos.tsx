@@ -120,10 +120,12 @@ export function AdminPos() {
   const [slots,        setSlots]        = useState<Slot[]>([]);
   const [selSlot,      setSelSlot]      = useState('');
   const [reservationId, setReservationId] = useState<string | null>(null);
+  const [resNote,       setResNote]       = useState('');
+  const [resChannel,    setResChannel]    = useState('หน้าร้าน');
 
   // ── member select: auto-load reservations ──
   async function onMemberSelect(m: Member | null) {
-    setMember(m); setMemberReservations([]); setCart([]); setReservationId(null);
+    setMember(m); setMemberReservations([]); setCart([]); setReservationId(null); setResNote(''); setResChannel('หน้าร้าน');
     if (!m) return;
     const res = await fetch(`/api/admin/seed-reservations?status=confirmed&member_id=${m.id}`);
     const payload = (await res.json()) as { items?: MemberReservation[] };
@@ -212,7 +214,7 @@ export function AdminPos() {
 
     const orderRes = await fetch('/api/admin/sale-order', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ member_id: member.id, order_type: mode, warehouse_id: selWH, pickup_slot_id: mode === 'reservation' ? selSlot || null : null, items: cart.map((c) => ({ product_id: c.product_id ?? null, product_name: c.name, qty: c.qty, unit_price: c.unit_price, unit: c.unit })), payment_method: payMethod, source_type: reservationId ? 'reservation' : 'walk_in', reservation_id: reservationId, paid_amount: payMethod === 'cash' ? Number(cashReceived) : total, discount: discountAmt }),
+      body: JSON.stringify({ member_id: member.id, order_type: mode, warehouse_id: selWH, pickup_slot_id: mode === 'reservation' ? selSlot || null : null, items: cart.map((c) => ({ product_id: c.product_id ?? null, product_name: c.name, qty: c.qty, unit_price: c.unit_price, unit: c.unit })), payment_method: payMethod, source_type: reservationId ? 'reservation' : 'walk_in', reservation_id: reservationId, paid_amount: payMethod === 'cash' ? Number(cashReceived) : total, discount: discountAmt, note: resNote || null, source_channel: mode === 'reservation' ? resChannel : null }),
     });
     const d = (await orderRes.json()) as { ok?: boolean; order_number?: string; error?: string };
     setSubmitting(false);
@@ -221,7 +223,7 @@ export function AdminPos() {
     const savedCart = [...cart];
     const savedMember = member;
     setReceipt({ order_no: d.order_number ?? '', total, change, items: savedCart });
-    setCart([]); setCashReceived(''); setDiscount('0'); setReservationId(null); setMemberReservations([]);
+    setCart([]); setCashReceived(''); setDiscount('0'); setReservationId(null); setMemberReservations([]); setResNote(''); setResChannel('หน้าร้าน');
   }
 
   if (receipt) return (
@@ -235,9 +237,9 @@ export function AdminPos() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 120px)', gap: 10 }}>
 
-      {/* ── Top bar: mode + warehouse + search ── */}
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', flexShrink: 0 }}>
-        {/* mode toggle — ชัดเจน อยู่บนสุด */}
+      {/* ── Top bar: mode + warehouse ── */}
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+        {/* mode toggle */}
         <div style={{ display: 'flex', borderRadius: 10, overflow: 'hidden', border: '2px solid #e0e0e0', flexShrink: 0 }}>
           {(['sale','reservation'] as const).map((m) => (
             <button key={m} onClick={() => setMode(m)}
@@ -250,8 +252,6 @@ export function AdminPos() {
           style={{ padding: '7px 12px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontWeight: 700, fontSize: 13, background: '#fff' }}>
           {warehouses.map((w) => <option key={w.id} value={w.id}>🏭 {w.name}</option>)}
         </select>
-        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="🔍 ค้นหาสินค้า…"
-          style={{ flex: 1, minWidth: 160, padding: '7px 12px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 14 }} />
       </div>
 
       {/* ── Main: products left, cart right ── */}
@@ -261,6 +261,10 @@ export function AdminPos() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, overflow: 'hidden' }}>
           {/* member search */}
           <MemberSearch onSelect={onMemberSelect} />
+
+          {/* product search */}
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="🔍 ค้นหาสินค้า…"
+            style={{ padding: '7px 12px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 14, flexShrink: 0 }} />
 
           {/* category chips */}
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', flexShrink: 0 }}>
@@ -309,12 +313,15 @@ export function AdminPos() {
           discount={discount} payMethod={payMethod} cashReceived={cashReceived}
           submitting={submitting} notice={notice}
           subtotal={subtotal} total={total} change={change} discountAmt={discountAmt}
+          resNote={resNote} resChannel={resChannel}
           onUpdateQty={updateQty}
           onLoadReservation={loadReservationToCart}
           onSelSlot={setSelSlot}
           onDiscount={setDiscount}
           onPayMethod={setPayMethod}
           onCashReceived={setCashReceived}
+          onResNote={setResNote}
+          onResChannel={setResChannel}
           onSubmit={submit}
         />
       </div>
