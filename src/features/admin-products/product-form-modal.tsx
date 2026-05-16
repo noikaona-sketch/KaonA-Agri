@@ -78,6 +78,10 @@ export function ProductFormModal({ product, onClose, onSaved }: Props) {
       return setError('กรุณากรอกชื่อสินค้าและราคา');
     if (needId && !draft.seed_variety_id)
       return setError('สินค้าเมล็ดพันธุ์ที่เปิดใช้งานต้องเลือกพันธุ์เมล็ด');
+    if (isSeed && draft.days_to_harvest && Number(draft.days_to_harvest) <= 0)
+      return setError('อายุเก็บเกี่ยวต้องมากกว่า 0 วัน');
+    if (isSeed && draft.bag_weight_kg && Number(draft.bag_weight_kg) <= 0)
+      return setError('น้ำหนักต่อถุงต้องมากกว่า 0 กก.');
     setSaving(true);
     const payload = {
       name: draft.name.trim(), product_code: draft.product_code.trim() || null,

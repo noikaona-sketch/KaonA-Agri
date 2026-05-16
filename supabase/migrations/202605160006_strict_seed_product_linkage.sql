@@ -15,12 +15,13 @@ create unique index if not exists idx_products_product_code_unique
   on public.products(product_code)
   where product_code is not null and deleted_at is null;
 
--- enforce: one active seed product per variety
-create unique index if not exists idx_products_one_active_per_variety
+-- enforce: one active seed product per variety (seed products only)
+create unique index if not exists idx_products_one_active_seed_product_per_variety
   on public.products(seed_variety_id)
-  where seed_variety_id is not null
+  where product_type = 'seed'
     and is_active = true
-    and deleted_at is null;
+    and deleted_at is null
+    and seed_variety_id is not null;
 
 create index if not exists idx_products_seed_variety_id
   on public.products(seed_variety_id)
