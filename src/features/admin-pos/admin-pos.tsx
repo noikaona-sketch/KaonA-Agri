@@ -314,7 +314,7 @@ export function AdminPos() {
     if (!orderRes.ok) { setNotice(`❌ ${d.error}`); return; }
 
     setReceipt({ order_no: d.order_number ?? '', total, change });
-    setCart([]); setCashReceived(''); setDiscount('0'); setReservationId(null); setReservationNo('');
+    setCart([]); setCashReceived(''); setDiscount('0'); setReservationId(null); setMemberReservations([]);
   }
 
   // Receipt screen
