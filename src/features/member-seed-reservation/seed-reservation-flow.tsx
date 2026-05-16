@@ -31,7 +31,8 @@ type Reservation = {
 const STATUS_CFG: Record<string, { icon: string; label: string; color: string; bg: string }> = {
   pending:   { icon: '⏳', label: 'รอยืนยัน',     color: '#e65100', bg: '#fff8e1' },
   confirmed: { icon: '✅', label: 'ยืนยันแล้ว',   color: '#1565c0', bg: '#e3f2fd' },
-  completed: { icon: '💰', label: 'รับสินค้าแล้ว', color: '#2e7d32', bg: '#e8f5e9' },
+  completed: { icon: '🏁', label: 'รับสินค้าแล้ว', color: '#2e7d32', bg: '#e8f5e9' },
+  converted: { icon: '💰', label: 'รับสินค้าแล้ว', color: '#2e7d32', bg: '#e8f5e9' },
   cancelled: { icon: '❌', label: 'ยกเลิก',        color: '#c62828', bg: '#ffebee' },
 };
 
