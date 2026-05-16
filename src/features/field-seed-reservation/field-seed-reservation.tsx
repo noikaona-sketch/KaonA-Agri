@@ -6,20 +6,26 @@ import { LoadingState }                from '@/shared/components/loading-state';
 
 type SeedProduct  = { id: string; product_id: string; variety_name: string; price_per_bag: number; bag_weight_kg: number; crop_type: string; days_to_harvest: number | null };
 type MemberResult = { id: string; full_name: string; phone: string | null; member_number: string | null };
-type OrderItem    = { product_name: string; qty: number; unit_price: number; product_unit: string };
-type Reservation  = {
-  id: string; order_number: string; status: string; total: number; created_at: string; note: string | null;
+
+// seed_reservations shape
+type SeedReservation = {
+  id: string; reservation_no: string; status: string;
+  qty_reserved: number; total_amount: number | null; price_per_bag: number;
+  pickup_date: string | null; variety_name: string; created_at: string; note: string | null;
+  source_channel: string | null;
   member?: { full_name: string; phone: string | null } | null;
-  order_items: OrderItem[];
-  pickup_slots?: { pickup_date: string; pickup_time: string; pickup_locations: { name: string } | null } | null;
+  products?: { name: string; bag_weight_kg: number | null }[] | null;
 };
 
 const STATUS_CFG: Record<string, { icon: string; label: string; color: string; bg: string }> = {
   pending:   { icon: '⏳', label: 'รอยืนยัน',   color: '#e65100', bg: '#fff8e1' },
   confirmed: { icon: '✅', label: 'ยืนยันแล้ว', color: '#1565c0', bg: '#e3f2fd' },
+  partial:   { icon: '⏳', label: 'ค้างบางส่วน', color: '#e65100', bg: '#fff8e1' },
   completed: { icon: '🏁', label: 'รับของแล้ว', color: '#2e7d32', bg: '#e8f5e9' },
+  converted: { icon: '💰', label: 'รับของแล้ว', color: '#2e7d32', bg: '#e8f5e9' },
   cancelled: { icon: '❌', label: 'ยกเลิก',      color: '#c62828', bg: '#ffebee' },
 };
+
 const SOURCE_CHANNELS = ['ภาคสนาม','โทรศัพท์','Line','หน้าร้าน','อื่นๆ'];
 
 export function FieldSeedReservation() {
@@ -33,14 +39,14 @@ export function FieldSeedReservation() {
   const [members,     setMembers]     = useState<MemberResult[]>([]);
   const [searching,   setSearching]   = useState(false);
   const [selMember,   setSelMember]   = useState<MemberResult | null>(null);
-  const [memberRes,   setMemberRes]   = useState<Reservation[]>([]);
+  const [memberRes,   setMemberRes]   = useState<SeedReservation[]>([]);
   const [selProduct,  setSelProduct]  = useState<SeedProduct | null>(null);
   const [qty,         setQty]         = useState('1');
   const [note,        setNote]        = useState('');
   const [channel,     setChannel]     = useState('ภาคสนาม');
   const [submitting,  setSubmitting]  = useState(false);
   const [notice,      setNotice]      = useState<string | null>(null);
-  const [myHistory,   setMyHistory]   = useState<Reservation[]>([]);
+  const [myHistory,   setMyHistory]   = useState<SeedReservation[]>([]);
   const [loadingHist, setLoadingHist] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout>>();
 
@@ -54,7 +60,7 @@ export function FieldSeedReservation() {
     setLoadingHist(true);
     void fetch(`/api/field/seed-reservation?staff_id=${staffId}`)
       .then((r) => r.json())
-      .then((d: { reservations?: Reservation[] }) => { setMyHistory(d.reservations ?? []); setLoadingHist(false); });
+      .then((d: { reservations?: SeedReservation[] }) => { setMyHistory(d.reservations ?? []); setLoadingHist(false); });
   }, [tab, staffId]);
 
   useEffect(() => {
@@ -71,7 +77,7 @@ export function FieldSeedReservation() {
   async function pickMember(m: MemberResult) {
     setSelMember(m); setSearch(''); setMembers([]);
     const d = await fetch(`/api/field/seed-reservation?staff_id=${staffId}&member_id=${m.id}`)
-      .then((r) => r.json()) as { reservations?: Reservation[] };
+      .then((r) => r.json()) as { reservations?: SeedReservation[] };
     setMemberRes(d.reservations ?? []);
   }
 
@@ -80,15 +86,19 @@ export function FieldSeedReservation() {
     setSubmitting(true); setNotice(null);
     const res = await fetch('/api/field/seed-reservation', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ staff_id: staffId, member_id: selMember.id, product_id: selProduct.product_id, qty: Number(qty), note: note || null, source_channel: channel }),
+      body: JSON.stringify({
+        staff_id: staffId, member_id: selMember.id,
+        product_id: selProduct.product_id, qty: Number(qty),
+        note: note || null, source_channel: channel,
+      }),
     });
-    const d = (await res.json()) as { ok?: boolean; order_number?: string; error?: string };
+    const d = (await res.json()) as { ok?: boolean; reservation_no?: string; error?: string };
     setSubmitting(false);
     if (!res.ok) { setNotice(`❌ ${d.error}`); return; }
-    setNotice(`✅ จองแล้ว ${d.order_number ?? ''}`);
+    setNotice(`✅ จองแล้ว ${d.reservation_no ?? ''} — รอยืนยัน`);
     setSelProduct(null); setQty('1'); setNote('');
     const upd = await fetch(`/api/field/seed-reservation?staff_id=${staffId}&member_id=${selMember.id}`)
-      .then((r) => r.json()) as { reservations?: Reservation[] };
+      .then((r) => r.json()) as { reservations?: SeedReservation[] };
     setMemberRes(upd.reservations ?? []);
   }
 
@@ -110,9 +120,9 @@ export function FieldSeedReservation() {
         ))}
       </div>
 
+      {/* ── Tab: จอง ── */}
       {tab === 'book' && (
         <>
-          {/* ค้นหาสมาชิก */}
           <div style={{ position: 'relative' }}>
             {selMember ? (
               <div style={{ background: '#e8f5e9', borderRadius: 12, padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1.5px solid #a5d6a7' }}>
@@ -151,14 +161,13 @@ export function FieldSeedReservation() {
               <p style={{ margin: '0 0 8px', fontWeight: 700, fontSize: 13, color: '#e65100' }}>📋 การจองที่มีอยู่แล้ว</p>
               {memberRes.map((r) => {
                 const st = STATUS_CFG[r.status] ?? STATUS_CFG.pending;
-                const item = r.order_items?.[0];
                 return (
                   <div key={r.id} style={{ background: '#fff', borderRadius: 8, padding: '8px 10px', marginBottom: 6, border: '1px solid #e0e0e0' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <p style={{ margin: 0, fontWeight: 700, fontSize: 13 }}>{item?.product_name ?? '—'} × {item?.qty}</p>
+                      <p style={{ margin: 0, fontWeight: 700, fontSize: 13 }}>{r.variety_name} × {r.qty_reserved} ถุง</p>
                       <span style={{ fontSize: 11, background: st.bg, color: st.color, borderRadius: 4, padding: '1px 6px', fontWeight: 700 }}>{st.icon} {st.label}</span>
                     </div>
-                    <p style={{ margin: '2px 0 0', fontSize: 11, color: '#9ca3af', fontFamily: 'monospace' }}>{r.order_number}</p>
+                    <p style={{ margin: '2px 0 0', fontSize: 11, color: '#9ca3af', fontFamily: 'monospace' }}>{r.reservation_no}</p>
                   </div>
                 );
               })}
@@ -212,6 +221,7 @@ export function FieldSeedReservation() {
         </>
       )}
 
+      {/* ── Tab: ประวัติ ── */}
       {tab === 'history' && (
         <>
           {loadingHist && <LoadingState label="กำลังโหลด…" />}
@@ -219,10 +229,8 @@ export function FieldSeedReservation() {
             <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '24px 0', fontSize: 14 }}>ยังไม่มีการจอง</p>
           )}
           {myHistory.map((r) => {
-            const st   = STATUS_CFG[r.status] ?? STATUS_CFG.pending;
-            const item = r.order_items?.[0];
-            const m    = r.member;
-            const slot = r.pickup_slots;
+            const st = STATUS_CFG[r.status] ?? STATUS_CFG.pending;
+            const m  = r.member;
             return (
               <div key={r.id} style={{ background: st.bg, border: `1px solid ${st.color}44`, borderRadius: 12, padding: '12px 14px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
@@ -232,10 +240,17 @@ export function FieldSeedReservation() {
                   </div>
                   <span style={{ fontSize: 12, fontWeight: 700, color: st.color, background: '#fff', borderRadius: 6, padding: '2px 8px' }}>{st.icon} {st.label}</span>
                 </div>
-                <p style={{ margin: '4px 0 2px', fontSize: 13, fontWeight: 700 }}>{item?.product_name ?? '—'} × {item?.qty} ถุง · {r.total.toLocaleString()} บาท</p>
-                {slot && <p style={{ margin: 0, fontSize: 12, color: '#1565c0' }}>📅 {new Date(slot.pickup_date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })} {slot.pickup_time}</p>}
+                <p style={{ margin: '4px 0 2px', fontSize: 13, fontWeight: 700 }}>
+                  {r.variety_name} × {r.qty_reserved} ถุง · {(r.total_amount ?? r.qty_reserved * r.price_per_bag).toLocaleString()} บาท
+                </p>
+                {r.pickup_date && (
+                  <p style={{ margin: 0, fontSize: 12, color: '#1565c0' }}>
+                    📅 {new Date(r.pickup_date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </p>
+                )}
+                {r.source_channel && <p style={{ margin: '2px 0 0', fontSize: 12, color: '#6b7280' }}>📡 {r.source_channel}</p>}
                 {r.note && <p style={{ margin: '4px 0 0', fontSize: 12, color: '#6b7280' }}>📝 {r.note}</p>}
-                <p style={{ margin: '4px 0 0', fontSize: 11, fontFamily: 'monospace', color: '#9ca3af' }}>{r.order_number}</p>
+                <p style={{ margin: '4px 0 0', fontSize: 11, fontFamily: 'monospace', color: '#9ca3af' }}>{r.reservation_no}</p>
               </div>
             );
           })}
