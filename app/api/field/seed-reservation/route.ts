@@ -39,11 +39,13 @@ export async function GET(request: Request) {
 
     // ค้นหาสมาชิก
     if (search) {
-      const { data } = await s.from('members')
-        .select('id,full_name,phone,status')
-        .eq('status', 'approved')
-        .or(`full_name.ilike.%${search}%,phone.ilike.%${search}%`)
-        .limit(10);
+    // normalize phone: 08xxx → +668xxx for search
+    const normalized = search.replace(/^0/, '+660').replace(/^\+660/, '+66');
+    const { data } = await s.from('members')
+      .select('id,full_name,phone,status')
+      .eq('status', 'approved')
+      .or(`full_name.ilike.%${search}%,phone.ilike.%${search}%,phone.ilike.%${normalized}%`)
+      .limit(10);
       return NextResponse.json({ members: data ?? [] });
     }
 
