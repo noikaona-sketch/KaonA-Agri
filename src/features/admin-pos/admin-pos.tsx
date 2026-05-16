@@ -389,7 +389,7 @@ export function AdminPos() {
             const key             = `p-${s.product_id}`;
             const inCart          = cart.find((c) => c.key === key);
             const hasReservedSeed = cart.some((c) => c.isReservedSeed);
-            const isSeedItem      = s.category === 'seed' || s.product_type === 'seed';
+            const isSeedItem      = s.category === 'seed';
             // disable other seed products when reserved seed is already in cart
             const isLockedOut     = hasReservedSeed && isSeedItem && !inCart?.isReservedSeed;
             const isDisabled      = s.qty_available <= 0 || isLockedOut;
