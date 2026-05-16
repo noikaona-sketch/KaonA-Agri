@@ -31,7 +31,7 @@ export function ProductFormModal({ product, onClose, onSaved }: Props) {
   const [error,  setError]  = useState<string | null>(null);
 
   const isEdit = !!product;
-  const isSeed = draft.product_type === 'seed';
+  const isSeed = TYPE_BY_CAT[draft.category] === 'seed';
   const needId = isSeed && draft.is_active;   // seed_variety_id required when active
 
   useEffect(() => {
@@ -63,12 +63,7 @@ export function ProductFormModal({ product, onClose, onSaved }: Props) {
     }));
   }
 
-  function onTypeChange(t: ProductType) {
-    setDraft((p) => ({
-      ...p, product_type: t,
-      ...(t !== 'seed' ? { seed_variety_id: '', crop_type: '', seed_variety: '', days_to_harvest: '', bag_weight_kg: '' } : {}),
-    }));
-  }
+  // product_type is derived from category — not user-editable
 
   const set = (k: keyof Draft, v: string | boolean) => setDraft((p) => ({ ...p, [k]: v }));
 
@@ -126,7 +121,13 @@ export function ProductFormModal({ product, onClose, onSaved }: Props) {
             <label className="reg-label">หมวดหมู่ <span className="reg-required">*</span>
               <select className="reg-input" value={draft.category} onChange={(e) => {
                 const cat = e.target.value as ProductCategory;
-                setDraft((p) => ({ ...p, category: cat, product_type: TYPE_BY_CAT[cat] }));
+                setDraft((p) => {
+                  const nextType = TYPE_BY_CAT[cat];
+                  return {
+                    ...p, category: cat, product_type: nextType,
+                    ...(nextType !== 'seed' ? { seed_variety_id: '', crop_type: '', seed_variety: '', days_to_harvest: '', bag_weight_kg: '' } : {}),
+                  };
+                });
               }}>
                 <option value="seed">🌾 เมล็ดพันธุ์</option>
                 <option value="fertilizer">🧪 ปุ๋ย</option>
@@ -136,12 +137,7 @@ export function ProductFormModal({ product, onClose, onSaved }: Props) {
               </select>
             </label>
 
-            <label className="reg-label">Product Type <span className="reg-required">*</span>
-              <select className="reg-input" value={draft.product_type} onChange={(e) => onTypeChange(e.target.value as ProductType)}>
-                <option value="seed">seed</option><option value="fertilizer">fertilizer</option>
-                <option value="chemical">chemical</option><option value="other">other</option>
-              </select>
-            </label>
+
 
             <label className="reg-label">ราคา/หน่วย (บาท) <span className="reg-required">*</span>
               <input className="reg-input" type="number" min="0" step="0.01" value={draft.price_per_unit} onChange={(e) => set('price_per_unit', e.target.value)} />
