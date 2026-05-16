@@ -3,7 +3,7 @@
 // created_by = staff_id for tracking who booked on behalf of member
 
 import { NextResponse } from 'next/server';
-import { createServerSupabaseClient } from '../../../auth/line/line-auth-helpers';
+import { createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
 
 const FIELD_ROLES = ['staff', 'admin', 'inspector', 'leader'];
 
