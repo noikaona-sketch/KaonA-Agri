@@ -1,14 +1,20 @@
+// app/api/admin/seed-reservations/route.ts
+// Cleaned: removed convert action (lot-based RPC) — sale happens via POS only
+
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
 
 // GET — รายการจองทั้งหมด (admin)
 export async function GET(request: Request) {
   try {
-    const url = new URL(request.url);
+    const url    = new URL(request.url);
     const status = url.searchParams.get('status') ?? '';
 
     const s = createServerSupabaseClient();
-    let q = s.from('admin_seed_reservations').select('*').limit(200);
+    let q = s
+      .from('admin_seed_reservations')
+      .select('*')
+      .limit(200);
     if (status) q = q.eq('status', status);
 
     const { data, error } = await q;
@@ -19,14 +25,13 @@ export async function GET(request: Request) {
   }
 }
 
-// POST — admin actions: confirm / convert / cancel
+// POST — admin actions: confirm / cancel only
+// NOTE: convert/receive is removed — active sale must go through POS (product_id path)
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as {
-      action: 'confirm' | 'convert' | 'cancel';
+      action: 'confirm' | 'cancel';
       reservation_id: string;
-      qty_actual?: number;
-      payment_method?: string;
       reason?: string;
     };
 
@@ -37,25 +42,13 @@ export async function POST(request: Request) {
     const s = createServerSupabaseClient();
 
     if (body.action === 'confirm') {
-      const { error } = await s.from('seed_reservations')
+      const { error } = await s
+        .from('seed_reservations')
         .update({ status: 'confirmed', updated_at: new Date().toISOString() })
         .eq('id', body.reservation_id)
         .eq('status', 'pending');
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
       return NextResponse.json({ ok: true });
-    }
-
-    if (body.action === 'convert') {
-      if (!body.qty_actual || body.qty_actual <= 0) {
-        return NextResponse.json({ error: 'กรุณาระบุปริมาณจริง' }, { status: 400 });
-      }
-      const { data, error } = await s.rpc('convert_reservation_to_sale', {
-        p_reservation_id: body.reservation_id,
-        p_qty_actual:     body.qty_actual,
-        p_payment_method: body.payment_method ?? 'debit_account',
-      });
-      if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-      return NextResponse.json({ ok: true, ...(data as object) });
     }
 
     if (body.action === 'cancel') {
