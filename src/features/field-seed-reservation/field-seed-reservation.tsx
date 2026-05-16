@@ -104,6 +104,9 @@ export function FieldSeedReservation() {
 
   if (!staffId) return <LoadingState label="กำลังโหลด…" />;
 
+  // debug: แสดง staffId ชั่วคราว
+  console.log('[FieldSeedReservation] staffId:', staffId, 'search:', search, 'members:', members.length);
+
   return (
     <div className="mobile-stack">
       {notice && (
@@ -119,6 +122,7 @@ export function FieldSeedReservation() {
           </button>
         ))}
       </div>
+      <p style={{ margin: 0, fontSize: 10, color: '#9ca3af', fontFamily: 'monospace' }}>staff: {staffId.slice(-8)}</p>
 
       {/* ── Tab: จอง ── */}
       {tab === 'book' && (
