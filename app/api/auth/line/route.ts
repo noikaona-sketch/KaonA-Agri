@@ -18,9 +18,14 @@ export async function POST(request: Request) {
     // DEV BYPASS — token พิเศษ (ไม่ต้องพึ่ง build-time env)
     if (body.idToken === 'dev-bypass-token') {
       const role = (body as Record<string, string>).devRole ?? 'farmer';
+      // staff roles use real UUID so field features (validateStaff) work in dev
+      const staffRoles = ['staff','admin','inspector','leader'];
+      const devMemberId = staffRoles.includes(role)
+        ? 'b26c6c2f-3005-4a3a-8a4d-01b8ac1ccfd7'   // real member with staff/admin role
+        : 'dev-mock-member-id';
       return NextResponse.json({
         member: {
-          member_id:      'dev-mock-member-id',
+          member_id:      devMemberId,
           auth_user_id:   null,
           line_user_id:   'dev-mock-line-id',
           full_name:      `Dev ${role}`,
