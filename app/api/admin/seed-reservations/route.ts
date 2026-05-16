@@ -22,7 +22,7 @@ export async function GET(request: Request) {
         id, order_number, order_type, status, created_at,
         member_id, note, total, discount, paid_amount, payment_method,
         pickup_slot_id, source_type,
-        members!sale_orders_member_id_fkey(full_name, phone),
+        member:members!sale_orders_member_id_fkey(full_name, phone),
         order_items(product_id, product_name, product_name_snapshot, product_unit, qty, unit_price)
       `)
       .eq('order_type', 'reservation')
@@ -37,12 +37,12 @@ export async function GET(request: Request) {
       id: string; order_number: string; status: string; created_at: string;
       member_id: string; note: string | null; total: number; discount: number;
       pickup_slot_id: string | null; source_type: string | null;
-      members: { full_name: string; phone: string | null } | { full_name: string; phone: string | null }[];
+      member: { full_name: string; phone: string | null } | null;
       order_items: { product_id: string; product_name: string; product_name_snapshot: string | null; product_unit: string; qty: number; unit_price: number }[];
     };
 
     const normalised = ((soRows ?? []) as unknown as SoRow[]).map((o) => {
-      const m = Array.isArray(o.members) ? o.members[0] : o.members;
+      const m = o.member;
       const firstItem = o.order_items?.[0];
       return {
         id:                   o.id,
