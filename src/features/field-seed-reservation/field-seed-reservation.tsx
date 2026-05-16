@@ -5,16 +5,13 @@ import { useCurrentMember }            from '@/providers/auth-provider';
 import { LoadingState }                from '@/shared/components/loading-state';
 
 type SeedProduct  = { id: string; product_id: string; variety_name: string; price_per_bag: number; bag_weight_kg: number; crop_type: string; days_to_harvest: number | null };
-type MemberResult = { id: string; full_name: string; phone: string | null; member_number: string | null };
-
-// seed_reservations shape
+type MemberResult = { id: string; full_name: string; phone: string | null };
 type SeedReservation = {
   id: string; reservation_no: string; status: string;
   qty_reserved: number; total_amount: number | null; price_per_bag: number;
   pickup_date: string | null; variety_name: string; created_at: string; note: string | null;
   source_channel: string | null;
   member?: { full_name: string; phone: string | null } | null;
-  products?: { name: string; bag_weight_kg: number | null }[] | null;
 };
 
 const STATUS_CFG: Record<string, { icon: string; label: string; color: string; bg: string }> = {
@@ -25,7 +22,6 @@ const STATUS_CFG: Record<string, { icon: string; label: string; color: string; b
   converted: { icon: '💰', label: 'รับของแล้ว', color: '#2e7d32', bg: '#e8f5e9' },
   cancelled: { icon: '❌', label: 'ยกเลิก',      color: '#c62828', bg: '#ffebee' },
 };
-
 const SOURCE_CHANNELS = ['ภาคสนาม','โทรศัพท์','Line','หน้าร้าน','อื่นๆ'];
 
 export function FieldSeedReservation() {
@@ -36,6 +32,7 @@ export function FieldSeedReservation() {
   const [products,    setProducts]    = useState<SeedProduct[]>([]);
   const [loadingProd, setLoadingProd] = useState(true);
   const [search,      setSearch]      = useState('');
+  const [showDrop,    setShowDrop]    = useState(false);
   const [members,     setMembers]     = useState<MemberResult[]>([]);
   const [searching,   setSearching]   = useState(false);
   const [selMember,   setSelMember]   = useState<MemberResult | null>(null);
@@ -65,17 +62,21 @@ export function FieldSeedReservation() {
 
   useEffect(() => {
     clearTimeout(timer.current);
-    if (search.length < 2) { setMembers([]); return; }
+    if (search.length < 2) { setMembers([]); setShowDrop(false); return; }
     setSearching(true);
     timer.current = setTimeout(() => {
       void fetch(`/api/field/seed-reservation?staff_id=${staffId}&search=${encodeURIComponent(search)}`)
         .then((r) => r.json())
-        .then((d: { members?: MemberResult[] }) => { setMembers(d.members ?? []); setSearching(false); });
+        .then((d: { members?: MemberResult[] }) => {
+          setMembers(d.members ?? []);
+          setShowDrop((d.members ?? []).length > 0);
+          setSearching(false);
+        });
     }, 300);
   }, [search, staffId]);
 
   async function pickMember(m: MemberResult) {
-    setSelMember(m); setSearch(''); setMembers([]);
+    setSelMember(m); setSearch(''); setMembers([]); setShowDrop(false);
     const d = await fetch(`/api/field/seed-reservation?staff_id=${staffId}&member_id=${m.id}`)
       .then((r) => r.json()) as { reservations?: SeedReservation[] };
     setMemberRes(d.reservations ?? []);
@@ -86,11 +87,7 @@ export function FieldSeedReservation() {
     setSubmitting(true); setNotice(null);
     const res = await fetch('/api/field/seed-reservation', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        staff_id: staffId, member_id: selMember.id,
-        product_id: selProduct.product_id, qty: Number(qty),
-        note: note || null, source_channel: channel,
-      }),
+      body: JSON.stringify({ staff_id: staffId, member_id: selMember.id, product_id: selProduct.product_id, qty: Number(qty), note: note || null, source_channel: channel }),
     });
     const d = (await res.json()) as { ok?: boolean; reservation_no?: string; error?: string };
     setSubmitting(false);
@@ -104,9 +101,6 @@ export function FieldSeedReservation() {
 
   if (!staffId) return <LoadingState label="กำลังโหลด…" />;
 
-  // debug: แสดง staffId ชั่วคราว
-  console.log('[FieldSeedReservation] staffId:', staffId, 'search:', search, 'members:', members.length);
-
   return (
     <div className="mobile-stack">
       {notice && (
@@ -115,6 +109,7 @@ export function FieldSeedReservation() {
         </div>
       )}
 
+      {/* Tabs */}
       <div style={{ display: 'flex', gap: 8 }}>
         {(['book','history'] as const).map((t) => (
           <button key={t} onClick={() => setTab(t)} style={{ flex: 1, padding: '10px', borderRadius: 12, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 13, background: tab === t ? 'var(--primary)' : '#f0f4f0', color: tab === t ? '#fff' : 'var(--text-secondary)' }}>
@@ -122,56 +117,72 @@ export function FieldSeedReservation() {
           </button>
         ))}
       </div>
-      <p style={{ margin: 0, fontSize: 10, color: '#9ca3af', fontFamily: 'monospace' }}>staff: {staffId.slice(-8)}</p>
 
       {/* ── Tab: จอง ── */}
       {tab === 'book' && (
         <>
-          <div style={{ position: 'relative' }}>
-            {selMember ? (
-              <div style={{ background: '#e8f5e9', borderRadius: 12, padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1.5px solid #a5d6a7' }}>
-                <div>
-                  <p style={{ margin: 0, fontWeight: 800, fontSize: 15 }}>👤 {selMember.full_name}</p>
-                  <p style={{ margin: '2px 0 0', fontSize: 12, color: '#4a6741' }}>{selMember.phone ?? ''}</p>
+          {/* Member search */}
+          {selMember ? (
+            <div style={{ background: 'linear-gradient(135deg,#1b5e20,#2e7d32)', borderRadius: 16, padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#fff' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 900 }}>
+                  {selMember.full_name[0]}
                 </div>
-                <button onClick={() => { setSelMember(null); setMemberRes([]); setSelProduct(null); }}
-                  style={{ background: 'none', border: 'none', color: '#c62828', cursor: 'pointer', fontSize: 20 }}>✕</button>
+                <div>
+                  <p style={{ margin: 0, fontWeight: 800, fontSize: 16 }}>👤 {selMember.full_name}</p>
+                  <p style={{ margin: '2px 0 0', fontSize: 12, opacity: 0.8 }}>{selMember.phone ?? ''}</p>
+                </div>
               </div>
-            ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, border: '1.5px solid #e0e0e0', borderRadius: 12, padding: '10px 14px', background: '#fff' }}>
-                <span>🔍</span>
+              <button onClick={() => { setSelMember(null); setMemberRes([]); setSelProduct(null); }}
+                style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 18, borderRadius: 8, padding: '4px 8px' }}>✕</button>
+            </div>
+          ) : (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, border: '2px solid var(--primary)', borderRadius: 14, padding: '12px 16px', background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                <span style={{ fontSize: 20 }}>🔍</span>
                 <input value={search} onChange={(e) => setSearch(e.target.value)}
-                  placeholder="ค้นหาสมาชิก — ชื่อ / เบอร์ / รหัส…"
-                  style={{ border: 'none', outline: 'none', flex: 1, fontSize: 14 }} />
+                  placeholder="ค้นหาสมาชิก — ชื่อ หรือ เบอร์โทร…"
+                  style={{ border: 'none', outline: 'none', flex: 1, fontSize: 15, fontWeight: 500 }}
+                  autoComplete="off" />
                 {searching && <span style={{ fontSize: 12, color: '#9ca3af' }}>⏳</span>}
               </div>
-            )}
-            {members.length > 0 && (
-              <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1.5px solid var(--primary)', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,.12)', zIndex: 200, marginTop: 4 }}>
-                {members.map((m) => (
-                  <button key={m.id} onMouseDown={() => void pickMember(m)}
-                    style={{ width: '100%', textAlign: 'left', padding: '10px 16px', border: 'none', background: 'none', cursor: 'pointer', borderBottom: '1px solid #f0f4f0' }}>
-                    <p style={{ margin: 0, fontWeight: 700, fontSize: 14 }}>{m.full_name}</p>
-                    <p style={{ margin: '1px 0 0', fontSize: 12, color: '#6b7280' }}>{m.phone ?? ''}</p>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+              {/* dropdown — ไม่ใช้ position:absolute เพื่อหลีกเลี่ยงปัญหา scroll */}
+              {showDrop && members.length > 0 && (
+                <div style={{ background: '#fff', border: '2px solid var(--primary)', borderRadius: 14, marginTop: 6, overflow: 'hidden', boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }}>
+                  <p style={{ margin: 0, padding: '8px 16px', fontSize: 12, color: '#6b7280', background: '#f9fafb', fontWeight: 600 }}>
+                    พบ {members.length} รายการ — กดเลือก
+                  </p>
+                  {members.map((m) => (
+                    <button key={m.id} onClick={() => void pickMember(m)}
+                      style={{ width: '100%', textAlign: 'left', padding: '12px 16px', border: 'none', background: 'none', cursor: 'pointer', borderTop: '1px solid #f0f4f0', display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#e8f5e9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, color: 'var(--primary)', fontSize: 16, flexShrink: 0 }}>
+                        {m.full_name[0]}
+                      </div>
+                      <div>
+                        <p style={{ margin: 0, fontWeight: 700, fontSize: 14 }}>{m.full_name}</p>
+                        <p style={{ margin: '1px 0 0', fontSize: 12, color: '#6b7280' }}>{m.phone ?? ''}</p>
+                      </div>
+                      <span style={{ marginLeft: 'auto', color: 'var(--primary)', fontSize: 20 }}>›</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
-          {/* การจองที่มีอยู่ของสมาชิก */}
+          {/* การจองที่มีอยู่ */}
           {selMember && memberRes.length > 0 && (
             <div style={{ background: '#fff8e1', borderRadius: 12, padding: '10px 14px', border: '1px solid #ffe082' }}>
               <p style={{ margin: '0 0 8px', fontWeight: 700, fontSize: 13, color: '#e65100' }}>📋 การจองที่มีอยู่แล้ว</p>
               {memberRes.map((r) => {
                 const st = STATUS_CFG[r.status] ?? STATUS_CFG.pending;
                 return (
-                  <div key={r.id} style={{ background: '#fff', borderRadius: 8, padding: '8px 10px', marginBottom: 6, border: '1px solid #e0e0e0' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <div key={r.id} style={{ background: '#fff', borderRadius: 8, padding: '8px 10px', marginBottom: 6, border: '1px solid #e0e0e0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
                       <p style={{ margin: 0, fontWeight: 700, fontSize: 13 }}>{r.variety_name} × {r.qty_reserved} ถุง</p>
-                      <span style={{ fontSize: 11, background: st.bg, color: st.color, borderRadius: 4, padding: '1px 6px', fontWeight: 700 }}>{st.icon} {st.label}</span>
+                      <p style={{ margin: '2px 0 0', fontSize: 11, color: '#9ca3af', fontFamily: 'monospace' }}>{r.reservation_no}</p>
                     </div>
-                    <p style={{ margin: '2px 0 0', fontSize: 11, color: '#9ca3af', fontFamily: 'monospace' }}>{r.reservation_no}</p>
+                    <span style={{ fontSize: 11, background: st.bg, color: st.color, borderRadius: 6, padding: '2px 8px', fontWeight: 700, flexShrink: 0 }}>{st.icon} {st.label}</span>
                   </div>
                 );
               })}
@@ -181,45 +192,60 @@ export function FieldSeedReservation() {
           {/* เลือกสินค้า */}
           {selMember && (
             <>
-              <p style={{ margin: '4px 0 0', fontWeight: 700, fontSize: 14 }}>🌾 เลือกเมล็ดพันธุ์</p>
-              {loadingProd ? <LoadingState label="กำลังโหลด…" /> : products.map((p) => (
-                <div key={p.id} onClick={() => setSelProduct(selProduct?.id === p.id ? null : p)}
-                  style={{ background: selProduct?.id === p.id ? '#e8f5e9' : '#fff', border: `2px solid ${selProduct?.id === p.id ? 'var(--primary)' : '#e0e0e0'}`, borderRadius: 12, padding: '12px 14px', cursor: 'pointer' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <div>
-                      <p style={{ margin: 0, fontWeight: 800 }}>{p.variety_name}</p>
-                      <p style={{ margin: '2px 0 0', fontSize: 12, color: '#6b7280' }}>{p.crop_type}{p.days_to_harvest ? ` · ${p.days_to_harvest} วัน` : ''} · {p.bag_weight_kg} กก./ถุง</p>
-                    </div>
-                    <p style={{ margin: 0, fontWeight: 900, color: 'var(--primary)', fontSize: 18 }}>{p.price_per_bag.toLocaleString()} ฿</p>
-                  </div>
-                  {selProduct?.id === p.id && (
-                    <div style={{ borderTop: '1px solid #e0e0e0', marginTop: 12, paddingTop: 12 }} onClick={(e) => e.stopPropagation()}>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                        <label className="reg-label" style={{ fontSize: 13 }}>จำนวน (ถุง) *
-                          <input className="reg-input" type="number" min="1" value={qty} onChange={(e) => setQty(e.target.value)} />
-                        </label>
-                        <label className="reg-label" style={{ fontSize: 13 }}>ช่องทาง
-                          <select className="reg-input" value={channel} onChange={(e) => setChannel(e.target.value)}>
-                            {SOURCE_CHANNELS.map((c) => <option key={c} value={c}>{c}</option>)}
-                          </select>
-                        </label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                <div style={{ flex: 1, height: 1, background: '#e0e0e0' }} />
+                <p style={{ margin: 0, fontWeight: 700, fontSize: 13, color: '#6b7280', whiteSpace: 'nowrap' }}>🌾 เลือกเมล็ดพันธุ์</p>
+                <div style={{ flex: 1, height: 1, background: '#e0e0e0' }} />
+              </div>
+              {loadingProd ? <LoadingState label="กำลังโหลด…" /> : (
+                products.length === 0
+                  ? <p style={{ textAlign: 'center', color: '#9ca3af', fontSize: 14, padding: '16px 0' }}>ไม่มีเมล็ดพันธุ์ในระบบ</p>
+                  : products.map((p) => (
+                    <div key={p.id} onClick={() => setSelProduct(selProduct?.id === p.id ? null : p)}
+                      style={{ background: selProduct?.id === p.id ? '#e8f5e9' : '#fff', border: `2px solid ${selProduct?.id === p.id ? 'var(--primary)' : '#e8e8e8'}`, borderRadius: 16, padding: '14px 16px', cursor: 'pointer', transition: 'all 0.15s' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div>
+                          <p style={{ margin: 0, fontWeight: 800, fontSize: 16 }}>{p.variety_name}</p>
+                          <p style={{ margin: '4px 0 0', fontSize: 12, color: '#6b7280' }}>
+                            {p.crop_type}{p.days_to_harvest ? ` · ${p.days_to_harvest} วัน` : ''} · {p.bag_weight_kg} กก./ถุง
+                          </p>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <p style={{ margin: 0, fontWeight: 900, color: 'var(--primary)', fontSize: 20 }}>{p.price_per_bag.toLocaleString()}</p>
+                          <p style={{ margin: 0, fontSize: 11, color: '#6b7280' }}>บาท/ถุง</p>
+                        </div>
                       </div>
-                      {Number(qty) > 0 && (
-                        <div style={{ background: '#e8f5e9', borderRadius: 8, padding: '8px 12px', fontSize: 14, fontWeight: 600, color: '#1b5e20', margin: '8px 0' }}>
-                          ยอดรวม: {(Number(qty) * p.price_per_bag).toLocaleString()} บาท
+
+                      {selProduct?.id === p.id && (
+                        <div style={{ borderTop: '1px solid #c8e6c9', marginTop: 14, paddingTop: 14 }} onClick={(e) => e.stopPropagation()}>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+                            <label className="reg-label" style={{ fontSize: 13 }}>จำนวน (ถุง) *
+                              <input className="reg-input" type="number" min="1" value={qty} onChange={(e) => setQty(e.target.value)} />
+                            </label>
+                            <label className="reg-label" style={{ fontSize: 13 }}>ช่องทาง
+                              <select className="reg-input" value={channel} onChange={(e) => setChannel(e.target.value)}>
+                                {SOURCE_CHANNELS.map((c) => <option key={c} value={c}>{c}</option>)}
+                              </select>
+                            </label>
+                          </div>
+                          {Number(qty) > 0 && (
+                            <div style={{ background: 'var(--primary)', borderRadius: 10, padding: '10px 14px', marginBottom: 10, display: 'flex', justifyContent: 'space-between', color: '#fff' }}>
+                              <span style={{ fontWeight: 700 }}>ยอดรวม</span>
+                              <span style={{ fontWeight: 900, fontSize: 16 }}>{(Number(qty) * p.price_per_bag).toLocaleString()} บาท</span>
+                            </div>
+                          )}
+                          <label className="reg-label" style={{ fontSize: 13 }}>หมายเหตุ
+                            <input className="reg-input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="บันทึกเพิ่มเติม…" />
+                          </label>
+                          <button onClick={submit} disabled={submitting || Number(qty) <= 0}
+                            style={{ width: '100%', padding: '14px', borderRadius: 12, border: 'none', background: submitting ? '#9ca3af' : 'var(--primary)', color: '#fff', fontWeight: 800, fontSize: 15, cursor: 'pointer', marginTop: 8 }}>
+                            {submitting ? 'กำลังจอง…' : `📋 จองให้ ${selMember.full_name}`}
+                          </button>
                         </div>
                       )}
-                      <label className="reg-label" style={{ fontSize: 13 }}>หมายเหตุ
-                        <input className="reg-input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="บันทึกเพิ่มเติม…" />
-                      </label>
-                      <button onClick={submit} disabled={submitting || Number(qty) <= 0}
-                        style={{ width: '100%', padding: '12px', borderRadius: 12, border: 'none', background: submitting ? '#9ca3af' : 'var(--primary)', color: '#fff', fontWeight: 700, fontSize: 15, cursor: 'pointer', marginTop: 4 }}>
-                        {submitting ? 'กำลังจอง…' : `📋 จองให้ ${selMember.full_name}`}
-                      </button>
                     </div>
-                  )}
-                </div>
-              ))}
+                  ))
+              )}
             </>
           )}
         </>
@@ -230,31 +256,36 @@ export function FieldSeedReservation() {
         <>
           {loadingHist && <LoadingState label="กำลังโหลด…" />}
           {!loadingHist && myHistory.length === 0 && (
-            <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '24px 0', fontSize: 14 }}>ยังไม่มีการจอง</p>
+            <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-secondary)' }}>
+              <p style={{ fontSize: 40 }}>📋</p>
+              <p style={{ fontSize: 14 }}>ยังไม่มีการจอง</p>
+            </div>
           )}
           {myHistory.map((r) => {
             const st = STATUS_CFG[r.status] ?? STATUS_CFG.pending;
             const m  = r.member;
             return (
-              <div key={r.id} style={{ background: st.bg, border: `1px solid ${st.color}44`, borderRadius: 12, padding: '12px 14px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <div>
-                    <p style={{ margin: 0, fontWeight: 800, fontSize: 14 }}>👤 {m?.full_name ?? '—'}</p>
-                    <p style={{ margin: '2px 0 0', fontSize: 12, color: '#6b7280' }}>{m?.phone ?? ''}</p>
+              <div key={r.id} style={{ background: '#fff', border: `1.5px solid ${st.color}44`, borderRadius: 14, padding: '14px 16px', borderLeft: `4px solid ${st.color}` }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: st.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 900, color: st.color }}>
+                      {m?.full_name?.[0] ?? '?'}
+                    </div>
+                    <div>
+                      <p style={{ margin: 0, fontWeight: 800, fontSize: 14 }}>{m?.full_name ?? '—'}</p>
+                      <p style={{ margin: 0, fontSize: 11, color: '#6b7280' }}>{m?.phone ?? ''}</p>
+                    </div>
                   </div>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: st.color, background: '#fff', borderRadius: 6, padding: '2px 8px' }}>{st.icon} {st.label}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: st.color, background: st.bg, borderRadius: 6, padding: '3px 8px', alignSelf: 'flex-start' }}>{st.icon} {st.label}</span>
                 </div>
-                <p style={{ margin: '4px 0 2px', fontSize: 13, fontWeight: 700 }}>
-                  {r.variety_name} × {r.qty_reserved} ถุง · {(r.total_amount ?? r.qty_reserved * r.price_per_bag).toLocaleString()} บาท
+                <p style={{ margin: '6px 0 2px', fontSize: 14, fontWeight: 700 }}>
+                  {r.variety_name} × {r.qty_reserved} ถุง
+                  <span style={{ fontWeight: 400, color: '#6b7280', fontSize: 13 }}> · {(r.total_amount ?? r.qty_reserved * r.price_per_bag).toLocaleString()} บาท</span>
                 </p>
-                {r.pickup_date && (
-                  <p style={{ margin: 0, fontSize: 12, color: '#1565c0' }}>
-                    📅 {new Date(r.pickup_date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}
-                  </p>
-                )}
-                {r.source_channel && <p style={{ margin: '2px 0 0', fontSize: 12, color: '#6b7280' }}>📡 {r.source_channel}</p>}
-                {r.note && <p style={{ margin: '4px 0 0', fontSize: 12, color: '#6b7280' }}>📝 {r.note}</p>}
-                <p style={{ margin: '4px 0 0', fontSize: 11, fontFamily: 'monospace', color: '#9ca3af' }}>{r.reservation_no}</p>
+                {r.pickup_date && <p style={{ margin: '2px 0', fontSize: 12, color: '#1565c0' }}>📅 {new Date(r.pickup_date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}</p>}
+                {r.source_channel && <p style={{ margin: '2px 0', fontSize: 12, color: '#6b7280' }}>📡 {r.source_channel}</p>}
+                {r.note && <p style={{ margin: '2px 0', fontSize: 12, color: '#6b7280' }}>📝 {r.note}</p>}
+                <p style={{ margin: '6px 0 0', fontSize: 11, fontFamily: 'monospace', color: '#9ca3af' }}>{r.reservation_no}</p>
               </div>
             );
           })}
