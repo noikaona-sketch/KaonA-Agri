@@ -19,7 +19,7 @@ const STATUS_MAP: Record<string, { badge: string; label: string }> = {
   pending:   { badge: 'pending',   label: '⏳ รอยืนยัน'   },
   confirmed: { badge: 'approved',  label: '✅ ยืนยัน'      },
   partial:   { badge: 'pending',   label: '⏳ ค้างบางส่วน' },
-  completed: { badge: 'approved',  label: '🏁 รับแล้ว'     },
+  completed: { badge: 'approved',  label: '🏁 รับของแล้ว'  },
   converted: { badge: 'approved',  label: '💰 ขายแล้ว'    },
   cancelled: { badge: 'suspended', label: '⛔ ยกเลิก'      },
 };
@@ -83,7 +83,7 @@ export function ReservationTableRow({ r, acting, onAction, onClose }: Props) {
           )}
           {['confirmed','partial'].includes(r.status) && (
             <button className="admin-btn" onClick={() => onClose(r)}
-              style={{ fontSize: 12, minHeight: 30, padding: '4px 8px', background: '#fff3e0', color: '#e65100', border: '1px solid #ffcc80' }}>📋 ปิดจอง</button>
+              style={{ fontSize: 12, minHeight: 30, padding: '4px 8px', background: '#e8f5e9', color: '#1b5e20', border: '1px solid #a5d6a7' }}>🏁 รับของแล้ว</button>
           )}
           {['pending','confirmed','partial'].includes(r.status) && (
             <button className="admin-btn admin-btn--danger" onClick={() => onAction('cancel', r.id)}

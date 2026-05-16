@@ -23,6 +23,7 @@ export async function GET(request: Request) {
         member_id, note, total, discount, paid_amount, payment_method,
         pickup_slot_id, source_type,
         member:members!sale_orders_member_id_fkey(full_name, phone),
+        pickup_slot:pickup_slots(pickup_date, pickup_time, pickup_locations(name)),
         order_items(product_id, product_name, product_name_snapshot, product_unit, qty, unit_price)
       `)
       .eq('order_type', 'reservation')
@@ -38,11 +39,16 @@ export async function GET(request: Request) {
       member_id: string; note: string | null; total: number; discount: number;
       pickup_slot_id: string | null; source_type: string | null;
       member: { full_name: string; phone: string | null } | null;
+      pickup_slot: { pickup_date: string; pickup_time: string; pickup_locations: { name: string } | null } | null;
       order_items: { product_id: string; product_name: string; product_name_snapshot: string | null; product_unit: string; qty: number; unit_price: number }[];
     };
 
     const normalised = ((soRows ?? []) as unknown as SoRow[]).map((o) => {
-      const m = o.member;
+      const m         = o.member;
+      const slot      = o.pickup_slot;
+      const pickupDate = slot
+        ? `${new Date(slot.pickup_date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })} ${slot.pickup_time}`
+        : null;
       const firstItem = o.order_items?.[0];
       return {
         id:                   o.id,
@@ -61,7 +67,7 @@ export async function GET(request: Request) {
         total_amount:         o.total,
         note:                 o.note,
         source_channel:       o.source_type ?? null,
-        pickup_date:          null,
+        pickup_date:          pickupDate,
         pickup_slot_id:       o.pickup_slot_id,
         created_at:           o.created_at,
         // ไม่มีใน sale_orders

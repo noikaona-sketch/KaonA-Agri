@@ -83,10 +83,18 @@ export async function POST(request: Request) {
       } catch { /* RPC ไม่มีก็ไม่เป็นไร */ }
     }
 
-    // Backward compatibility: reservation status update still targets legacy seed_reservations table.
-    // Active sale/order path is product_id-based (no lot_id/lot_no/variety_id in new path).
+    // อัปเดตสถานะการจองหลังขายสำเร็จ
     if (body.source_type === 'reservation' && body.reservation_id) {
-      await s.from('seed_reservations').update({ status: 'converted' }).eq('id', body.reservation_id);
+      // sale_orders reservation → completed
+      await s.from('sale_orders')
+        .update({ status: 'completed', updated_at: new Date().toISOString() } as Record<string, unknown>)
+        .eq('id', body.reservation_id)
+        .eq('order_type', 'reservation');
+
+      // seed_reservations (legacy path) → converted
+      await s.from('seed_reservations')
+        .update({ status: 'converted' })
+        .eq('id', body.reservation_id);
     }
 
     return NextResponse.json({ ok: true, order_number, total });
