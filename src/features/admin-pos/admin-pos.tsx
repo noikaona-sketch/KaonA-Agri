@@ -151,6 +151,7 @@ export function AdminPos() {
   const [search,     setSearch]     = useState('');
   const [catFilter,  setCatFilter]  = useState('ทั้งหมด');
   const [member,     setMember]     = useState<Member | null>(null);
+  const [memberReservations, setMemberReservations] = useState<Array<{ id: string; reservation_no: string; product_id: string | null; qty_reserved: number; variety_name: string; price_per_bag: number }>>([]);
   const [cart,       setCart]       = useState<CartItem[]>([]);
   const [mode,       setMode]       = useState<'sale' | 'reservation'>('sale');
   const [payMethod,  setPayMethod]  = useState<'cash' | 'transfer' | 'credit'>('cash');
@@ -162,38 +163,36 @@ export function AdminPos() {
   const [session,    setSession]    = useState<Session | null>(null);
   const [slots,      setSlots]      = useState<{ id: string; pickup_date: string; pickup_time: string; status: string; pickup_locations: { name: string; address: string | null } | null }[]>([]);
   const [selSlot,    setSelSlot]    = useState('');
-  const [reservationNo, setReservationNo] = useState('');
   const [reservationId, setReservationId] = useState<string | null>(null);
 
-  async function loadReservationToCart() {
-    if (!reservationNo.trim()) { setNotice('❌ กรุณากรอกเลขที่การจอง'); return; }
-    const res = await fetch('/api/admin/seed-reservations?status=confirmed');
-    const payload = (await res.json()) as { items?: Array<{ id: string; reservation_no: string; product_id?: string | null; qty_reserved?: number; product_name_snapshot?: string | null }>; error?: string };
-    if (!res.ok) { setNotice(`❌ ${payload.error ?? 'โหลดรายการจองไม่สำเร็จ'}`); return; }
-    const r = (payload.items ?? []).find((x) => x.reservation_no === reservationNo.trim());
-    if (!r) { setNotice('❌ ไม่พบรายการจองที่ยืนยันแล้ว'); return; }
+  async function onMemberSelect(m: Member | null) {
+    setMember(m);
+    setMemberReservations([]);
+    setCart([]);
+    setReservationId(null);
+    if (!m) return;
+    const res = await fetch(`/api/admin/seed-reservations?status=confirmed&member_id=${m.id}`);
+    const payload = (await res.json()) as { items?: typeof memberReservations };
+    setMemberReservations(payload.items ?? []);
+  }
+
+  async function loadReservationToCart(r: { id: string; reservation_no: string; product_id: string | null; qty_reserved: number; variety_name: string; price_per_bag: number }) {
     if (!r.product_id) { setNotice('❌ รายการจองนี้ยังไม่มี product_id'); return; }
 
-    // block if a different reserved seed is already in cart
     const existingReserved = cart.find((c) => c.isReservedSeed);
     if (existingReserved && existingReserved.product_id !== r.product_id) {
-      setNotice('❌ มีเมล็ดพันธุ์จากการจองอยู่แล้ว กรุณาลบออกก่อน'); return;
+      setNotice('❌ มีเมล็ดพันธุ์จากการจองอยู่แล้ว'); return;
     }
 
     const item = items.find((i) => i.product_id === r.product_id);
-    if (!item) { setNotice('❌ สินค้านี้ไม่มีในคลังที่เลือก กรุณาเปลี่ยนคลังหรือรับสต๊อกเข้าคลังก่อน'); return; }
+    if (!item) { setNotice('❌ สินค้านี้ไม่มีในคลังที่เลือก'); return; }
 
     const key = `p-${r.product_id}`;
     const qty = Number(r.qty_reserved ?? 1);
     setCart((prev) => {
       const exists = prev.find((c) => c.key === key);
       if (exists) return prev.map((c) => c.key === key ? { ...c, qty, isReservedSeed: true } : c);
-      return [...prev, {
-        key, type: 'product' as const,
-        product_id: item.product_id, name: item.name,
-        category: item.category, unit: item.unit, unit_price: item.unit_price,
-        qty, isReservedSeed: true,
-      }];
+      return [...prev, { key, type: 'product' as const, product_id: item.product_id, name: item.name, category: item.category, unit: item.unit, unit_price: item.unit_price, qty, isReservedSeed: true }];
     });
     setReservationId(r.id);
     setNotice(`✅ โหลดการจอง ${r.reservation_no} แล้ว`);
@@ -417,12 +416,29 @@ export function AdminPos() {
       {/* ── Right: Cart Panel ── */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, background: '#f7faf7', borderRadius: 16, padding: 16, border: '1.5px solid #e4ebe4', overflow: 'hidden' }}>
         {/* member */}
-        <MemberSearch onSelect={setMember} />
+        <MemberSearch onSelect={onMemberSelect} />
 
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-          <input value={reservationNo} onChange={(e) => setReservationNo(e.target.value)} placeholder="เลขที่จอง (เช่น RV-...)" style={{ flex: 1, padding: '8px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 13 }} />
-          <button onClick={loadReservationToCart} style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid #1565c0', background: '#e3f2fd', color: '#1565c0', fontWeight: 700, cursor: 'pointer' }}>โหลดจอง</button>
-        </div>
+        {/* reservation cards — auto-loaded after member select */}
+        {memberReservations.length > 0 && (
+          <div style={{ borderRadius: 10, border: '1.5px solid #a5d6a7', background: '#f1f8f1', padding: '8px 10px' }}>
+            <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, color: '#1b5e20' }}>📋 รายการจองที่รอรับสินค้า</p>
+            {memberReservations.map((r) => {
+              const loaded = reservationId === r.id;
+              return (
+                <div key={r.id} onClick={() => !loaded && loadReservationToCart(r)}
+                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', borderRadius: 8, marginBottom: 4, background: loaded ? '#c8e6c9' : '#fff', border: `1px solid ${loaded ? '#66bb6a' : '#e0e0e0'}`, cursor: loaded ? 'default' : 'pointer' }}>
+                  <div>
+                    <p style={{ margin: 0, fontWeight: 700, fontSize: 13 }}>{r.variety_name}</p>
+                    <p style={{ margin: 0, fontSize: 11, color: '#6b7280' }}>{r.reservation_no} · {r.qty_reserved} ถุง · {r.price_per_bag.toLocaleString()} บาท/ถุง</p>
+                  </div>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: loaded ? '#1b5e20' : '#1565c0' }}>
+                    {loaded ? '✅ โหลดแล้ว' : '📥 โหลด'}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* cart items */}
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>

@@ -8,14 +8,16 @@ import { createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
 export async function GET(request: Request) {
   try {
     const url    = new URL(request.url);
-    const status = url.searchParams.get('status') ?? '';
+    const status   = url.searchParams.get('status')    ?? '';
+    const memberId = url.searchParams.get('member_id') ?? '';
 
     const s = createServerSupabaseClient();
     let q = s
       .from('admin_seed_reservations')
       .select('*')
       .limit(200);
-    if (status) q = q.eq('status', status);
+    if (status)   q = q.eq('status', status);
+    if (memberId) q = q.eq('member_id', memberId);
 
     const { data, error } = await q;
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
