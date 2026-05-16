@@ -115,7 +115,14 @@ export function AdminPos() {
   const [discount,     setDiscount]     = useState('0');
   const [notice,       setNotice]       = useState<string | null>(null);
   const [submitting,   setSubmitting]   = useState(false);
-  const [receipt,      setReceipt]      = useState<{ order_no: string; total: number; change: number; items: CartItem[] } | null>(null);
+  const [receipt, setReceipt] = useState<{
+    order_no: string; total: number; change: number; items: CartItem[];
+    memberName: string; memberPhone: string | null;
+    discount: number;
+    resNote: string | null; resChannel: string | null;
+    reservationNo: string | null; reservationStatus: string | null;
+    qtyReserved: number | null; qtySold: number | null;
+  } | null>(null);
   const [session,      setSession]      = useState<Session | null>(null);
   const [slots,        setSlots]        = useState<Slot[]>([]);
   const [selSlot,      setSelSlot]      = useState('');
@@ -220,15 +227,40 @@ export function AdminPos() {
     setSubmitting(false);
     if (!orderRes.ok) { setNotice(`❌ ${d.error}`); return; }
 
-    const savedCart = [...cart];
+    const savedCart   = [...cart];
     const savedMember = member;
-    setReceipt({ order_no: d.order_number ?? '', total, change, items: savedCart });
+    const reservedItem = savedCart.find((c) => c.isReservedSeed);
+    const qtySold      = reservedItem?.qty ?? null;
+    const resInfo      = memberReservations.find((r) => r.id === reservationId);
+    const qtyReserved  = resInfo?.qty_reserved ?? null;
+    const resNo        = resInfo?.reservation_no ?? null;
+    const resStatus    = qtyReserved != null && qtySold != null
+      ? (qtySold >= qtyReserved ? 'ครบ' : 'ค้าง')
+      : null;
+
+    setReceipt({
+      order_no: d.order_number ?? '', total, change, items: savedCart,
+      memberName: savedMember?.full_name ?? '',
+      memberPhone: savedMember?.phone ?? null,
+      discount: discountAmt,
+      resNote: resNote || null,
+      resChannel: resChannel || null,
+      reservationNo: resNo,
+      reservationStatus: resStatus,
+      qtyReserved, qtySold,
+    });
     setCart([]); setCashReceived(''); setDiscount('0'); setReservationId(null); setMemberReservations([]); setResNote(''); setResChannel('หน้าร้าน');
   }
 
   if (receipt) return (
-    <PosReceipt receipt={receipt} mode={mode} memberName={member?.full_name ?? ''} items={receipt.items}
-      payMethod={payMethod} cashReceived={cashReceived}
+    <PosReceipt
+      receipt={receipt} mode={mode}
+      memberName={receipt.memberName} memberPhone={receipt.memberPhone}
+      items={receipt.items} payMethod={payMethod} cashReceived={cashReceived}
+      discount={receipt.discount}
+      resNote={receipt.resNote} resChannel={receipt.resChannel}
+      reservationNo={receipt.reservationNo} reservationStatus={receipt.reservationStatus}
+      qtyReserved={receipt.qtyReserved} qtySold={receipt.qtySold}
       onNew={() => setReceipt(null)} />
   );
 
