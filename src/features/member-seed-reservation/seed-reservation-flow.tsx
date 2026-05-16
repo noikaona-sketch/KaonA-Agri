@@ -109,15 +109,19 @@ export function SeedReservationFlow() {
     const nos: string[] = [];
     const selSlot = slots.find((s) => s.id === selSlotId);
     for (const item of cart) {
+      // product_id is required — no fallback to variety id
+      if (!item.variety.product_id) {
+        setError('เมล็ดพันธุ์นี้ยังไม่ได้สร้างเป็นสินค้าใน Product Master');
+        setSaving(false); return;
+      }
       const res = await fetch('/api/member/seed-reservation', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          member_id:    member.member_id,
-          product_id:   item.variety.product_id ?? item.variety.id,
-          variety_id:   item.variety.id,
-          variety_name: item.variety.variety_name,
+          member_id:     member.member_id,
+          product_id:    item.variety.product_id,   // required — Product Master only
+          variety_name:  item.variety.variety_name,
           supplier_name: item.variety.supplier_name,
-          qty_reserved: item.qty,
+          qty_reserved:  item.qty,
           price_per_bag: item.variety.price_per_bag,
           bag_weight_kg: item.variety.bag_weight_kg,
           pickup_date:   selSlot?.pickup_date ?? null,

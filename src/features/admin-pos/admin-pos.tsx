@@ -23,6 +23,7 @@ type CartItem = {
   unit: string;
   unit_price: number;
   qty: number;
+  isReservedSeed?: boolean;   // locked — from reservation, product cannot be changed
 };
 
 type Session = { id: string; session_no: string; opening_cash: number; status: string };
@@ -172,10 +173,28 @@ export function AdminPos() {
     const r = (payload.items ?? []).find((x) => x.reservation_no === reservationNo.trim());
     if (!r) { setNotice('❌ ไม่พบรายการจองที่ยืนยันแล้ว'); return; }
     if (!r.product_id) { setNotice('❌ รายการจองนี้ยังไม่มี product_id'); return; }
+
+    // block if a different reserved seed is already in cart
+    const existingReserved = cart.find((c) => c.isReservedSeed);
+    if (existingReserved && existingReserved.product_id !== r.product_id) {
+      setNotice('❌ มีเมล็ดพันธุ์จากการจองอยู่แล้ว กรุณาลบออกก่อน'); return;
+    }
+
     const item = items.find((i) => i.product_id === r.product_id);
     if (!item) { setNotice('❌ สินค้านี้ไม่มีในคลังที่เลือก กรุณาเปลี่ยนคลังหรือรับสต๊อกเข้าคลังก่อน'); return; }
-    addItem(item);
-    if ((r.qty_reserved ?? 1) > 1) updateQty(`p-${r.product_id}`, Number(r.qty_reserved ?? 1));
+
+    const key = `p-${r.product_id}`;
+    const qty = Number(r.qty_reserved ?? 1);
+    setCart((prev) => {
+      const exists = prev.find((c) => c.key === key);
+      if (exists) return prev.map((c) => c.key === key ? { ...c, qty, isReservedSeed: true } : c);
+      return [...prev, {
+        key, type: 'product' as const,
+        product_id: item.product_id, name: item.name,
+        category: item.category, unit: item.unit, unit_price: item.unit_price,
+        qty, isReservedSeed: true,
+      }];
+    });
     setReservationId(r.id);
     setNotice(`✅ โหลดการจอง ${r.reservation_no} แล้ว`);
   }
@@ -225,7 +244,11 @@ export function AdminPos() {
   }, []);
 
   const updateQty = (key: string, qty: number) =>
-    setCart((prev) => qty <= 0 ? prev.filter((c) => c.key !== key) : prev.map((c) => c.key === key ? { ...c, qty } : c));
+    setCart((prev) => {
+      const item = prev.find((c) => c.key === key);
+      if (item?.isReservedSeed) return prev;   // reserved seed qty is locked
+      return qty <= 0 ? prev.filter((c) => c.key !== key) : prev.map((c) => c.key === key ? { ...c, qty } : c);
+    });
 
   const subtotal    = cart.reduce((s, c) => s + c.qty * c.unit_price, 0);
   const discountAmt = Number(discount) || 0;
@@ -363,11 +386,17 @@ export function AdminPos() {
           {loading && <p style={{ color: '#9ca3af', gridColumn: '1/-1' }}>กำลังโหลด…</p>}
           {!loading && filtered.length === 0 && <p style={{ color: '#9ca3af', gridColumn: '1/-1' }}>ไม่พบสินค้า</p>}
           {filtered.map((s) => {
-            const key    = `p-${s.product_id}`;
-            const inCart = cart.find((c) => c.key === key);
+            const key             = `p-${s.product_id}`;
+            const inCart          = cart.find((c) => c.key === key);
+            const hasReservedSeed = cart.some((c) => c.isReservedSeed);
+            const isSeedItem      = s.category === 'seed';
+            // disable other seed products when reserved seed is already in cart
+            const isLockedOut     = hasReservedSeed && isSeedItem && !inCart?.isReservedSeed;
+            const isDisabled      = s.qty_available <= 0 || isLockedOut;
             return (
-              <button key={s.id} onClick={() => addItem(s)} disabled={s.qty_available <= 0}
-                style={{ padding: '12px 10px', borderRadius: 14, border: `2px solid ${inCart ? 'var(--primary)' : '#e4ebe4'}`, background: inCart ? '#e8f5e9' : s.qty_available <= 0 ? '#f5f5f5' : '#fff', cursor: s.qty_available <= 0 ? 'not-allowed' : 'pointer', textAlign: 'left', position: 'relative', opacity: s.qty_available <= 0 ? 0.5 : 1 }}>
+              <button key={s.id} onClick={() => !isDisabled && addItem(s)} disabled={isDisabled}
+                title={isLockedOut ? 'มีเมล็ดพันธุ์จองอยู่แล้ว — เพิ่มได้เฉพาะปุ๋ย/ยา/อุปกรณ์' : undefined}
+                style={{ padding: '12px 10px', borderRadius: 14, border: `2px solid ${inCart ? 'var(--primary)' : '#e4ebe4'}`, background: inCart ? '#e8f5e9' : isDisabled ? '#f5f5f5' : '#fff', cursor: isDisabled ? 'not-allowed' : 'pointer', textAlign: 'left', position: 'relative', opacity: isDisabled ? 0.4 : 1 }}>
                 {inCart && <span style={{ position: 'absolute', top: 6, right: 8, background: 'var(--primary)', color: '#fff', borderRadius: '50%', width: 20, height: 20, fontSize: 11, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{inCart.qty}</span>}
                 {s.image_url
                   ? <img src={s.image_url} alt={s.name} style={{ width: '100%', height: 60, objectFit: 'cover', borderRadius: 8, marginBottom: 6 }} />
@@ -399,18 +428,25 @@ export function AdminPos() {
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
           {cart.length === 0 && <p style={{ color: '#9ca3af', fontSize: 14, textAlign: 'center', marginTop: 24 }}>กดสินค้าเพื่อเพิ่มลงตะกร้า</p>}
           {cart.map((item) => (
-            <div key={item.key} style={{ background: '#fff', borderRadius: 10, padding: '8px 10px', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div key={item.key} style={{ background: item.isReservedSeed ? '#e8f5e9' : '#fff', borderRadius: 10, padding: '8px 10px', display: 'flex', alignItems: 'center', gap: 8, border: item.isReservedSeed ? '1px solid #a5d6a7' : 'none' }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ margin: 0, fontWeight: 700, fontSize: 13 }}>{item.name}</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <p style={{ margin: 0, fontWeight: 700, fontSize: 13 }}>{item.name}</p>
+                  {item.isReservedSeed && <span style={{ fontSize: 10, background: '#1b5e20', color: '#fff', borderRadius: 4, padding: '1px 5px', fontWeight: 700, flexShrink: 0 }}>🔒 จอง</span>}
+                </div>
                 <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>{item.unit_price.toLocaleString()} ×</p>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <button onClick={() => updateQty(item.key, item.qty - 1)}
-                  style={{ width: 26, height: 26, borderRadius: 6, border: '1px solid #e0e0e0', background: '#f5f5f5', cursor: 'pointer', fontWeight: 700 }}>−</button>
-                <span style={{ fontWeight: 800, minWidth: 24, textAlign: 'center' }}>{item.qty}</span>
-                <button onClick={() => updateQty(item.key, item.qty + 1)}
-                  style={{ width: 26, height: 26, borderRadius: 6, border: '1px solid var(--primary)', background: '#e8f5e9', cursor: 'pointer', color: 'var(--primary)', fontWeight: 700 }}>+</button>
-              </div>
+              {item.isReservedSeed ? (
+                <span style={{ fontWeight: 900, minWidth: 28, textAlign: 'center', fontSize: 15, color: '#1b5e20' }}>{item.qty}</span>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <button onClick={() => updateQty(item.key, item.qty - 1)}
+                    style={{ width: 26, height: 26, borderRadius: 6, border: '1px solid #e0e0e0', background: '#f5f5f5', cursor: 'pointer', fontWeight: 700 }}>−</button>
+                  <span style={{ fontWeight: 800, minWidth: 24, textAlign: 'center' }}>{item.qty}</span>
+                  <button onClick={() => updateQty(item.key, item.qty + 1)}
+                    style={{ width: 26, height: 26, borderRadius: 6, border: '1px solid var(--primary)', background: '#e8f5e9', cursor: 'pointer', color: 'var(--primary)', fontWeight: 700 }}>+</button>
+                </div>
+              )}
               <p style={{ margin: 0, fontWeight: 900, fontSize: 14, minWidth: 70, textAlign: 'right', color: '#1b5e20' }}>{(item.qty * item.unit_price).toLocaleString()}</p>
             </div>
           ))}
