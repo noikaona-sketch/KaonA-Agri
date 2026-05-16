@@ -21,10 +21,11 @@ type Slot = {
 };
 type Reservation = {
   id: string; reservation_no: string; status: string;
-  variety_name: string; lot_no: string; supplier_name: string | null;
+  variety_name: string; lot_no: string | null; supplier_name: string | null;
   qty_reserved: number; price_per_bag: number; total_amount: number | null;
   pickup_date: string | null; created_at: string;
-  seed_stock_lots: { bag_weight_kg: number }[] | null;
+  // nested relation — always array per SUPABASE_RULES
+  products: { bag_weight_kg: number | null }[] | null;
 };
 
 const STATUS_CFG: Record<string, { icon: string; label: string; color: string; bg: string }> = {
@@ -182,7 +183,7 @@ export function SeedReservationFlow() {
       )}
       {reservations.map((r) => {
         const st = STATUS_CFG[r.status] ?? STATUS_CFG.pending;
-        const bw = r.seed_stock_lots?.[0]?.bag_weight_kg ?? 1;
+        const bw = r.products?.[0]?.bag_weight_kg ?? 1;
         return (
           <div key={r.id} className="kaona-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
