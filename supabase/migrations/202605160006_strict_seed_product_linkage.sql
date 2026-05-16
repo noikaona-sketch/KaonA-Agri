@@ -15,6 +15,9 @@ create unique index if not exists idx_products_product_code_unique
   on public.products(product_code)
   where product_code is not null and deleted_at is null;
 
+-- drop old index (wrong name, no product_type filter) if it was applied
+drop index if exists public.idx_products_one_active_per_variety;
+
 -- enforce: one active seed product per variety (seed products only)
 create unique index if not exists idx_products_one_active_seed_product_per_variety
   on public.products(seed_variety_id)
