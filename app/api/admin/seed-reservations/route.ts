@@ -22,7 +22,7 @@ export async function GET(request: Request) {
         id, order_number, order_type, status, created_at,
         member_id, note, total, discount, paid_amount, payment_method,
         pickup_slot_id, source_type,
-        members!inner(full_name, phone),
+        members!sale_orders_member_id_fkey(full_name, phone),
         order_items(product_id, product_name, product_name_snapshot, product_unit, qty, unit_price)
       `)
       .eq('order_type', 'reservation')
