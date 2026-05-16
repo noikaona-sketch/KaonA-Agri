@@ -20,6 +20,7 @@ type Props = {
   reservationStatus: string | null;   // 'ครบ' | 'ค้าง' | null
   qtyReserved: number | null;
   qtySold: number | null;
+  pickupDate: string | null;
   onNew: () => void;
 };
 
@@ -27,7 +28,7 @@ const PAY_LABEL: Record<string, string> = { cash: 'เงินสด', transfer
 
 function buildHtml(props: Omit<Props,'onNew'>, type: 'sale' | 'reservation'): string {
   const { receipt, memberName, memberPhone, items, payMethod, cashReceived, discount,
-          resNote, resChannel, reservationNo, reservationStatus, qtyReserved, qtySold } = props;
+          resNote, resChannel, reservationNo, reservationStatus, qtyReserved, qtySold, pickupDate } = props;
   const isRes = type === 'reservation';
   const printItems = isRes ? items.filter((i) => i.isReservedSeed) : items;
   const subtotal = printItems.reduce((s, i) => s + i.qty * i.unit_price, 0);
@@ -87,6 +88,8 @@ function buildHtml(props: Omit<Props,'onNew'>, type: 'sale' | 'reservation'): st
   ${memberPhone ? `<div class="row"><strong>เบอร์:</strong> <span>${memberPhone}</span></div>` : ''}
   ${resChannel ? `<div class="row"><strong>ช่องทาง:</strong> <span>${resChannel}</span></div>` : ''}
   ${reservationNo ? `<div class="row"><strong>เลขจอง:</strong> <span>${reservationNo} &nbsp; ${resStatusBadge}</span></div>` : ''}
+  ${pickupDate    ? `<div class="row"><strong>วันนัดรับ:</strong> <span style="color:#1565c0;font-weight:700">${pickupDate}</span></div>` : ''}
+  ${resNote       ? `<div class="row"><strong>หมายเหตุ:</strong> <span>${resNote}</span></div>` : ''}
 </div>
 
 <table>
@@ -128,7 +131,7 @@ ${resNote ? `<div class="reservation-box"><strong>หมายเหตุ:</str
 export function PosReceipt(props: Props) {
   const { receipt, mode, memberName, memberPhone, items, payMethod, cashReceived,
           discount, resNote, resChannel, reservationNo, reservationStatus,
-          qtyReserved, qtySold, onNew } = props;
+          qtyReserved, qtySold, pickupDate, onNew } = props;
 
   function printBill(type: 'sale' | 'reservation') {
     const win = window.open('', '_blank', 'width=620,height=820');
@@ -154,6 +157,7 @@ export function PosReceipt(props: Props) {
       {reservationNo && (
         <div style={{ background: reservationStatus === 'ครบ' ? '#e8f5e9' : '#fff8e1', border: `1px solid ${reservationStatus === 'ครบ' ? '#a5d6a7' : '#ffe082'}`, borderRadius: 10, padding: '8px 14px', marginBottom: 10, fontSize: 13 }}>
           <p style={{ margin: 0, fontWeight: 700 }}>ใบจอง: {reservationNo}</p>
+          {pickupDate && <p style={{ margin: '3px 0 0', fontSize: 12, color: '#1565c0', fontWeight: 700 }}>📅 นัดรับ: {pickupDate}</p>}
           {qtyReserved != null && (
             <p style={{ margin: '4px 0 0', fontSize: 12 }}>
               โควต้า {qtyReserved} ถุง · รับแล้ว {qtySold ?? 0} ถุง · เหลือ {(qtyReserved - (qtySold ?? 0))} ถุง

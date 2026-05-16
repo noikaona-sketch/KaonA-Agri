@@ -122,6 +122,7 @@ export function AdminPos() {
     resNote: string | null; resChannel: string | null;
     reservationNo: string | null; reservationStatus: string | null;
     qtyReserved: number | null; qtySold: number | null;
+    pickupDate: string | null;
   } | null>(null);
   const [session,      setSession]      = useState<Session | null>(null);
   const [slots,        setSlots]        = useState<Slot[]>([]);
@@ -238,6 +239,11 @@ export function AdminPos() {
       ? (qtySold >= qtyReserved ? 'ครบ' : 'ค้าง')
       : null;
 
+    const selSlotData  = slots.find((s) => s.id === selSlot);
+    const pickupDate   = selSlotData
+      ? `${new Date(selSlotData.pickup_date).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' })} ${selSlotData.pickup_time}`
+      : null;
+
     setReceipt({
       order_no: d.order_number ?? '', total, change, items: savedCart,
       memberName: savedMember?.full_name ?? '',
@@ -248,6 +254,7 @@ export function AdminPos() {
       reservationNo: resNo,
       reservationStatus: resStatus,
       qtyReserved, qtySold,
+      pickupDate,
     });
     setCart([]); setCashReceived(''); setDiscount('0'); setReservationId(null); setMemberReservations([]); setResNote(''); setResChannel('หน้าร้าน');
   }
@@ -261,6 +268,7 @@ export function AdminPos() {
       resNote={receipt.resNote} resChannel={receipt.resChannel}
       reservationNo={receipt.reservationNo} reservationStatus={receipt.reservationStatus}
       qtyReserved={receipt.qtyReserved} qtySold={receipt.qtySold}
+      pickupDate={receipt.pickupDate}
       onNew={() => setReceipt(null)} />
   );
 
@@ -291,12 +299,14 @@ export function AdminPos() {
 
         {/* Left: products */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, overflow: 'hidden' }}>
-          {/* member search */}
-          <MemberSearch onSelect={onMemberSelect} />
-
-          {/* product search */}
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="🔍 ค้นหาสินค้า…"
-            style={{ padding: '7px 12px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 14, flexShrink: 0 }} />
+          {/* member + product search ในแถวเดียวกัน */}
+          <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+            <div style={{ flex: '0 0 340px' }}>
+              <MemberSearch onSelect={onMemberSelect} />
+            </div>
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="🔍 ค้นหาสินค้า…"
+              style={{ flex: 1, padding: '7px 12px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 14 }} />
+          </div>
 
           {/* category chips */}
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', flexShrink: 0 }}>
