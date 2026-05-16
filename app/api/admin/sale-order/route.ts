@@ -58,7 +58,7 @@ export async function POST(request: Request) {
       product_unit: item.unit ?? 'ชิ้น',
       qty:          item.qty,
       unit_price:   item.unit_price,
-      subtotal:     item.qty * item.unit_price,
+      // subtotal is GENERATED ALWAYS (qty * unit_price) — do not insert
     }));
 
     const { error: itemErr } = await s.from('order_items').insert(itemRows);
