@@ -101,12 +101,57 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'สมาชิกไม่ถูกต้อง' }, { status: 403 });
 
     const s = createServerSupabaseClient();
-    const { data, error } = await s.from('seed_reservations')
+
+    // ── 1. seed_reservations (เมล็ดพันธุ์จองตรง) ─────────────────────
+    const { data: seedRows, error: seedErr } = await s.from('seed_reservations')
       .select('id,reservation_no,status,qty_reserved,total_amount,price_per_bag,pickup_date,variety_name,supplier_name,lot_no,created_at,product_id,products(bag_weight_kg)')
       .eq('member_id', memberId)
       .order('created_at', { ascending: false }).limit(50);
+    if (seedErr) return NextResponse.json({ error: seedErr.message }, { status: 500 });
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ reservations: data ?? [] });
+    // ── 2. sale_orders (order_type=reservation จาก POS) ──────────────
+    const { data: soRows, error: soErr } = await s.from('sale_orders')
+      .select('id,order_number,status,total,created_at,note,pickup_slot_id,pickup_slots(pickup_date,pickup_time),order_items(product_name,qty,unit_price,product_unit)')
+      .eq('member_id', memberId)
+      .eq('order_type', 'reservation')
+      .order('created_at', { ascending: false }).limit(50);
+    if (soErr) return NextResponse.json({ error: soErr.message }, { status: 500 });
+
+    type SoRow = {
+      id: string; order_number: string; status: string; total: number;
+      created_at: string; note: string | null; pickup_slot_id: string | null;
+      pickup_slots: { pickup_date: string; pickup_time: string } | null;
+      order_items: { product_name: string; qty: number; unit_price: number; product_unit: string }[];
+    };
+
+    // normalise sale_orders → Reservation shape
+    const soNormalised = ((soRows ?? []) as unknown as SoRow[]).map((o) => {
+      const slot      = o.pickup_slots;
+      const firstItem = o.order_items?.[0];
+      return {
+        id:             o.id,
+        reservation_no: o.order_number,
+        status:         o.status === 'completed' ? 'completed' : o.status,
+        qty_reserved:   firstItem?.qty ?? 0,
+        total_amount:   o.total,
+        price_per_bag:  firstItem?.unit_price ?? 0,
+        pickup_date:    slot?.pickup_date ?? null,
+        variety_name:   firstItem?.product_name ?? '—',
+        supplier_name:  null,
+        lot_no:         null,
+        created_at:     o.created_at,
+        product_id:     null,
+        products:       null,
+        _source:        'sale_order',
+      };
+    });
+
+    // รวม + เรียงวันที่
+    const all = [
+      ...(seedRows ?? []).map((r) => ({ ...r, _source: 'seed_reservation' })),
+      ...soNormalised,
+    ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    return NextResponse.json({ reservations: all });
   } catch (e) { return NextResponse.json({ error: String(e) }, { status: 500 }); }
 }

@@ -8,7 +8,7 @@ export async function GET() {
   const s = createServerSupabaseClient();
   const { data, error } = await s
     .from('products')
-    .select('id,name,brand,crop_type,days_to_harvest,bag_weight_kg,price_per_unit,seed_variety,notes,planting_guide,image_url,product_type,is_active,seed_variety_id')
+    .select('id,name,brand,crop_type,days_to_harvest,bag_weight_kg,price_per_unit,seed_variety,image_url,product_type,is_active,seed_variety_id')
     .eq('product_type', 'seed')
     .eq('is_active', true)
     .is('deleted_at', null)
@@ -27,8 +27,6 @@ export async function GET() {
       bag_weight_kg:   Number(p.bag_weight_kg  ?? 1),
       crop_type:       p.crop_type      ?? '',
       days_to_harvest: p.days_to_harvest ?? null,
-      notes:           p.notes          ?? null,
-      planting_guide:  p.planting_guide  ?? null,
       image_url:       p.image_url       ?? null,
       seed_variety_id: p.seed_variety_id,
     })),
