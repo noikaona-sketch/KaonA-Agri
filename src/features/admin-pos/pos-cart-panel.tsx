@@ -114,7 +114,7 @@ export function PosCartPanel(p: Props) {
         <div style={{ display: 'flex', gap: 5 }}>
           {(['cash','transfer','credit'] as const).map((m) => (
             <button key={m} onClick={() => p.onPayMethod(m)}
-              style={{ flex: 1, padding: '6px 2px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12, background: payMethod === m ? color : '#fff', color: payMethod === m ? '#fff' : color, border: `1.5px solid ${color}40` }}>
+              style={{ flex: 1, padding: '6px 2px', borderRadius: 8, border: `1.5px solid ${color}40`, cursor: 'pointer', fontWeight: 700, fontSize: 12, background: payMethod === m ? color : '#fff', color: payMethod === m ? '#fff' : color }}>
               {m === 'cash' ? '💵 สด' : m === 'transfer' ? '🏦 โอน' : '📒 เครดิต'}
             </button>
           ))}
