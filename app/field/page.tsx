@@ -7,6 +7,7 @@ import { useCurrentMember } from '@/providers/auth-provider';
 import { MobileAppShell } from '@/shared/components/mobile-app-shell';
 import { LoadingState } from '@/shared/components/loading-state';
 import { FieldTeamMap } from '@/features/field-team-map/field-team-map';
+import { FieldSeedReservation } from '@/features/field-seed-reservation/field-seed-reservation';
 
 type InspectionTask = {
   id: string; result_status: string;
@@ -26,7 +27,7 @@ export default function FieldPage() {
   const member = useCurrentMember();
   const [tasks, setTasks]     = useState<InspectionTask[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab]         = useState<'tasks' | 'map'>('tasks');
+  const [tab, setTab] = useState<'tasks' | 'map' | 'reservation'>('tasks');
   const [today]               = useState(new Date().toISOString().slice(0, 10));
 
   useEffect(() => {
@@ -68,12 +69,15 @@ export default function FieldPage() {
 
         {/* tabs */}
         <div style={{ display: 'flex', gap: 8 }}>
-          {(['tasks', 'map'] as const).map((t) => (
-            <button key={t} onClick={() => setTab(t)}
-              style={{ flex: 1, padding: '10px', borderRadius: 12, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 13, background: tab === t ? 'var(--primary)' : '#f0f4f0', color: tab === t ? '#fff' : 'var(--text-secondary)' }}>
-              {t === 'tasks' ? `📋 งานตรวจ (${tasks.length})` : '🗺️ แผนที่สมาชิก'}
-            </button>
-          ))}
+          <button onClick={() => setTab('tasks')} style={{ flex: 1, padding: '10px', borderRadius: 12, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 13, background: tab === 'tasks' ? 'var(--primary)' : '#f0f4f0', color: tab === 'tasks' ? '#fff' : 'var(--text-secondary)' }}>
+            📋 งานตรวจ ({tasks.length})
+          </button>
+          <button onClick={() => setTab('reservation')} style={{ flex: 1, padding: '10px', borderRadius: 12, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 13, background: tab === 'reservation' ? 'var(--primary)' : '#f0f4f0', color: tab === 'reservation' ? '#fff' : 'var(--text-secondary)' }}>
+            🌾 จองเมล็ด
+          </button>
+          <button onClick={() => setTab('map')} style={{ flex: 1, padding: '10px', borderRadius: 12, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 13, background: tab === 'map' ? 'var(--primary)' : '#f0f4f0', color: tab === 'map' ? '#fff' : 'var(--text-secondary)' }}>
+            🗺️ แผนที่
+          </button>
         </div>
 
         {/* tasks tab */}
@@ -118,6 +122,9 @@ export default function FieldPage() {
 
         {/* map tab */}
         {tab === 'map' && <FieldTeamMap />}
+
+        {/* reservation tab */}
+        {tab === 'reservation' && <FieldSeedReservation />}
       </div>
     </MobileAppShell>
   );
