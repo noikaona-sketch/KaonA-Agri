@@ -1,90 +1,87 @@
 'use client';
 
-import type { CartItem } from './pos-cart';
-
-type ReceiptProps = {
-  receipt: {
-    order_number: string; total: number; subtotal: number; discount: number;
-    paymentMethod: string;
-    member: { full_name: string } | null;
-    items: CartItem[];
-  };
+type Props = {
+  receipt: { order_no: string; total: number; change: number };
+  mode: 'sale' | 'reservation';
+  memberName: string;
+  items: { name: string; qty: number; unit_price: number; isReservedSeed?: boolean }[];
+  payMethod: string;
+  cashReceived: string;
   onNew: () => void;
 };
 
-const PAY_TH: Record<string, string> = { cash: '💵 เงินสด', transfer: '📱 โอน', debit_account: '📒 ติดบัญชี', credit: '💳 เครดิต' };
+export function PosReceipt({ receipt, mode, memberName, items, payMethod, cashReceived, onNew }: Props) {
+  function printBill(type: 'sale' | 'reservation') {
+    const win = window.open('', '_blank', 'width=400,height=600');
+    if (!win) return;
+    const isRes = type === 'reservation';
+    const rows = items
+      .filter((i) => isRes ? i.isReservedSeed : true)
+      .map((i) => `<tr><td>${i.name}</td><td style="text-align:right">${i.qty}</td><td style="text-align:right">${(i.qty * i.unit_price).toLocaleString()}</td></tr>`)
+      .join('');
+    win.document.write(`
+      <html><head><title>${isRes ? 'ใบจอง' : 'ใบขาย'} ${receipt.order_no}</title>
+      <style>body{font-family:sans-serif;font-size:13px;padding:16px}table{width:100%;border-collapse:collapse}td{padding:4px 2px}hr{border:1px dashed #ccc}.total{font-size:16px;font-weight:900}</style></head>
+      <body>
+        <h3 style="text-align:center;margin:0">${isRes ? '📋 ใบจองสินค้า' : '🧾 ใบขายสินค้า'}</h3>
+        <p style="text-align:center;margin:4px 0;font-size:11px">${new Date().toLocaleString('th-TH')}</p>
+        <hr/>
+        <p><strong>เลขที่:</strong> ${receipt.order_no}</p>
+        <p><strong>ลูกค้า:</strong> ${memberName}</p>
+        <hr/>
+        <table><tr><th style="text-align:left">สินค้า</th><th style="text-align:right">จำนวน</th><th style="text-align:right">ราคา</th></tr>
+        ${rows}</table>
+        <hr/>
+        <p class="total" style="text-align:right">รวม: ${receipt.total.toLocaleString()} บาท</p>
+        ${!isRes && payMethod === 'cash' ? `<p style="text-align:right">รับ: ${Number(cashReceived).toLocaleString()} บาท</p><p style="text-align:right">ทอน: ${receipt.change.toLocaleString()} บาท</p>` : ''}
+        <script>window.print();window.close();<\/script>
+      </body></html>
+    `);
+    win.document.close();
+  }
 
-export function PosReceipt({ receipt, onNew }: ReceiptProps) {
-  const now = new Date().toLocaleString('th-TH', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-
-  function printReceipt() { window.print(); }
+  const hasReservation = items.some((i) => i.isReservedSeed);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20, paddingBottom: 40 }}>
-      <div style={{ background: '#e8f5e9', borderRadius: 16, padding: '16px 24px', textAlign: 'center', width: '100%', maxWidth: 400 }}>
-        <div style={{ fontSize: 40 }}>✅</div>
-        <p style={{ margin: '6px 0 0', fontSize: 18, fontWeight: 800, color: '#1b5e20' }}>ทำรายการสำเร็จ</p>
-        <p style={{ margin: '2px 0 0', fontSize: 14, color: '#4a6741' }}>{receipt.order_number}</p>
+    <div style={{ maxWidth: 420, margin: '0 auto', padding: 24 }}>
+      <div style={{ textAlign: 'center', marginBottom: 16 }}>
+        <div style={{ fontSize: 56 }}>{mode === 'sale' ? '🧾' : '📋'}</div>
+        <h2 style={{ margin: '8px 0 4px', color: mode === 'sale' ? '#1b5e20' : '#1565c0' }}>ทำรายการสำเร็จ</h2>
+        <p style={{ margin: 0, fontFamily: 'monospace', fontSize: 16, fontWeight: 700 }}>{receipt.order_no}</p>
+        <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6b7280' }}>{memberName}</p>
       </div>
 
-      <div className="receipt" style={{ width: '100%', maxWidth: 360 }}>
-        <div className="receipt__header">
-          <p className="receipt__title">KaonA Agri</p>
-          <p style={{ margin: '2px 0', fontSize: 12, color: '#6b7280' }}>{now}</p>
-          <p style={{ margin: '2px 0', fontSize: 13, fontWeight: 600 }}>{receipt.order_number}</p>
-        </div>
-        <hr className="receipt__divider" />
-
-        <div className="receipt__row" style={{ marginBottom: 4 }}>
-          <span style={{ fontWeight: 600 }}>ลูกค้า</span>
-          <span>{receipt.member?.full_name ?? '—'}</span>
-        </div>
-
-        <hr className="receipt__divider" />
-
-        {receipt.items.map((item) => (
-          <div key={item.product_id}>
-            <p style={{ margin: '4px 0 2px', fontSize: 13, fontWeight: 600 }}>{item.product_name}</p>
-            <div className="receipt__row" style={{ color: '#6b7280' }}>
-              <span>{item.qty} {item.unit} × {item.unit_price.toLocaleString()}</span>
-              <span>{(item.qty * item.unit_price).toLocaleString()} บาท</span>
-            </div>
+      <div style={{ background: mode === 'sale' ? '#e8f5e9' : '#e3f2fd', borderRadius: 14, padding: 16, marginBottom: 16 }}>
+        {items.map((item, i) => (
+          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 14 }}>
+            <span>{item.name} × {item.qty} {item.isReservedSeed ? '🔒' : ''}</span>
+            <span style={{ fontWeight: 700 }}>{(item.qty * item.unit_price).toLocaleString()}</span>
           </div>
         ))}
-
-        <hr className="receipt__divider" />
-
-        <div className="receipt__row">
-          <span>ยอดรวม</span>
-          <span>{receipt.subtotal.toLocaleString()} บาท</span>
+        <div style={{ borderTop: '1px dashed #aaa', paddingTop: 8, marginTop: 4, display: 'flex', justifyContent: 'space-between', fontSize: 18, fontWeight: 900 }}>
+          <span>รวม</span><span>{receipt.total.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท</span>
         </div>
-        {receipt.discount > 0 && (
-          <div className="receipt__row" style={{ color: '#ef4444' }}>
-            <span>ส่วนลด</span>
-            <span>−{receipt.discount.toLocaleString()} บาท</span>
+        {payMethod === 'cash' && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 15, fontWeight: 700, marginTop: 4 }}>
+            <span>เงินทอน</span><span>{receipt.change.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท</span>
           </div>
         )}
-        <div className="receipt__row receipt__row--total">
-          <span>รวมสุทธิ</span>
-          <span>{receipt.total.toLocaleString()} บาท</span>
-        </div>
-        <div className="receipt__row receipt__row--paid">
-          <span>ชำระ</span>
-          <span>{PAY_TH[receipt.paymentMethod] ?? receipt.paymentMethod}</span>
-        </div>
-
-        <hr className="receipt__divider" />
-        <p style={{ textAlign: 'center', fontSize: 12, color: '#6b7280', margin: 0 }}>ขอบคุณที่ใช้บริการ</p>
       </div>
 
-      <div style={{ display: 'flex', gap: 10, width: '100%', maxWidth: 360 }}>
-        <button className="admin-btn admin-btn--secondary" style={{ flex: 1, justifyContent: 'center', padding: '12px' }} onClick={printReceipt}>
-          🖨️ พิมพ์
+      <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+        <button onClick={() => printBill('sale')} style={{ flex: 1, padding: '10px', borderRadius: 10, border: '1.5px solid #1b5e20', background: '#fff', color: '#1b5e20', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+          🖨️ พิมพ์ใบขาย
         </button>
-        <button className="admin-btn admin-btn--primary" style={{ flex: 2, justifyContent: 'center', padding: '12px', fontSize: 15, fontWeight: 800 }} onClick={onNew}>
-          ➕ รายการใหม่
-        </button>
+        {hasReservation && (
+          <button onClick={() => printBill('reservation')} style={{ flex: 1, padding: '10px', borderRadius: 10, border: '1.5px solid #1565c0', background: '#fff', color: '#1565c0', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+            🖨️ พิมพ์ใบจอง
+          </button>
+        )}
       </div>
+
+      <button onClick={onNew} style={{ width: '100%', padding: 14, borderRadius: 14, border: 'none', background: mode === 'sale' ? '#1b5e20' : '#1565c0', color: '#fff', fontWeight: 700, fontSize: 15, cursor: 'pointer' }}>
+        ✅ ทำรายการใหม่
+      </button>
     </div>
   );
 }
