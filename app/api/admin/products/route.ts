@@ -1,56 +1,61 @@
 import { NextRequest, NextResponse } from 'next/server';
-
 import { createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
 
 type ProductCategory = 'seed' | 'fertilizer' | 'pesticide' | 'equipment' | 'other';
-type ProductType = 'seed' | 'fertilizer' | 'chemical' | 'other';
+type ProductType     = 'seed' | 'fertilizer' | 'chemical' | 'other';
 
-const PRODUCT_TYPE_BY_CATEGORY: Record<ProductCategory, ProductType> = {
-  seed: 'seed',
-  fertilizer: 'fertilizer',
-  pesticide: 'chemical',
-  equipment: 'other',
-  other: 'other',
+const TYPE_BY_CAT: Record<ProductCategory, ProductType> = {
+  seed: 'seed', fertilizer: 'fertilizer',
+  pesticide: 'chemical', equipment: 'other', other: 'other',
 };
 
-function toValidCategory(value: unknown): ProductCategory {
-  const allowed: ProductCategory[] = ['seed', 'fertilizer', 'pesticide', 'equipment', 'other'];
-  return allowed.includes(value as ProductCategory) ? (value as ProductCategory) : 'other';
+function toCategory(v: unknown): ProductCategory {
+  const ok: ProductCategory[] = ['seed','fertilizer','pesticide','equipment','other'];
+  return ok.includes(v as ProductCategory) ? (v as ProductCategory) : 'other';
 }
-
-function toValidProductType(value: unknown, category: ProductCategory): ProductType {
-  const allowed: ProductType[] = ['seed', 'fertilizer', 'chemical', 'other'];
-  return allowed.includes(value as ProductType) ? (value as ProductType) : PRODUCT_TYPE_BY_CATEGORY[category];
+function toProductType(v: unknown, cat: ProductCategory): ProductType {
+  const ok: ProductType[] = ['seed','fertilizer','chemical','other'];
+  return ok.includes(v as ProductType) ? (v as ProductType) : TYPE_BY_CAT[cat];
 }
 
 export async function GET() {
   const s = createServerSupabaseClient();
   const { data, error } = await s
     .from('products')
-    .select('id,name,brand,category,product_type,unit,price_per_unit,stock_qty,is_active,crop_type,seed_variety,days_to_harvest,bag_weight_kg,sort_order')
+    .select('id,name,brand,category,product_type,product_code,unit,price_per_unit,stock_qty,is_active,seed_variety_id,crop_type,seed_variety,days_to_harvest,bag_weight_kg,sort_order')
     .is('deleted_at', null)
-    .order('sort_order')
-    .order('name');
+    .order('sort_order').order('name');
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ products: data ?? [] });
 }
 
-export async function POST(req: NextRequest) {
-  const body = await req.json();
-  const category = toValidCategory(body.category);
-  const payload = {
-    name: String(body.name ?? '').trim(),
+function buildPayload(body: Record<string, unknown>) {
+  const category    = toCategory(body.category);
+  const productType = toProductType(body.product_type, category);
+  const isSeed      = productType === 'seed';
+  return {
+    name:            String(body.name ?? '').trim(),
     category,
-    product_type: toValidProductType(body.product_type, category),
-    unit: String(body.unit ?? 'piece'),
-    price_per_unit: Number(body.price_per_unit ?? 0),
-    crop_type: body.crop_type ? String(body.crop_type).trim() : null,
-    seed_variety: body.seed_variety ? String(body.seed_variety).trim() : null,
-    days_to_harvest: body.days_to_harvest ? Number(body.days_to_harvest) : null,
-    bag_weight_kg: body.bag_weight_kg ? Number(body.bag_weight_kg) : null,
-    is_active: Boolean(body.is_active ?? true),
+    product_type:    productType,
+    product_code:    body.product_code ? String(body.product_code).trim() : null,
+    unit:            String(body.unit ?? 'piece'),
+    price_per_unit:  Number(body.price_per_unit ?? 0),
+    is_active:       Boolean(body.is_active ?? true),
+    // seed fields — null for non-seed
+    seed_variety_id: isSeed ? (body.seed_variety_id as string | null ?? null) : null,
+    crop_type:       isSeed ? (body.crop_type    ? String(body.crop_type).trim()    : null) : null,
+    seed_variety:    isSeed ? (body.seed_variety ? String(body.seed_variety).trim() : null) : null,
+    days_to_harvest: isSeed && body.days_to_harvest ? Number(body.days_to_harvest) : null,
+    bag_weight_kg:   isSeed && body.bag_weight_kg   ? Number(body.bag_weight_kg)   : null,
   };
+}
+
+export async function POST(req: NextRequest) {
+  const body    = await req.json() as Record<string, unknown>;
+  const payload = buildPayload(body);
   if (!payload.name) return NextResponse.json({ error: 'name is required' }, { status: 400 });
+  if (payload.product_type === 'seed' && payload.is_active && !payload.seed_variety_id)
+    return NextResponse.json({ error: 'กรุณาเลือกพันธุ์เมล็ด (seed_variety_id)' }, { status: 400 });
 
   const s = createServerSupabaseClient();
   const { data, error } = await s.from('products').insert(payload).select('id').single();
@@ -59,22 +64,13 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  const body = await req.json();
-  const id = String(body.id ?? '');
+  const body = await req.json() as Record<string, unknown>;
+  const id   = String(body.id ?? '');
   if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 });
-  const category = toValidCategory(body.category);
-  const payload = {
-    name: String(body.name ?? '').trim(),
-    category,
-    product_type: toValidProductType(body.product_type, category),
-    unit: String(body.unit ?? 'piece'),
-    price_per_unit: Number(body.price_per_unit ?? 0),
-    crop_type: body.crop_type ? String(body.crop_type).trim() : null,
-    seed_variety: body.seed_variety ? String(body.seed_variety).trim() : null,
-    days_to_harvest: body.days_to_harvest ? Number(body.days_to_harvest) : null,
-    bag_weight_kg: body.bag_weight_kg ? Number(body.bag_weight_kg) : null,
-    is_active: Boolean(body.is_active ?? true),
-  };
+
+  const payload = buildPayload(body);
+  if (payload.product_type === 'seed' && payload.is_active && !payload.seed_variety_id)
+    return NextResponse.json({ error: 'กรุณาเลือกพันธุ์เมล็ด (seed_variety_id)' }, { status: 400 });
 
   const s = createServerSupabaseClient();
   const { error } = await s.from('products').update(payload).eq('id', id);
