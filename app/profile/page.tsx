@@ -84,7 +84,7 @@ export default function ProfilePage() {
   const statusCfg = STATUS_CFG[data.status] ?? { label: data.status, color: '#888' };
 
   return (
-    <ProtectedRoute>
+    <ProtectedRoute allowPending>
     <MobileAppShell title="" subtitle="">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingBottom: 16 }}>
 
