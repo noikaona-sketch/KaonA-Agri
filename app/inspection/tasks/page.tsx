@@ -101,5 +101,5 @@ function TaskList() {
 }
 
 export default function InspectionTasksPage() {
-  return <ProtectedRoute><TaskList /></ProtectedRoute>;
+  return <ProtectedRoute allowedRoles={['inspector','staff','leader','admin']}><TaskList /></ProtectedRoute>;
 }

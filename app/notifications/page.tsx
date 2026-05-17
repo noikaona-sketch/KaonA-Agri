@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useCurrentMember, useCurrentRoles, useEffectiveRole } from '@/providers/auth-provider';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import { ProtectedRoute } from '@/shared/components/protected-route';
 import { MobileAppShell } from '@/shared/components/mobile-app-shell';
 import { LoadingState } from '@/shared/components/loading-state';
 import type { AppRole } from '@/shared/auth/auth-types';
@@ -166,6 +167,7 @@ export default function MyTasksPage() {
   const hasNoTasks   = tasks.length === 0;
 
   return (
+    <ProtectedRoute>
     <MobileAppShell title="" subtitle="">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingBottom: 16 }}>
 
@@ -259,5 +261,6 @@ export default function MyTasksPage() {
 
       </div>
     </MobileAppShell>
+    </ProtectedRoute>
   );
 }
