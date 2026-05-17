@@ -75,8 +75,12 @@ export function ProtectedRoute({ allowedRoles, children, ...fallbacks }: Protect
     return fallbacks.fallbackAccessDenied ?? <StateView title="ยังไม่สามารถเข้าใช้งานได้" subtitle="เฉพาะสมาชิกสถานะ อนุมัติแล้ว เท่านั้นที่เข้าใช้งานส่วนนี้ได้" />;
   }
 
-  if (allowedRoles && allowedRoles.length > 0 && (!effectiveRole || !allowedRoles.includes(effectiveRole))) {
-    return fallbacks.fallbackAccessDenied ?? <StateView title="Role required" subtitle="Your role does not have access to this module." />;
+  if (allowedRoles && allowedRoles.length > 0) {
+    const memberRoles = member.roles ?? [];
+    const hasRole = memberRoles.some((r) => allowedRoles.includes(r as AppRole));
+    if (!hasRole) {
+      return fallbacks.fallbackAccessDenied ?? <StateView title="ไม่มีสิทธิ์เข้าใช้งานส่วนนี้" subtitle="บทบาทของคุณไม่ได้รับอนุญาตให้เข้าใช้งานส่วนนี้ กรุณาติดต่อเจ้าหน้าที่" kicker="ไม่มีสิทธิ์เข้าถึง" />;
+    }
   }
 
   return <>{children}</>;
