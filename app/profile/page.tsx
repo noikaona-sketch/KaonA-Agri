@@ -33,7 +33,7 @@ type MemberData = {
   citizen_id_masked: string | null; status: string;
   bank_name: string | null; bank_account_number: string | null; bank_account_name: string | null;
 };
-type PlotSummary  = { id: string; village: string | null; rai: number };
+type PlotSummary  = { id: string; name: string; area_rai: number; lat: number; lng: number; status: string };
 type CreditAccount= { balance: number; debit_balance: number; total_spent: number };
 type DocRow       = { doc_type: string; verified: boolean; file_url: string | null };
 
@@ -65,12 +65,13 @@ export default function ProfilePage() {
     const s = createSupabaseBrowserClient();
     void Promise.all([
       s.from('members').select('full_name,phone,address,citizen_id_masked,status,bank_name,bank_account_number,bank_account_name').eq('id', member.member_id).maybeSingle(),
-      s.from('plots').select('id,village,rai').eq('member_id', member.member_id).is('deleted_at', null).order('created_at'),
+      // ใช้ API route แทน browser client เพราะ plots RLS ต้องการ auth.uid() ที่อาจยังไม่ ready
+      fetch(`/api/member/plots?member_id=${member.member_id}`).then((r) => r.json()),
       s.from('member_documents').select('doc_type,verified,file_url').eq('member_id', member.member_id),
       fetch('/api/member/credit').then((r) => r.json()),
     ]).then(([m, p, d, cr]) => {
       setData((m.data as MemberData | null));
-      setPlots((p.data as PlotSummary[] | null) ?? []);
+      setPlots(((p as { plots?: PlotSummary[] }).plots ?? []));
       setDocs((d.data as DocRow[] | null) ?? []);
       setCredit((cr as { account?: CreditAccount }).account ?? null);
     });
@@ -126,7 +127,7 @@ export default function ProfilePage() {
                   <p style={{ margin: 0, fontWeight: 500, fontSize: 15, color: 'var(--color-text-primary,#111)' }}>{plots.length} แปลง</p>
                   <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--color-text-secondary,#888)' }}>
                     {plots.length > 0
-                      ? `รวม ${plots.reduce((s, p) => s + (p.rai ?? 0), 0).toLocaleString()} ไร่`
+                      ? `รวม ${plots.reduce((s, p) => s + (p.area_rai ?? 0), 0).toLocaleString()} ไร่`
                       : 'ยังไม่มีแปลง'}
                   </p>
                 </div>
@@ -137,12 +138,15 @@ export default function ProfilePage() {
             </div>
             {plots.length > 0 && (
               <div style={{ borderTop: '0.5px solid var(--color-border-tertiary,#e4ede4)' }}>
-                {plots.slice(0, 3).map((pl, i) => (
-                  <div key={pl.id} style={{ padding: '9px 14px', display: 'flex', justifyContent: 'space-between', borderBottom: i < Math.min(plots.length, 3) - 1 ? '0.5px solid var(--color-border-tertiary,#e4ede4)' : 'none' }}>
-                    <span style={{ fontSize: 13, color: 'var(--color-text-primary,#111)' }}>📍 {pl.village ?? `แปลง ${i + 1}`}</span>
-                    <span style={{ fontSize: 13, color: 'var(--color-text-secondary,#888)' }}>{pl.rai} ไร่</span>
-                  </div>
-                ))}
+                {plots.slice(0, 3).map((pl, i) => {
+                  const stLabel: Record<string, string> = { active: '', pending_review: '⏳', rejected: '❌', inactive: '⏸' };
+                  return (
+                    <div key={pl.id} style={{ padding: '9px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: i < Math.min(plots.length, 3) - 1 ? '0.5px solid var(--color-border-tertiary,#e4ede4)' : 'none' }}>
+                      <span style={{ fontSize: 13, color: 'var(--color-text-primary,#111)' }}>📍 {pl.name} {stLabel[pl.status] ?? ''}</span>
+                      <span style={{ fontSize: 13, color: 'var(--color-text-secondary,#888)' }}>{pl.area_rai} ไร่</span>
+                    </div>
+                  );
+                })}
                 {plots.length > 3 && (
                   <Link href="/plots" style={{ display: 'block', padding: '9px 14px', textAlign: 'center', fontSize: 13, color: '#185FA5', textDecoration: 'none' }}>
                     ดูทั้งหมด {plots.length} แปลง ›
