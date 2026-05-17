@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 
 import {
   createServerSupabaseClient,
+  createAnonSupabaseClient,
   getEffectiveRole,
   getLineChannelId,
   isAppRole,
