@@ -65,12 +65,13 @@ export default function ProfilePage() {
     const s = createSupabaseBrowserClient();
     void Promise.all([
       s.from('members').select('full_name,phone,address,citizen_id_masked,status,bank_name,bank_account_number,bank_account_name').eq('id', member.member_id).maybeSingle(),
-      s.from('plots').select('id,name,area_rai,lat,lng,status').eq('member_id', member.member_id).order('created_at'),
+      // ใช้ API route แทน browser client เพราะ plots RLS ต้องการ auth.uid() ที่อาจยังไม่ ready
+      fetch(`/api/member/plots?member_id=${member.member_id}`).then((r) => r.json()),
       s.from('member_documents').select('doc_type,verified,file_url').eq('member_id', member.member_id),
       fetch('/api/member/credit').then((r) => r.json()),
     ]).then(([m, p, d, cr]) => {
       setData((m.data as MemberData | null));
-      setPlots((p.data as PlotSummary[] | null) ?? []);
+      setPlots(((p as { plots?: PlotSummary[] }).plots ?? []));
       setDocs((d.data as DocRow[] | null) ?? []);
       setCredit((cr as { account?: CreditAccount }).account ?? null);
     });
