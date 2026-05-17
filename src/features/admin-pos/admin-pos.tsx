@@ -275,30 +275,28 @@ export function AdminPos() {
   const modeColor = mode === 'sale' ? '#1b5e20' : '#1565c0';
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 120px)', gap: 10 }}>
-
-      {/* ── Top bar: mode + warehouse ── */}
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
-        {/* mode toggle */}
-        <div style={{ display: 'flex', borderRadius: 10, overflow: 'hidden', border: '2px solid #e0e0e0', flexShrink: 0 }}>
-          {(['sale','reservation'] as const).map((m) => (
-            <button key={m} onClick={() => setMode(m)}
-              style={{ padding: '8px 20px', border: 'none', cursor: 'pointer', fontWeight: 800, fontSize: 14, background: mode === m ? (m === 'sale' ? '#1b5e20' : '#1565c0') : '#f5f5f5', color: mode === m ? '#fff' : '#666', transition: 'all 0.15s' }}>
-              {m === 'sale' ? '💰 ขาย' : '📋 จอง'}
-            </button>
-          ))}
-        </div>
-        <select value={selWH} onChange={(e) => setSelWH(e.target.value)}
-          style={{ padding: '7px 12px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontWeight: 700, fontSize: 13, background: '#fff' }}>
-          {warehouses.map((w) => <option key={w.id} value={w.id}>🏭 {w.name}</option>)}
-        </select>
-      </div>
-
+    <div className="admin-pos-layout">
       {/* ── Main: products left, cart right ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 12, flex: 1, overflow: 'hidden' }}>
+      <div className="admin-pos-grid">
 
         {/* Left: products */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, overflow: 'hidden' }}>
+        <div className="admin-pos-left">
+          {/* ── Top bar: mode + warehouse ── */}
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0, flexWrap: 'wrap' }}>
+            {/* mode toggle */}
+            <div style={{ display: 'flex', borderRadius: 10, overflow: 'hidden', border: '2px solid #e0e0e0', flexShrink: 0 }}>
+              {(['sale','reservation'] as const).map((m) => (
+                <button key={m} onClick={() => setMode(m)}
+                  style={{ padding: '8px 20px', border: 'none', cursor: 'pointer', fontWeight: 800, fontSize: 14, background: mode === m ? (m === 'sale' ? '#1b5e20' : '#1565c0') : '#f5f5f5', color: mode === m ? '#fff' : '#666', transition: 'all 0.15s' }}>
+                  {m === 'sale' ? '💰 ขาย' : '📋 จอง'}
+                </button>
+              ))}
+            </div>
+            <select value={selWH} onChange={(e) => setSelWH(e.target.value)}
+              style={{ padding: '7px 12px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontWeight: 700, fontSize: 13, background: '#fff' }}>
+              {warehouses.map((w) => <option key={w.id} value={w.id}>🏭 {w.name}</option>)}
+            </select>
+          </div>
           {/* member + product search ในแถวเดียวกัน */}
           <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
             <div style={{ flex: '0 0 340px' }}>
@@ -348,24 +346,28 @@ export function AdminPos() {
         </div>
 
         {/* Right: cart */}
-        <PosCartPanel
-          mode={mode} cart={cart}
-          memberReservations={memberReservations} reservationId={reservationId}
-          slots={slots} selSlot={selSlot}
-          discount={discount} payMethod={payMethod} cashReceived={cashReceived}
-          submitting={submitting} notice={notice}
-          subtotal={subtotal} total={total} change={change} discountAmt={discountAmt}
-          resNote={resNote} resChannel={resChannel}
-          onUpdateQty={updateQty}
-          onLoadReservation={loadReservationToCart}
-          onSelSlot={setSelSlot}
-          onDiscount={setDiscount}
-          onPayMethod={setPayMethod}
-          onCashReceived={setCashReceived}
-          onResNote={setResNote}
-          onResChannel={setResChannel}
-          onSubmit={submit}
-        />
+        <aside className="admin-pos-right">
+          <div className="admin-pos-right-sticky">
+            <PosCartPanel
+              mode={mode} cart={cart}
+              memberReservations={memberReservations} reservationId={reservationId}
+              slots={slots} selSlot={selSlot}
+              discount={discount} payMethod={payMethod} cashReceived={cashReceived}
+              submitting={submitting} notice={notice}
+              subtotal={subtotal} total={total} change={change} discountAmt={discountAmt}
+              resNote={resNote} resChannel={resChannel}
+              onUpdateQty={updateQty}
+              onLoadReservation={loadReservationToCart}
+              onSelSlot={setSelSlot}
+              onDiscount={setDiscount}
+              onPayMethod={setPayMethod}
+              onCashReceived={setCashReceived}
+              onResNote={setResNote}
+              onResChannel={setResChannel}
+              onSubmit={submit}
+            />
+          </div>
+        </aside>
       </div>
     </div>
   );

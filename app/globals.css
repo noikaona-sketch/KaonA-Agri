@@ -643,6 +643,54 @@ body {
 .pos-cart-item__price { font-size: 13px; font-weight: 700; color: #1b5e20; white-space: nowrap; }
 .pos-cart-item__remove { background: none; border: none; color: #ef4444; cursor: pointer; font-size: 18px; padding: 0 2px; }
 
+/* ── Admin POS (Issue #199 layout adjustment) ── */
+.admin-pos-layout {
+  display: flex;
+  flex-direction: column;
+  height: calc(100dvh - 120px);
+}
+.admin-pos-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
+}
+.admin-pos-left {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  overflow: hidden;
+}
+.admin-pos-right {
+  min-height: 0;
+}
+.admin-pos-right-sticky {
+  position: sticky;
+  top: 8px;
+  height: calc(100dvh - 136px);
+}
+
+@media (max-width: 1023px) {
+  .admin-pos-layout {
+    height: auto;
+    min-height: 0;
+  }
+  .admin-pos-grid {
+    grid-template-columns: 1fr;
+    overflow: visible;
+  }
+  .admin-pos-left {
+    overflow: visible;
+  }
+  .admin-pos-right-sticky {
+    position: static;
+    top: auto;
+    height: auto;
+  }
+}
+
 /* ── Product Form Modal ── */
 .admin-modal-backdrop {
   position: fixed; inset: 0;
