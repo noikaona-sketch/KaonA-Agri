@@ -3,138 +3,267 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useCurrentMember, useCurrentRoles, useEffectiveRole } from '@/providers/auth-provider';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { MobileAppShell } from '@/shared/components/mobile-app-shell';
 import { LoadingState } from '@/shared/components/loading-state';
 
 const ROLE_TH: Record<string, string> = {
-  farmer: 'เกษตรกร', truck_owner: 'ทีมบริการ',
-  inspector: 'ผู้ตรวจสอบ', staff: 'เจ้าหน้าที่',
-  leader: 'หัวหน้ากลุ่ม', admin: 'แอดมิน',
+  farmer: '🌽 เกษตรกร', truck_owner: '🚛 ทีมบริการ',
+  inspector: '🔍 ผู้ตรวจสอบ', staff: '👷 เจ้าหน้าที่',
+  leader: '👥 หัวหน้ากลุ่ม', admin: '⚙️ แอดมิน',
+};
+const ROLE_COLOR: Record<string, { bg: string; text: string }> = {
+  farmer:     { bg: '#EAF3DE', text: '#3B6D11' },
+  staff:      { bg: '#E6F1FB', text: '#185FA5' },
+  inspector:  { bg: '#EEEDFE', text: '#534AB7' },
+  leader:     { bg: '#EEEDFE', text: '#534AB7' },
+  truck_owner:{ bg: '#FFF8DB', text: '#B45309' },
+  admin:      { bg: '#FCE8F3', text: '#9D174D' },
+};
+const STATUS_CFG: Record<string, { label: string; color: string }> = {
+  approved:         { label: '✅ อนุมัติแล้ว',    color: '#3B6D11' },
+  pending_approval: { label: '⏳ รออนุมัติ',       color: '#B45309' },
+  rejected:         { label: '❌ ไม่ผ่านการอนุมัติ', color: '#991B1B' },
+  suspended:        { label: '⚠️ ถูกระงับ',         color: '#991B1B' },
 };
 
-type ProfileMemberExtras = {
-  phone?: string | null;
-  citizen_id_masked?: string | null;
-  address?: string | null;
+type MemberData = {
+  full_name: string; phone: string | null; address: string | null;
+  citizen_id_masked: string | null; status: string;
+  bank_name: string | null; bank_account_number: string | null; bank_account_name: string | null;
+};
+type PlotSummary  = { id: string; village: string | null; rai: number };
+type CreditAccount= { balance: number; debit_balance: number; total_spent: number };
+type DocRow       = { doc_type: string; verified: boolean; file_url: string | null };
+
+const DOC_LABEL: Record<string, string> = {
+  thai_id_card: '🪪 บัตรประชาชน',
+  farmer_card:  '📗 ทะเบียนเกษตรกร',
+  land_doc:     '📄 โฉนด/นส.3',
+  vehicle_reg:  '🚜 ทะเบียนรถ',
+  other:        '📎 เอกสารอื่น',
 };
 
-type CreditAccount = { balance: number; debit_balance: number; total_spent: number };
+const S = {
+  card: { background: 'var(--color-background-primary,#fff)', borderRadius: 14, border: '0.5px solid var(--color-border-tertiary,#e4ede4)', overflow: 'hidden' as const },
+  sectionLabel: { fontSize: 11, color: 'var(--color-text-secondary,#888)', fontWeight: 500 as const, letterSpacing: '.04em', margin: '0 0 8px' },
+  row: { display: 'flex' as const, justifyContent: 'space-between' as const, alignItems: 'center' as const, padding: '10px 0', borderBottom: '0.5px solid var(--color-border-tertiary,#e4ede4)' },
+};
 
 export default function ProfilePage() {
   const member        = useCurrentMember();
   const roles         = useCurrentRoles();
   const effectiveRole = useEffectiveRole();
+  const [data,   setData]   = useState<MemberData | null>(null);
+  const [plots,  setPlots]  = useState<PlotSummary[]>([]);
   const [credit, setCredit] = useState<CreditAccount | null>(null);
+  const [docs,   setDocs]   = useState<DocRow[]>([]);
 
   useEffect(() => {
-    void fetch('/api/member/credit')
-      .then((r) => r.json())
-      .then((d: { account?: CreditAccount }) => setCredit(d.account ?? null))
-      .catch(() => {});
-  }, []);
+    if (!member?.member_id) return;
+    const s = createSupabaseBrowserClient();
+    void Promise.all([
+      s.from('members').select('full_name,phone,address,citizen_id_masked,status,bank_name,bank_account_number,bank_account_name').eq('id', member.member_id).maybeSingle(),
+      s.from('plots').select('id,village,rai').eq('member_id', member.member_id).is('deleted_at', null).order('created_at'),
+      s.from('member_documents').select('doc_type,verified,file_url').eq('member_id', member.member_id),
+      fetch('/api/member/credit').then((r) => r.json()),
+    ]).then(([m, p, d, cr]) => {
+      setData((m.data as MemberData | null));
+      setPlots((p.data as PlotSummary[] | null) ?? []);
+      setDocs((d.data as DocRow[] | null) ?? []);
+      setCredit((cr as { account?: CreditAccount }).account ?? null);
+    });
+  }, [member?.member_id]);
 
-  if (!member) return <LoadingState label="กำลังโหลด…" />;
+  if (!member || !data) return <LoadingState label="กำลังโหลด…" />;
 
-  const profile = member as typeof member & ProfileMemberExtras;
-  const initials = member.full_name
-    ? member.full_name.trim().split(' ').map((w: string) => w[0]).slice(0, 2).join('')
-    : '?';
+  const memberId  = member.member_id;
+  const initials  = data.full_name.trim().split(' ').map((w) => w[0]).slice(0, 2).join('');
+  const pr        = ROLE_COLOR[effectiveRole ?? 'farmer'] ?? ROLE_COLOR.farmer;
+  const statusCfg = STATUS_CFG[data.status] ?? { label: data.status, color: '#888' };
 
   return (
     <MobileAppShell title="" subtitle="">
-      <div className="mobile-stack" style={{ paddingBottom: 16 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingBottom: 16 }}>
 
-        {/* Profile hero */}
-        <div className="profile-card">
-          <div className="profile-avatar">{initials}</div>
-          <div style={{ flex: 1 }}>
-            <p className="profile-name">{member.full_name}</p>
-            <p className="profile-role">{ROLE_TH[effectiveRole ?? ''] ?? effectiveRole ?? 'สมาชิก'}</p>
-            {profile.phone && <p className="profile-phone">📞 {profile.phone}</p>}
-          </div>
-          <Link href="/profile/edit" style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: 10, padding: '8px 12px', color: '#fff', fontSize: 13, fontWeight: 700, textDecoration: 'none', flexShrink: 0 }}>
-            ✏️ แก้ไข
-          </Link>
-        </div>
-
-        {/* ข้อมูล */}
-        <div className="kaona-card">
-          <p style={{ margin: '0 0 8px', fontWeight: 700, fontSize: 14, color: 'var(--primary)' }}>ข้อมูลสมาชิก</p>
-          {[
-            ['เลขบัตรประชาชน', profile.citizen_id_masked ?? '—'],
-            ['ที่อยู่', profile.address ?? '—'],
-            ['สถานะ', member.status === 'approved' ? '✅ อนุมัติแล้ว' : member.status],
-          ].map(([label, value]) => (
-            <div key={String(label)} className="info-row">
-              <span className="info-row__label">{label}</span>
-              <span className="info-row__value" style={{ maxWidth: '60%', textAlign: 'right' }}>{value}</span>
+        {/* ── Hero ── */}
+        <div style={{ ...S.card, padding: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ width: 56, height: 56, borderRadius: '50%', background: pr.bg, border: `2px solid ${pr.text}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 500, color: pr.text, flexShrink: 0 }}>
+              {initials}
             </div>
-          ))}
-        </div>
-
-        {/* สิทธิ์ */}
-        {roles.length > 0 && (
-          <div className="kaona-card">
-            <p style={{ margin: '0 0 10px', fontWeight: 700, fontSize: 14, color: 'var(--primary)' }}>สิทธิ์ของฉัน</p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {roles.map((r: string) => (
-                <span key={r} style={{ padding: '6px 14px', borderRadius: 999, background: '#e8f5e9', color: 'var(--primary)', fontWeight: 700, fontSize: 13 }}>
-                  {ROLE_TH[r] ?? r}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Credit / ยอดค้างชำระ */}
-        {credit && (credit.debit_balance > 0 || credit.balance > 0) && (
-          <div className="kaona-card" style={{ background: credit.debit_balance > 0 ? '#fff8e1' : '#e8f5e9', borderColor: credit.debit_balance > 0 ? '#ffe082' : '#a5d6a7' }}>
-            <p style={{ margin: '0 0 10px', fontWeight: 700, fontSize: 14, color: credit.debit_balance > 0 ? '#e65100' : 'var(--primary)' }}>
-              {credit.debit_balance > 0 ? '📒 ยอดค้างชำระ' : '💳 เครดิตคงเหลือ'}
-            </p>
-            {credit.debit_balance > 0 && (
-              <div className="info-row">
-                <span className="info-row__label">ค้างชำระ</span>
-                <span className="info-row__value" style={{ color: '#c62828', fontSize: 20, fontWeight: 900 }}>{credit.debit_balance.toLocaleString()} บาท</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ margin: 0, fontSize: 17, fontWeight: 500, color: 'var(--color-text-primary,#111)' }}>{data.full_name}</p>
+              <p style={{ margin: '3px 0 0', fontSize: 11, color: 'var(--color-text-secondary,#888)', fontFamily: 'monospace' }}>KF{memberId.slice(-6).toUpperCase()}</p>
+              <div style={{ display: 'flex', gap: 4, marginTop: 6, flexWrap: 'wrap' }}>
+                {(roles as string[]).map((r) => (
+                  <span key={r} style={{ fontSize: 10, fontWeight: 500, padding: '2px 7px', borderRadius: 20, background: ROLE_COLOR[r]?.bg ?? '#f0f0f0', color: ROLE_COLOR[r]?.text ?? '#333' }}>
+                    {ROLE_TH[r] ?? r}
+                  </span>
+                ))}
               </div>
-            )}
-            {credit.balance > 0 && (
-              <div className="info-row">
-                <span className="info-row__label">เครดิตคงเหลือ</span>
-                <span className="info-row__value" style={{ color: 'var(--primary)', fontWeight: 700 }}>{credit.balance.toLocaleString()} บาท</span>
-              </div>
-            )}
-            <div className="info-row">
-              <span className="info-row__label">รวมซื้อทั้งหมด</span>
-              <span className="info-row__value">{credit.total_spent.toLocaleString()} บาท</span>
             </div>
-            {credit.debit_balance > 0 && (
-              <p style={{ margin: '8px 0 0', fontSize: 13, color: '#7b5800' }}>ติดต่อ admin เพื่อชำระยอดค้าง</p>
-            )}
-          </div>
-        )}
-
-        {/* เมนูเพิ่มเติม */}
-        <div className="kaona-card" style={{ padding: 0, overflow: 'hidden' }}>
-          {[
-            { href: '/plots',           icon: '🌾', label: 'แปลงของฉัน',   show: ['farmer','leader'] },
-            { href: '/planting-cycles', icon: '🌱', label: 'รอบเพาะปลูก',  show: ['farmer','leader'] },
-            { href: '/no-burn',         icon: '🔥', label: 'ประวัติงดเผา', show: ['farmer','leader'] },
-            { href: '/service',         icon: '🚛', label: 'งานขนส่ง',     show: ['truck_owner'] },
-          ].filter(item => !effectiveRole || item.show.includes(effectiveRole)).map((item) => (
-            <Link key={item.href} href={item.href}
-              style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px', borderBottom: '1px solid #f0f4f0', textDecoration: 'none', color: 'var(--text-primary)' }}>
-              <span style={{ fontSize: 20, width: 32, textAlign: 'center' }}>{item.icon}</span>
-              <span style={{ fontSize: 15, fontWeight: 600, flex: 1 }}>{item.label}</span>
-              <span style={{ color: 'var(--text-secondary)', fontSize: 18 }}>›</span>
+            <Link href="/profile/edit" style={{ background: 'var(--color-background-secondary,#f9fafb)', border: '0.5px solid var(--color-border-tertiary,#e4ede4)', borderRadius: 10, padding: '8px 12px', color: 'var(--color-text-primary,#111)', fontSize: 13, fontWeight: 500, textDecoration: 'none', flexShrink: 0 }}>
+              ✏️ แก้ไข
             </Link>
-          ))}
-          <button
-            onClick={() => { if (window.confirm('ออกจากระบบ?')) window.location.reload(); }}
-            style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px', width: '100%', background: 'none', border: 'none', cursor: 'pointer', color: '#c62828', textAlign: 'left' }}>
-            <span style={{ fontSize: 20, width: 32, textAlign: 'center' }}>🚪</span>
-            <span style={{ fontSize: 15, fontWeight: 600, flex: 1 }}>ออกจากระบบ</span>
-          </button>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, paddingTop: 12, borderTop: '0.5px solid var(--color-border-tertiary,#e4ede4)' }}>
+            <span style={{ fontSize: 12, color: 'var(--color-text-secondary,#888)' }}>สถานะสมาชิก</span>
+            <span style={{ fontSize: 12, fontWeight: 500, color: statusCfg.color }}>{statusCfg.label}</span>
+          </div>
+        </div>
+
+        {/* ── แปลงของฉัน ── */}
+        <div>
+          <p style={S.sectionLabel}>แปลงของฉัน</p>
+          <div style={{ ...S.card }}>
+            <div style={{ padding: '12px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 22 }}>🌽</span>
+                <div>
+                  <p style={{ margin: 0, fontWeight: 500, fontSize: 15, color: 'var(--color-text-primary,#111)' }}>{plots.length} แปลง</p>
+                  <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--color-text-secondary,#888)' }}>
+                    {plots.length > 0
+                      ? `รวม ${plots.reduce((s, p) => s + (p.rai ?? 0), 0).toLocaleString()} ไร่`
+                      : 'ยังไม่มีแปลง'}
+                  </p>
+                </div>
+              </div>
+              <Link href="/plots/add" style={{ background: '#EAF3DE', border: '0.5px solid #A3C78A', borderRadius: 10, padding: '7px 14px', color: '#3B6D11', fontSize: 13, fontWeight: 500, textDecoration: 'none' }}>
+                + เพิ่มแปลง
+              </Link>
+            </div>
+            {plots.length > 0 && (
+              <div style={{ borderTop: '0.5px solid var(--color-border-tertiary,#e4ede4)' }}>
+                {plots.slice(0, 3).map((pl, i) => (
+                  <div key={pl.id} style={{ padding: '9px 14px', display: 'flex', justifyContent: 'space-between', borderBottom: i < Math.min(plots.length, 3) - 1 ? '0.5px solid var(--color-border-tertiary,#e4ede4)' : 'none' }}>
+                    <span style={{ fontSize: 13, color: 'var(--color-text-primary,#111)' }}>📍 {pl.village ?? `แปลง ${i + 1}`}</span>
+                    <span style={{ fontSize: 13, color: 'var(--color-text-secondary,#888)' }}>{pl.rai} ไร่</span>
+                  </div>
+                ))}
+                {plots.length > 3 && (
+                  <Link href="/plots" style={{ display: 'block', padding: '9px 14px', textAlign: 'center', fontSize: 13, color: '#185FA5', textDecoration: 'none' }}>
+                    ดูทั้งหมด {plots.length} แปลง ›
+                  </Link>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ── ข้อมูลส่วนตัว ── */}
+        <div>
+          <p style={S.sectionLabel}>ข้อมูลส่วนตัว</p>
+          <div style={{ ...S.card, padding: '0 14px' }}>
+            {[
+              ['📞 เบอร์โทร',     data.phone          ?? '—'],
+              ['🪪 เลขบัตร',      data.citizen_id_masked ?? '—'],
+              ['📍 ที่อยู่',      data.address         ?? '—'],
+            ].map(([label, value], i, arr) => (
+              <div key={label} style={{ ...S.row, borderBottom: i < arr.length - 1 ? undefined : 'none' }}>
+                <span style={{ fontSize: 13, color: 'var(--color-text-secondary,#888)' }}>{label}</span>
+                <span style={{ fontSize: 13, color: 'var(--color-text-primary,#111)', fontWeight: 500, maxWidth: '60%', textAlign: 'right' }}>{value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── บัญชีธนาคาร ── */}
+        <div>
+          <p style={S.sectionLabel}>บัญชีธนาคาร</p>
+          <div style={{ ...S.card, padding: '0 14px' }}>
+            {data.bank_name || data.bank_account_number ? (
+              <>
+                {[
+                  ['🏦 ธนาคาร',   data.bank_name           ?? '—'],
+                  ['💳 เลขบัญชี', data.bank_account_number  ?? '—'],
+                  ['👤 ชื่อบัญชี', data.bank_account_name   ?? '—'],
+                ].map(([label, value], i, arr) => (
+                  <div key={label} style={{ ...S.row, borderBottom: i < arr.length - 1 ? undefined : 'none' }}>
+                    <span style={{ fontSize: 13, color: 'var(--color-text-secondary,#888)' }}>{label}</span>
+                    <span style={{ fontSize: 13, color: 'var(--color-text-primary,#111)', fontWeight: 500 }}>{value}</span>
+                  </div>
+                ))}
+              </>
+            ) : (
+              <div style={{ padding: '14px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: 13, color: 'var(--color-text-secondary,#888)' }}>ยังไม่มีข้อมูลบัญชี</span>
+                <Link href="/profile/edit" style={{ fontSize: 13, color: '#185FA5', textDecoration: 'none', fontWeight: 500 }}>+ เพิ่ม</Link>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ── เอกสาร ── */}
+        <div>
+          <p style={S.sectionLabel}>เอกสารประกอบ</p>
+          <div style={{ ...S.card, padding: '0 14px' }}>
+            {docs.length === 0 ? (
+              <div style={{ padding: '14px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: 13, color: 'var(--color-text-secondary,#888)' }}>ยังไม่มีเอกสาร</span>
+                <Link href="/profile/edit" style={{ fontSize: 13, color: '#185FA5', textDecoration: 'none', fontWeight: 500 }}>+ อัปโหลด</Link>
+              </div>
+            ) : (
+              docs.map((d, i) => (
+                <div key={d.doc_type + i} style={{ ...S.row, borderBottom: i < docs.length - 1 ? undefined : 'none' }}>
+                  <span style={{ fontSize: 13, color: 'var(--color-text-primary,#111)' }}>{DOC_LABEL[d.doc_type] ?? d.doc_type}</span>
+                  <span style={{ fontSize: 12, fontWeight: 500, color: d.verified ? '#3B6D11' : '#B45309' }}>
+                    {d.verified ? '✅ ยืนยันแล้ว' : '⏳ รอตรวจสอบ'}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* ── เครดิต ── */}
+        {credit && (credit.debit_balance > 0 || credit.balance > 0) && (
+          <div>
+            <p style={S.sectionLabel}>ยอดบัญชี</p>
+            <div style={{ ...S.card, padding: '0 14px' }}>
+              {credit.debit_balance > 0 && (
+                <div style={{ ...S.row }}>
+                  <span style={{ fontSize: 13, color: 'var(--color-text-secondary,#888)' }}>💳 ค้างชำระ</span>
+                  <span style={{ fontSize: 15, fontWeight: 500, color: '#991B1B' }}>{credit.debit_balance.toLocaleString()} บาท</span>
+                </div>
+              )}
+              {credit.balance > 0 && (
+                <div style={{ ...S.row }}>
+                  <span style={{ fontSize: 13, color: 'var(--color-text-secondary,#888)' }}>💰 เครดิตคงเหลือ</span>
+                  <span style={{ fontSize: 15, fontWeight: 500, color: '#3B6D11' }}>{credit.balance.toLocaleString()} บาท</span>
+                </div>
+              )}
+              <div style={{ ...S.row, borderBottom: 'none' }}>
+                <span style={{ fontSize: 13, color: 'var(--color-text-secondary,#888)' }}>📊 รวมซื้อทั้งหมด</span>
+                <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-primary,#111)' }}>{credit.total_spent.toLocaleString()} บาท</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── เมนูเพิ่มเติม ── */}
+        <div>
+          <p style={S.sectionLabel}>เมนู</p>
+          <div style={{ ...S.card, padding: '0' }}>
+            {[
+              { href: '/planting-cycles', icon: '🌱', label: 'รอบเพาะปลูก', show: ['farmer','leader'] },
+              { href: '/no-burn',         icon: '🌿', label: 'ประวัติไม่เผา', show: ['farmer','leader'] },
+              { href: '/truck',           icon: '🚛', label: 'งานรถ',          show: ['truck_owner'] },
+            ].filter((item) => !effectiveRole || item.show.includes(effectiveRole))
+             .map((item, i, arr) => (
+              <Link key={item.href} href={item.href}
+                style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', borderBottom: i < arr.length - 1 ? '0.5px solid var(--color-border-tertiary,#e4ede4)' : 'none', textDecoration: 'none', color: 'var(--color-text-primary,#111)' }}>
+                <span style={{ fontSize: 20, width: 28, textAlign: 'center' }}>{item.icon}</span>
+                <span style={{ fontSize: 14, fontWeight: 500, flex: 1 }}>{item.label}</span>
+                <span style={{ color: 'var(--color-text-secondary,#888)', fontSize: 18 }}>›</span>
+              </Link>
+            ))}
+            <button onClick={() => { if (window.confirm('ออกจากระบบ?')) window.location.reload(); }}
+              style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', width: '100%', background: 'none', border: 'none', borderTop: '0.5px solid var(--color-border-tertiary,#e4ede4)', cursor: 'pointer', color: '#991B1B', textAlign: 'left' }}>
+              <span style={{ fontSize: 20, width: 28, textAlign: 'center' }}>🚪</span>
+              <span style={{ fontSize: 14, fontWeight: 500, flex: 1 }}>ออกจากระบบ</span>
+            </button>
+          </div>
         </div>
 
       </div>
