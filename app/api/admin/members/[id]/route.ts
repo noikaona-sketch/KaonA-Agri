@@ -10,7 +10,7 @@ export async function GET(_req: Request, { params }: Params) {
 
     const [mRes, pRes, vRes, rRes] = await Promise.all([
       s.from('members')
-        .select('id,full_name,phone,citizen_id_masked,address,status,registration_type,line_user_id,line_display_name,line_picture_url,created_at,updated_at')
+        .select('id,full_name,phone,citizen_id_masked,address,status,registration_type,line_user_id,line_display_name,line_picture_url,created_at,updated_at,bank_name,bank_account_number,bank_account_name,bank_verified_status,return_reason,returned_at,rejection_reason')
         .eq('id', id)
         .maybeSingle(),
       s.from('plots')
@@ -24,6 +24,8 @@ export async function GET(_req: Request, { params }: Params) {
       s.from('member_roles')
         .select('role,is_primary')
         .eq('member_id', id),
+      s.from('member_documents').select('doc_type,verified,file_url').eq('member_id', id),
+      s.from('member_approval_logs').select('id,action,reason,acted_by,created_at').eq('member_id', id).order('created_at', { ascending: false }).limit(20),
     ]);
 
     if (mRes.error) return NextResponse.json({ error: mRes.error.message }, { status: 500 });
@@ -34,6 +36,8 @@ export async function GET(_req: Request, { params }: Params) {
       plots:    pRes.data  ?? [],
       vehicles: vRes.data  ?? [],
       roles:    rRes.data  ?? [],
+      docs:     (await s.from('member_documents').select('doc_type,verified,file_url').eq('member_id', id)).data ?? [],
+      logs:     (await s.from('member_approval_logs').select('id,action,reason,acted_by,created_at').eq('member_id', id).order('created_at', { ascending: false }).limit(20)).data ?? [],
     });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
