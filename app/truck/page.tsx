@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useCurrentMember } from '@/providers/auth-provider';
+import { ProtectedRoute } from '@/shared/components/protected-route';
 import { MobileAppShell } from '@/shared/components/mobile-app-shell';
 import { LoadingState } from '@/shared/components/loading-state';
 
@@ -50,6 +51,7 @@ export default function TruckPage() {
   const doneCount  = jobs.filter((j) => j.status === 'completed').length;
 
   return (
+    <ProtectedRoute allowedRoles={['truck_owner','admin']}>
     <MobileAppShell title="" subtitle="">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
@@ -124,5 +126,6 @@ export default function TruckPage() {
         })}
       </div>
     </MobileAppShell>
+    </ProtectedRoute>
   );
 }

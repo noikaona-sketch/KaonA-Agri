@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useCurrentMember } from '@/providers/auth-provider';
+import { ProtectedRoute } from '@/shared/components/protected-route';
 import { MobileAppShell } from '@/shared/components/mobile-app-shell';
 import { LoadingState } from '@/shared/components/loading-state';
 
@@ -48,6 +49,7 @@ export default function TeamPage() {
   const pendingCount = members.filter((m) => m.status === 'pending_approval').length;
 
   return (
+    <ProtectedRoute allowedRoles={['leader','admin']}>
     <MobileAppShell title="" subtitle="">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
@@ -157,5 +159,6 @@ export default function TeamPage() {
         )}
       </div>
     </MobileAppShell>
+    </ProtectedRoute>
   );
 }

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useCurrentMember } from '@/providers/auth-provider';
+import { ProtectedRoute } from '@/shared/components/protected-route';
 import { MobileAppShell } from '@/shared/components/mobile-app-shell';
 import { LoadingState } from '@/shared/components/loading-state';
 import { UIButton } from '@/shared/components/ui-button';
@@ -81,7 +82,8 @@ export default function NoBurnPage() {
   }
 
   return (
-    <MobileAppShell title="งดเผา" subtitle="ยื่นคำขอและดูสถานะการอนุมัติ">
+    <ProtectedRoute allowedRoles={['farmer', 'leader', 'admin']}>
+      <MobileAppShell title="งดเผา" subtitle="ยื่นคำขอและดูสถานะการอนุมัติ">
       <div className="mobile-stack">
 
         {notice && (
@@ -202,5 +204,6 @@ export default function NoBurnPage() {
 
       </div>
     </MobileAppShell>
+    </ProtectedRoute>
   );
 }
