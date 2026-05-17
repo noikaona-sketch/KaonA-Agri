@@ -37,7 +37,7 @@ export function PosCartPanel(p: Props) {
   const bg    = MODE_BG[mode];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, background: bg, borderRadius: 16, padding: 14, border: `2px solid ${color}40`, overflow: 'hidden', height: '100%' }}>
+    <div className="pos-cart-panel pos-cart-panel--fill" style={{ gap: 8, background: bg, borderRadius: 16, padding: 14, border: `2px solid ${color}40`, overflow: 'hidden' }}>
 
       {/* reservation cards */}
       {memberReservations.length > 0 && (
@@ -62,7 +62,7 @@ export function PosCartPanel(p: Props) {
       )}
 
       {/* cart items */}
-      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div className="pos-cart-panel__items" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         {cart.length === 0 && <p style={{ color: '#9ca3af', fontSize: 13, textAlign: 'center', marginTop: 16 }}>กดสินค้าเพื่อเพิ่มลงตะกร้า</p>}
         {cart.map((item) => (
           <div key={item.key} style={{ background: item.isReservedSeed ? '#c8e6c9' : '#fff', borderRadius: 10, padding: '8px 10px', display: 'flex', alignItems: 'center', gap: 6, border: `1px solid ${item.isReservedSeed ? '#66bb6a' : '#e0e0e0'}` }}>
@@ -90,7 +90,7 @@ export function PosCartPanel(p: Props) {
       {notice && <div style={{ background: notice.startsWith('✅') ? '#e8f5e9' : '#ffebee', borderRadius: 8, padding: '8px 12px', color: notice.startsWith('✅') ? '#1b5e20' : '#c62828', fontWeight: 600, fontSize: 13, flexShrink: 0 }}>{notice}</div>}
 
       {/* payment section */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 7, borderTop: `1.5px solid ${color}40`, paddingTop: 10, flexShrink: 0 }}>
+      <div className="pos-cart-panel__footer" style={{ display: 'flex', flexDirection: 'column', gap: 7, borderTop: `1.5px solid ${color}40`, paddingTop: 10 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#6b7280' }}>
           <span>ยอดรวม</span><span>{subtotal.toLocaleString()} บาท</span>
         </div>
