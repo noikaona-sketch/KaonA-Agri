@@ -153,6 +153,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const payload = (await response.json()) as {
           error?: string;
           member?: AuthBootstrapResult;
+          session?: { access_token: string; refresh_token: string } | null;
         };
 
         if (!response.ok || !payload.member) {
@@ -170,10 +171,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
           return;
         }
 
-        // signInWithIdToken เพื่อสร้าง Supabase session บน browser client — จำเป็นสำหรับ RLS
+        // ตั้ง Supabase session จาก server (anon session ที่ link กับ member)
+        // ใช้แทน signInWithIdToken({ provider: 'kakao' }) ที่ผิด
+        // LINE ไม่ใช่ Supabase OAuth provider — server สร้าง anon session ให้แล้ว
         const supabase = tryCreateSupabaseBrowserClient();
-        if (supabase && idToken) {
-          await supabase.auth.signInWithIdToken({ provider: 'kakao', token: idToken });
+        if (supabase && payload.session) {
+          await supabase.auth.setSession({
+            access_token:  payload.session.access_token,
+            refresh_token: payload.session.refresh_token,
+          });
         }
 
         const bootstrapResult: AuthBootstrapResult = {

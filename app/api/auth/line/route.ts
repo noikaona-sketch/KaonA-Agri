@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 
 import {
   createServerSupabaseClient,
+  createAnonSupabaseClient,
   getEffectiveRole,
   getLineChannelId,
   isAppRole,
@@ -35,6 +36,7 @@ export async function POST(request: Request) {
           roles:          [role],
         },
         lineProfile: { name: `Dev ${role}`, picture: null, email: null },
+        session: null,
       });
     }
 
@@ -127,9 +129,36 @@ export async function POST(request: Request) {
     const roles = roleRows.map((r) => r.role).filter(isAppRole);
     const effectiveRole = getEffectiveRole(roleRows, roles);
 
+    // ── สร้าง Supabase anonymous session เพื่อให้ client มี auth.uid() สำหรับ RLS ──
+    // LINE ไม่ใช่ Supabase OAuth provider — ใช้ anon sign-in แทน
+    // session ถูก link กับ member ผ่าน members.auth_user_id
+    let session: { access_token: string; refresh_token: string } | null = null;
+    try {
+      const anonClient = createAnonSupabaseClient();
+      const anonResult = await anonClient.auth.signInAnonymously();
+      if (!anonResult.error && anonResult.data.session) {
+        session = {
+          access_token:  anonResult.data.session.access_token,
+          refresh_token: anonResult.data.session.refresh_token,
+        };
+        // link auth_user_id กับ member row ถ้ายังไม่มี
+        const authUserId = anonResult.data.user?.id ?? null;
+        if (authUserId && !member.auth_user_id) {
+          await supabase.from('members')
+            .update({ auth_user_id: authUserId })
+            .eq('id', member.id)
+            .is('auth_user_id', null);
+        }
+      }
+    } catch {
+      // anon session ไม่สำเร็จ — ไม่ block login, แค่ไม่มี session
+      // RLS จะยังทำงานได้ผ่าน service_role บน API routes
+    }
+
     return NextResponse.json({
       member: normalizeMember(member, roles, effectiveRole),
       lineProfile: { name: verifyData.name ?? null, picture: null, email: null },
+      session,
     });
   } catch (error) {
     console.error('[LINE_AUTH_ROUTE]', error);
