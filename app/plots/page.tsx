@@ -9,6 +9,7 @@ import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { MobileAppShell } from '@/shared/components/mobile-app-shell';
 import { LoadingState } from '@/shared/components/loading-state';
 import { UIButton } from '@/shared/components/ui-button';
+import { ProtectedRoute } from '@/shared/components/protected-route';
 
 type Plot = {
   id: string; name: string; area_rai: number;
@@ -53,7 +54,8 @@ export default function PlotsPage() {
   }, [member?.member_id]);
 
   return (
-    <MobileAppShell title="แปลงของฉัน" subtitle="จัดการแปลงเกษตรทั้งหมด">
+    <ProtectedRoute allowedRoles={['farmer','leader','admin']}>
+      <MobileAppShell title="แปลงของฉัน" subtitle="จัดการแปลงเกษตรทั้งหมด">
       <div className="mobile-stack">
         {loading && <LoadingState label="กำลังโหลดแปลง…" />}
 
@@ -104,5 +106,6 @@ export default function PlotsPage() {
         </UIButton>
       </div>
     </MobileAppShell>
+    </ProtectedRoute>
   );
 }
