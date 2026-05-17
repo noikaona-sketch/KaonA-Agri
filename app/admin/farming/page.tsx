@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { AdminWebShell } from '@/shared/components/admin-web-shell';
+import { AdminPageGuard } from '@/shared/components/admin-page-guard';
 import { FarmingMap } from '@/features/admin-farming/farming-map';
 import { HarvestCalendarPanel } from '@/features/admin-farming/harvest-calendar-panel';
 import { YieldConfigPanel } from '@/features/admin-farming/yield-config-panel';
@@ -25,6 +26,7 @@ export default function AdminFarmingPage() {
   const [tab, setTab] = useState<Tab>('map');
   const cur = TABS.find((t) => t.key === tab)!;
   return (
+    <AdminPageGuard requiredPermission="field.read">
     <AdminWebShell title={`${cur.icon} เกษตรกรรม — ${cur.label}`} subtitle="แผนที่ แปลง รอบปลูก งดเผา และงานตรวจ">
       <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap', borderBottom: '1px solid #e8ede8', paddingBottom: 12, overflowX: 'auto' }}>
         {TABS.map((t) => (
@@ -43,5 +45,6 @@ export default function AdminFarmingPage() {
       {tab === 'inspections' && <AdminInspectionsList />}
       {tab === 'config'      && <YieldConfigPanel />}
     </AdminWebShell>
+    </AdminPageGuard>
   );
 }

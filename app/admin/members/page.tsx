@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { AdminWebShell } from '@/shared/components/admin-web-shell';
+import { AdminPageGuard } from '@/shared/components/admin-page-guard';
 import { AdminApprovalQueue } from '@/features/admin-members/admin-approval-queue';
 import { AdminMemberList } from '@/features/admin-members/admin-member-list';
 import { AdminRolesManager } from '@/features/admin-roles/admin-roles-manager';
@@ -22,6 +23,7 @@ export default function AdminMembersPage() {
   const [tab, setTab] = useState<Tab>('approvals');
   const cur = TABS.find((t) => t.key === tab)!;
   return (
+    <AdminPageGuard requiredPermission="members.read">
     <AdminWebShell title={`${cur.icon} ${cur.label}`} subtitle="จัดการสมาชิก สิทธิ์ กลุ่ม และ PIN">
       <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap', borderBottom: '1px solid #e8ede8', paddingBottom: 12 }}>
         {TABS.map((t) => (
@@ -61,5 +63,6 @@ export default function AdminMembersPage() {
         </div>
       )}
     </AdminWebShell>
+    </AdminPageGuard>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { AdminWebShell } from '@/shared/components/admin-web-shell';
+import { AdminPageGuard } from '@/shared/components/admin-page-guard';
 import { AdminPickupSlots } from '@/features/admin-seed-lots/admin-pickup-slots';
 import { AdminSeedVarieties } from '@/features/admin-seed-varieties/admin-seed-varieties';
 import { AdminSeedSuppliers } from '@/features/admin-seed-suppliers/admin-seed-suppliers';
@@ -19,6 +20,7 @@ export default function AdminSeedsPage() {
   const [tab, setTab] = useState<Tab>('movements');
   const cur = TABS.find((t) => t.key === tab)!;
   return (
+    <AdminPageGuard requiredPermission="seed.read">
     <AdminWebShell title={`${cur.icon} เมล็ดพันธุ์ — ${cur.label}`} subtitle="จัดการ Supplier พันธุ์ และการเคลื่อนไหว (ปิดหน้ารับเข้า LOT แบบเดิม)">
       <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap', borderBottom: '1px solid #e8ede8', paddingBottom: 12 }}>
         {TABS.map((t) => (
@@ -34,5 +36,6 @@ export default function AdminSeedsPage() {
       {tab === 'varieties' && <AdminSeedVarieties />}
       {tab === 'suppliers' && <AdminSeedSuppliers />}
     </AdminWebShell>
+    </AdminPageGuard>
   );
 }

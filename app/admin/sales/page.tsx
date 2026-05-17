@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { AdminWebShell } from '@/shared/components/admin-web-shell';
+import { AdminPageGuard } from '@/shared/components/admin-page-guard';
 import { AdminPos } from '@/features/admin-pos/admin-pos';
 import { AdminOrdersList } from '@/features/admin-orders/admin-orders-list';
 import { AdminProductsList } from '@/features/admin-products/admin-products-list';
@@ -25,6 +26,7 @@ export default function AdminSalesPage() {
   const [tab, setTab] = useState<Tab>('pos');
   const cur = TABS.find((t) => t.key === tab)!;
   return (
+    <AdminPageGuard requiredPermission="service.read">
     <AdminWebShell title={`${cur.icon} ขาย/สต๊อก — ${cur.label}`} subtitle="POS ขาย คำสั่งซื้อ นัดขาย สินค้า และสต๊อก">
       <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap', borderBottom: '1px solid #e8ede8', paddingBottom: 12 }}>
         {TABS.map((t) => (
@@ -43,5 +45,6 @@ export default function AdminSalesPage() {
       {tab === 'products'     && <AdminProductsList />}
       {tab === 'stock'        && <AdminStockList />}
     </AdminWebShell>
+    </AdminPageGuard>
   );
 }

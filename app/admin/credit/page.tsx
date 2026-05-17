@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { AdminWebShell } from '@/shared/components/admin-web-shell';
+import { AdminPageGuard } from '@/shared/components/admin-page-guard';
 import { LoadingState } from '@/shared/components/loading-state';
 
 type CreditRow = {
@@ -45,6 +46,7 @@ export default function AdminCreditPage() {
   }
 
   return (
+    <AdminPageGuard requiredPermission="finance.read">
     <AdminWebShell title="💳 จัดการเครดิต / ยอดค้างชำระ" subtitle="ดูยอดค้าง เพิ่มเครดิต และบันทึกการชำระ">
       {notice && <div style={{ background: notice.startsWith('✅') ? '#e8f5e9' : '#ffebee', border: `1px solid ${notice.startsWith('✅') ? '#a5d6a7' : '#ef9a9a'}`, borderRadius: 10, padding: '10px 14px', marginBottom: 14, fontWeight: 600, color: notice.startsWith('✅') ? '#1b5e20' : '#c62828' }}>{notice}</div>}
 
@@ -109,5 +111,6 @@ export default function AdminCreditPage() {
         </div>
       )}
     </AdminWebShell>
+    </AdminPageGuard>
   );
 }

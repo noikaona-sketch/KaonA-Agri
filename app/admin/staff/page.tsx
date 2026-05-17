@@ -4,12 +4,14 @@ import { useState } from 'react';
 import { AdminStaffList } from '@/features/admin-staff/admin-staff-list';
 import { AdminPermissionMatrix } from '@/features/admin-permissions/admin-permission-matrix';
 import { AdminWebShell } from '@/shared/components/admin-web-shell';
+import { AdminPageGuard } from '@/shared/components/admin-page-guard';
 
 type Tab = 'staff' | 'permissions';
 
 export default function AdminStaffPage() {
   const [tab, setTab] = useState<Tab>('staff');
   return (
+    <AdminPageGuard requiredPermission="admin_users.manage">
     <AdminWebShell title="เจ้าหน้าที่" subtitle="อนุมัติและจัดการบัญชีเจ้าหน้าที่หลังบ้าน">
       <div style={{ display: 'flex', gap: 6, marginBottom: 20, borderBottom: '1px solid #e8ede8', paddingBottom: 12 }}>
         <button onClick={() => setTab('staff')}
@@ -26,5 +28,6 @@ export default function AdminStaffPage() {
       {tab === 'staff'       && <AdminStaffList />}
       {tab === 'permissions' && <AdminPermissionMatrix />}
     </AdminWebShell>
+    </AdminPageGuard>
   );
 }
