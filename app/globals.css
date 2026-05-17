@@ -668,8 +668,8 @@ body {
 }
 .admin-pos-right-sticky {
   position: sticky;
-  top: 8px;
-  height: calc(100dvh - 136px);
+  top: 0;
+  height: calc(100dvh - 120px);
 }
 
 @media (max-width: 1023px) {
