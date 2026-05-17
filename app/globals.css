@@ -684,26 +684,20 @@ body {
   flex: 1;
   min-height: 0;
 }
-
-/* Force PosCartPanel internals to fully stretch in desktop sidebar */
-.admin-pos-cart-fill > div {
-  height: 100% !important;
-  display: flex !important;
-  flex-direction: column !important;
+.pos-cart-panel--fill {
+  height: 100%;
   min-height: 0;
-  justify-content: flex-start;
+  display: flex;
+  flex-direction: column;
 }
-.admin-pos-cart-fill > div > div {
+.pos-cart-panel__items {
+  flex: 1;
   min-height: 0;
+  overflow-y: auto;
 }
-.admin-pos-cart-fill > div > div[style*="overflow-y: auto"] {
-  flex: 1 1 auto !important;
-  min-height: 0;
-  overflow-y: auto !important;
-}
-.admin-pos-cart-fill > div > div:last-child {
-  margin-top: auto !important;
-  flex-shrink: 0 !important;
+.pos-cart-panel__footer {
+  flex-shrink: 0;
+  margin-top: auto;
 }
 
 @media (max-width: 1023px) {
@@ -731,11 +725,11 @@ body {
   .admin-pos-cart-fill > * {
     min-height: auto;
   }
-  .admin-pos-cart-fill > div > div[style*="overflow-y: auto"] {
+  .pos-cart-panel__items {
     min-height: auto;
     overflow-y: visible;
   }
-  .admin-pos-cart-fill > div > div:last-child {
+  .pos-cart-panel__footer {
     margin-top: 0;
   }
 }
