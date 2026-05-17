@@ -348,24 +348,26 @@ export function AdminPos() {
         {/* Right: cart */}
         <aside className="admin-pos-right">
           <div className="admin-pos-right-sticky">
-            <PosCartPanel
-              mode={mode} cart={cart}
-              memberReservations={memberReservations} reservationId={reservationId}
-              slots={slots} selSlot={selSlot}
-              discount={discount} payMethod={payMethod} cashReceived={cashReceived}
-              submitting={submitting} notice={notice}
-              subtotal={subtotal} total={total} change={change} discountAmt={discountAmt}
-              resNote={resNote} resChannel={resChannel}
-              onUpdateQty={updateQty}
-              onLoadReservation={loadReservationToCart}
-              onSelSlot={setSelSlot}
-              onDiscount={setDiscount}
-              onPayMethod={setPayMethod}
-              onCashReceived={setCashReceived}
-              onResNote={setResNote}
-              onResChannel={setResChannel}
-              onSubmit={submit}
-            />
+            <div className="admin-pos-cart-fill">
+              <PosCartPanel
+                mode={mode} cart={cart}
+                memberReservations={memberReservations} reservationId={reservationId}
+                slots={slots} selSlot={selSlot}
+                discount={discount} payMethod={payMethod} cashReceived={cashReceived}
+                submitting={submitting} notice={notice}
+                subtotal={subtotal} total={total} change={change} discountAmt={discountAmt}
+                resNote={resNote} resChannel={resChannel}
+                onUpdateQty={updateQty}
+                onLoadReservation={loadReservationToCart}
+                onSelSlot={setSelSlot}
+                onDiscount={setDiscount}
+                onPayMethod={setPayMethod}
+                onCashReceived={setCashReceived}
+                onResNote={setResNote}
+                onResChannel={setResChannel}
+                onSubmit={submit}
+              />
+            </div>
           </div>
         </aside>
       </div>

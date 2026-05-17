@@ -664,12 +664,25 @@ body {
   overflow: hidden;
 }
 .admin-pos-right {
+  display: flex;
+  flex-direction: column;
   min-height: 0;
 }
 .admin-pos-right-sticky {
   position: sticky;
   top: 0;
   height: calc(100dvh - 120px);
+  display: flex;
+  min-height: 0;
+}
+.admin-pos-cart-fill {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+.admin-pos-cart-fill > * {
+  flex: 1;
+  min-height: 0;
 }
 
 @media (max-width: 1023px) {
@@ -688,6 +701,14 @@ body {
     position: static;
     top: auto;
     height: auto;
+    display: block;
+  }
+  .admin-pos-cart-fill {
+    min-height: auto;
+    display: block;
+  }
+  .admin-pos-cart-fill > * {
+    min-height: auto;
   }
 }
 
