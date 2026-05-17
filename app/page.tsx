@@ -152,16 +152,16 @@ function SecondaryRoleCards({ primaryRole, allRoles }: { primaryRole: AppRole; a
 // ─────────────────────────────────────────────────────────────────────
 function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: string; allRoles: AppRole[] }) {
   const [plots, setPlots] = useState(0);
-  const [price, setPrice] = useState<number | null>(null);
+  const [quota, setQuota] = useState<number | null>(null);
 
   useEffect(() => {
-    const s = createSupabaseBrowserClient();
     void Promise.all([
-      s.from('plots').select('id', { count: 'exact', head: true }).eq('member_id', memberId).is('deleted_at', null),
-      s.from('market_prices').select('price_per_kg').eq('is_active', true).ilike('crop_type', '%ข้าวโพด%').order('effective_date', { ascending: false }).limit(1).maybeSingle(),
-    ]).then(([p, pr]) => {
-      setPlots(p.count ?? 0);
-      if (pr.data) setPrice(pr.data.price_per_kg);
+      fetch(`/api/member/plots?member_id=${memberId}`).then((r) => r.json()),
+      fetch(`/api/member/quota?member_id=${memberId}`).then((r) => r.json()),
+    ]).then(([p, q]) => {
+      setPlots(((p as { plots?: unknown[] }).plots ?? []).length);
+      const qt = (q as { quota_ton?: number | null }).quota_ton;
+      if (qt !== null && qt !== undefined) setQuota(qt);
     });
   }, [memberId]);
 
@@ -177,7 +177,7 @@ function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: stri
   return (
     <MobileAppShell title="" subtitle="">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <HeroCard name={name} memberId={memberId} primaryRole="farmer" allRoles={allRoles} plots={plots} price={price} />
+        <HeroCard name={name} memberId={memberId} primaryRole="farmer" allRoles={allRoles} plots={plots} price={null} quota={quota} />
 
         {/* main menus */}
         <div>
@@ -207,13 +207,9 @@ function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: stri
 // ─────────────────────────────────────────────────────────────────────
 function StaffHome({ name, memberId, primaryRole, allRoles }: { name: string; memberId: string; primaryRole: AppRole; allRoles: AppRole[] }) {
   const [plots, setPlots] = useState(0);
-  const [price, setPrice] = useState<number | null>(null);
   useEffect(() => {
-    const s = createSupabaseBrowserClient();
-    void Promise.all([
-      s.from('plots').select('id', { count: 'exact', head: true }).eq('member_id', memberId).is('deleted_at', null),
-      s.from('market_prices').select('price_per_kg').eq('is_active', true).ilike('crop_type', '%ข้าวโพด%').order('effective_date', { ascending: false }).limit(1).maybeSingle(),
-    ]).then(([p, pr]) => { setPlots(p.count ?? 0); if (pr.data) setPrice(pr.data.price_per_kg); });
+    void fetch(`/api/member/plots?member_id=${memberId}`).then((r) => r.json())
+      .then((p) => setPlots(((p as { plots?: unknown[] }).plots ?? []).length));
   }, [memberId]);
 
   const STAFF_MENU = [
@@ -226,7 +222,7 @@ function StaffHome({ name, memberId, primaryRole, allRoles }: { name: string; me
   return (
     <MobileAppShell title="" subtitle="">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <HeroCard name={name} memberId={memberId} primaryRole={primaryRole} allRoles={allRoles} plots={plots} price={price} />
+        <HeroCard name={name} memberId={memberId} primaryRole={primaryRole} allRoles={allRoles} plots={plots} price={null} />
         <div>
           <p style={{ margin: '0 0 10px', fontWeight: 500, fontSize: 14, color: 'var(--color-text-secondary,#666)' }}>เมนูหลัก</p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8 }}>
