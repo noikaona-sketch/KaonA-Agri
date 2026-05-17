@@ -685,6 +685,23 @@ body {
   min-height: 0;
 }
 
+/* Force PosCartPanel internals to fully stretch in desktop sidebar */
+.admin-pos-cart-fill > div {
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0;
+}
+.admin-pos-cart-fill > div > div:nth-of-type(2) {
+  flex: 1 1 auto !important;
+  min-height: 0;
+  overflow-y: auto;
+}
+.admin-pos-cart-fill > div > div:last-child {
+  margin-top: auto;
+  flex-shrink: 0;
+}
+
 @media (max-width: 1023px) {
   .admin-pos-layout {
     height: auto;
@@ -709,6 +726,13 @@ body {
   }
   .admin-pos-cart-fill > * {
     min-height: auto;
+  }
+  .admin-pos-cart-fill > div > div:nth-of-type(2) {
+    min-height: auto;
+    overflow-y: visible;
+  }
+  .admin-pos-cart-fill > div > div:last-child {
+    margin-top: 0;
   }
 }
 
