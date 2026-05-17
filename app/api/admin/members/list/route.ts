@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '../../../auth/line/line-auth-helpers';
+import { requireAdmin } from '../_admin-auth';
 
 export async function GET(request: Request) {
   try {
+    const admin = await requireAdmin();
+    if (!admin) return NextResponse.json({ error: 'ไม่มีสิทธิ์เข้าถึง' }, { status: 403 });
+
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status') ?? '';
     const s = createServerSupabaseClient();
