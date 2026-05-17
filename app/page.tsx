@@ -152,17 +152,14 @@ function SecondaryRoleCards({ primaryRole, allRoles }: { primaryRole: AppRole; a
 // ─────────────────────────────────────────────────────────────────────
 function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: string; allRoles: AppRole[] }) {
   const [plots, setPlots] = useState(0);
-  const [quota, setQuota] = useState<number | null>(null);
 
   useEffect(() => {
-    void Promise.all([
-      fetch(`/api/member/plots?member_id=${memberId}`).then((r) => r.json()),
-      fetch(`/api/member/quota?member_id=${memberId}`).then((r) => r.json()),
-    ]).then(([p, q]) => {
-      setPlots(((p as { plots?: unknown[] }).plots ?? []).length);
-      const qt = (q as { quota_ton?: number | null }).quota_ton;
-      if (qt !== null && qt !== undefined) setQuota(qt);
-    });
+    // plots count — browser client, RLS controls access by auth.uid()
+    // quota fetch is handled in PR #205 (feat/quota-display)
+    const s = createSupabaseBrowserClient();
+    void s.from('plots').select('id', { count: 'exact', head: true })
+      .eq('member_id', memberId).eq('status', 'active')
+      .then((p) => setPlots(p.count ?? 0));
   }, [memberId]);
 
   const FARMER_MENU = [
@@ -177,7 +174,7 @@ function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: stri
   return (
     <MobileAppShell title="" subtitle="">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <HeroCard name={name} memberId={memberId} primaryRole="farmer" allRoles={allRoles} plots={plots} price={null} quota={quota} />
+        <HeroCard name={name} memberId={memberId} primaryRole="farmer" allRoles={allRoles} plots={plots} price={null} />
 
         {/* main menus */}
         <div>
@@ -208,8 +205,10 @@ function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: stri
 function StaffHome({ name, memberId, primaryRole, allRoles }: { name: string; memberId: string; primaryRole: AppRole; allRoles: AppRole[] }) {
   const [plots, setPlots] = useState(0);
   useEffect(() => {
-    void fetch(`/api/member/plots?member_id=${memberId}`).then((r) => r.json())
-      .then((p) => setPlots(((p as { plots?: unknown[] }).plots ?? []).length));
+    const s = createSupabaseBrowserClient();
+    void s.from('plots').select('id', { count: 'exact', head: true })
+      .eq('member_id', memberId).eq('status', 'active')
+      .then((p) => setPlots(p.count ?? 0));
   }, [memberId]);
 
   const STAFF_MENU = [

@@ -11,9 +11,17 @@ comment on column public.market_prices.moisture_pct is 'ความชื้น
 comment on column public.market_prices.price_type   is 'market=ราคาประกาศ, member=ราคาสมาชิก';
 
 -- backfill: ราคาเดิมเป็น market ทั้งหมด (default แล้ว)
--- seed ราคาข้าวโพด 2 ชนิดความชื้น (ถ้ายังไม่มี)
-insert into public.market_prices (crop_type, price_per_kg, moisture_pct, price_type, effective_date, note, is_active)
-values
-  ('ข้าวโพด', 8.00, 30.0,  'market', current_date, 'ราคาประกาศ ความชื้น 30%',   true),
-  ('ข้าวโพด', 8.50, 14.5,  'market', current_date, 'ราคาประกาศ ความชื้น 14.5%', true)
-on conflict do nothing;
+-- ── seed ราคาเริ่มต้น (เฉพาะถ้า ยังไม่มีราคาข้าวโพด active อยู่เลย) ──────
+-- ป้องกันการ overwrite ราคาจริงที่ admin กรอกไว้แล้ว
+do $$ begin
+  if not exists (
+    select 1 from public.market_prices
+    where crop_type = 'ข้าวโพด' and is_active = true
+  ) then
+    insert into public.market_prices
+      (crop_type, price_per_kg, moisture_pct, price_type, effective_date, note, is_active)
+    values
+      ('ข้าวโพด', 0, 30.0,  'market', current_date, 'ราคาเริ่มต้น — กรุณาอัปเดตก่อนใช้งาน', true),
+      ('ข้าวโพด', 0, 14.5,  'market', current_date, 'ราคาเริ่มต้น — กรุณาอัปเดตก่อนใช้งาน', true);
+  end if;
+end $$;

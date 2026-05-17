@@ -6,7 +6,7 @@ export async function GET() {
     const s = createServerSupabaseClient();
     const { data, error } = await s
       .from('market_prices')
-      .select('id,crop_type,price_per_kg,moisture_pct,price_type,effective_date,note')
+      .select('id,crop_type,price_per_kg,moisture_pct,price_type,effective_date')
       .eq('is_active', true)
       .order('crop_type')
       .order('moisture_pct', { ascending: false })

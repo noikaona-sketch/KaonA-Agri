@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { MobileAppShell } from '@/shared/components/mobile-app-shell';
 
-type PriceRow = { id: string; crop_type: string; price_per_kg: number; moisture_pct: number | null; price_type: string; effective_date: string; note: string | null };
+type PriceRow = { id: string; crop_type: string; price_per_kg: number; moisture_pct: number | null; price_type: string; effective_date: string };
 
 const FEATURES = [
   { icon: '🌽', title: 'เมล็ดพันธุ์คุณภาพ',  desc: 'คัดสรรเมล็ดพันธุ์ข้าวโพดคุณภาพสูง ราคาเป็นธรรม' },
@@ -83,7 +83,6 @@ export default function ContactPage() {
                           {r.moisture_pct !== null ? `ความชื้น ${r.moisture_pct}%` : 'ทั่วไป'}
                           {r.price_type === 'member' && <span style={{ marginLeft: 6, fontSize: 10, background: '#EAF3DE', color: '#3B6D11', borderRadius: 4, padding: '1px 6px', fontWeight: 500 }}>สมาชิก</span>}
                         </p>
-                        {r.note && <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--color-text-secondary,#888)' }}>{r.note}</p>}
                       </div>
                       <p style={{ margin: 0, fontWeight: 700, fontSize: 18, color: '#3B6D11' }}>
                         {Number(r.price_per_kg).toFixed(2)}
