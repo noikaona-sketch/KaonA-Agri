@@ -17,7 +17,7 @@ const GUEST_NAV: RoleNavConfig = {
   tabs: [
     { label: 'สมัครสมาชิก', href: '/register',             iconKey: 'member'  },
     { label: 'มี PIN',       href: '/register?tab=pin',     iconKey: 'field'   },
-    { label: 'ติดต่อ admin', href: '/register?tab=contact', iconKey: 'service' },
+    { label: 'ติดต่อ admin', href: '/contact', iconKey: 'service' },
     { label: 'เกี่ยวกับ',   href: '/register?tab=about',   iconKey: 'admin'   },
   ],
 };
@@ -27,7 +27,7 @@ const PENDING_NAV: RoleNavConfig = {
   tabs: [
     { label: 'สถานะ',        href: '/',                     iconKey: 'member'  },
     { label: 'แก้ไขข้อมูล', href: '/register?tab=edit',    iconKey: 'field'   },
-    { label: 'ติดต่อ admin', href: '/register?tab=contact', iconKey: 'service' },
+    { label: 'ติดต่อ admin', href: '/contact', iconKey: 'service' },
     { label: 'โปรไฟล์',     href: '/profile',              iconKey: 'admin'   },
   ],
 };
@@ -37,7 +37,7 @@ const ROLE_NAV_MAP: Record<AppRole, RoleNavConfig> = {
     tabs: [
       { label: 'หน้าแรก',   href: '/',                     iconKey: '🏠' },
       { label: 'ข่าวสาร',   href: '/notifications',        iconKey: '📰' },
-      { label: 'ติดต่อ',    href: '/register?tab=contact', iconKey: '📞' },
+      { label: 'ติดต่อ',    href: '/contact', iconKey: '📞' },
       { label: 'โปรไฟล์',  href: '/profile',              iconKey: '👤' },
     ],
   },
@@ -45,7 +45,7 @@ const ROLE_NAV_MAP: Record<AppRole, RoleNavConfig> = {
     tabs: [
       { label: 'หน้าแรก',   href: '/',                     iconKey: '🏠' },
       { label: 'ข่าวสาร',   href: '/notifications',        iconKey: '📰' },
-      { label: 'ติดต่อ',    href: '/register?tab=contact', iconKey: '📞' },
+      { label: 'ติดต่อ',    href: '/contact', iconKey: '📞' },
       { label: 'โปรไฟล์',  href: '/profile',              iconKey: '👤' },
     ],
   },
@@ -53,7 +53,7 @@ const ROLE_NAV_MAP: Record<AppRole, RoleNavConfig> = {
     tabs: [
       { label: 'หน้าแรก',   href: '/',                     iconKey: '🏠' },
       { label: 'ข่าวสาร',   href: '/notifications',        iconKey: '📰' },
-      { label: 'ติดต่อ',    href: '/register?tab=contact', iconKey: '📞' },
+      { label: 'ติดต่อ',    href: '/contact', iconKey: '📞' },
       { label: 'โปรไฟล์',  href: '/profile',              iconKey: '👤' },
     ],
   },
@@ -61,7 +61,7 @@ const ROLE_NAV_MAP: Record<AppRole, RoleNavConfig> = {
     tabs: [
       { label: 'หน้าแรก',   href: '/',                     iconKey: '🏠' },
       { label: 'ข่าวสาร',   href: '/notifications',        iconKey: '📰' },
-      { label: 'ติดต่อ',    href: '/register?tab=contact', iconKey: '📞' },
+      { label: 'ติดต่อ',    href: '/contact', iconKey: '📞' },
       { label: 'โปรไฟล์',  href: '/profile',              iconKey: '👤' },
     ],
   },
@@ -69,7 +69,7 @@ const ROLE_NAV_MAP: Record<AppRole, RoleNavConfig> = {
     tabs: [
       { label: 'หน้าแรก',   href: '/',                     iconKey: '🏠' },
       { label: 'ข่าวสาร',   href: '/notifications',        iconKey: '📰' },
-      { label: 'ติดต่อ',    href: '/register?tab=contact', iconKey: '📞' },
+      { label: 'ติดต่อ',    href: '/contact', iconKey: '📞' },
       { label: 'โปรไฟล์',  href: '/profile',              iconKey: '👤' },
     ],
   },
@@ -77,7 +77,7 @@ const ROLE_NAV_MAP: Record<AppRole, RoleNavConfig> = {
     tabs: [
       { label: 'หน้าแรก',   href: '/',                     iconKey: '🏠' },
       { label: 'ข่าวสาร',   href: '/notifications',        iconKey: '📰' },
-      { label: 'ติดต่อ',    href: '/register?tab=contact', iconKey: '📞' },
+      { label: 'ติดต่อ',    href: '/contact', iconKey: '📞' },
       { label: 'โปรไฟล์',  href: '/profile',              iconKey: '👤' },
     ],
   },

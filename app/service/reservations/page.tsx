@@ -7,7 +7,7 @@ import { SeedReservationFlow } from '@/features/member-seed-reservation/seed-res
 export default function SeedReservationsPage() {
   return (
     <ProtectedRoute>
-      <MobileAppShell title="🌾 จองเมล็ดพันธุ์" subtitle="เลือก Supplier → พันธุ์ → จอง">
+      <MobileAppShell title="🌽 จองเมล็ดพันธุ์" subtitle="เลือกพันธุ์ → กรอกจำนวน → จอง">
         <SeedReservationFlow />
       </MobileAppShell>
     </ProtectedRoute>

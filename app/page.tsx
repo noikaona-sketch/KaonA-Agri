@@ -168,10 +168,10 @@ function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: stri
   const FARMER_MENU = [
     { href: '/service/reservations', icon: '🌽', label: 'จองเมล็ดพันธุ์', desc: 'จองข้าวโพด', accent: true },
     { href: '/planting-cycles/new', icon: '🌱', label: 'แจ้งปลูก',        desc: 'บันทึกรอบปลูก' },
-    { href: '/planting-cycles',     icon: '📅', label: 'จองคิวขาย',       desc: 'นัดวันขาย' },
-    { href: '/profile',             icon: '📸', label: 'ส่งรูปแปลง',      desc: 'รูปแปลง/ไม่เผา' },
+    { href: '/plots',               icon: '📅', label: 'จองคิวขาย',       desc: 'นัดวันขาย' },
+    { href: '/no-burn',             icon: '📸', label: 'ส่งรูปแปลง',      desc: 'รูปแปลง/ไม่เผา' },
     { href: '/no-burn',             icon: '🌿', label: 'โครงการไม่เผา',   desc: 'สมัครโครงการ' },
-    { href: '/planting-cycles',     icon: '📊', label: 'ประวัติขาย',       desc: 'ยอดขายย้อนหลัง' },
+    { href: '/planting-cycles',     icon: '📊', label: 'ประวัติรอบปลูก',   desc: 'ประวัติและยอดขาย' },
   ];
 
   return (
@@ -290,11 +290,11 @@ function PendingScreen() {
               <span style={{ color: '#6b7280', fontSize: 20 }}>›</span>
             </div>
           </Link>
-          <Link href="/profile" style={{ textDecoration: 'none' }}>
+          <Link href="/contact" style={{ textDecoration: 'none' }}>
             <div style={{ background: '#fff', borderRadius: 14, padding: '14px 16px', border: '0.5px solid #e4ede4', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: 22 }}>👤</span>
-                <div><p style={{ margin: 0, fontWeight: 500, fontSize: 14 }}>โปรไฟล์ของฉัน</p><p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>ดูข้อมูลที่ส่งไป</p></div>
+                <span style={{ fontSize: 22 }}>📞</span>
+                <div><p style={{ margin: 0, fontWeight: 500, fontSize: 14 }}>ติดต่อบริษัท</p><p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>สอบถามสถานะหรือขอความช่วยเหลือ</p></div>
               </div>
               <span style={{ color: '#6b7280', fontSize: 20 }}>›</span>
             </div>
