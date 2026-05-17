@@ -36,7 +36,7 @@ const ROLE_NAV_MAP: Record<AppRole, RoleNavConfig> = {
   farmer: {
     tabs: [
       { label: 'หน้าแรก',   href: '/',                     iconKey: '🏠' },
-      { label: 'ข่าวสาร',   href: '/notifications',        iconKey: '📰' },
+      { label: 'งานของฉัน',   href: '/notifications',        iconKey: '📋' },
       { label: 'ติดต่อ',    href: '/contact', iconKey: '📞' },
       { label: 'โปรไฟล์',  href: '/profile',              iconKey: '👤' },
     ],
@@ -44,7 +44,7 @@ const ROLE_NAV_MAP: Record<AppRole, RoleNavConfig> = {
   leader: {
     tabs: [
       { label: 'หน้าแรก',   href: '/',                     iconKey: '🏠' },
-      { label: 'ข่าวสาร',   href: '/notifications',        iconKey: '📰' },
+      { label: 'งานของฉัน',   href: '/notifications',        iconKey: '📋' },
       { label: 'ติดต่อ',    href: '/contact', iconKey: '📞' },
       { label: 'โปรไฟล์',  href: '/profile',              iconKey: '👤' },
     ],
@@ -52,7 +52,7 @@ const ROLE_NAV_MAP: Record<AppRole, RoleNavConfig> = {
   inspector: {
     tabs: [
       { label: 'หน้าแรก',   href: '/',                     iconKey: '🏠' },
-      { label: 'ข่าวสาร',   href: '/notifications',        iconKey: '📰' },
+      { label: 'งานของฉัน',   href: '/notifications',        iconKey: '📋' },
       { label: 'ติดต่อ',    href: '/contact', iconKey: '📞' },
       { label: 'โปรไฟล์',  href: '/profile',              iconKey: '👤' },
     ],
@@ -60,7 +60,7 @@ const ROLE_NAV_MAP: Record<AppRole, RoleNavConfig> = {
   truck_owner: {
     tabs: [
       { label: 'หน้าแรก',   href: '/',                     iconKey: '🏠' },
-      { label: 'ข่าวสาร',   href: '/notifications',        iconKey: '📰' },
+      { label: 'งานของฉัน',   href: '/notifications',        iconKey: '📋' },
       { label: 'ติดต่อ',    href: '/contact', iconKey: '📞' },
       { label: 'โปรไฟล์',  href: '/profile',              iconKey: '👤' },
     ],
@@ -68,7 +68,7 @@ const ROLE_NAV_MAP: Record<AppRole, RoleNavConfig> = {
   staff: {
     tabs: [
       { label: 'หน้าแรก',   href: '/',                     iconKey: '🏠' },
-      { label: 'ข่าวสาร',   href: '/notifications',        iconKey: '📰' },
+      { label: 'งานของฉัน',   href: '/notifications',        iconKey: '📋' },
       { label: 'ติดต่อ',    href: '/contact', iconKey: '📞' },
       { label: 'โปรไฟล์',  href: '/profile',              iconKey: '👤' },
     ],
@@ -76,7 +76,7 @@ const ROLE_NAV_MAP: Record<AppRole, RoleNavConfig> = {
   admin: {
     tabs: [
       { label: 'หน้าแรก',   href: '/',                     iconKey: '🏠' },
-      { label: 'ข่าวสาร',   href: '/notifications',        iconKey: '📰' },
+      { label: 'งานของฉัน',   href: '/notifications',        iconKey: '📋' },
       { label: 'ติดต่อ',    href: '/contact', iconKey: '📞' },
       { label: 'โปรไฟล์',  href: '/profile',              iconKey: '👤' },
     ],
