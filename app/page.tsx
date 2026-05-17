@@ -82,10 +82,10 @@ function RoleCard({ href, icon, label, desc }: { href: string; icon: string; lab
 // Hero card — shared across all roles
 // ─────────────────────────────────────────────────────────────────────
 function HeroCard({
-  name, memberId, primaryRole, allRoles, plots, price,
+  name, memberId, primaryRole, allRoles, plots, price, quota,
 }: {
   name: string; memberId: string; primaryRole: AppRole;
-  allRoles: AppRole[]; plots: number; price: number | null;
+  allRoles: AppRole[]; plots: number; price: number | null; quota?: number | null;
 }) {
   const memberNo = `KF${memberId.slice(-6).toUpperCase()}`;
   const pr = ROLE_COLOR[primaryRole];
@@ -113,7 +113,18 @@ function HeroCard({
         {/* stats */}
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
           {plots > 0 && <div><p style={{ margin: 0, fontSize: 18, fontWeight: 500, color: '#111' }}>{plots}</p><p style={{ margin: 0, fontSize: 10, color: '#9ca3af' }}>แปลง</p></div>}
-          {price !== null && <div style={{ marginTop: plots > 0 ? 6 : 0 }}><p style={{ margin: 0, fontSize: 18, fontWeight: 500, color: '#3B6D11' }}>{price.toLocaleString()}</p><p style={{ margin: 0, fontSize: 10, color: '#9ca3af' }}>บ./ตัน</p></div>}
+          {quota !== null && quota !== undefined && (
+            <div style={{ marginTop: plots > 0 ? 6 : 0 }}>
+              <p style={{ margin: 0, fontSize: 18, fontWeight: 500, color: '#3B6D11' }}>{quota.toLocaleString()}</p>
+              <p style={{ margin: 0, fontSize: 10, color: '#9ca3af' }}>ตัน (โควต้า)</p>
+            </div>
+          )}
+          {price !== null && (
+            <div style={{ marginTop: 6 }}>
+              <p style={{ margin: 0, fontSize: 15, fontWeight: 500, color: '#1565c0' }}>{Number(price).toLocaleString()}</p>
+              <p style={{ margin: 0, fontSize: 10, color: '#9ca3af' }}>บ./ตัน</p>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -153,15 +164,19 @@ function SecondaryRoleCards({ primaryRole, allRoles }: { primaryRole: AppRole; a
 function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: string; allRoles: AppRole[] }) {
   const [plots, setPlots] = useState(0);
   const [price, setPrice] = useState<number | null>(null);
+  const [quota, setQuota] = useState<number | null>(null);
 
   useEffect(() => {
     const s = createSupabaseBrowserClient();
     void Promise.all([
-      s.from('plots').select('id', { count: 'exact', head: true }).eq('member_id', memberId).is('deleted_at', null),
+      // plots — ใช้ API route เพราะ RLS ต้องการ auth.uid()
+      fetch(`/api/member/plots?member_id=${memberId}`).then((r) => r.json()),
       s.from('market_prices').select('price_per_kg').eq('is_active', true).ilike('crop_type', '%ข้าวโพด%').order('effective_date', { ascending: false }).limit(1).maybeSingle(),
-    ]).then(([p, pr]) => {
-      setPlots(p.count ?? 0);
+      fetch(`/api/member/quota?member_id=${memberId}`).then((r) => r.json()),
+    ]).then(([p, pr, q]) => {
+      setPlots(((p as { plots?: unknown[] }).plots ?? []).length);
       if (pr.data) setPrice(pr.data.price_per_kg);
+      if ((q as { quota_ton?: number }).quota_ton !== undefined) setQuota((q as { quota_ton: number }).quota_ton);
     });
   }, [memberId]);
 
@@ -177,7 +192,7 @@ function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: stri
   return (
     <MobileAppShell title="" subtitle="">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <HeroCard name={name} memberId={memberId} primaryRole="farmer" allRoles={allRoles} plots={plots} price={price} />
+        <HeroCard name={name} memberId={memberId} primaryRole="farmer" allRoles={allRoles} plots={plots} price={price} quota={quota} />
 
         {/* main menus */}
         <div>
