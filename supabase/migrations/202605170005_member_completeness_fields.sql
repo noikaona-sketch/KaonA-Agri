@@ -53,7 +53,7 @@ create index if not exists idx_member_approval_logs_member
   on public.member_approval_logs(member_id, created_at desc);
 
 -- ── 4. update members status check constraint ─────────────────────────
--- เพิ่ม returned ใน allowed statuses
+-- เพิ่ม returned ใน allowed statuses พร้อม pending_approval (ใช้ใน mobile flow)
 alter table public.members
   drop constraint if exists members_status_check;
 
@@ -67,3 +67,15 @@ set bank_verified_status = 'needs_review'
 where bank_account_number is not null
   and bank_name is not null
   and bank_verified_status = 'missing';
+
+-- ── 6. address fields ที่ยังขาด ───────────────────────────────────────
+-- house_no, moo, subdistrict, district, province มีอยู่แล้ว
+-- เพิ่ม village, road, postal_code
+alter table public.members
+  add column if not exists village     text,
+  add column if not exists road        text,
+  add column if not exists postal_code text;
+
+comment on column public.members.village     is 'หมู่บ้าน/ชุมชน';
+comment on column public.members.road        is 'ถนน';
+comment on column public.members.postal_code is 'รหัสไปรษณีย์';
