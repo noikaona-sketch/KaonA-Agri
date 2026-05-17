@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { MobileAppShell } from '@/shared/components/mobile-app-shell';
+import { ProtectedRoute } from '@/shared/components/protected-route';
 import { MemberShopCatalog } from '@/features/member-shop/member-shop-catalog';
 import { MemberCheckout } from '@/features/member-shop/member-checkout';
 
@@ -14,19 +15,23 @@ export default function BookingPage() {
 
   if (checkoutItems) {
     return (
-      <MobileAppShell title="ยืนยันคำสั่ง" subtitle="ตรวจสอบรายการและชำระเงิน">
-        <MemberCheckout
-          items={checkoutItems}
-          onBack={() => setCheckoutItems(null)}
-          onSuccess={(orderId) => router.replace('/planting-cycles')}
-        />
-      </MobileAppShell>
+      <ProtectedRoute>
+        <MobileAppShell title="ยืนยันคำสั่ง" subtitle="ตรวจสอบรายการและชำระเงิน">
+          <MemberCheckout
+            items={checkoutItems}
+            onBack={() => setCheckoutItems(null)}
+            onSuccess={(orderId) => router.replace('/planting-cycles')}
+          />
+        </MobileAppShell>
+      </ProtectedRoute>
     );
   }
 
   return (
-    <MobileAppShell title="ร้านค้า" subtitle="เมล็ดพันธุ์ ปุ๋ย และสินค้าเกษตร">
-      <MemberShopCatalog onCheckout={(items) => setCheckoutItems(items)} />
-    </MobileAppShell>
+    <ProtectedRoute>
+      <MobileAppShell title="ร้านค้า" subtitle="เมล็ดพันธุ์ ปุ๋ย และสินค้าเกษตร">
+        <MemberShopCatalog onCheckout={(items) => setCheckoutItems(items)} />
+      </MobileAppShell>
+    </ProtectedRoute>
   );
 }

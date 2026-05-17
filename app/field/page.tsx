@@ -7,6 +7,7 @@ import { MobileAppShell } from '@/shared/components/mobile-app-shell';
 import { LoadingState } from '@/shared/components/loading-state';
 import { FieldTeamMap } from '@/features/field-team-map/field-team-map';
 import { FieldSeedReservation } from '@/features/field-seed-reservation/field-seed-reservation';
+import { ProtectedRoute } from '@/shared/components/protected-route';
 
 type InspectionTask = {
   id: string; status: string; result_status: string;
@@ -55,6 +56,7 @@ export default function FieldPage() {
   ] as const;
 
   return (
+    <ProtectedRoute allowedRoles={['staff','inspector','leader','admin']}>
     <MobileAppShell title="" subtitle="">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
@@ -137,5 +139,6 @@ export default function FieldPage() {
         {tab === 'map'         && <FieldTeamMap />}
       </div>
     </MobileAppShell>
+    </ProtectedRoute>
   );
 }
