@@ -691,15 +691,19 @@ body {
   display: flex !important;
   flex-direction: column !important;
   min-height: 0;
+  justify-content: flex-start;
 }
-.admin-pos-cart-fill > div > div:nth-of-type(2) {
+.admin-pos-cart-fill > div > div {
+  min-height: 0;
+}
+.admin-pos-cart-fill > div > div[style*="overflow-y: auto"] {
   flex: 1 1 auto !important;
   min-height: 0;
-  overflow-y: auto;
+  overflow-y: auto !important;
 }
 .admin-pos-cart-fill > div > div:last-child {
-  margin-top: auto;
-  flex-shrink: 0;
+  margin-top: auto !important;
+  flex-shrink: 0 !important;
 }
 
 @media (max-width: 1023px) {
@@ -727,7 +731,7 @@ body {
   .admin-pos-cart-fill > * {
     min-height: auto;
   }
-  .admin-pos-cart-fill > div > div:nth-of-type(2) {
+  .admin-pos-cart-fill > div > div[style*="overflow-y: auto"] {
     min-height: auto;
     overflow-y: visible;
   }
