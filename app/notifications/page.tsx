@@ -77,24 +77,21 @@ export default function MyTasksPage() {
   useEffect(() => {
     if (!memberId) { setLoading(false); return; }
     const s = createSupabaseBrowserClient();
-    const today = new Date().toISOString().slice(0, 10);
 
     void Promise.all([
-      // pending cycles (due planting rounds)
-      s.from('planting_cycles').select('id,status,field_name').eq('member_id', memberId).in('status', ['registered','approved']).limit(5),
+      // planting cycles — crop_name (ไม่มี field_name ใน schema)
+      s.from('planting_cycles').select('id,status,crop_name').eq('member_id', memberId).in('status', ['registered','approved']).limit(5),
       // pending reservations
       s.from('seed_reservations').select('id,reservation_no,status').eq('member_id', memberId).in('status', ['pending','confirmed']).limit(5),
-      // no-burn submissions pending
-      s.from('no_burn_submissions').select('id,status').eq('member_id', memberId).in('status', ['pending','submitted']).limit(3),
-      // plots without village
-      s.from('plots').select('id,village').eq('member_id', memberId).is('deleted_at', null).limit(5),
-      // member approval status
+      // no-burn — ชื่อ table จริงคือ no_burn_requests (ไม่ใช่ no_burn_submissions)
+      s.from('no_burn_requests').select('id,status').eq('member_id', memberId).in('status', ['submitted','pending_review']).limit(3),
+      // member profile completeness
       s.from('members').select('status,phone,citizen_id_masked,address,bank_account_number').eq('id', memberId).maybeSingle(),
       // notifications
       s.from('notifications').select('id,title,body,read_at,created_at,related_resource_type,related_resource_id').eq('member_id', memberId).order('created_at', { ascending: false }).limit(30),
-      // price
-      s.from('market_prices').select('price_per_kg,crop_type').eq('is_active', true).ilike('crop_type', '%ข้าวโพด%').order('effective_date', { ascending: false }).limit(1).maybeSingle(),
-    ]).then(([cycles, reservations, noburn, plots, memberData, notifData, priceData]) => {
+      // price — จาก /contact แสดงราคา ไม่แสดงบน Home อีกต่อไป แต่ยังดึงสำหรับ My Tasks announcement
+      s.from('market_prices').select('price_per_kg,crop_type,moisture_pct').eq('is_active', true).ilike('crop_type', '%ข้าวโพด%').order('effective_date', { ascending: false }).limit(1).maybeSingle(),
+    ]).then(([cycles, reservations, noburn, memberData, notifData, priceData]) => {
       const built: Task[] = [];
       const m = memberData.data as Record<string, string | null> | null;
 
@@ -107,9 +104,9 @@ export default function MyTasksPage() {
       }
 
       (cycles.data ?? []).forEach((c) => {
-        const cd = c as { id: string; status: string; field_name: string | null };
+        const cd = c as { id: string; status: string; crop_name: string | null };
         if (cd.status === 'registered') {
-          built.push({ id: `cycle-${cd.id}`, icon: '🌱', label: 'รอบปลูกรอยืนยัน', desc: cd.field_name ?? 'กดเพื่อดูรายละเอียด', href: `/planting-cycles/${cd.id}`, urgency: 'high', group: 'today' });
+          built.push({ id: `cycle-${cd.id}`, icon: '🌱', label: 'รอบปลูกรอยืนยัน', desc: cd.crop_name ?? 'กดเพื่อดูรายละเอียด', href: `/planting-cycles/${cd.id}`, urgency: 'high', group: 'today' });
         }
       });
 
@@ -123,11 +120,6 @@ export default function MyTasksPage() {
         const nd = nb as { id: string; status: string };
         built.push({ id: `noburn-${nd.id}`, icon: '🌿', label: 'คำขอไม่เผารอผล', desc: 'รอเจ้าหน้าที่ตรวจสอบ', href: '/no-burn', urgency: 'normal', group: 'waiting' });
       });
-
-      const incompletePlots = (plots.data ?? []).filter((p) => !(p as { village: string | null }).village);
-      if (incompletePlots.length > 0) {
-        built.push({ id: 'plots-incomplete', icon: '📍', label: `แปลง ${incompletePlots.length} แปลง ข้อมูลไม่ครบ`, desc: 'กรอกข้อมูลตำแหน่งให้ครบ', href: '/plots', urgency: 'normal', group: 'waiting' });
-      }
 
       // ── Role-specific work tasks ────────────────────────────────────────
       if (roles.includes('inspector' as AppRole)) {

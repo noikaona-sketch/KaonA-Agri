@@ -25,7 +25,7 @@ create table if not exists public.admin_role_permissions (
 );
 
 comment on table public.admin_role_permissions is
-  'Permission matrix per admin role. super_admin bypasses this table (all granted).';
+  'Permission matrix per admin role. super_admin bypasses this table and cannot be restricted via UI.';
 
 -- ── 3. seed default permissions ────────────────────────────────────────
 insert into public.admin_role_permissions (admin_role, permission, granted) values
