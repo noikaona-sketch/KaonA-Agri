@@ -1,265 +1,127 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useCurrentMember } from '@/providers/auth-provider';
-import { ProviderRatingForm } from '@/features/member-rating/provider-rating-form';
-
 import { MobileAppShell } from '@/shared/components/mobile-app-shell';
 import { LoadingState } from '@/shared/components/loading-state';
-import { UIButton } from '@/shared/components/ui-button';
 
-type HarvestJob = {
-  id: string;
-  scheduled_date: string;
-  scheduled_time_start: string | null;
-  scheduled_time_end: string | null;
-  status: string;
-  truck_status: string | null;
-  actual_yield_kg: number | null;
-  quality_grade: string | null;
-  quality_moisture: number | null;
-  note: string | null;
-  planting_cycles: {
-    crop_name: string;
-    area_planted_rai: number | null;
-    estimated_yield_kg: number | null;
-    plots: { name: string; province: string | null; lat: number | null; lng: number | null }[] | null;
-  }[] | null;  // array — nested relation
-  members: { full_name: string; phone: string | null }[] | null;
+type Job = {
+  id: string; status: string; scheduled_date: string | null;
+  members: { full_name: string; phone: string | null }[];
+  plots: { lat: number; lng: number; village: string | null; rai: number }[];
+};
+
+const S = {
+  card: { background: 'var(--color-background-primary,#fff)', borderRadius: 14, border: '0.5px solid var(--color-border-tertiary,#e4ede4)', overflow: 'hidden' as const },
 };
 
 const STATUS_CFG: Record<string, { label: string; color: string; bg: string }> = {
-  pending:   { label: '⏳ รอยืนยัน',   color: '#e65100', bg: '#fff8e1' },
-  confirmed: { label: '✅ ยืนยัน',      color: '#1565c0', bg: '#e3f2fd' },
-  completed: { label: '🏁 เสร็จแล้ว',  color: '#9e9e9e', bg: '#f5f5f5' },
-  cancelled: { label: '⛔ ยกเลิก',      color: '#9e9e9e', bg: '#f5f5f5' },
+  pending:    { label: 'รอยืนยัน',    color: '#B45309', bg: '#FFF8DB' },
+  confirmed:  { label: 'ยืนยันแล้ว',  color: '#185FA5', bg: '#E6F1FB' },
+  in_progress:{ label: 'กำลังทำงาน',  color: '#7C3AED', bg: '#EDE9FE' },
+  completed:  { label: 'เสร็จแล้ว',   color: '#3B6D11', bg: '#EAF3DE' },
+  cancelled:  { label: 'ยกเลิก',      color: '#991B1B', bg: '#FEE2E2' },
 };
 
-const TRUCK_STATUS_STEPS = [
-  { key: 'waiting',  label: '🏠 รอออกรถ' },
-  { key: 'on_way',   label: '🚛 เดินทาง' },
-  { key: 'arrived',  label: '📍 ถึงแปลง' },
-  { key: 'loading',  label: '⚙️ กำลังเกี่ยว' },
-  { key: 'done',     label: '✅ เสร็จ' },
-];
+const FILTERS = ['ทั้งหมด','วันนี้','รอยืนยัน','เสร็จแล้ว'] as const;
 
 export default function TruckPage() {
   const member = useCurrentMember();
-  const [jobs, setJobs]         = useState<HarvestJob[]>([]);
-  const [loading, setLoading]   = useState(true);
-  const [activeJob, setActiveJob] = useState<HarvestJob | null>(null);
-  const [updating, setUpdating] = useState(false);
-  const [notice, setNotice]     = useState<string | null>(null);
-  const [showResult, setShowResult] = useState(false);
-  const [yieldKg, setYieldKg]   = useState('');
-  const [moisture, setMoisture] = useState('');
-  const [resultNote, setResultNote] = useState('');
-  const [filter, setFilter]     = useState<'active' | 'all'>('active');
+  const [jobs,    setJobs]    = useState<Job[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filter,  setFilter]  = useState<typeof FILTERS[number]>('ทั้งหมด');
+  const [today]               = useState(new Date().toISOString().slice(0, 10));
 
-  async function load() {
+  useEffect(() => {
     if (!member?.member_id) return;
-    setLoading(true);
-    const s = createSupabaseBrowserClient();
-    let q = s.from('harvest_bookings')
-      .select(`id,scheduled_date,scheduled_time_start,scheduled_time_end,status,truck_status,actual_yield_kg,quality_grade,quality_moisture,note,
-        planting_cycles(crop_name,area_planted_rai,estimated_yield_kg,plots(name,province,lat,lng)),
-        members(full_name,phone)`)
-      .eq('truck_member_id', member.member_id)
-      .order('scheduled_date', { ascending: true });
-    if (filter === 'active') q = q.in('status', ['pending', 'confirmed']);
-    const { data } = await q;
-    setJobs((data as HarvestJob[]) ?? []);
-    setLoading(false);
-  }
+    void fetch(`/api/truck/jobs?truck_owner_id=${member.member_id}`)
+      .then((r) => r.json())
+      .then((d: { jobs?: Job[] }) => { setJobs(d.jobs ?? []); setLoading(false); });
+  }, [member?.member_id]);
 
-  useEffect(() => { void load(); }, [member?.member_id, filter]);
+  const filtered = jobs.filter((j) => {
+    if (filter === 'วันนี้')     return j.scheduled_date?.startsWith(today);
+    if (filter === 'รอยืนยัน')  return j.status === 'pending';
+    if (filter === 'เสร็จแล้ว') return j.status === 'completed';
+    return true;
+  });
 
-  async function updateTruckStatus(jobId: string, truckStatus: string) {
-    setUpdating(true);
-    const s = createSupabaseBrowserClient();
-    await s.from('harvest_bookings').update({
-      truck_status: truckStatus,
-      status: truckStatus === 'done' ? 'completed' : 'confirmed',
-      updated_at: new Date().toISOString(),
-    }).eq('id', jobId);
-    setUpdating(false);
-    setNotice(`✅ อัปเดต: ${TRUCK_STATUS_STEPS.find((s) => s.key === truckStatus)?.label}`);
-    await load();
-    if (activeJob?.id === jobId) {
-      setActiveJob((p) => p ? { ...p, truck_status: truckStatus } : p);
-    }
-  }
-
-  async function saveResult(jobId: string) {
-    setUpdating(true);
-    const s = createSupabaseBrowserClient();
-    await s.from('harvest_bookings').update({
-      actual_yield_kg: yieldKg ? Number(yieldKg) : null,
-      quality_moisture: moisture ? Number(moisture) : null,
-      quality_grade: moisture ? (Number(moisture) <= 14.5 ? 'A' : Number(moisture) <= 18 ? 'B' : Number(moisture) <= 25 ? 'C' : 'reject') : null,
-      note: resultNote || null,
-      status: 'completed',
-      truck_status: 'done',
-      updated_at: new Date().toISOString(),
-    }).eq('id', jobId);
-    setUpdating(false);
-    setShowResult(false); setActiveJob(null);
-    setNotice('✅ บันทึกผลการเกี่ยวแล้ว');
-    await load();
-  }
-
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayCount = jobs.filter((j) => j.scheduled_date?.startsWith(today)).length;
+  const doneCount  = jobs.filter((j) => j.status === 'completed').length;
 
   return (
-    <MobileAppShell title="งานรถเกี่ยว" subtitle="รายการงานที่ได้รับมอบหมาย">
-      <div className="mobile-stack">
+    <MobileAppShell title="" subtitle="">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-        {notice && (
-          <div style={{ background: '#e8f5e9', border: '1px solid #a5d6a7', borderRadius: 12, padding: '12px 16px', fontWeight: 600, color: '#1b5e20' }}>
-            {notice}
+        {/* Hero */}
+        <div style={{ ...S.card, padding: '16px' }}>
+          <p style={{ margin: '0 0 4px', fontSize: 16, fontWeight: 500, color: 'var(--color-text-primary,#111)' }}>งานรถเกี่ยว</p>
+          <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-secondary,#888)' }}>รายการงานที่ได้รับมอบหมาย</p>
+          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+            {[
+              { label: 'งานทั้งหมด', value: jobs.length },
+              { label: 'งานวันนี้',  value: todayCount },
+              { label: 'เสร็จแล้ว',  value: doneCount },
+            ].map((s) => (
+              <div key={s.label} style={{ flex: 1, background: 'var(--color-background-secondary,#f9fafb)', borderRadius: 10, padding: '10px', textAlign: 'center' }}>
+                <p style={{ margin: 0, fontSize: 20, fontWeight: 500 }}>{s.value}</p>
+                <p style={{ margin: 0, fontSize: 11, color: 'var(--color-text-secondary,#888)' }}>{s.label}</p>
+              </div>
+            ))}
           </div>
-        )}
+        </div>
 
-        {/* filter tabs */}
-        <div style={{ display: 'flex', gap: 8 }}>
-          {(['active', 'all'] as const).map((f) => (
+        {/* Filter chips */}
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {FILTERS.map((f) => (
             <button key={f} onClick={() => setFilter(f)}
-              style={{ flex: 1, padding: '10px', borderRadius: 12, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 13, background: filter === f ? 'var(--primary)' : '#f0f4f0', color: filter === f ? '#fff' : 'var(--text-secondary)' }}>
-              {f === 'active' ? 'งานปัจจุบัน' : 'ทั้งหมด'}
+              style={{ padding: '6px 14px', borderRadius: 20, border: filter === f ? '1.5px solid #3B6D11' : '0.5px solid var(--color-border-tertiary,#e4ede4)', background: filter === f ? '#EAF3DE' : 'var(--color-background-primary,#fff)', color: filter === f ? '#3B6D11' : 'var(--color-text-secondary,#888)', fontWeight: filter === f ? 500 : 400, fontSize: 13, cursor: 'pointer' }}>
+              {f}
             </button>
           ))}
         </div>
 
-        {loading && <LoadingState label="กำลังโหลดงาน…" />}
-        {!loading && jobs.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '32px 0' }}>
-            <div style={{ fontSize: 48 }}>🚛</div>
-            <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: '8px 0' }}>ไม่มีงานที่ได้รับมอบหมาย</p>
+        {loading && <LoadingState label="กำลังโหลด…" />}
+
+        {!loading && filtered.length === 0 && (
+          <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--color-text-secondary,#888)' }}>
+            <p style={{ fontSize: 40, margin: '0 0 8px' }}>🚜</p>
+            <p style={{ fontSize: 14 }}>ไม่มีงาน{filter !== 'ทั้งหมด' ? filter : ''}ในขณะนี้</p>
           </div>
         )}
 
-        {jobs.map((job) => {
-          const st = STATUS_CFG[job.status] ?? STATUS_CFG.pending;
-          const isToday = job.scheduled_date === todayStr;
-          const plot = job.planting_cycles?.[0]?.plots?.[0];
-
+        {filtered.map((j) => {
+          const st = STATUS_CFG[j.status] ?? STATUS_CFG.pending;
+          const m  = j.members[0];
+          const pl = j.plots[0];
+          const mapUrl = pl ? `https://maps.google.com/?q=${pl.lat},${pl.lng}` : null;
           return (
-            <div key={job.id} className="kaona-card"
-              style={{ borderColor: isToday ? '#a5d6a7' : st.color + '44', background: isToday ? '#f1f8f1' : '#fff' }}>
-
-              {isToday && <span style={{ fontSize: 11, fontWeight: 700, color: '#2e7d32', background: '#e8f5e9', borderRadius: 999, padding: '2px 8px', display: 'inline-block', marginBottom: 8 }}>📅 วันนี้</span>}
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                <div>
-                  <p style={{ margin: 0, fontWeight: 800, fontSize: 16 }}>{plot?.name ?? 'แปลงไม่ระบุ'}</p>
-                  {plot?.province && <p style={{ margin: '2px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>{plot.province}</p>}
-                  <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>
-                    {job.planting_cycles?.[0]?.crop_name} {job.planting_cycles?.[0]?.area_planted_rai ? `· ${job.planting_cycles[0].area_planted_rai} ไร่` : ''}
-                  </p>
-                  <p style={{ margin: '4px 0 0', fontSize: 13 }}>
-                    👤 {job.members?.[0]?.full_name ?? '—'}
-                    {job.members?.[0]?.phone && (
-                      <a href={`tel:${job.members[0].phone}`} style={{ marginLeft: 8, color: 'var(--primary)', fontWeight: 700 }}>
-                        📞 โทร
-                      </a>
-                    )}
-                  </p>
+            <div key={j.id} style={{ ...S.card }}>
+              <div style={{ padding: '12px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div style={{ flex: 1 }}>
+                  <p style={{ margin: 0, fontWeight: 500, fontSize: 14, color: 'var(--color-text-primary,#111)' }}>{m?.full_name ?? '—'}</p>
+                  {pl && <p style={{ margin: '3px 0 0', fontSize: 12, color: 'var(--color-text-secondary,#888)' }}>📍 {pl.village ?? ''} · {pl.rai} ไร่</p>}
+                  {j.scheduled_date && <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--color-text-secondary,#888)' }}>📅 {new Date(j.scheduled_date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}</p>}
                 </div>
-                <span style={{ fontSize: 12, fontWeight: 700, padding: '4px 10px', borderRadius: 999, background: st.bg, color: st.color, whiteSpace: 'nowrap', flexShrink: 0 }}>
-                  {st.label}
-                </span>
+                <span style={{ fontSize: 11, fontWeight: 500, padding: '3px 9px', borderRadius: 20, background: st.bg, color: st.color, flexShrink: 0 }}>{st.label}</span>
               </div>
-
-              <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>
-                🗓️ {new Date(job.scheduled_date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}
-                {job.scheduled_time_start && ` · ${job.scheduled_time_start} — ${job.scheduled_time_end ?? '—'}`}
+              <div style={{ borderTop: '0.5px solid var(--color-border-tertiary,#e4ede4)', display: 'flex' }}>
+                {m?.phone && (
+                  <a href={`tel:${m.phone}`}
+                    style={{ flex: 1, padding: '10px', textAlign: 'center', fontSize: 13, color: '#185FA5', textDecoration: 'none', borderRight: mapUrl ? '0.5px solid var(--color-border-tertiary,#e4ede4)' : 'none' }}>
+                    📞 โทร
+                  </a>
+                )}
+                {mapUrl && (
+                  <a href={mapUrl} target="_blank" rel="noopener noreferrer"
+                    style={{ flex: 1, padding: '10px', textAlign: 'center', fontSize: 13, color: '#185FA5', textDecoration: 'none' }}>
+                    🗺️ แผนที่
+                  </a>
+                )}
               </div>
-
-              {/* GPS */}
-              {plot?.lat && plot?.lng && (
-                <a href={`https://maps.google.com/?q=${plot.lat},${plot.lng}`} target="_blank" rel="noopener noreferrer"
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--primary)', textDecoration: 'none', marginBottom: 8 }}>
-                  📍 เปิด Google Maps
-                </a>
-              )}
-
-              {/* Truck status stepper — เฉพาะงาน confirmed */}
-              {job.status === 'confirmed' && (
-                <div style={{ borderTop: '1px solid #f0f4f0', paddingTop: 10 }}>
-                  <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700 }}>อัปเดตสถานะรถ</p>
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    {TRUCK_STATUS_STEPS.map((step) => {
-                      const isActive = job.truck_status === step.key;
-                      return (
-                        <button key={step.key}
-                          onClick={() => updateTruckStatus(job.id, step.key)}
-                          disabled={updating}
-                          style={{ padding: '6px 10px', borderRadius: 10, border: `2px solid ${isActive ? 'var(--primary)' : '#e0e0e0'}`, background: isActive ? '#e8f5e9' : '#fff', fontSize: 12, fontWeight: 700, color: isActive ? 'var(--primary)' : '#9e9e9e', cursor: 'pointer' }}>
-                          {step.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* ปุ่มบันทึกผล */}
-              {job.status === 'confirmed' && (
-                <div style={{ marginTop: 10 }}>
-                  <UIButton fullWidth variant="secondary"
-                    onClick={() => { setActiveJob(job); setYieldKg(String(job.planting_cycles?.[0]?.estimated_yield_kg ?? '')); setShowResult(true); }}>
-                    📝 บันทึกผลการเกี่ยว
-                  </UIButton>
-                </div>
-              )}
-
-              {/* ผลที่บันทึกแล้ว */}
-              {job.status === 'completed' && job.actual_yield_kg && (
-                <div style={{ borderTop: '1px solid #f0f4f0', paddingTop: 8, marginTop: 4 }}>
-                  <p style={{ margin: 0, fontSize: 13, color: '#2e7d32', fontWeight: 700 }}>
-                    ✅ ผลผลิต: {job.actual_yield_kg.toLocaleString()} กก.
-                    {job.quality_grade && ` · เกรด ${job.quality_grade}`}
-                    {job.quality_moisture && ` · ความชื้น ${job.quality_moisture}%`}
-                  </p>
-                </div>
-              )}
             </div>
           );
         })}
-
-        {/* Result modal */}
-        {showResult && activeJob && (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'flex-end', padding: '0 0 16px' }}
-            onClick={(e) => e.target === e.currentTarget && setShowResult(false)}>
-            <div style={{ background: '#fff', borderRadius: '20px 20px 12px 12px', padding: '24px 20px', width: '100%', maxWidth: 480, margin: '0 auto', display: 'grid', gap: 14 }}>
-              <p style={{ margin: 0, fontWeight: 800, fontSize: 17 }}>📝 บันทึกผลการเกี่ยว</p>
-              <p style={{ margin: 0, fontSize: 14, color: 'var(--text-secondary)' }}>
-                {activeJob.planting_cycles?.[0]?.plots?.[0]?.name} · {activeJob.planting_cycles?.[0]?.crop_name}
-              </p>
-              <label className="reg-label">ผลผลิตจริง (กก.)
-                <input className="reg-input" type="number" value={yieldKg} onChange={(e) => setYieldKg(e.target.value)}
-                  placeholder={`คาด ${activeJob.planting_cycles?.[0]?.estimated_yield_kg ?? '—'} กก.`} />
-              </label>
-              <label className="reg-label">ความชื้น (%)
-                <input className="reg-input" type="number" step="0.1" value={moisture} onChange={(e) => setMoisture(e.target.value)} placeholder="14.5" />
-                {moisture && (
-                  <span className="reg-hint" style={{ color: Number(moisture) <= 14.5 ? '#2e7d32' : Number(moisture) <= 18 ? '#e65100' : '#c62828', fontWeight: 700 }}>
-                    เกรด: {Number(moisture) <= 14.5 ? 'A' : Number(moisture) <= 18 ? 'B' : Number(moisture) <= 25 ? 'C' : 'Reject'}
-                  </span>
-                )}
-              </label>
-              <label className="reg-label">หมายเหตุ
-                <textarea className="reg-input reg-textarea" rows={2} value={resultNote} onChange={(e) => setResultNote(e.target.value)} placeholder="สภาพแปลง ปัญหา…" />
-              </label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                <UIButton variant="ghost" onClick={() => setShowResult(false)}>ยกเลิก</UIButton>
-                <UIButton onClick={() => saveResult(activeJob.id)} loading={updating}>💾 บันทึก</UIButton>
-              </div>
-            </div>
-          </div>
-        )}
-
       </div>
     </MobileAppShell>
   );

@@ -2,184 +2,159 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useCurrentMember } from '@/providers/auth-provider';
 import { MobileAppShell } from '@/shared/components/mobile-app-shell';
 import { LoadingState } from '@/shared/components/loading-state';
 
 type TeamMember = {
-  id: string; full_name: string; phone: string | null; status: string;
-};
-type TeamCycle = {
-  id: string; crop_name: string; season_year: number; status: string;
-  planted_at: string | null; expected_harvest_at: string | null;
-  estimated_yield_kg: number | null;
-  plots: { name: string }[] | null;
-  members: { full_name: string }[] | null;
+  id: string; full_name: string; phone: string | null;
+  status: string; plot_count: number;
+  planting_cycles: { id: string; status: string; field_name: string | null; quota_kg: number }[];
 };
 
-const CYCLE_STATUS: Record<string, { icon: string; color: string }> = {
-  planned:   { icon: '📋', color: '#1565c0' },
-  planted:   { icon: '🌱', color: '#2e7d32' },
-  growing:   { icon: '🌿', color: '#388e3c' },
-  flowering: { icon: '🌸', color: '#f57f17' },
-  maturing:  { icon: '🌽', color: '#e65100' },
-  ready:     { icon: '✅', color: '#c62828' },
-  harvested: { icon: '🏁', color: '#9e9e9e' },
+const S = {
+  card: { background: 'var(--color-background-primary,#fff)', borderRadius: 14, border: '0.5px solid var(--color-border-tertiary,#e4ede4)', overflow: 'hidden' as const },
+  label: { fontSize: 11, color: 'var(--color-text-secondary,#888)', fontWeight: 500, letterSpacing: '.04em', margin: '0 0 8px' },
+};
+
+const STATUS_CFG: Record<string, { label: string; color: string; bg: string }> = {
+  approved:         { label: 'อนุมัติแล้ว',  color: '#3B6D11', bg: '#EAF3DE' },
+  pending_approval: { label: 'รออนุมัติ',    color: '#B45309', bg: '#FFF8DB' },
+  rejected:         { label: 'ไม่ผ่าน',       color: '#991B1B', bg: '#FEE2E2' },
 };
 
 export default function TeamPage() {
   const member = useCurrentMember();
-  const [groupName, setGroupName] = useState<string>('');
-  const [members, setMembers]     = useState<TeamMember[]>([]);
-  const [cycles, setCycles]       = useState<TeamCycle[]>([]);
-  const [loading, setLoading]     = useState(true);
-  const [tab, setTab]             = useState<'members' | 'cycles'>('members');
+  const [members, setMembers] = useState<TeamMember[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [tab, setTab]         = useState<'members' | 'cycles'>('members');
+  const [search, setSearch]   = useState('');
 
   useEffect(() => {
     if (!member?.member_id) return;
-    void (async () => {
-      const s = createSupabaseBrowserClient();
-
-      // ดึงกลุ่มที่ตัวเองเป็นสมาชิก
-      const { data: myGroups } = await s.from('member_group_members')
-        .select('group_id, member_groups(id, name)')
-        .eq('member_id', member.member_id)
-        .limit(1);
-
-      const group = (myGroups?.[0]?.member_groups as { id: string; name: string }[] | null)?.[0] ?? null;
-      if (!group) { setLoading(false); return; }
-
-      setGroupName(group.name);
-
-      // ดึงสมาชิกในกลุ่ม
-      const { data: groupMembers } = await s.from('member_group_members')
-        .select('members(id, full_name, phone, status)')
-        .eq('group_id', group.id);
-
-      const memberList = (groupMembers ?? []).map((gm: { members: TeamMember[] | null }) => gm.members?.[0] ?? null).filter(Boolean) as TeamMember[];
-      setMembers(memberList);
-
-      // ดึงรอบปลูกของสมาชิกในกลุ่ม
-      const memberIds = memberList.map((m) => m.id);
-      if (memberIds.length > 0) {
-        const { data: cyclesData } = await s.from('planting_cycles')
-          .select('id,crop_name,season_year,status,planted_at,expected_harvest_at,estimated_yield_kg,plots(name),members(full_name)')
-          .in('member_id', memberIds)
-          .not('status', 'in', '("harvested","cancelled")')
-          .order('expected_harvest_at');
-        setCycles((cyclesData as TeamCycle[]) ?? []);
-      }
-      setLoading(false);
-    })();
+    void fetch(`/api/team/members?leader_id=${member.member_id}`)
+      .then((r) => r.json())
+      .then((d: { members?: TeamMember[] }) => { setMembers(d.members ?? []); setLoading(false); });
   }, [member?.member_id]);
 
-  function daysLeft(d: string | null) {
-    if (!d) return null;
-    return Math.round((new Date(d).getTime() - Date.now()) / 86400000);
-  }
+  const filtered = members.filter((m) =>
+    !search || m.full_name.toLowerCase().includes(search.toLowerCase()) || m.phone?.includes(search)
+  );
 
-  if (loading) return <LoadingState label="กำลังโหลด…" />;
+  const allCycles = members.flatMap((m) =>
+    (m.planting_cycles ?? []).map((c) => ({ ...c, member_name: m.full_name, member_id: m.id }))
+  ).filter((c) => !['harvested','cancelled'].includes(c.status));
+
+  const pendingCount = members.filter((m) => m.status === 'pending_approval').length;
 
   return (
-    <MobileAppShell title="ทีมของฉัน" subtitle="ภาพรวมกลุ่มและรอบปลูกทั้งหมด">
-      <div className="mobile-stack">
+    <MobileAppShell title="" subtitle="">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-        {/* group card */}
-        {groupName ? (
-          <div className="home-hero">
-            <p className="home-hero__greeting">กลุ่ม</p>
-            <p className="home-hero__name">{groupName}</p>
-            <div className="home-hero__stats">
-              <div className="home-hero__stat">
-                <p className="home-hero__stat-val">{members.length}</p>
-                <p className="home-hero__stat-lbl">สมาชิก</p>
-              </div>
-              <div className="home-hero__stat">
-                <p className="home-hero__stat-val">{cycles.length}</p>
-                <p className="home-hero__stat-lbl">รอบปลูก</p>
-              </div>
+        {/* Hero */}
+        <div style={{ ...S.card, padding: '16px' }}>
+          <p style={{ margin: '0 0 4px', fontSize: 16, fontWeight: 500, color: 'var(--color-text-primary,#111)' }}>หัวหน้าทีม</p>
+          <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-secondary,#888)' }}>ดูแลลูกทีม · สรุปพื้นที่ · ติดตามสถานะ</p>
+          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+            <div style={{ flex: 1, background: 'var(--color-background-secondary,#f9fafb)', borderRadius: 10, padding: '10px', textAlign: 'center' }}>
+              <p style={{ margin: 0, fontSize: 20, fontWeight: 500 }}>{members.length}</p>
+              <p style={{ margin: 0, fontSize: 11, color: 'var(--color-text-secondary,#888)' }}>ลูกทีมทั้งหมด</p>
+            </div>
+            <div style={{ flex: 1, background: 'var(--color-background-secondary,#f9fafb)', borderRadius: 10, padding: '10px', textAlign: 'center' }}>
+              <p style={{ margin: 0, fontSize: 20, fontWeight: 500, color: pendingCount > 0 ? '#B45309' : undefined }}>{pendingCount}</p>
+              <p style={{ margin: 0, fontSize: 11, color: 'var(--color-text-secondary,#888)' }}>รออนุมัติ</p>
+            </div>
+            <div style={{ flex: 1, background: 'var(--color-background-secondary,#f9fafb)', borderRadius: 10, padding: '10px', textAlign: 'center' }}>
+              <p style={{ margin: 0, fontSize: 20, fontWeight: 500 }}>{allCycles.length}</p>
+              <p style={{ margin: 0, fontSize: 11, color: 'var(--color-text-secondary,#888)' }}>รอบปลูกแอคทีฟ</p>
             </div>
           </div>
-        ) : (
-          <div className="kaona-card" style={{ textAlign: 'center', padding: '24px' }}>
-            <div style={{ fontSize: 40, marginBottom: 8 }}>🗂️</div>
-            <p style={{ fontWeight: 700, margin: '0 0 4px' }}>ยังไม่ได้อยู่ในกลุ่ม</p>
-            <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>ติดต่อ admin เพื่อเข้าร่วมกลุ่ม</p>
-          </div>
-        )}
+        </div>
 
-        {groupName && (
+        {/* Quick actions */}
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Link href="/field/assist-registration" style={{ flex: 1, textDecoration: 'none' }}>
+            <div style={{ ...S.card, padding: '12px', textAlign: 'center' }}>
+              <p style={{ margin: 0, fontSize: 20 }}>👤</p>
+              <p style={{ margin: '4px 0 0', fontSize: 12, fontWeight: 500, color: 'var(--color-text-primary,#111)' }}>ช่วยสมัครสมาชิก</p>
+            </div>
+          </Link>
+          <Link href="/service/reservations" style={{ flex: 1, textDecoration: 'none' }}>
+            <div style={{ ...S.card, padding: '12px', textAlign: 'center' }}>
+              <p style={{ margin: 0, fontSize: 20 }}>🌽</p>
+              <p style={{ margin: '4px 0 0', fontSize: 12, fontWeight: 500, color: 'var(--color-text-primary,#111)' }}>จองเมล็ด</p>
+            </div>
+          </Link>
+          <Link href="/field#reservation" style={{ flex: 1, textDecoration: 'none' }}>
+            <div style={{ ...S.card, padding: '12px', textAlign: 'center' }}>
+              <p style={{ margin: 0, fontSize: 20 }}>📋</p>
+              <p style={{ margin: '4px 0 0', fontSize: 12, fontWeight: 500, color: 'var(--color-text-primary,#111)' }}>จองให้ลูกทีม</p>
+            </div>
+          </Link>
+        </div>
+
+        {/* Tabs */}
+        <div style={{ display: 'flex', gap: 6, background: 'var(--color-background-secondary,#f9fafb)', borderRadius: 12, padding: 4 }}>
+          {(['members','cycles'] as const).map((t) => (
+            <button key={t} onClick={() => setTab(t)}
+              style={{ flex: 1, padding: '8px', borderRadius: 9, border: 'none', cursor: 'pointer', fontWeight: tab === t ? 500 : 400, fontSize: 13, background: tab === t ? 'var(--color-background-primary,#fff)' : 'transparent', color: tab === t ? 'var(--color-text-primary,#111)' : 'var(--color-text-secondary,#888)', boxShadow: tab === t ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' }}>
+              {t === 'members' ? `👥 ลูกทีม (${members.length})` : `🌱 รอบปลูก (${allCycles.length})`}
+            </button>
+          ))}
+        </div>
+
+        {loading && <LoadingState label="กำลังโหลด…" />}
+
+        {/* Members tab */}
+        {!loading && tab === 'members' && (
           <>
-            {/* tabs */}
-            <div style={{ display: 'flex', gap: 8 }}>
-              {(['members', 'cycles'] as const).map((t) => (
-                <button key={t} onClick={() => setTab(t)}
-                  style={{ flex: 1, padding: '10px', borderRadius: 12, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 13, background: tab === t ? 'var(--primary)' : '#f0f4f0', color: tab === t ? '#fff' : 'var(--text-secondary)' }}>
-                  {t === 'members' ? `👥 สมาชิก (${members.length})` : `🌱 รอบปลูก (${cycles.length})`}
-                </button>
-              ))}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, ...S.card, padding: '10px 14px' }}>
+              <span style={{ fontSize: 16 }}>🔍</span>
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="ค้นหาชื่อหรือเบอร์…"
+                style={{ border: 'none', outline: 'none', flex: 1, fontSize: 14, background: 'transparent' }} />
             </div>
-
-            {/* members tab */}
-            {tab === 'members' && (
-              <div style={{ display: 'grid', gap: 8 }}>
-                {members.map((m) => (
-                  <div key={m.id} className="kaona-card" style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                    <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#e8f5e9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 800, color: '#2e7d32', flexShrink: 0 }}>
-                      {m.full_name[0]}
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <p style={{ margin: 0, fontWeight: 700, fontSize: 15 }}>{m.full_name}</p>
-                      {m.phone && <p style={{ margin: '2px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>{m.phone}</p>}
-                    </div>
-                    {m.phone && (
-                      <a href={`tel:${m.phone}`} style={{ color: 'var(--primary)', fontSize: 20, textDecoration: 'none' }}>📞</a>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* cycles tab */}
-            {tab === 'cycles' && (
-              <div style={{ display: 'grid', gap: 10 }}>
-                {cycles.length === 0 && (
-                  <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '16px 0', fontSize: 14 }}>ยังไม่มีรอบปลูกที่กำลังดำเนินการ</p>
-                )}
-                {cycles.map((c) => {
-                  const st = CYCLE_STATUS[c.status] ?? { icon: '📋', color: '#1565c0' };
-                  const days = daysLeft(c.expected_harvest_at);
-                  return (
-                    <Link key={c.id} href={`/planting-cycles/${c.id}`} style={{ textDecoration: 'none' }}>
-                      <div className="kaona-card">
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                          <div>
-                            <p style={{ margin: 0, fontWeight: 800, fontSize: 15 }}>{st.icon} {c.crop_name} {c.season_year}</p>
-                            <p style={{ margin: '2px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>
-                              👤 {c.members?.[0]?.full_name} · {c.plots?.[0]?.name ?? '—'}
-                            </p>
-                            {c.estimated_yield_kg && (
-                              <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-secondary)' }}>
-                                ~{c.estimated_yield_kg.toLocaleString()} กก.
-                              </p>
-                            )}
-                          </div>
-                          {days !== null && (
-                            <span style={{ fontSize: 12, fontWeight: 700, padding: '4px 10px', borderRadius: 999, background: (days <= 14 ? '#ffebee' : days <= 30 ? '#fff8e1' : '#e8f5e9'), color: (days <= 14 ? '#c62828' : days <= 30 ? '#e65100' : '#2e7d32'), whiteSpace: 'nowrap', flexShrink: 0, marginLeft: 8 }}>
-                              {days > 0 ? `${days} วัน` : 'พร้อมเก็บ'}
-                            </span>
-                          )}
-                        </div>
+            {filtered.length === 0 && <p style={{ textAlign: 'center', color: 'var(--color-text-secondary,#888)', fontSize: 14, padding: '16px 0' }}>ไม่พบข้อมูล</p>}
+            {filtered.map((m) => {
+              const st = STATUS_CFG[m.status] ?? STATUS_CFG.approved;
+              return (
+                <div key={m.id} style={{ ...S.card }}>
+                  <div style={{ padding: '12px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--color-background-secondary,#f9fafb)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 500, flexShrink: 0 }}>
+                        {m.full_name[0]}
                       </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            )}
+                      <div>
+                        <p style={{ margin: 0, fontWeight: 500, fontSize: 14 }}>{m.full_name}</p>
+                        <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--color-text-secondary,#888)' }}>{m.phone ?? ''} · {m.plot_count} แปลง</p>
+                      </div>
+                    </div>
+                    <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 20, background: st.bg, color: st.color, fontWeight: 500, flexShrink: 0 }}>{st.label}</span>
+                  </div>
+                  {m.phone && (
+                    <div style={{ borderTop: '0.5px solid var(--color-border-tertiary,#e4ede4)', display: 'flex' }}>
+                      <a href={`tel:${m.phone}`} style={{ flex: 1, padding: '9px', textAlign: 'center', fontSize: 13, color: '#185FA5', textDecoration: 'none' }}>📞 โทร</a>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </>
         )}
 
+        {/* Cycles tab */}
+        {!loading && tab === 'cycles' && (
+          <>
+            {allCycles.length === 0 && <p style={{ textAlign: 'center', color: 'var(--color-text-secondary,#888)', fontSize: 14, padding: '16px 0' }}>ไม่มีรอบปลูกที่กำลังดำเนินการ</p>}
+            {allCycles.map((c) => (
+              <Link key={c.id} href={`/planting-cycles/${c.id}`} style={{ textDecoration: 'none' }}>
+                <div style={{ ...S.card, padding: '12px 14px' }}>
+                  <p style={{ margin: 0, fontWeight: 500, fontSize: 14, color: 'var(--color-text-primary,#111)' }}>{c.field_name ?? 'แปลง'}</p>
+                  <p style={{ margin: '3px 0 0', fontSize: 12, color: 'var(--color-text-secondary,#888)' }}>👤 {c.member_name} · โควต้า {c.quota_kg.toLocaleString()} กก.</p>
+                </div>
+              </Link>
+            ))}
+          </>
+        )}
       </div>
     </MobileAppShell>
   );
