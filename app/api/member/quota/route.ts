@@ -4,7 +4,6 @@
 
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
-import { createClient } from '@supabase/supabase-js';
 
 const ACTIVE_STATUSES = ['registered','approved','planted','harvesting'];
 
