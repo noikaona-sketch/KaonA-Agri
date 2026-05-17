@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
 
-export const dynamic = 'force-dynamic';
 
 // Returns seed products that are ready to reserve:
 // product_type = seed, is_active = true, deleted_at = null, seed_variety_id IS NOT NULL
