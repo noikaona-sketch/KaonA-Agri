@@ -35,51 +35,50 @@ const PENDING_NAV: RoleNavConfig = {
 const ROLE_NAV_MAP: Record<AppRole, RoleNavConfig> = {
   farmer: {
     tabs: [
-      { label: 'หน้าแรก',  href: '/',                        iconKey: '🏠' },
-      { label: 'จองเมล็ด', href: '/service/reservations',    iconKey: '🌾' },
-      { label: 'แจ้งปลูก', href: '/planting-cycles',         iconKey: '🌱' },
-      { label: 'ไม่เผา',   href: '/no-burn',                 iconKey: '🚫' },
-      { label: 'ราคา',      href: '/planting-cycles',         iconKey: '💲' },
+      { label: 'หน้าแรก',   href: '/',                     iconKey: '🏠' },
+      { label: 'ข่าวสาร',   href: '/notifications',        iconKey: '📰' },
+      { label: 'ติดต่อ',    href: '/register?tab=contact', iconKey: '📞' },
+      { label: 'โปรไฟล์',  href: '/profile',              iconKey: '👤' },
     ],
   },
   leader: {
     tabs: [
-      { label: 'หน้าหลัก',  href: '/',                iconKey: '🏠' },
-      { label: 'ทีมของฉัน', href: '/team',            iconKey: '👥' },
-      { label: 'รอบปลูก',   href: '/planting-cycles', iconKey: '🌱' },
-      { label: 'โปรไฟล์',  href: '/profile',          iconKey: '👤' },
+      { label: 'หน้าแรก',   href: '/',                     iconKey: '🏠' },
+      { label: 'ข่าวสาร',   href: '/notifications',        iconKey: '📰' },
+      { label: 'ติดต่อ',    href: '/register?tab=contact', iconKey: '📞' },
+      { label: 'โปรไฟล์',  href: '/profile',              iconKey: '👤' },
     ],
   },
   inspector: {
     tabs: [
-      { label: 'หน้าหลัก', href: '/', iconKey: '🏠' },
-      { label: 'งานตรวจ', href: '/inspection/tasks', iconKey: '🔍' },
-      { label: 'แผนที่', href: '/field',              iconKey: '🗺️' },
-      { label: 'โปรไฟล์', href: '/profile',          iconKey: '👤' },
+      { label: 'หน้าแรก',   href: '/',                     iconKey: '🏠' },
+      { label: 'ข่าวสาร',   href: '/notifications',        iconKey: '📰' },
+      { label: 'ติดต่อ',    href: '/register?tab=contact', iconKey: '📞' },
+      { label: 'โปรไฟล์',  href: '/profile',              iconKey: '👤' },
     ],
   },
   truck_owner: {
     tabs: [
-      { label: 'หน้าหลัก',   href: '/',        iconKey: '🏠' },
-      { label: 'งานรถเกี่ยว', href: '/truck',   iconKey: '🚜' },
-      { label: 'งดเผา',      href: '/no-burn', iconKey: '🔥' },
-      { label: 'โปรไฟล์',   href: '/profile', iconKey: '👤' },
+      { label: 'หน้าแรก',   href: '/',                     iconKey: '🏠' },
+      { label: 'ข่าวสาร',   href: '/notifications',        iconKey: '📰' },
+      { label: 'ติดต่อ',    href: '/register?tab=contact', iconKey: '📞' },
+      { label: 'โปรไฟล์',  href: '/profile',              iconKey: '👤' },
     ],
   },
   staff: {
     tabs: [
-      { label: 'หน้าหลัก', href: '/', iconKey: 'member' },
-      { label: 'อนุมัติ', href: '/admin/members', iconKey: 'field' },
-      { label: 'ภาคสนาม', href: '/field', iconKey: 'service' },
-      { label: 'โปรไฟล์', href: '/profile', iconKey: 'admin' },
+      { label: 'หน้าแรก',   href: '/',                     iconKey: '🏠' },
+      { label: 'ข่าวสาร',   href: '/notifications',        iconKey: '📰' },
+      { label: 'ติดต่อ',    href: '/register?tab=contact', iconKey: '📞' },
+      { label: 'โปรไฟล์',  href: '/profile',              iconKey: '👤' },
     ],
   },
   admin: {
     tabs: [
-      { label: 'หน้าหลัก', href: '/', iconKey: 'member' },
-      { label: 'อนุมัติ', href: '/admin/members', iconKey: 'field' },
-      { label: 'จัดการ', href: '/admin-prototype', iconKey: 'service' },
-      { label: 'โปรไฟล์', href: '/profile', iconKey: 'admin' },
+      { label: 'หน้าแรก',   href: '/',                     iconKey: '🏠' },
+      { label: 'ข่าวสาร',   href: '/notifications',        iconKey: '📰' },
+      { label: 'ติดต่อ',    href: '/register?tab=contact', iconKey: '📞' },
+      { label: 'โปรไฟล์',  href: '/profile',              iconKey: '👤' },
     ],
   },
 };

@@ -8,26 +8,29 @@ import { getNavConfig } from '@/shared/auth/role-nav-config';
 import { iconPaths } from '@/shared/design/icon-tokens';
 
 const NAV_STYLE = {
-  background: 'linear-gradient(180deg, #1e7a32 0%, #0f4f1f 100%)',
+  background: 'var(--color-background-primary, #fff)',
   border: 0,
-  borderRadius: 14,
-  boxShadow: '0 4px 16px rgba(15, 79, 31, 0.25)',
-  padding: '4px 2px',
+  borderTop: '0.5px solid var(--color-border-tertiary, #e4ede4)',
+  borderRadius: 0,
+  boxShadow: 'none',
+  padding: '4px 8px 8px',
 } as const;
 
 function getTabStyle(isActive: boolean) {
   return {
-    minHeight: 44,
+    minHeight: 48,
     display: 'grid',
     placeItems: 'center',
-    gap: 1,
-    padding: '4px 2px',
+    gap: 2,
+    padding: '6px 4px',
     textDecoration: 'none',
     borderRadius: 10,
-    background: isActive ? '#FFFFFF' : 'transparent',
-    color: isActive ? '#2E7D32' : '#FFFFFF',
-    boxShadow: isActive ? '0 2px 8px rgba(0,0,0,0.12)' : 'none',
-    fontWeight: 700,
+    background: 'transparent',
+    color: isActive
+      ? 'var(--color-text-primary, #111)'
+      : 'var(--color-text-secondary, #888)',
+    boxShadow: 'none',
+    fontWeight: isActive ? 500 : 400,
   } as const;
 }
 
@@ -89,6 +92,9 @@ export function MobileBottomNav() {
             <span style={{ display: 'block', fontSize: 10, lineHeight: 1.2, whiteSpace: 'nowrap' }}>
               {tab.label}
             </span>
+            {isActive && (
+              <span style={{ display: 'block', width: 4, height: 4, borderRadius: '50%', background: '#3B6D11', margin: '0 auto' }} />
+            )}
           </Link>
         );
       })}
