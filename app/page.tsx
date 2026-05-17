@@ -163,21 +163,28 @@ function SecondaryRoleCards({ primaryRole, allRoles }: { primaryRole: AppRole; a
 // ─────────────────────────────────────────────────────────────────────
 function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: string; allRoles: AppRole[] }) {
   const [plots, setPlots] = useState(0);
-  const [price, setPrice] = useState<number | null>(null);
   const [quota, setQuota] = useState<number | null>(null);
 
   useEffect(() => {
     const s = createSupabaseBrowserClient();
-    void Promise.all([
-      // plots — ใช้ API route เพราะ RLS ต้องการ auth.uid()
-      fetch(`/api/member/plots?member_id=${memberId}`).then((r) => r.json()),
-      s.from('market_prices').select('price_per_kg').eq('is_active', true).ilike('crop_type', '%ข้าวโพด%').order('effective_date', { ascending: false }).limit(1).maybeSingle(),
-      fetch(`/api/member/quota?member_id=${memberId}`).then((r) => r.json()),
-    ]).then(([p, pr, q]) => {
-      setPlots(((p as { plots?: unknown[] }).plots ?? []).length);
-      if (pr.data) setPrice(pr.data.price_per_kg);
-      if ((q as { quota_ton?: number }).quota_ton !== undefined) setQuota((q as { quota_ton: number }).quota_ton);
-    });
+    void (async () => {
+      // plots count — browser client, RLS controls access
+      const plotRes = await s.from('plots')
+        .select('id', { count: 'exact', head: true })
+        .eq('member_id', memberId).eq('status', 'active');
+      setPlots(plotRes.count ?? 0);
+
+      // quota — ส่ง session token ไปด้วย (server ตรวจ auth.uid)
+      const { data: { session } } = await s.auth.getSession();
+      if (session?.access_token) {
+        const qRes = await fetch('/api/member/quota', {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        }).then((r) => r.json()) as { quota_ton?: number | null };
+        if (qRes.quota_ton !== null && qRes.quota_ton !== undefined) {
+          setQuota(qRes.quota_ton);
+        }
+      }
+    })();
   }, [memberId]);
 
   const FARMER_MENU = [
@@ -192,7 +199,7 @@ function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: stri
   return (
     <MobileAppShell title="" subtitle="">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <HeroCard name={name} memberId={memberId} primaryRole="farmer" allRoles={allRoles} plots={plots} price={price} quota={quota} />
+        <HeroCard name={name} memberId={memberId} primaryRole="farmer" allRoles={allRoles} plots={plots} price={null} quota={quota} />
 
         {/* main menus */}
         <div>
