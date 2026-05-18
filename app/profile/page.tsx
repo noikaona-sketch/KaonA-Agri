@@ -36,6 +36,14 @@ type MemberData = {
 type PlotSummary  = { id: string; name: string; area_rai: number; lat: number; lng: number; status: string };
 type CreditAccount= { balance: number; debit_balance: number; total_spent: number };
 type DocRow       = { doc_type: string; verified: boolean; file_url: string | null };
+type ProviderRequestRow = {
+  id: string;
+  request_type: 'service_team' | 'field_team';
+  status: 'pending' | 'approved' | 'rejected' | string;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+};
 
 const DOC_LABEL: Record<string, string> = {
   thai_id_card: '🪪 บัตรประชาชน',
@@ -51,6 +59,22 @@ const S = {
   row: { display: 'flex' as const, justifyContent: 'space-between' as const, alignItems: 'center' as const, padding: '10px 0', borderBottom: '0.5px solid var(--color-border-tertiary,#e4ede4)' },
 };
 
+const PROVIDER_STATUS_CFG: Record<string, { label: string; color: string }> = {
+  pending: { label: '⏳ รออนุมัติ', color: '#B45309' },
+  approved: { label: '✅ อนุมัติแล้ว', color: '#3B6D11' },
+  rejected: { label: '❌ ไม่ผ่านการอนุมัติ', color: '#991B1B' },
+};
+
+const PROVIDER_ROLE_BY_TYPE: Record<'service_team' | 'field_team', 'truck_owner' | 'inspector'> = {
+  service_team: 'truck_owner',
+  field_team: 'inspector',
+};
+
+const PROVIDER_TYPE_LABEL: Record<'service_team' | 'field_team', string> = {
+  service_team: 'ทีมบริการรถ',
+  field_team: 'ทีมตรวจแปลง',
+};
+
 export default function ProfilePage() {
   const member        = useCurrentMember();
   const roles         = useCurrentRoles();
@@ -59,6 +83,7 @@ export default function ProfilePage() {
   const [plots,  setPlots]  = useState<PlotSummary[]>([]);
   const [credit, setCredit] = useState<CreditAccount | null>(null);
   const [docs,   setDocs]   = useState<DocRow[]>([]);
+  const [providerRequests, setProviderRequests] = useState<ProviderRequestRow[]>([]);
 
   useEffect(() => {
     if (!member?.member_id) return;
@@ -69,11 +94,17 @@ export default function ProfilePage() {
       fetch(`/api/member/plots?member_id=${member.member_id}`).then((r) => r.json()),
       s.from('member_documents').select('doc_type,verified,file_url').eq('member_id', member.member_id),
       fetch('/api/member/credit').then((r) => r.json()),
-    ]).then(([m, p, d, cr]) => {
+      s.from('provider_requests')
+        .select('id,request_type,status,reviewed_by,reviewed_at,created_at')
+        .eq('member_id', member.member_id)
+        .in('request_type', ['service_team', 'field_team'])
+        .order('created_at', { ascending: false }),
+    ]).then(([m, p, d, cr, pr]) => {
       setData((m.data as MemberData | null));
       setPlots(((p as { plots?: PlotSummary[] }).plots ?? []));
       setDocs((d.data as DocRow[] | null) ?? []);
       setCredit((cr as { account?: CreditAccount }).account ?? null);
+      setProviderRequests(((pr.data as ProviderRequestRow[] | null) ?? []));
     });
   }, [member?.member_id]);
 
@@ -83,6 +114,9 @@ export default function ProfilePage() {
   const initials  = data.full_name.trim().split(' ').map((w) => w[0]).slice(0, 2).join('');
   const pr        = ROLE_COLOR[effectiveRole ?? 'farmer'] ?? ROLE_COLOR.farmer;
   const statusCfg = STATUS_CFG[data.status] ?? { label: data.status, color: '#888' };
+  const latestProviderByType = (['service_team', 'field_team'] as const)
+    .map((requestType) => providerRequests.find((item) => item.request_type === requestType))
+    .filter(Boolean) as ProviderRequestRow[];
 
   return (
     <ProtectedRoute allowPending>
@@ -115,6 +149,33 @@ export default function ProfilePage() {
             <span style={{ fontSize: 12, fontWeight: 500, color: statusCfg.color }}>{statusCfg.label}</span>
           </div>
         </div>
+
+        {/* ── สถานะผู้ให้บริการ ── */}
+        {latestProviderByType.length > 0 && (
+          <div>
+            <p style={S.sectionLabel}>สถานะผู้ให้บริการ</p>
+            <div style={{ ...S.card, padding: '0 14px' }}>
+              {latestProviderByType.map((item, i) => {
+                const cfg = PROVIDER_STATUS_CFG[item.status] ?? { label: item.status, color: '#666' };
+                const grantedRole = item.status === 'approved' ? PROVIDER_ROLE_BY_TYPE[item.request_type] : null;
+                return (
+                  <div key={item.id} style={{ ...S.row, alignItems: 'flex-start', flexDirection: 'column', gap: 4, borderBottom: i < latestProviderByType.length - 1 ? undefined : 'none' }}>
+                    <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 13, color: 'var(--color-text-primary,#111)' }}>{PROVIDER_TYPE_LABEL[item.request_type]}</span>
+                      <span style={{ fontSize: 12, fontWeight: 500, color: cfg.color }}>{cfg.label}</span>
+                    </div>
+                    {grantedRole && (
+                      <div style={{ fontSize: 12, color: '#444' }}>Role ที่ได้รับ: <span style={{ fontFamily: 'monospace' }}>{grantedRole}</span></div>
+                    )}
+                    {item.reviewed_by && (
+                      <div style={{ fontSize: 12, color: '#666' }}>Reviewed by: {item.reviewed_by}</div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* ── แปลงของฉัน ── */}
         <div>
