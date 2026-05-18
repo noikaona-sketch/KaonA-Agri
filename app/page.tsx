@@ -170,21 +170,23 @@ function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: stri
     // quota fetch is handled in PR #205 (feat/quota-display)
     const s = createSupabaseBrowserClient();
     void (async () => {
-      // plots count — browser client, RLS controls access
-      const plotRes = await s.from('plots')
-        .select('id', { count: 'exact', head: true })
-        .eq('member_id', memberId).eq('status', 'active');
-      setPlots(plotRes.count ?? 0);
+      // ดึง session token และ plots พร้อมกัน
+      const [sessionRes, plotsRes] = await Promise.all([
+        s.auth.getSession(),
+        s.from('plots').select('id', { count: 'exact', head: true })
+          .eq('member_id', memberId).eq('status', 'active'),
+      ]);
+      setPlots(plotsRes.count ?? 0);
 
-      // quota — ส่ง session token ไปด้วย (server ตรวจ auth.uid)
-      const { data: { session } } = await s.auth.getSession();
-      if (session?.access_token) {
-        const qRes = await fetch('/api/member/quota', {
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        }).then((r) => r.json()) as { quota_ton?: number | null };
-        if (qRes.quota_ton !== null && qRes.quota_ton !== undefined) {
-          setQuota(qRes.quota_ton);
-        }
+      // ดึง quota ถ้ามี session (ใช้ token ที่ได้จากด้านบน)
+      const accessToken = sessionRes.data.session?.access_token;
+      if (accessToken) {
+        void fetch('/api/member/quota', {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }).then((r) => r.json())
+          .then((q: { quota_ton?: number | null }) => {
+            if (q.quota_ton !== null && q.quota_ton !== undefined) setQuota(q.quota_ton);
+          }).catch(() => null); // quota ไม่ critical — ล้มเหลวก็ไม่เป็นไร
       }
     })();
   }, [memberId]);
