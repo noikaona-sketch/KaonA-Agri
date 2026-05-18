@@ -82,7 +82,7 @@ function RoleCard({ href, icon, label, desc }: { href: string; icon: string; lab
 // Hero card — shared across all roles
 // ─────────────────────────────────────────────────────────────────────
 function HeroCard({
-  name, memberId, primaryRole, allRoles, plots, price, quota,
+  name, memberId, primaryRole, allRoles, plots, price, quota = null,
 }: {
   name: string; memberId: string; primaryRole: AppRole;
   allRoles: AppRole[]; plots: number; price: number | null; quota?: number | null;
@@ -113,18 +113,8 @@ function HeroCard({
         {/* stats */}
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
           {plots > 0 && <div><p style={{ margin: 0, fontSize: 18, fontWeight: 500, color: '#111' }}>{plots}</p><p style={{ margin: 0, fontSize: 10, color: '#9ca3af' }}>แปลง</p></div>}
-          {quota !== null && quota !== undefined && (
-            <div style={{ marginTop: plots > 0 ? 6 : 0 }}>
-              <p style={{ margin: 0, fontSize: 18, fontWeight: 500, color: '#3B6D11' }}>{quota.toLocaleString()}</p>
-              <p style={{ margin: 0, fontSize: 10, color: '#9ca3af' }}>ตัน (โควต้า)</p>
-            </div>
-          )}
-          {price !== null && (
-            <div style={{ marginTop: 6 }}>
-              <p style={{ margin: 0, fontSize: 15, fontWeight: 500, color: '#1565c0' }}>{Number(price).toLocaleString()}</p>
-              <p style={{ margin: 0, fontSize: 10, color: '#9ca3af' }}>บ./ตัน</p>
-            </div>
-          )}
+          {quota !== null && <div style={{ marginTop: plots > 0 ? 6 : 0 }}><p style={{ margin: 0, fontSize: 18, fontWeight: 500, color: '#3B6D11' }}>{quota.toLocaleString()}</p><p style={{ margin: 0, fontSize: 10, color: '#9ca3af' }}>ตัน (โควต้า)</p></div>}
+          {price !== null && <div style={{ marginTop: 6 }}><p style={{ margin: 0, fontSize: 15, fontWeight: 500, color: '#1565c0' }}>{Number(price).toLocaleString()}</p><p style={{ margin: 0, fontSize: 10, color: '#9ca3af' }}>บ./กก.</p></div>}
         </div>
       </div>
     </div>
