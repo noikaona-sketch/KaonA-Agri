@@ -1,11 +1,10 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
-import { requireAdmin } from '../members/_admin-auth';
+import { requireAdminPermission, isForbidden } from '../members/_admin-auth';
 
 export async function GET() {
-  const admin = await requireAdmin();
-  if (!admin) return NextResponse.json({ error: 'ไม่มีสิทธิ์เข้าถึง' }, { status: 403 });
-
+  const _ar_get = await requireAdminPermission('market_prices.read');
+  if (isForbidden(_ar_get)) return _ar_get.forbidden;
   const s = createServerSupabaseClient();
   const { data } = await s.from('market_prices')
     .select('id,crop_type,price_per_kg,moisture_pct,price_type,effective_date,note,is_active')
@@ -15,8 +14,8 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const admin = await requireAdmin();
-    if (!admin) return NextResponse.json({ error: 'ไม่มีสิทธิ์เข้าถึง' }, { status: 403 });
+    const _ar_post = await requireAdminPermission('market_prices.write');
+    if (isForbidden(_ar_post)) return _ar_post.forbidden;
 
     const body = (await request.json()) as {
       crop_type: string; price_per_kg: number;

@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
+import { requireAdminPermission, isForbidden } from '../members/_admin-auth';
 
 // GET — ดูยอดเครดิตทั้งหมด (admin)
 export async function GET(request: Request) {
   try {
+    const _ar_get = await requireAdminPermission('finance.read');
+    if (isForbidden(_ar_get)) return _ar_get.forbidden;
+
     const url = new URL(request.url);
     const memberId = url.searchParams.get('member_id');
 
@@ -36,6 +40,9 @@ export async function GET(request: Request) {
 // POST — admin เพิ่มเครดิต / บันทึกการชำระ
 export async function POST(request: Request) {
   try {
+    const _ar_post = await requireAdminPermission('finance.write');
+    if (isForbidden(_ar_post)) return _ar_post.forbidden;
+
     const body = (await request.json()) as {
       action: 'add_credit' | 'record_payment';
       member_id: string;

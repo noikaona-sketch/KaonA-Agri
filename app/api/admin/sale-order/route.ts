@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
+import { requireAdminPermission, isForbidden } from '../members/_admin-auth';
 
 type OrderItem = {
   product_id?: string;
@@ -9,6 +10,9 @@ type OrderItem = {
 
 export async function POST(request: Request) {
   try {
+    const _ar_post = await requireAdminPermission('service.write');
+    if (isForbidden(_ar_post)) return _ar_post.forbidden;
+
     const body = (await request.json()) as {
       member_id:       string;
       order_type:      'sale' | 'reservation';

@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
+import { requireAdminPermission, isForbidden } from '../members/_admin-auth';
 
 export async function GET() {
+  const _ar_get = await requireAdminPermission('service.read');
+  if (isForbidden(_ar_get)) return _ar_get.forbidden;
   const s = createServerSupabaseClient();
   const [slots, locations] = await Promise.all([
     s.from('pickup_slots')
@@ -14,6 +17,9 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const _ar_post = await requireAdminPermission('service.write');
+    if (isForbidden(_ar_post)) return _ar_post.forbidden;
+
     const body = (await request.json()) as Record<string, unknown>;
     const { id, action, ...payload } = body as { id?: string; action?: string } & Record<string, unknown>;
     const s = createServerSupabaseClient();

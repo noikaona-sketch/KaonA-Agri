@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
+import { requireAdminPermission, isForbidden } from '../members/_admin-auth';
 
 export async function GET(request: Request) {
+  const _ar_get = await requireAdminPermission('seed.read');
+  if (isForbidden(_ar_get)) return _ar_get.forbidden;
   const { searchParams } = new URL(request.url);
   const warehouseId = searchParams.get('warehouse_id');
   const type        = searchParams.get('type');
@@ -27,6 +30,9 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const _ar_post = await requireAdminPermission('seed.write');
+    if (isForbidden(_ar_post)) return _ar_post.forbidden;
+
     const body = (await request.json()) as {
       movement_type:     string;
       warehouse_id:      string;
@@ -70,6 +76,9 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
+    const _ar_patch = await requireAdminPermission('seed.write');
+    if (isForbidden(_ar_patch)) return _ar_patch.forbidden;
+
     const body = (await request.json()) as {
       movement_id: string;
       qty?: number;
