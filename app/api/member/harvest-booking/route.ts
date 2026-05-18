@@ -18,6 +18,32 @@ export async function POST(request: Request) {
 
     const s = createServerSupabaseClient();
 
+    const { data: truckRole, error: roleErr } = await s
+      .from('member_roles')
+      .select('member_id')
+      .eq('member_id', body.member_id)
+      .eq('role', 'truck_owner')
+      .maybeSingle();
+    if (roleErr) return NextResponse.json({ error: roleErr.message }, { status: 500 });
+
+    let providerApproved = false;
+    if (!truckRole) {
+      const { data: providerRequest, error: providerErr } = await s
+        .from('provider_requests')
+        .select('id')
+        .eq('member_id', body.member_id)
+        .eq('request_type', 'service_team')
+        .eq('status', 'approved')
+        .limit(1)
+        .maybeSingle();
+      if (providerErr) return NextResponse.json({ error: providerErr.message }, { status: 500 });
+      providerApproved = Boolean(providerRequest);
+    }
+
+    if (!truckRole && !providerApproved) {
+      return NextResponse.json({ error: 'ยังไม่มีสิทธิ์นัดรถเกี่ยว (ต้องเป็นทีมบริการที่ผ่านอนุมัติ)' }, { status: 403 });
+    }
+
     // ตรวจว่ามีการนัดอยู่แล้วหรือเปล่า
     const { data: existing } = await s.from('harvest_bookings')
       .select('id').eq('planting_cycle_id', body.planting_cycle_id)

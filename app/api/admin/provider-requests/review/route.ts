@@ -15,7 +15,11 @@ export async function POST(request: Request) {
     }
 
     const s = createServerSupabaseClient();
-    const { data: current, error: findErr } = await s.from('provider_requests').select('status').eq('id', body.requestId).maybeSingle();
+    const { data: current, error: findErr } = await s
+      .from('provider_requests')
+      .select('status,member_id')
+      .eq('id', body.requestId)
+      .maybeSingle();
     if (findErr) return NextResponse.json({ error: findErr.message }, { status: 500 });
     if (!current) return NextResponse.json({ error: 'not found' }, { status: 404 });
     if (current.status !== 'pending') return NextResponse.json({ error: 'transition not allowed' }, { status: 409 });
@@ -28,6 +32,16 @@ export async function POST(request: Request) {
     }).eq('id', body.requestId);
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    if (body.decision === 'approved' && current.member_id) {
+      // ensure provider can access truck-owner operations after approval
+      const { error: roleErr } = await s.from('member_roles').upsert(
+        { member_id: current.member_id, role: 'truck_owner', is_primary: true },
+        { onConflict: 'member_id,role' },
+      );
+      if (roleErr) return NextResponse.json({ error: roleErr.message }, { status: 500 });
+    }
+
     return NextResponse.json({ ok: true });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
