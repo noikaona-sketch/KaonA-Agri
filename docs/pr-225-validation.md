@@ -1,6 +1,6 @@
 # PR #225 — Staging validation checklist (LINE login)
 
-Closes #168.
+Related: #168. This docs-only PR does not close #168.
 
 ## Scope
 Validate the LINE login + Supabase session linkage flow introduced in PR #225.
