@@ -80,11 +80,11 @@ export default function MyTasksPage() {
 
     void Promise.all([
       // planting cycles — crop_name (ไม่มี field_name ใน schema)
-      s.from('planting_cycles').select('id,status,crop_name').eq('member_id', memberId).in('status', ['registered','approved']).limit(5),
+      s.from('planting_cycles').select('id,status,crop_name').eq('member_id', memberId).in('status', ['planned','growing']).limit(5),
       // pending reservations
       s.from('seed_reservations').select('id,reservation_no,status').eq('member_id', memberId).in('status', ['pending','confirmed']).limit(5),
       // no-burn — ชื่อ table จริงคือ no_burn_requests (ไม่ใช่ no_burn_submissions)
-      s.from('no_burn_requests').select('id,status').eq('member_id', memberId).in('status', ['submitted','pending_review']).limit(3),
+      s.from('no_burn_requests').select('id,status').eq('member_id', memberId).in('status', ['submitted','under_review','inspection_required']).limit(3),
       // member profile completeness
       s.from('members').select('status,phone,citizen_id_masked,address,bank_account_number').eq('id', memberId).maybeSingle(),
       // notifications
@@ -105,8 +105,10 @@ export default function MyTasksPage() {
 
       (cycles.data ?? []).forEach((c) => {
         const cd = c as { id: string; status: string; crop_name: string | null };
-        if (cd.status === 'registered') {
-          built.push({ id: `cycle-${cd.id}`, icon: '🌱', label: 'รอบปลูกรอยืนยัน', desc: cd.crop_name ?? 'กดเพื่อดูรายละเอียด', href: `/planting-cycles/${cd.id}`, urgency: 'high', group: 'today' });
+        if (cd.status === 'planned') {
+          built.push({ id: `cycle-${cd.id}`, icon: '🌱', label: 'รอบปลูกรอดำเนินการ', desc: cd.crop_name ?? 'กดเพื่อดูรายละเอียด', href: `/planting-cycles/${cd.id}`, urgency: 'high', group: 'today' });
+        } else if (cd.status === 'growing') {
+          built.push({ id: `cycle-${cd.id}`, icon: '🌾', label: 'รอบปลูกกำลังดำเนินการ', desc: cd.crop_name ?? 'กดเพื่อดูรายละเอียด', href: `/planting-cycles/${cd.id}`, urgency: 'normal', group: 'waiting' });
         }
       });
 
@@ -118,7 +120,11 @@ export default function MyTasksPage() {
 
       (noburn.data ?? []).forEach((nb) => {
         const nd = nb as { id: string; status: string };
-        built.push({ id: `noburn-${nd.id}`, icon: '🌿', label: 'คำขอไม่เผารอผล', desc: 'รอเจ้าหน้าที่ตรวจสอบ', href: '/no-burn', urgency: 'normal', group: 'waiting' });
+        const label =
+          nd.status === 'inspection_required'
+            ? 'คำขอไม่เผารอตรวจแปลง'
+            : 'คำขอไม่เผารอผล';
+        built.push({ id: `noburn-${nd.id}`, icon: '🌿', label, desc: 'รอเจ้าหน้าที่ตรวจสอบ', href: '/no-burn', urgency: 'normal', group: 'waiting' });
       });
 
       // ── Role-specific work tasks ────────────────────────────────────────
