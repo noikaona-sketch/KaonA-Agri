@@ -35,7 +35,7 @@ export default function StartupTimingPage() {
   const [total, setTotal]   = useState<number | null>(null);
   const [pageStart]         = useState(() => performance.now());
 
-  function addStep(name: string): (detail?: string) => void {
+  function addStep(name: string): (detail?: string, error?: boolean) => void {
     const start = performance.now() - pageStart;
     setSteps((prev) => [...prev, { name, start, end: null, duration: null, status: 'pending' }]);
     return (detail?: string, error = false) => {
