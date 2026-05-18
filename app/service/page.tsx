@@ -12,9 +12,10 @@ export default function ServicePage() {
       <div className="mobile-stack">
         <div className="home-actions">
           {[
-            { href: '/service/booking', icon: '🛍️', label: 'สั่งซื้อ/จอง',   desc: 'เมล็ดพันธุ์และสินค้า', accent: true },
-            { href: '/planting-cycles', icon: '🌱', label: 'รอบเพาะปลูก',    desc: 'บันทึกความคืบหน้า' },
-            { href: '/no-burn',         icon: '🔥', label: 'งดเผา',           desc: 'ยื่นคำของดเผา' },
+            { href: '/service/booking',          icon: '🛍️', label: 'สั่งซื้อ/จอง',   desc: 'เมล็ดพันธุ์และสินค้า', accent: true },
+            { href: '/service/service-booking',  icon: '🚜', label: 'จองบริการ',       desc: 'รถไถ · รถเกี่ยว · รถขนส่ง' },
+            { href: '/planting-cycles',          icon: '🌱', label: 'รอบเพาะปลูก',    desc: 'บันทึกความคืบหน้า' },
+            { href: '/no-burn',                  icon: '🔥', label: 'งดเผา',           desc: 'ยื่นคำของดเผา' },
             ...(role === 'truck_owner' ? [
               { href: '/service',       icon: '🚛', label: 'งานขนส่ง',       desc: 'รับและจัดการงาน' },
             ] : []),
