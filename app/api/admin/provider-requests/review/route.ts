@@ -34,15 +34,6 @@ export async function POST(request: Request) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
     if (body.decision === 'approved' && current.member_id) {
-      const now = new Date().toISOString();
-
-      // propagate approval to member profile state
-      const { error: memberErr } = await s
-        .from('members')
-        .update({ status: 'approved', updated_at: now })
-        .eq('id', current.member_id);
-      if (memberErr) return NextResponse.json({ error: memberErr.message }, { status: 500 });
-
       // ensure provider can access truck-owner operations after approval
       const { error: roleErr } = await s.from('member_roles').upsert(
         { member_id: current.member_id, role: 'truck_owner', is_primary: true },
