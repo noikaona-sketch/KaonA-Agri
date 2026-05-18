@@ -82,7 +82,7 @@ function RoleCard({ href, icon, label, desc }: { href: string; icon: string; lab
 // Hero card — shared across all roles
 // ─────────────────────────────────────────────────────────────────────
 function HeroCard({
-  name, memberId, primaryRole, allRoles, plots, price, quota,
+  name, memberId, primaryRole, allRoles, plots, price, quota = null,
 }: {
   name: string; memberId: string; primaryRole: AppRole;
   allRoles: AppRole[]; plots: number; price: number | null; quota?: number | null;
@@ -113,18 +113,8 @@ function HeroCard({
         {/* stats */}
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
           {plots > 0 && <div><p style={{ margin: 0, fontSize: 18, fontWeight: 500, color: '#111' }}>{plots}</p><p style={{ margin: 0, fontSize: 10, color: '#9ca3af' }}>แปลง</p></div>}
-          {quota !== null && quota !== undefined && (
-            <div style={{ marginTop: plots > 0 ? 6 : 0 }}>
-              <p style={{ margin: 0, fontSize: 18, fontWeight: 500, color: '#3B6D11' }}>{quota.toLocaleString()}</p>
-              <p style={{ margin: 0, fontSize: 10, color: '#9ca3af' }}>ตัน (โควต้า)</p>
-            </div>
-          )}
-          {price !== null && (
-            <div style={{ marginTop: 6 }}>
-              <p style={{ margin: 0, fontSize: 15, fontWeight: 500, color: '#1565c0' }}>{Number(price).toLocaleString()}</p>
-              <p style={{ margin: 0, fontSize: 10, color: '#9ca3af' }}>บ./ตัน</p>
-            </div>
-          )}
+          {quota !== null && <div style={{ marginTop: plots > 0 ? 6 : 0 }}><p style={{ margin: 0, fontSize: 18, fontWeight: 500, color: '#3B6D11' }}>{quota.toLocaleString()}</p><p style={{ margin: 0, fontSize: 10, color: '#9ca3af' }}>ตัน (โควต้า)</p></div>}
+          {price !== null && <div style={{ marginTop: 6 }}><p style={{ margin: 0, fontSize: 15, fontWeight: 500, color: '#1565c0' }}>{Number(price).toLocaleString()}</p><p style={{ margin: 0, fontSize: 10, color: '#9ca3af' }}>บ./กก.</p></div>}
         </div>
       </div>
     </div>
@@ -170,21 +160,23 @@ function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: stri
     // quota fetch is handled in PR #205 (feat/quota-display)
     const s = createSupabaseBrowserClient();
     void (async () => {
-      // plots count — browser client, RLS controls access
-      const plotRes = await s.from('plots')
-        .select('id', { count: 'exact', head: true })
-        .eq('member_id', memberId).eq('status', 'active');
-      setPlots(plotRes.count ?? 0);
+      // ดึง session token และ plots พร้อมกัน
+      const [sessionRes, plotsRes] = await Promise.all([
+        s.auth.getSession(),
+        s.from('plots').select('id', { count: 'exact', head: true })
+          .eq('member_id', memberId).eq('status', 'active'),
+      ]);
+      setPlots(plotsRes.count ?? 0);
 
-      // quota — ส่ง session token ไปด้วย (server ตรวจ auth.uid)
-      const { data: { session } } = await s.auth.getSession();
-      if (session?.access_token) {
-        const qRes = await fetch('/api/member/quota', {
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        }).then((r) => r.json()) as { quota_ton?: number | null };
-        if (qRes.quota_ton !== null && qRes.quota_ton !== undefined) {
-          setQuota(qRes.quota_ton);
-        }
+      // ดึง quota ถ้ามี session (ใช้ token ที่ได้จากด้านบน)
+      const accessToken = sessionRes.data.session?.access_token;
+      if (accessToken) {
+        void fetch('/api/member/quota', {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }).then((r) => r.json())
+          .then((q: { quota_ton?: number | null }) => {
+            if (q.quota_ton !== null && q.quota_ton !== undefined) setQuota(q.quota_ton);
+          }).catch(() => null); // quota ไม่ critical — ล้มเหลวก็ไม่เป็นไร
       }
     })();
   }, [memberId]);

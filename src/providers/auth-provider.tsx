@@ -102,21 +102,35 @@ export function AuthProvider({ children }: AuthProviderProps) {
       try {
         setBridgeDiagnostics(getCombinedDiagnostics());
 
-        // ── Session cache: โหลดข้อมูลเดิมก่อนเพื่อลด loading time ──
+        // ── Session cache ─────────────────────────────────────────────
         const CACHE_KEY = 'kaona_auth_cache';
+        const CACHE_TTL  = 30 * 60 * 1000; // 30 นาที (เพิ่มจาก 10)
         const cached = sessionStorage.getItem(CACHE_KEY);
+        let cacheHit = false;
         if (cached) {
           try {
             const { member, status: cachedStatus, ts } = JSON.parse(cached) as {
               member: AuthBootstrapResult; status: string; ts: number;
             };
-            // cache อายุ 10 นาที
-            if (Date.now() - ts < 10 * 60 * 1000 && member && cachedStatus === 'approved') {
+            if (Date.now() - ts < CACHE_TTL && member && cachedStatus === 'approved') {
               setMember(member);
               setStatus('approved');
-              // bootstrap ต่อใน background เพื่ออัปเดต cache
+              cacheHit = true;
+              // cache ยังสด — ข้าม bootstrap ไปได้เลย
+              // จะ refresh ใน background ครั้งหน้า (background flag ไม่บล็อก UI)
             }
           } catch { sessionStorage.removeItem(CACHE_KEY); }
+        }
+
+        // ถ้า cache hit และ cache อายุ < 5 นาที → skip POST /api/auth/line ทั้งหมด
+        const FRESH_TTL = 5 * 60 * 1000; // 5 นาที = ไม่ต้อง re-verify เลย
+        let cacheTs = 0;
+        if (cached) {
+          try { cacheTs = (JSON.parse(cached) as { ts: number }).ts; } catch { /* */ }
+        }
+        if (cacheHit && Date.now() - cacheTs < FRESH_TTL) {
+          // cache สดมาก — return ทันทีไม่ต้อง bootstrap
+          return;
         }
 
         const snapshot = await getLiffBridgeSnapshot();
