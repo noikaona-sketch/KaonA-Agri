@@ -58,7 +58,7 @@ function useRoleRequests(type: RoleRequestType) {
   }
 
   async function reload() {
-    if (type !== 'service_team') {
+    if (type !== 'service_team' && type !== 'field_team') {
       const raw = window.localStorage.getItem(STORAGE_KEY);
       if (!raw) return setItems([]);
       try { setItems((JSON.parse(raw) as RoleRequest[]).filter((i) => i.type === type)); } catch { setItems([]); }
@@ -69,12 +69,12 @@ function useRoleRequests(type: RoleRequestType) {
     const session = supabase ? (await supabase.auth.getSession()).data.session : null;
     const token = session?.access_token;
     if (!token) return setItems([]);
-    const res = await fetch('/api/member/provider-requests', { headers: { Authorization: `Bearer ${token}` } });
+    const res = await fetch(`/api/member/provider-requests?requestType=${type}`, { headers: { Authorization: `Bearer ${token}` } });
     const payload = (await res.json()) as { items?: Array<Record<string, unknown>> };
     if (!res.ok) return setItems([]);
     const mapped = (payload.items ?? []).map((row) => ({
       id: String(row.id),
-      type: 'service_team' as const,
+      type: String(row.request_type ?? type) as RoleRequestType,
       title: String(row.title ?? ''),
       requesterName: String(row.requester_name ?? ''),
       phone: String(row.phone ?? ''),
@@ -96,7 +96,7 @@ function useRoleRequests(type: RoleRequestType) {
   }, [type]);
 
   async function submit(payload: Omit<RoleRequest, 'id' | 'status' | 'createdAt'>) {
-    if (type !== 'service_team') {
+    if (type !== 'service_team' && type !== 'field_team') {
       const raw = window.localStorage.getItem(STORAGE_KEY);
       const current = raw ? (JSON.parse(raw) as RoleRequest[]) : [];
       const next: RoleRequest = { ...payload, id: `REQ-${Date.now()}`, status: 'pending', createdAt: new Date().toISOString() };
@@ -122,6 +122,7 @@ function useRoleRequests(type: RoleRequestType) {
         providerTeamName: payload.providerTeamName,
         equipmentSummary: payload.equipmentSummary,
         availabilityNote: payload.availabilityNote,
+        requestType: type,
       }),
     });
     await reload();
@@ -154,6 +155,7 @@ export function RegistrationRequestForm({ title, subtitle, type }: { title: stri
 
   const ownItems = useMemo(() => items.filter((item) => item.type === type), [items, type]);
   const isServiceRegister = type === 'service_team';
+  const isDbBackedRegister = type === 'service_team' || type === 'field_team';
   const isAssistRegister = type === 'field_assist';
 
   return (
@@ -161,7 +163,7 @@ export function RegistrationRequestForm({ title, subtitle, type }: { title: stri
       <section className="mobile-stack">
         <article className="kaona-card">
           <h2 className="kaona-card__title">ส่งคำขอรออนุมัติบทบาท</h2>
-          <p className="kaona-card__body">{isServiceRegister ? 'บันทึกคำขอเข้าคิวอนุมัติในระบบกลาง' : 'MVP/Local: ข้อมูลหน้านี้เก็บใน localStorage ของเครื่องนี้เท่านั้น'}</p>
+          <p className="kaona-card__body">{isDbBackedRegister ? 'บันทึกคำขอเข้าคิวอนุมัติในระบบกลาง' : 'MVP/Local: ข้อมูลหน้านี้เก็บใน localStorage ของเครื่องนี้เท่านั้น'}</p>
           <div style={{ display: 'grid', gap: 8 }}>
             {isServiceRegister ? (
               <>
