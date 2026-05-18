@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { MobileAppShell } from '@/shared/components/mobile-app-shell';
-import { ProtectedRoute } from '@/shared/components/protected-route';
+import { ProtectedRoute }          from '@/shared/components/protected-route';
+import { CompletenessReminder }     from '@/shared/components/completeness-reminder';
 import { PlantingCycleList } from '@/features/member-planting/planting-cycle-list';
 import { SaleHistory } from '@/features/member-planting/sale-history';
 
@@ -13,6 +14,7 @@ export default function PlantingCyclesPage() {
   return (
     <ProtectedRoute>
       <MobileAppShell title="รอบเพาะปลูก" subtitle="ติดตามการเพาะปลูกและประวัติขาย">
+        <CompletenessReminder />
         <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
           {([
             { key: 'cycles', label: '🌱 รอบปลูก' },
