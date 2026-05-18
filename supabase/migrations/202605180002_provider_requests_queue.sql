@@ -55,5 +55,13 @@ drop policy if exists provider_requests_admin_all on public.provider_requests;
 create policy provider_requests_admin_all
   on public.provider_requests
   for all
-  using (public.current_member_has_role('admin') or public.current_member_has_role('staff'))
-  with check (public.current_member_has_role('admin') or public.current_member_has_role('staff'));
+  using (
+    current_user = 'service_role'
+    or public.current_member_has_role('admin')
+    or public.current_member_has_role('staff')
+  )
+  with check (
+    current_user = 'service_role'
+    or public.current_member_has_role('admin')
+    or public.current_member_has_role('staff')
+  );

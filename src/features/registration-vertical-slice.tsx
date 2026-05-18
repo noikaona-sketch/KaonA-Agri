@@ -57,7 +57,7 @@ function useRoleRequests(type: RoleRequestType) {
     }
   }
 
-  async function reload(memberId?: string) {
+  async function reload() {
     if (type !== 'service_team') {
       const raw = window.localStorage.getItem(STORAGE_KEY);
       if (!raw) return setItems([]);
@@ -65,7 +65,6 @@ function useRoleRequests(type: RoleRequestType) {
       return;
     }
 
-    if (!memberId) return setItems([]);
     const supabase = tryCreateSupabaseBrowserClient();
     const session = supabase ? (await supabase.auth.getSession()).data.session : null;
     const token = session?.access_token;
@@ -93,8 +92,7 @@ function useRoleRequests(type: RoleRequestType) {
   }
 
   useEffect(() => {
-    const memberId = getCachedMemberId() || undefined;
-    void reload(memberId);
+    void reload();
   }, [type]);
 
   async function submit(payload: Omit<RoleRequest, 'id' | 'status' | 'createdAt'>) {
@@ -126,7 +124,7 @@ function useRoleRequests(type: RoleRequestType) {
         availabilityNote: payload.availabilityNote,
       }),
     });
-    await reload(getCachedMemberId());
+    await reload();
   }
 
   function review(id: string, status: ApprovalStatus, reviewerReason?: string) {
