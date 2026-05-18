@@ -34,6 +34,7 @@ export type MyReservation = {
   pickup_date:    string | null;
   variety_name:   string;
   created_at:     string;
+  product_id?:    string | null;   // present for seed_reservation rows
   order_items?:   OrderItem[] | null;
   _source?:       'seed_reservation' | 'sale_order_reservation' | 'sale_order_sale';
 };
