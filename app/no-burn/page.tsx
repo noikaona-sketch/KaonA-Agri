@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useCurrentMember } from '@/providers/auth-provider';
-import { ProtectedRoute } from '@/shared/components/protected-route';
+import { ProtectedRoute }          from '@/shared/components/protected-route';
+import { CompletenessReminder }     from '@/shared/components/completeness-reminder';
 import { MobileAppShell } from '@/shared/components/mobile-app-shell';
 import { LoadingState } from '@/shared/components/loading-state';
 import { UIButton } from '@/shared/components/ui-button';
@@ -91,6 +92,8 @@ export default function NoBurnPage() {
             {notice}
           </div>
         )}
+
+        <CompletenessReminder />
 
         {/* info card */}
         <div className="kaona-card" style={{ background: '#e8f5e9', borderColor: '#a5d6a7' }}>
