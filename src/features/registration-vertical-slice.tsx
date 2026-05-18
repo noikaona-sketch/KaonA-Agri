@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { MobileAppShell } from '@/shared/components/mobile-app-shell';
 import { StatusChip } from '@/shared/components/status-chip';
 import { UIButton } from '@/shared/components/ui-button';
+import { tryCreateSupabaseBrowserClient } from '@/lib/supabase/client';
 
 type ApprovalStatus = 'pending' | 'approved' | 'rejected';
 type RoleRequestType = 'service_team' | 'field_team' | 'field_assist' | 'backoffice_role';
@@ -65,7 +66,11 @@ function useRoleRequests(type: RoleRequestType) {
     }
 
     if (!memberId) return setItems([]);
-    const res = await fetch(`/api/member/provider-requests?memberId=${encodeURIComponent(memberId)}`);
+    const supabase = tryCreateSupabaseBrowserClient();
+    const session = supabase ? (await supabase.auth.getSession()).data.session : null;
+    const token = session?.access_token;
+    if (!token) return setItems([]);
+    const res = await fetch('/api/member/provider-requests', { headers: { Authorization: `Bearer ${token}` } });
     const payload = (await res.json()) as { items?: Array<Record<string, unknown>> };
     if (!res.ok) return setItems([]);
     const mapped = (payload.items ?? []).map((row) => ({
@@ -103,12 +108,13 @@ function useRoleRequests(type: RoleRequestType) {
       return;
     }
 
-    const memberId = getCachedMemberId();
-    if (!memberId) return;
+    const supabase = tryCreateSupabaseBrowserClient();
+    const session = supabase ? (await supabase.auth.getSession()).data.session : null;
+    const token = session?.access_token;
+    if (!token) return;
     await fetch('/api/member/provider-requests', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({
-        memberId,
         title: payload.title,
         requesterName: payload.requesterName,
         phone: payload.phone,
@@ -120,7 +126,7 @@ function useRoleRequests(type: RoleRequestType) {
         availabilityNote: payload.availabilityNote,
       }),
     });
-    await reload(memberId);
+    await reload(getCachedMemberId());
   }
 
   function review(id: string, status: ApprovalStatus, reviewerReason?: string) {

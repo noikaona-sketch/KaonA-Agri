@@ -28,3 +28,32 @@ create index if not exists idx_provider_requests_status_created_at
 
 create index if not exists idx_provider_requests_member_created_at
   on public.provider_requests(member_id, created_at desc);
+
+alter table public.provider_requests enable row level security;
+
+drop policy if exists provider_requests_member_read_own on public.provider_requests;
+create policy provider_requests_member_read_own
+  on public.provider_requests
+  for select
+  using (
+    member_id in (
+      select m.id from public.members m where m.auth_user_id = auth.uid()
+    )
+  );
+
+drop policy if exists provider_requests_member_insert_own on public.provider_requests;
+create policy provider_requests_member_insert_own
+  on public.provider_requests
+  for insert
+  with check (
+    member_id in (
+      select m.id from public.members m where m.auth_user_id = auth.uid()
+    )
+  );
+
+drop policy if exists provider_requests_admin_all on public.provider_requests;
+create policy provider_requests_admin_all
+  on public.provider_requests
+  for all
+  using (public.current_member_has_role('admin') or public.current_member_has_role('staff'))
+  with check (public.current_member_has_role('admin') or public.current_member_has_role('staff'));

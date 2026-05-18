@@ -3,7 +3,6 @@ import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
 
 type CreateProviderRequestBody = {
-  memberId?: string;
   title?: string;
   requesterName?: string;
   phone?: string;
@@ -15,11 +14,27 @@ type CreateProviderRequestBody = {
   availabilityNote?: string;
 };
 
+async function resolveMemberIdFromAuth(request: Request): Promise<string | null> {
+  const auth = request.headers.get('authorization') ?? '';
+  if (!auth.startsWith('Bearer ')) return null;
+  const token = auth.slice(7);
+  if (!token) return null;
+
+  const s = createServerSupabaseClient();
+  const { data: userData, error: userErr } = await s.auth.getUser(token);
+  if (userErr || !userData.user) return null;
+  const { data: member } = await s
+    .from('members')
+    .select('id')
+    .eq('auth_user_id', userData.user.id)
+    .maybeSingle();
+  return member?.id ?? null;
+}
+
 export async function GET(request: Request) {
   try {
-    const url = new URL(request.url);
-    const memberId = url.searchParams.get('memberId');
-    if (!memberId) return NextResponse.json({ error: 'memberId required' }, { status: 400 });
+    const memberId = await resolveMemberIdFromAuth(request);
+    if (!memberId) return NextResponse.json({ error: 'กรุณาเข้าสู่ระบบ' }, { status: 401 });
 
     const s = createServerSupabaseClient();
     const { data, error } = await s
@@ -39,14 +54,17 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const memberId = await resolveMemberIdFromAuth(request);
+    if (!memberId) return NextResponse.json({ error: 'กรุณาเข้าสู่ระบบ' }, { status: 401 });
+
     const body = (await request.json()) as CreateProviderRequestBody;
-    if (!body.memberId || !body.title || !body.requesterName || !body.phone || !body.area || !body.providerTeamName || !body.equipmentSummary) {
+    if (!body.title || !body.requesterName || !body.phone || !body.area || !body.providerTeamName || !body.equipmentSummary) {
       return NextResponse.json({ error: 'required fields missing' }, { status: 400 });
     }
 
     const s = createServerSupabaseClient();
     const { data, error } = await s.from('provider_requests').insert({
-      member_id: body.memberId,
+      member_id: memberId,
       request_type: 'service_team',
       title: body.title,
       requester_name: body.requesterName,
