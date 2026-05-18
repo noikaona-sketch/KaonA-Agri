@@ -5,8 +5,8 @@ import { requireAdminPermission, isForbidden } from '../../members/_admin-auth';
 // GET — รายการจองทั้งหมด: รวม seed_reservations + sale_orders (order_type=reservation)
 export async function GET(request: Request) {
   try {
-  const _ar_get = await requireAdminPermission('seed.read');
-  if (isForbidden(_ar_get)) return _ar_get.forbidden;
+    const _ar_get = await requireAdminPermission('seed.read');
+    if (isForbidden(_ar_get)) return _ar_get.forbidden;
 
     const url      = new URL(request.url);
     const status   = url.searchParams.get('status')    ?? '';
@@ -96,8 +96,8 @@ export async function GET(request: Request) {
 // POST — admin actions
 export async function POST(request: Request) {
   try {
-  const _ar_post = await requireAdminPermission('seed.write');
-  if (isForbidden(_ar_post)) return _ar_post.forbidden;
+    const _ar_post = await requireAdminPermission('seed.write');
+    if (isForbidden(_ar_post)) return _ar_post.forbidden;
 
     const body = (await request.json()) as {
       action:         'confirm' | 'cancel' | 'close_partial' | 'close_full';

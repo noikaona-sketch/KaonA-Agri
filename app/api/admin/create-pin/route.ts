@@ -15,8 +15,8 @@ const VALID_ROLES = ['farmer', 'truck_owner', 'inspector', 'staff', 'leader', 'a
 
 export async function POST(request: Request) {
   try {
-  const _ar_post = await requireAdminPermission('members.write');
-  if (isForbidden(_ar_post)) return _ar_post.forbidden;
+    const _ar_post = await requireAdminPermission('members.write');
+    if (isForbidden(_ar_post)) return _ar_post.forbidden;
 
     const body = (await request.json()) as CreatePinPayload;
     const supabase = createServerSupabaseClient();

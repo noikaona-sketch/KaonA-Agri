@@ -4,8 +4,8 @@ import { requireAdminPermission, isForbidden } from '../../members/_admin-auth';
 
 export async function GET(request: Request) {
   try {
-  const _ar_get = await requireAdminPermission('members.read');
-  if (isForbidden(_ar_get)) return _ar_get.forbidden;
+    const _ar_get = await requireAdminPermission('members.read');
+    if (isForbidden(_ar_get)) return _ar_get.forbidden;
 
     const url    = new URL(request.url);
     const search = url.searchParams.get('q') ?? url.searchParams.get('search') ?? '';

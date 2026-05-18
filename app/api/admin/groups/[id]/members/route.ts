@@ -7,8 +7,8 @@ type Params = { params: { id: string } };
 // POST — เพิ่มสมาชิกเข้ากลุ่ม
 export async function POST(request: Request, { params }: Params) {
   try {
-  const _ar_post = await requireAdminPermission('members.write');
-  if (isForbidden(_ar_post)) return _ar_post.forbidden;
+    const _ar_post = await requireAdminPermission('members.write');
+    if (isForbidden(_ar_post)) return _ar_post.forbidden;
 
     const body = (await request.json()) as { member_id: string; added_by: string };
     if (!body.member_id || !body.added_by) {
@@ -31,8 +31,8 @@ export async function POST(request: Request, { params }: Params) {
 // DELETE — ลบสมาชิกออกจากกลุ่ม
 export async function DELETE(request: Request, { params }: Params) {
   try {
-  const _ar_delete = await requireAdminPermission('members.write');
-  if (isForbidden(_ar_delete)) return _ar_delete.forbidden;
+    const _ar_delete = await requireAdminPermission('members.write');
+    if (isForbidden(_ar_delete)) return _ar_delete.forbidden;
 
     const body = (await request.json()) as { member_id: string };
     if (!body.member_id) {

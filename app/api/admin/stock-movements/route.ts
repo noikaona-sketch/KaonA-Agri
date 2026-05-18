@@ -30,8 +30,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-  const _ar_post = await requireAdminPermission('seed.write');
-  if (isForbidden(_ar_post)) return _ar_post.forbidden;
+    const _ar_post = await requireAdminPermission('seed.write');
+    if (isForbidden(_ar_post)) return _ar_post.forbidden;
 
     const body = (await request.json()) as {
       movement_type:     string;
@@ -76,8 +76,8 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-  const _ar_patch = await requireAdminPermission('seed.write');
-  if (isForbidden(_ar_patch)) return _ar_patch.forbidden;
+    const _ar_patch = await requireAdminPermission('seed.write');
+    if (isForbidden(_ar_patch)) return _ar_patch.forbidden;
 
     const body = (await request.json()) as {
       movement_id: string;

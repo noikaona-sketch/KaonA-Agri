@@ -4,8 +4,8 @@ import { requireAdminPermission, isForbidden } from '../../members/_admin-auth';
 
 export async function POST(request: Request) {
   try {
-  const _ar_post = await requireAdminPermission('service.write');
-  if (isForbidden(_ar_post)) return _ar_post.forbidden;
+    const _ar_post = await requireAdminPermission('service.write');
+    if (isForbidden(_ar_post)) return _ar_post.forbidden;
 
     const form = await request.formData();
     const file = form.get('file');

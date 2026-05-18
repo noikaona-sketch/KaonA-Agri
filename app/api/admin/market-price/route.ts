@@ -14,8 +14,8 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-  const _ar_post = await requireAdminPermission('market_prices.write');
-  if (isForbidden(_ar_post)) return _ar_post.forbidden;
+    const _ar_post = await requireAdminPermission('market_prices.write');
+    if (isForbidden(_ar_post)) return _ar_post.forbidden;
 
     const body = (await request.json()) as {
       crop_type: string; price_per_kg: number;

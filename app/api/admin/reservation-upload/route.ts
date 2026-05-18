@@ -9,8 +9,8 @@ const BUCKET = 'reservation-attachments';
 
 export async function POST(req: NextRequest) {
   try {
-  const _ar_post = await requireAdminPermission('service.write');
-  if (isForbidden(_ar_post)) return _ar_post.forbidden;
+    const _ar_post = await requireAdminPermission('service.write');
+    if (isForbidden(_ar_post)) return _ar_post.forbidden;
 
     const path     = req.headers.get('x-file-path') ?? '';
     const mimeType = req.headers.get('x-file-type')  ?? 'image/jpeg';
@@ -43,8 +43,8 @@ export async function POST(req: NextRequest) {
 // DELETE: remove attachment by path
 export async function DELETE(req: NextRequest) {
   try {
-  const _ar_delete = await requireAdminPermission('service.write');
-  if (isForbidden(_ar_delete)) return _ar_delete.forbidden;
+    const _ar_delete = await requireAdminPermission('service.write');
+    if (isForbidden(_ar_delete)) return _ar_delete.forbidden;
 
     const { path } = (await req.json()) as { path?: string };
     if (!path) return NextResponse.json({ error: 'path required' }, { status: 400 });

@@ -17,8 +17,8 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-  const _ar_post = await requireAdminPermission('service.write');
-  if (isForbidden(_ar_post)) return _ar_post.forbidden;
+    const _ar_post = await requireAdminPermission('service.write');
+    if (isForbidden(_ar_post)) return _ar_post.forbidden;
 
     const body = (await request.json()) as Record<string, unknown>;
     const { id, action, ...payload } = body as { id?: string; action?: string } & Record<string, unknown>;

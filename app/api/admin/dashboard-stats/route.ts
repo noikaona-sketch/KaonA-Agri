@@ -4,8 +4,8 @@ import { requireAdminPermission, isForbidden } from '../../members/_admin-auth';
 
 export async function GET() {
   try {
-  const _ar_get = await requireAdminPermission('reports.read');
-  if (isForbidden(_ar_get)) return _ar_get.forbidden;
+    const _ar_get = await requireAdminPermission('reports.read');
+    if (isForbidden(_ar_get)) return _ar_get.forbidden;
 
     const s = createServerSupabaseClient();
 
