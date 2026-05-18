@@ -21,6 +21,7 @@ type ReservationBody = {
 };
 
 // POST — สร้างการจองเมล็ดพันธุ์ (product_id required, no variety_id fallback)
+// POST behavior is NOT changed by this PR.
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as ReservationBody;
@@ -89,7 +90,46 @@ export async function POST(request: Request) {
   } catch (e) { return NextResponse.json({ error: String(e) }, { status: 500 }); }
 }
 
-// GET — ประวัติการจองของสมาชิก (member_id จาก query param)
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/member/seed-reservation?member_id=<uuid>
+//
+// Returns combined purchase history from 3 sources (all existing tables):
+//   1. seed_reservations           — direct seed reservations
+//   2. sale_orders type=reservation — reservation via shop/POS
+//   3. sale_orders type=sale        — immediate purchases via shop/POS  ← NEW
+//
+// Each row carries _source and _order_type to let the client distinguish
+// display label and card type.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Shared order_items shape from sale_orders
+type OrderItem = {
+  product_name: string;
+  qty:          number;
+  unit_price:   number;
+  product_unit: string;
+};
+
+// Normalised row sent to client — union of all 3 sources
+export type HistoryRow = {
+  id:             string;
+  reservation_no: string;
+  status:         string;
+  qty_reserved:   number;
+  total_amount:   number;
+  price_per_bag:  number;
+  pickup_date:    string | null;
+  variety_name:   string;
+  supplier_name:  string | null;
+  lot_no:         string | null;
+  created_at:     string;
+  product_id:     string | null;
+  // items present for sale_order rows (both reservation + sale)
+  order_items:    OrderItem[] | null;
+  // source flags — used by client for label / card styling
+  _source:        'seed_reservation' | 'sale_order_reservation' | 'sale_order_sale';
+};
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -102,56 +142,89 @@ export async function GET(request: Request) {
 
     const s = createServerSupabaseClient();
 
-    // ── 1. seed_reservations (เมล็ดพันธุ์จองตรง) ─────────────────────
-    const { data: seedRows, error: seedErr } = await s.from('seed_reservations')
-      .select('id,reservation_no,status,qty_reserved,total_amount,price_per_bag,pickup_date,variety_name,supplier_name,lot_no,created_at,product_id,products(bag_weight_kg)')
+    // ── Source 1: seed_reservations (จองตรง) ────────────────────────────
+    const { data: seedRows, error: seedErr } = await s
+      .from('seed_reservations')
+      .select(
+        'id,reservation_no,status,qty_reserved,total_amount,price_per_bag,' +
+        'pickup_date,variety_name,supplier_name,lot_no,created_at,product_id'
+      )
       .eq('member_id', memberId)
-      .order('created_at', { ascending: false }).limit(50);
+      .order('created_at', { ascending: false })
+      .limit(50);
+
     if (seedErr) return NextResponse.json({ error: seedErr.message }, { status: 500 });
 
-    // ── 2. sale_orders (order_type=reservation จาก POS) ──────────────
-    const { data: soRows, error: soErr } = await s.from('sale_orders')
-      .select('id,order_number,status,total,created_at,note,pickup_slot_id,pickup_slots(pickup_date,pickup_time),order_items(product_name,qty,unit_price,product_unit)')
-      .eq('member_id', memberId)
-      .eq('order_type', 'reservation')
-      .order('created_at', { ascending: false }).limit(50);
-    if (soErr) return NextResponse.json({ error: soErr.message }, { status: 500 });
-
+    // ── Source 2 & 3: sale_orders (both reservation + sale) ─────────────
+    // Single query for both order_types — split by order_type after fetch.
     type SoRow = {
-      id: string; order_number: string; status: string; total: number;
-      created_at: string; note: string | null; pickup_slot_id: string | null;
-      pickup_slots: { pickup_date: string; pickup_time: string } | null;
-      order_items: { product_name: string; qty: number; unit_price: number; product_unit: string }[];
+      id: string; order_number: string; order_type: string;
+      status: string; total: number; created_at: string; note: string | null;
+      pickup_slots: { pickup_date: string } | null;
+      order_items: OrderItem[];
     };
 
-    // normalise sale_orders → Reservation shape
-    const soNormalised = ((soRows ?? []) as unknown as SoRow[]).map((o) => {
-      const slot      = o.pickup_slots;
+    const { data: soRows, error: soErr } = await s
+      .from('sale_orders')
+      .select(
+        'id,order_number,order_type,status,total,created_at,note,' +
+        'pickup_slots(pickup_date),' +
+        'order_items(product_name,qty,unit_price,product_unit)'
+      )
+      .eq('member_id', memberId)
+      .in('order_type', ['reservation', 'sale'])
+      .order('created_at', { ascending: false })
+      .limit(100);
+
+    if (soErr) return NextResponse.json({ error: soErr.message }, { status: 500 });
+
+    // ── Normalise seed_reservations rows ─────────────────────────────────
+    const normSeed: HistoryRow[] = ((seedRows ?? []) as unknown as Array<Record<string, unknown>>).map((r) => ({
+      id:             r.id as string,
+      reservation_no: r.reservation_no as string,
+      status:         r.status as string,
+      qty_reserved:   Number(r.qty_reserved ?? 0),
+      total_amount:   Number(r.total_amount ?? 0),
+      price_per_bag:  Number(r.price_per_bag ?? 0),
+      pickup_date:    (r.pickup_date as string | null) ?? null,
+      variety_name:   (r.variety_name as string) || '—',
+      supplier_name:  (r.supplier_name as string | null) ?? null,
+      lot_no:         (r.lot_no as string | null) ?? null,
+      created_at:     r.created_at as string,
+      product_id:     (r.product_id as string | null) ?? null,
+      order_items:    null,
+      _source:        'seed_reservation',
+    }));
+
+    // ── Normalise sale_orders rows ────────────────────────────────────────
+    const normSo: HistoryRow[] = ((soRows ?? []) as unknown as SoRow[]).map((o) => {
       const firstItem = o.order_items?.[0];
+      const isReservation = o.order_type === 'reservation';
       return {
         id:             o.id,
         reservation_no: o.order_number,
-        status:         o.status === 'completed' ? 'completed' : o.status,
+        status:         o.status,
         qty_reserved:   firstItem?.qty ?? 0,
         total_amount:   o.total,
         price_per_bag:  firstItem?.unit_price ?? 0,
-        pickup_date:    slot?.pickup_date ?? null,
+        pickup_date:    o.pickup_slots?.pickup_date ?? null,
         variety_name:   firstItem?.product_name ?? '—',
         supplier_name:  null,
         lot_no:         null,
         created_at:     o.created_at,
         product_id:     null,
-        products:       null,
-        _source:        'sale_order',
+        order_items:    o.order_items?.length > 0 ? o.order_items : null,
+        _source:        isReservation ? 'sale_order_reservation' : 'sale_order_sale',
       };
     });
 
-    // รวม + เรียงวันที่
-    const all = [
-      ...(seedRows ?? []).map((r) => ({ ...r, _source: 'seed_reservation' })),
-      ...soNormalised,
-    ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    // ── Merge and sort by created_at desc ────────────────────────────────
+    const all: HistoryRow[] = [...normSeed, ...normSo].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    );
 
     return NextResponse.json({ reservations: all });
-  } catch (e) { return NextResponse.json({ error: String(e) }, { status: 500 }); }
+  } catch (e) {
+    return NextResponse.json({ error: String(e) }, { status: 500 });
+  }
 }
