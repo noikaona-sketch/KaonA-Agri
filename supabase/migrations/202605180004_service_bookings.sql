@@ -18,6 +18,8 @@ create table if not exists public.service_bookings (
   note                 text,
 
   -- status lifecycle (no auto transition — admin/staff updates manually)
+  -- Status lifecycle for MVP scope only.
+  -- in_progress / dispatch are out of scope until scheduling engine is added.
   status               text        not null default 'pending'
     check (status in ('pending', 'confirmed', 'completed', 'cancelled')),
 

@@ -33,22 +33,22 @@ const SERVICE_OPTIONS: { id: ServiceType; label: string; desc: string }[] = [
   { id: 'transport', label: '🚛 รถขนส่ง',     desc: 'ขนส่งผลผลิต' },
 ];
 
+// Status values align exactly with DB check constraint (migration 202605180004).
+// in_progress intentionally excluded — out of scope until scheduling engine added.
 const STATUS_LABEL: Record<string, string> = {
-  pending:     '⏳ รอยืนยัน',
-  confirmed:   '✅ ยืนยันแล้ว',
-  in_progress: '🔄 กำลังดำเนินการ',
-  completed:   '🏁 เสร็จแล้ว',
-  cancelled:   '⛔ ยกเลิก',
+  pending:   '⏳ รอยืนยัน',
+  confirmed: '✅ ยืนยันแล้ว',
+  completed: '🏁 เสร็จแล้ว',
+  cancelled: '⛔ ยกเลิก',
 };
 
 type CanonicalStatus = 'draft' | 'submitted' | 'under_review' | 'approved' | 'rejected' | 'needs_update' | 'scheduled' | 'completed';
 
 const STATUS_CHIP: Record<string, CanonicalStatus> = {
-  pending:     'submitted',
-  confirmed:   'scheduled',
-  in_progress: 'under_review',
-  completed:   'completed',
-  cancelled:   'rejected',
+  pending:   'submitted',
+  confirmed: 'scheduled',
+  completed: 'completed',
+  cancelled: 'rejected',
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
