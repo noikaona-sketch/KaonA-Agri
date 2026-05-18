@@ -3,6 +3,12 @@ import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
 import { requireAdmin } from '../members/_admin-auth';
 
+type ProviderRequestType = 'service_team' | 'field_team';
+
+function normalizeRequestType(value: unknown): ProviderRequestType {
+  return value === 'field_team' ? 'field_team' : 'service_team';
+}
+
 export async function GET(request: Request) {
   try {
     const admin = await requireAdmin();
@@ -10,11 +16,12 @@ export async function GET(request: Request) {
 
     const url = new URL(request.url);
     const status = url.searchParams.get('status') ?? 'pending';
+    const requestType = normalizeRequestType(url.searchParams.get('requestType'));
     const s = createServerSupabaseClient();
     const { data, error } = await s
       .from('provider_requests')
       .select('*')
-      .eq('request_type', 'service_team')
+.eq('request_type', requestType)
       .eq('status', status)
       .order('created_at', { ascending: true })
       .limit(100);
