@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { MobileAppShell } from '@/shared/components/mobile-app-shell';
 import { StatusChip } from '@/shared/components/status-chip';
 import { UIButton } from '@/shared/components/ui-button';
+import { tryCreateSupabaseBrowserClient } from '@/lib/supabase/client';
 
 type ApprovalStatus = 'pending' | 'approved' | 'rejected';
 type RoleRequestType = 'service_team' | 'field_team' | 'field_assist' | 'backoffice_role';
@@ -43,26 +44,87 @@ const assistTargetLabel: Record<AssistTarget, string> = {
   service_team_onboarding: 'ช่วยลงทะเบียนทีมบริการ',
 };
 
-function useRoleRequests() {
+function useRoleRequests(type: RoleRequestType) {
   const [items, setItems] = useState<RoleRequest[]>([]);
-
-  useEffect(() => {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return;
+  function getCachedMemberId() {
     try {
-      setItems(JSON.parse(raw) as RoleRequest[]);
+      const raw = sessionStorage.getItem('kaona_auth_cache');
+      if (!raw) return '';
+      const parsed = JSON.parse(raw) as { member?: { member_id?: string } };
+      return parsed.member?.member_id ?? '';
     } catch {
-      setItems([]);
+      return '';
     }
-  }, []);
+  }
+
+  async function reload() {
+    if (type !== 'service_team') {
+      const raw = window.localStorage.getItem(STORAGE_KEY);
+      if (!raw) return setItems([]);
+      try { setItems((JSON.parse(raw) as RoleRequest[]).filter((i) => i.type === type)); } catch { setItems([]); }
+      return;
+    }
+
+    const supabase = tryCreateSupabaseBrowserClient();
+    const session = supabase ? (await supabase.auth.getSession()).data.session : null;
+    const token = session?.access_token;
+    if (!token) return setItems([]);
+    const res = await fetch('/api/member/provider-requests', { headers: { Authorization: `Bearer ${token}` } });
+    const payload = (await res.json()) as { items?: Array<Record<string, unknown>> };
+    if (!res.ok) return setItems([]);
+    const mapped = (payload.items ?? []).map((row) => ({
+      id: String(row.id),
+      type: 'service_team' as const,
+      title: String(row.title ?? ''),
+      requesterName: String(row.requester_name ?? ''),
+      phone: String(row.phone ?? ''),
+      area: String(row.area ?? ''),
+      note: (row.note as string | null) ?? undefined,
+      serviceType: (row.service_type as ServiceType | null) ?? undefined,
+      providerTeamName: (row.provider_team_name as string | null) ?? undefined,
+      equipmentSummary: (row.equipment_summary as string | null) ?? undefined,
+      availabilityNote: (row.availability_note as string | null) ?? undefined,
+      status: String(row.status ?? 'pending') as ApprovalStatus,
+      reviewerReason: (row.reviewer_reason as string | null) ?? undefined,
+      createdAt: String(row.created_at ?? new Date().toISOString()),
+    }));
+    setItems(mapped);
+  }
 
   useEffect(() => {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-  }, [items]);
+    void reload();
+  }, [type]);
 
-  function submit(payload: Omit<RoleRequest, 'id' | 'status' | 'createdAt'>) {
-    const next: RoleRequest = { ...payload, id: `REQ-${Date.now()}`, status: 'pending', createdAt: new Date().toISOString() };
-    setItems((prev) => [next, ...prev]);
+  async function submit(payload: Omit<RoleRequest, 'id' | 'status' | 'createdAt'>) {
+    if (type !== 'service_team') {
+      const raw = window.localStorage.getItem(STORAGE_KEY);
+      const current = raw ? (JSON.parse(raw) as RoleRequest[]) : [];
+      const next: RoleRequest = { ...payload, id: `REQ-${Date.now()}`, status: 'pending', createdAt: new Date().toISOString() };
+      const merged = [next, ...current];
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+      setItems(merged.filter((i) => i.type === type));
+      return;
+    }
+
+    const supabase = tryCreateSupabaseBrowserClient();
+    const session = supabase ? (await supabase.auth.getSession()).data.session : null;
+    const token = session?.access_token;
+    if (!token) return;
+    await fetch('/api/member/provider-requests', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        title: payload.title,
+        requesterName: payload.requesterName,
+        phone: payload.phone,
+        area: payload.area,
+        note: payload.note,
+        serviceType: payload.serviceType,
+        providerTeamName: payload.providerTeamName,
+        equipmentSummary: payload.equipmentSummary,
+        availabilityNote: payload.availabilityNote,
+      }),
+    });
+    await reload();
   }
 
   function review(id: string, status: ApprovalStatus, reviewerReason?: string) {
@@ -79,7 +141,7 @@ function statusToChip(status: ApprovalStatus): 'submitted' | 'approved' | 'rejec
 }
 
 export function RegistrationRequestForm({ title, subtitle, type }: { title: string; subtitle: string; type: RoleRequestType }) {
-  const { items, submit } = useRoleRequests();
+  const { items, submit } = useRoleRequests(type);
   const [requesterName, setRequesterName] = useState('');
   const [phone, setPhone] = useState('');
   const [area, setArea] = useState('');
@@ -99,7 +161,7 @@ export function RegistrationRequestForm({ title, subtitle, type }: { title: stri
       <section className="mobile-stack">
         <article className="kaona-card">
           <h2 className="kaona-card__title">ส่งคำขอรออนุมัติบทบาท</h2>
-          <p className="kaona-card__body">MVP/Local: ข้อมูลหน้านี้เก็บใน localStorage ของเครื่องนี้เท่านั้น</p>
+          <p className="kaona-card__body">{isServiceRegister ? 'บันทึกคำขอเข้าคิวอนุมัติในระบบกลาง' : 'MVP/Local: ข้อมูลหน้านี้เก็บใน localStorage ของเครื่องนี้เท่านั้น'}</p>
           <div style={{ display: 'grid', gap: 8 }}>
             {isServiceRegister ? (
               <>
@@ -187,10 +249,35 @@ export function RegistrationRequestForm({ title, subtitle, type }: { title: stri
 }
 
 export function ApprovalsQueueContent() {
-  const { items, review } = useRoleRequests();
+  const [items, setItems] = useState<RoleRequest[]>([]);
   const [selectedId, setSelectedId] = useState('');
   const [reason, setReason] = useState('');
   const selected = items.find((item) => item.id === selectedId) ?? null;
+
+  useEffect(() => {
+    async function loadQueue() {
+      const res = await fetch('/api/admin/provider-requests?status=pending');
+      const payload = (await res.json()) as { items?: Array<Record<string, unknown>> };
+      if (!res.ok) return setItems([]);
+      setItems((payload.items ?? []).map((row) => ({
+        id: String(row.id),
+        type: 'service_team',
+        title: String(row.title ?? ''),
+        requesterName: String(row.requester_name ?? ''),
+        phone: String(row.phone ?? ''),
+        area: String(row.area ?? ''),
+        note: (row.note as string | null) ?? undefined,
+        serviceType: (row.service_type as ServiceType | null) ?? undefined,
+        providerTeamName: (row.provider_team_name as string | null) ?? undefined,
+        equipmentSummary: (row.equipment_summary as string | null) ?? undefined,
+        availabilityNote: (row.availability_note as string | null) ?? undefined,
+        status: String(row.status ?? 'pending') as ApprovalStatus,
+        reviewerReason: (row.reviewer_reason as string | null) ?? undefined,
+        createdAt: String(row.created_at ?? new Date().toISOString()),
+      })));
+    }
+    void loadQueue();
+  }, []);
 
   return (
     <section className="mobile-stack">
@@ -213,8 +300,18 @@ export function ApprovalsQueueContent() {
             <h3 className="kaona-card__title">พิจารณาคำขอ {selected.id}</h3>
             <textarea rows={3} placeholder="เหตุผล (ถ้ามี)" value={reason} onChange={(e) => setReason(e.target.value)} />
             <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-              <UIButton onClick={() => review(selected.id, 'approved', reason || undefined)}>อนุมัติ</UIButton>
-              <UIButton variant="secondary" onClick={() => review(selected.id, 'rejected', reason || undefined)}>ไม่อนุมัติ</UIButton>
+              <UIButton onClick={async () => {
+                await fetch('/api/admin/provider-requests/review', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ requestId: selected.id, decision: 'approved', reason: reason || undefined }) });
+                setItems((prev) => prev.filter((p) => p.id !== selected.id));
+                setSelectedId('');
+                setReason('');
+              }}>อนุมัติ</UIButton>
+              <UIButton variant="secondary" onClick={async () => {
+                await fetch('/api/admin/provider-requests/review', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ requestId: selected.id, decision: 'rejected', reason: reason || undefined }) });
+                setItems((prev) => prev.filter((p) => p.id !== selected.id));
+                setSelectedId('');
+                setReason('');
+              }}>ไม่อนุมัติ</UIButton>
             </div>
           </article>
         ) : null}
