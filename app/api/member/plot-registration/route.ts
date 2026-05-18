@@ -142,3 +142,116 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PATCH /api/member/plot-registration
+// Body JSON: { plot_id, name?, area_rai?, lat?, lng?, accuracy?, description? }
+//
+// Allows editing a plot whose status is 'pending_review' (draft).
+// member_id is resolved from Bearer token — member can only edit own plots.
+// Status is never changed by this endpoint.
+// ─────────────────────────────────────────────────────────────────────────────
+export async function PATCH(request: Request) {
+  try {
+    const s = createServerSupabaseClient();
+
+    // ── 1. Resolve caller ─────────────────────────────────────────────────────
+    const token = (request.headers.get('Authorization') ?? '').replace('Bearer ', '').trim();
+    if (!token) {
+      return NextResponse.json({ error: 'กรุณาเข้าสู่ระบบก่อน' }, { status: 401 });
+    }
+
+    const { data: { user }, error: userError } = await s.auth.getUser(token);
+    if (userError || !user) {
+      return NextResponse.json({ error: 'session ไม่ถูกต้อง' }, { status: 401 });
+    }
+
+    const { data: memberRow } = await s
+      .from('members')
+      .select('id')
+      .eq('auth_user_id', user.id)
+      .maybeSingle();
+
+    if (!memberRow) {
+      return NextResponse.json({ error: 'ไม่พบข้อมูลสมาชิก' }, { status: 403 });
+    }
+
+    // ── 2. Parse body ─────────────────────────────────────────────────────────
+    const body = (await request.json()) as {
+      plot_id?:     string;
+      name?:        string;
+      area_rai?:    number;
+      lat?:         number;
+      lng?:         number;
+      accuracy?:    number | null;
+      description?: string | null;
+    };
+
+    if (!body.plot_id) {
+      return NextResponse.json({ error: 'กรุณาระบุ plot_id' }, { status: 400 });
+    }
+
+    // ── 3. Load plot — verify ownership and draft status ──────────────────────
+    const { data: existing } = await s
+      .from('plots')
+      .select('id, member_id, status')
+      .eq('id', body.plot_id)
+      .maybeSingle();
+
+    if (!existing) {
+      return NextResponse.json({ error: 'ไม่พบแปลงที่ต้องการแก้ไข' }, { status: 404 });
+    }
+    if (existing.member_id !== memberRow.id) {
+      return NextResponse.json({ error: 'ไม่มีสิทธิ์แก้ไขแปลงนี้' }, { status: 403 });
+    }
+    if (existing.status !== 'pending_review') {
+      return NextResponse.json(
+        { error: 'แก้ไขได้เฉพาะแปลงที่อยู่ในสถานะ "รอตรวจสอบ" เท่านั้น' },
+        { status: 409 },
+      );
+    }
+
+    // ── 4. Build update patch (only provided fields) ──────────────────────────
+    const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+
+    if (body.name !== undefined) {
+      const name = body.name.trim();
+      if (!name) return NextResponse.json({ error: 'ชื่อแปลงต้องไม่ว่าง' }, { status: 400 });
+      patch.name = name;
+    }
+    if (body.area_rai !== undefined) {
+      if (!Number.isFinite(body.area_rai) || body.area_rai <= 0) {
+        return NextResponse.json({ error: 'พื้นที่ต้องมากกว่า 0' }, { status: 400 });
+      }
+      patch.area_rai = body.area_rai;
+    }
+    if (body.lat !== undefined) {
+      if (!Number.isFinite(body.lat)) return NextResponse.json({ error: 'lat ไม่ถูกต้อง' }, { status: 400 });
+      patch.lat = body.lat;
+    }
+    if (body.lng !== undefined) {
+      if (!Number.isFinite(body.lng)) return NextResponse.json({ error: 'lng ไม่ถูกต้อง' }, { status: 400 });
+      patch.lng = body.lng;
+    }
+    if (body.accuracy !== undefined) patch.accuracy = body.accuracy;
+    if (body.description !== undefined) patch.description = body.description?.trim() || null;
+
+    // ── 5. Apply update ───────────────────────────────────────────────────────
+    const { error: updateError } = await s
+      .from('plots')
+      .update(patch)
+      .eq('id', body.plot_id)
+      .eq('member_id', memberRow.id)    // double-check ownership at DB level
+      .eq('status', 'pending_review');  // guard: only draft rows
+
+    if (updateError) {
+      console.error('[PLOT_PATCH] update error:', updateError.message);
+      return NextResponse.json({ error: updateError.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ ok: true, plot_id: body.plot_id });
+  } catch (e) {
+    console.error('[PLOT_PATCH] exception:', e);
+    return NextResponse.json({ error: String(e) }, { status: 500 });
+  }
+}

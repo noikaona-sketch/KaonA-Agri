@@ -26,6 +26,7 @@ type PlotRow = {
   id:            string;
   name:          string;
   area_rai:      number;
+  accuracy:      number | null;
   status:        string;
   province:      string | null;
   land_doc_type: string | null;
@@ -68,6 +69,10 @@ export function PlotRegistrationMVP() {
   const [submitting,    setSubmitting]   = useState(false);
   const [error,         setError]        = useState<string | null>(null);
   const [successPlotId, setSuccessPlotId]= useState<string | null>(null);
+
+  // Edit mode: reopen a pending_review draft
+  // When editingPlotId is set, form edits existing row via PATCH.
+  const [editingPlotId, setEditingPlotId] = useState<string | null>(null);
 
   // ── My plots list ───────────────────────────────────────────────────────────
   const [plots,       setPlots]      = useState<PlotRow[]>([]);
@@ -166,39 +171,64 @@ export function PlotRegistrationMVP() {
     try {
       const token = await getBearerToken();
 
-      // Build multipart form — member_id is NOT included (resolved server-side)
-      const form = new FormData();
-      form.append('name',        plotName.trim());
-      form.append('area_rai',    String(areaValue));
-      form.append('lat',         String(geo.latitude));
-      form.append('lng',         String(geo.longitude));
-      form.append('accuracy',    String(geo.accuracy));
-      if (plotNote.trim()) form.append('description', plotNote.trim());
+      if (editingPlotId) {
+        // ── PATCH: update existing pending_review draft ──────────────────────
+        const res = await fetch('/api/member/plot-registration', {
+          method:  'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({
+            plot_id:     editingPlotId,
+            name:        plotName.trim(),
+            area_rai:    areaValue,
+            lat:         geo.latitude,
+            lng:         geo.longitude,
+            accuracy:    geo.accuracy,
+            description: plotNote.trim() || null,
+          }),
+        });
+        const json = (await res.json()) as { ok?: boolean; error?: string };
+        if (!res.ok || json.error) {
+          setError(json.error ?? 'แก้ไขไม่สำเร็จ กรุณาลองใหม่');
+          setSubmitting(false);
+          return;
+        }
+        setEditingPlotId(null);
+        setSuccessPlotId(editingPlotId);
+      } else {
+        // ── POST: create new plot ─────────────────────────────────────────────
+        const form = new FormData();
+        form.append('name',        plotName.trim());
+        form.append('area_rai',    String(areaValue));
+        form.append('lat',         String(geo.latitude));
+        form.append('lng',         String(geo.longitude));
+        form.append('accuracy',    String(geo.accuracy));
+        if (plotNote.trim()) form.append('description', plotNote.trim());
+        photoFiles.forEach((file, i) => form.append(`photo_${i}`, file));
 
-      photoFiles.forEach((file, i) => form.append(`photo_${i}`, file));
-
-      const res = await fetch('/api/member/plot-registration', {
-        method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body:   form,
-        // Do NOT set Content-Type — browser sets multipart boundary automatically
-      });
-
-      const json = (await res.json()) as {
-        ok?:             boolean;
-        plot_id?:        string;
-        error?:          string;
-        photo_warnings?: string[];
-      };
-
-      if (!res.ok || json.error) {
-        setError(json.error ?? 'ส่งข้อมูลไม่สำเร็จ กรุณาลองใหม่');
-        setSubmitting(false);
-        return;
+        const res = await fetch('/api/member/plot-registration', {
+          method:  'POST',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          body:    form,
+          // Do NOT set Content-Type — browser sets multipart boundary automatically
+        });
+        const json = (await res.json()) as {
+          ok?:             boolean;
+          plot_id?:        string;
+          error?:          string;
+          photo_warnings?: string[];
+        };
+        if (!res.ok || json.error) {
+          setError(json.error ?? 'ส่งข้อมูลไม่สำเร็จ กรุณาลองใหม่');
+          setSubmitting(false);
+          return;
+        }
+        setSuccessPlotId(json.plot_id ?? null);
       }
 
       // Success — reset form and refresh list
-      setSuccessPlotId(json.plot_id ?? null);
       setStep('details');
       setPlotName('');
       setAreaRai('');
@@ -213,17 +243,53 @@ export function PlotRegistrationMVP() {
     setSubmitting(false);
   }
 
+  // ── Open a pending_review plot for editing ───────────────────────────────
+  function reopenDraft(plot: PlotRow) {
+    setEditingPlotId(plot.id);
+    setPlotName(plot.name);
+    setAreaRai(String(plot.area_rai));
+    setPlotNote('');  // description not in list payload — leave blank to preserve existing
+    setGeo(
+      plot.lat !== null && plot.lng !== null
+        ? { latitude: plot.lat, longitude: plot.lng, accuracy: plot.accuracy ?? 0, capturedAt: '' }
+        : null,
+    );
+    setPhotoFiles([]);
+    setError(null);
+    setSuccessPlotId(null);
+    setStep('details');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function cancelEdit() {
+    setEditingPlotId(null);
+    setPlotName('');
+    setAreaRai('');
+    setPlotNote('');
+    setGeo(null);
+    setPhotoFiles([]);
+    setError(null);
+    setStep('details');
+  }
+
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <MobileAppShell
-      title="ลงทะเบียนแปลงเกษตร"
+      title={editingPlotId ? 'แก้ไขแปลง' : 'ลงทะเบียนแปลงเกษตร'}
       subtitle="รายละเอียดแปลง → แนบรูป → ตรวจทาน → บันทึก"
       roleBadge={effectiveRole ?? 'farmer'}
     >
       <SectionHeader
-        title="ขั้นตอนลงทะเบียน"
+        title={editingPlotId ? 'แก้ไขแปลงที่รอตรวจสอบ' : 'ขั้นตอนลงทะเบียน'}
         subtitle="รายละเอียดแปลง → แนบรูป → ตรวจทาน → บันทึก"
       />
+      {editingPlotId && (
+        <div style={{ marginBottom: 8 }}>
+          <UIButton type="button" onClick={cancelEdit} disabled={submitting}>
+            ← ยกเลิกการแก้ไข
+          </UIButton>
+        </div>
+      )}
 
       {/* ── Step: details ── */}
       {step === 'details' && (
@@ -393,6 +459,13 @@ export function PlotRegistrationMVP() {
           <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)' }}>
             สถานะ: {STATUS_TH[plot.status] ?? plot.status}
           </p>
+          {plot.status === 'pending_review' && !editingPlotId && (
+            <div style={{ marginTop: 8 }}>
+              <UIButton type="button" onClick={() => reopenDraft(plot)}>
+                ✏️ แก้ไขแปลงนี้
+              </UIButton>
+            </div>
+          )}
         </section>
       ))}
     </MobileAppShell>
