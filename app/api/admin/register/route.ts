@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 import { createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
-import { requireAdminPermission, isForbidden } from '../../members/_admin-auth';
+import { requireAdminPermission, isForbidden } from '../members/_admin-auth';
 
 type AdminRegisterPayload = {
   email?: string;

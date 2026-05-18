@@ -3,7 +3,7 @@
 // Headers: x-file-path, x-file-type
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
-import { requireAdminPermission, isForbidden } from '../../members/_admin-auth';
+import { requireAdminPermission, isForbidden } from '../members/_admin-auth';
 
 const BUCKET = 'reservation-attachments';
 

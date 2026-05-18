@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
-import { requireAdminPermission, isForbidden } from '../../members/_admin-auth';
+import { requireAdminPermission, isForbidden } from '../members/_admin-auth';
 
 // GET — รายชื่อเจ้าหน้าที่ทั้งหมด
 export async function GET() {
