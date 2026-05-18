@@ -159,7 +159,19 @@ export function MemberSeedReservation() {
       {tab === 'history' && (
         <>
           {myRes.length === 0 && (
-            <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '24px 0', fontSize: 14 }}>ยังไม่มีรายการจอง</p>
+            <div style={{
+              textAlign: 'center', padding: '28px 16px',
+              background: '#f9fafb', borderRadius: 12,
+              border: '1px dashed #d1d5db',
+            }}>
+              <p style={{ fontSize: 36, margin: '0 0 8px' }}>📋</p>
+              <p style={{ margin: '0 0 6px', fontWeight: 700, fontSize: 14, color: '#374151' }}>
+                ยังไม่มีประวัติการสั่งซื้อ
+              </p>
+              <p style={{ margin: 0, fontSize: 13, color: '#6b7280', lineHeight: 1.6 }}>
+                ประวัติการสั่งซื้อก่อนหน้าจะปรากฏที่นี่หลังจากนำเข้าข้อมูล
+              </p>
+            </div>
           )}
           {myRes.map((r) => <ReservationHistoryCard key={r.id} r={r} />)}
         </>
