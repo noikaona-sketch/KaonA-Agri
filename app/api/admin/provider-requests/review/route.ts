@@ -17,7 +17,7 @@ export async function POST(request: Request) {
     const s = createServerSupabaseClient();
     const { data: current, error: findErr } = await s
       .from('provider_requests')
-      .select('status,member_id')
+      .select('status,member_id,request_type')
       .eq('id', body.requestId)
       .maybeSingle();
     if (findErr) return NextResponse.json({ error: findErr.message }, { status: 500 });
@@ -35,9 +35,9 @@ export async function POST(request: Request) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
     if (body.decision === 'approved' && current.member_id) {
-      // ensure provider can access truck-owner operations after approval
+      const role = current.request_type === 'field_team' ? 'inspector' : 'truck_owner';
       const { error: roleErr } = await s.from('member_roles').upsert(
-        { member_id: current.member_id, role: 'truck_owner', is_primary: true },
+        { member_id: current.member_id, role, is_primary: true },
         { onConflict: 'member_id,role' },
       );
       if (roleErr) return NextResponse.json({ error: roleErr.message }, { status: 500 });
