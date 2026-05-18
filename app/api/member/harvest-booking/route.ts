@@ -18,6 +18,16 @@ export async function POST(request: Request) {
 
     const s = createServerSupabaseClient();
 
+    const { data: member, error: memberErr } = await s
+      .from('members')
+      .select('status')
+      .eq('id', body.member_id)
+      .maybeSingle();
+    if (memberErr) return NextResponse.json({ error: memberErr.message }, { status: 500 });
+    if (!member || member.status !== 'approved') {
+      return NextResponse.json({ error: 'สมาชิกยังไม่ผ่านการอนุมัติ จึงยังนัดรถเกี่ยวไม่ได้' }, { status: 403 });
+    }
+
     // ตรวจว่ามีการนัดอยู่แล้วหรือเปล่า
     const { data: existing } = await s.from('harvest_bookings')
       .select('id').eq('planting_cycle_id', body.planting_cycle_id)
