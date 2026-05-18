@@ -23,6 +23,7 @@ export async function POST(request: Request) {
     const { error } = await s.from('provider_requests').update({
       status: body.decision,
       reviewer_reason: body.reason ?? null,
+      reviewed_by: admin.adminUserId,
       reviewed_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }).eq('id', body.requestId);
