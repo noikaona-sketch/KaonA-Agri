@@ -66,6 +66,51 @@ export function MemberSeedReservation() {
     await loadData();
   }
 
+  // ── Reorder suggestion (PR4 — issue #213) ────────────────────────────────
+  // Derive the single best reorder candidate from history.
+  // Priority:
+  //   1. product_id exact match against current catalog
+  //   2. variety_name / product_name case-insensitive match against catalog display name
+  //
+  // Only considers seed_reservation and sale_order_reservation sources —
+  // sale_order_sale rows use product_name (not seed variety) so they are excluded.
+  // No auto submit — CTA only preselects + switches tab.
+  function getReorderSuggestion(): {
+    historyName: string;
+    matchedProduct: SeedProduct | null;
+  } | null {
+    const seedHistory = myRes.filter(
+      (r) => r._source === 'seed_reservation' || r._source === 'sale_order_reservation',
+    );
+    if (seedHistory.length === 0) return null;
+
+    // Most recent seed history row
+    const latest = seedHistory[0];
+    const historyName = latest.variety_name || '—';
+
+    // Match priority 1: product_id exact
+    const byId = latest.product_id
+      ? products.find((p) => p.product_id === latest.product_id) ?? null
+      : null;
+    if (byId) return { historyName, matchedProduct: byId };
+
+    // Match priority 2: variety_name / product_name case-insensitive
+    if (historyName && historyName !== '—') {
+      const needle = historyName.trim().toLowerCase();
+      const byName = products.find(
+        (p) =>
+          p.variety_name.toLowerCase() === needle ||
+          p.variety_name.toLowerCase().includes(needle) ||
+          needle.includes(p.variety_name.toLowerCase()),
+      ) ?? null;
+      return { historyName, matchedProduct: byName };
+    }
+
+    return { historyName, matchedProduct: null };
+  }
+
+  const reorderSuggestion = myRes.length > 0 ? getReorderSuggestion() : null;
+
   if (loading) return <LoadingState label="กำลังโหลด…" />;
 
   const activeCount = myRes.filter((r) => r.status === 'pending' || r.status === 'confirmed').length;
@@ -158,6 +203,47 @@ export function MemberSeedReservation() {
 
       {tab === 'history' && (
         <>
+          {/* Reorder suggestion card — shown when history has seed entries */}
+          {reorderSuggestion && (
+            <div style={{
+              background: '#fefce8', border: '1px solid #fde047',
+              borderRadius: 12, padding: '14px 16px', marginBottom: 4,
+            }}>
+              <p style={{ margin: '0 0 6px', fontWeight: 700, fontSize: 14, color: '#713f12' }}>
+                💡 จองพันธุ์เดิมอีกครั้ง
+              </p>
+              <p style={{ margin: '0 0 12px', fontSize: 13, color: '#78350f', lineHeight: 1.6 }}>
+                คุณเคยใช้เมล็ดพันธุ์{' '}
+                <strong>{reorderSuggestion.historyName}</strong>
+                {' '}ต้องการจองพันธุ์เดิมอีกหรือไม่?
+              </p>
+              {reorderSuggestion.matchedProduct ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelected(reorderSuggestion.matchedProduct);
+                    setTab('catalog');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  style={{
+                    background: '#d97706', color: '#fff', border: 'none',
+                    borderRadius: 8, padding: '9px 18px',
+                    fontSize: 14, fontWeight: 700, cursor: 'pointer',
+                  }}
+                >
+                  จองพันธุ์เดิม →
+                </button>
+              ) : (
+                <p style={{
+                  margin: 0, fontSize: 13, color: '#9ca3af',
+                  fontStyle: 'italic',
+                }}>
+                  ยังไม่มีสินค้านี้ในรอบปัจจุบัน
+                </p>
+              )}
+            </div>
+          )}
+
           {myRes.length === 0 && (
             <div style={{
               textAlign: 'center', padding: '28px 16px',
