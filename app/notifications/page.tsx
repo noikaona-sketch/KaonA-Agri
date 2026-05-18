@@ -177,16 +177,21 @@ export default function MyTasksPage() {
         </div>
 
         {/* ราคาข้าวโพดวันนี้ */}
-        {price && (
+        {price ? (
           <div style={{ ...S.card, padding: '12px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ fontSize: 20 }}>🌽</span>
               <div>
                 <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-secondary,#888)' }}>ราคา{price.crop_type}วันนี้</p>
-                <p style={{ margin: 0, fontSize: 18, fontWeight: 500, color: '#3B6D11' }}>{price.price_per_kg.toLocaleString()} บาท/ตัน</p>
+                <p style={{ margin: 0, fontSize: 18, fontWeight: 500, color: '#3B6D11' }}>{price.price_per_kg.toLocaleString()} บาท/กก.</p>
               </div>
             </div>
             <span style={{ fontSize: 11, color: 'var(--color-text-secondary,#888)' }}>เกรด A</span>
+          </div>
+        ) : (
+          <div style={{ ...S.card, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 20 }}>🌽</span>
+            <p style={{ margin: 0, fontSize: 14, color: 'var(--color-text-secondary,#888)' }}>ยังไม่มีราคาข้าวโพดที่เปิดใช้งาน</p>
           </div>
         )}
 
