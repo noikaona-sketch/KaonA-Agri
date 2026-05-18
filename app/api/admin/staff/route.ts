@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
+import { requireAdminPermission, isForbidden } from '../../members/_admin-auth';
 
 // GET — รายชื่อเจ้าหน้าที่ทั้งหมด
 export async function GET() {
   try {
+  const _ar_get = await requireAdminPermission('admin_users.manage');
+  if (isForbidden(_ar_get)) return _ar_get.forbidden;
+
     const s = createServerSupabaseClient();
     const { data, error } = await s
       .from('admin_users')
@@ -20,6 +24,9 @@ export async function GET() {
 // POST — อนุมัติ / ระงับ / ลบ
 export async function POST(request: Request) {
   try {
+  const _ar_post = await requireAdminPermission('admin_users.manage');
+  if (isForbidden(_ar_post)) return _ar_post.forbidden;
+
     const body = (await request.json()) as {
       action: 'approve' | 'suspend' | 'reactivate' | 'delete';
       admin_user_id: string;

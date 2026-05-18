@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
+import { requireAdminPermission, isForbidden } from '../../members/_admin-auth';
 
 type ProductCategory = 'seed' | 'fertilizer' | 'pesticide' | 'equipment' | 'other';
 type ProductType     = 'seed' | 'fertilizer' | 'chemical' | 'other';
@@ -16,6 +17,8 @@ const toType = (v: unknown, cat: ProductCategory): ProductType =>
   VALID_TYPES.includes(v as ProductType) ? (v as ProductType) : TYPE_BY_CAT[cat];
 
 export async function GET() {
+  const _ar_get = await requireAdminPermission('seed.read');
+  if (isForbidden(_ar_get)) return _ar_get.forbidden;
   const s = createServerSupabaseClient();
   const { data, error } = await s.from('products')
     .select('id,name,brand,category,product_type,product_code,unit,price_per_unit,stock_qty,is_active,seed_variety_id,crop_type,seed_variety,days_to_harvest,bag_weight_kg,sort_order')
@@ -53,6 +56,8 @@ function seedError(p: ReturnType<typeof buildPayload>): string | null {
 }
 
 export async function POST(req: NextRequest) {
+  const _ar_post = await requireAdminPermission('seed.write');
+  if (isForbidden(_ar_post)) return _ar_post.forbidden;
   const body    = await req.json() as Record<string, unknown>;
   const payload = buildPayload(body);
   if (!payload.name)         return NextResponse.json({ error: 'name is required' }, { status: 400 });
@@ -65,6 +70,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
+  const _ar_patch = await requireAdminPermission('seed.write');
+  if (isForbidden(_ar_patch)) return _ar_patch.forbidden;
   const body = await req.json() as Record<string, unknown>;
   const id   = String(body.id ?? '');
   if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 });

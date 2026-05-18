@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
+import { requireAdminPermission, isForbidden } from '../../members/_admin-auth';
 
 export async function GET(request: Request) {
+  const _ar_get = await requireAdminPermission('service.read');
+  if (isForbidden(_ar_get)) return _ar_get.forbidden;
   const { searchParams } = new URL(request.url);
   const status = searchParams.get('status');
   const s = createServerSupabaseClient();
@@ -13,6 +16,9 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+  const _ar_post = await requireAdminPermission('service.write');
+  if (isForbidden(_ar_post)) return _ar_post.forbidden;
+
     const body = (await request.json()) as {
       action: 'open' | 'close';
       warehouse_id?: string;

@@ -1,11 +1,15 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '../../../../auth/line/line-auth-helpers';
+import { requireAdminPermission, isForbidden } from '../../../../members/_admin-auth';
 
 type Params = { params: { id: string } };
 
 // POST — เพิ่มหรือลบ role
 export async function POST(req: Request, { params }: Params) {
   try {
+  const _ar_post = await requireAdminPermission('members.write');
+  if (isForbidden(_ar_post)) return _ar_post.forbidden;
+
     const body = (await req.json()) as {
       action: 'add' | 'remove' | 'set_primary';
       role: string;

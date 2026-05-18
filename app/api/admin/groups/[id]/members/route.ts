@@ -1,11 +1,15 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '../../../../auth/line/line-auth-helpers';
+import { requireAdminPermission, isForbidden } from '../../../../members/_admin-auth';
 
 type Params = { params: { id: string } };
 
 // POST — เพิ่มสมาชิกเข้ากลุ่ม
 export async function POST(request: Request, { params }: Params) {
   try {
+  const _ar_post = await requireAdminPermission('members.write');
+  if (isForbidden(_ar_post)) return _ar_post.forbidden;
+
     const body = (await request.json()) as { member_id: string; added_by: string };
     if (!body.member_id || !body.added_by) {
       return NextResponse.json({ error: 'ต้องการ member_id และ added_by' }, { status: 400 });
@@ -27,6 +31,9 @@ export async function POST(request: Request, { params }: Params) {
 // DELETE — ลบสมาชิกออกจากกลุ่ม
 export async function DELETE(request: Request, { params }: Params) {
   try {
+  const _ar_delete = await requireAdminPermission('members.write');
+  if (isForbidden(_ar_delete)) return _ar_delete.forbidden;
+
     const body = (await request.json()) as { member_id: string };
     if (!body.member_id) {
       return NextResponse.json({ error: 'ต้องการ member_id' }, { status: 400 });
