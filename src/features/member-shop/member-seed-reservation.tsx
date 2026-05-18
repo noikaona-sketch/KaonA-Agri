@@ -93,6 +93,18 @@ export function MemberSeedReservation() {
 
       {tab === 'catalog' && (
         <>
+          {/* Level 1 UX note — seed reservation allowed without plot */}
+          <div style={{
+            display: 'flex', alignItems: 'flex-start', gap: 10,
+            background: '#f0fdf4', border: '1px solid #86efac',
+            borderRadius: 10, padding: '10px 14px', marginBottom: 4,
+          }}>
+            <span style={{ fontSize: 18, lineHeight: 1, flexShrink: 0 }}>🌾</span>
+            <p style={{ margin: 0, fontSize: 13, color: '#14532d', lineHeight: 1.6 }}>
+              ยังไม่เพิ่มแปลงก็จองเมล็ดพันธุ์ได้
+            </p>
+          </div>
+
           {products.length === 0 && (
             <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '24px 0', fontSize: 14 }}>ไม่มีเมล็ดพันธุ์ในขณะนี้</p>
           )}

@@ -129,6 +129,18 @@ export function MemberShopCatalog({ onCheckout }: Props) {
         ))}
       </div>
 
+      {/* Level 1 UX note — seed order allowed without plot */}
+      <div style={{
+        display: 'flex', alignItems: 'flex-start', gap: 10,
+        background: '#f0fdf4', border: '1px solid #86efac',
+        borderRadius: 10, padding: '10px 14px',
+      }}>
+        <span style={{ fontSize: 18, lineHeight: 1, flexShrink: 0 }}>🌾</span>
+        <p style={{ margin: 0, fontSize: 13, color: '#14532d', lineHeight: 1.6 }}>
+          ยังไม่เพิ่มแปลงก็จองเมล็ดพันธุ์ได้
+        </p>
+      </div>
+
       {/* Product grid */}
       {filtered.length === 0 ? (
         <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '32px 0' }}>ไม่มีสินค้า</p>
