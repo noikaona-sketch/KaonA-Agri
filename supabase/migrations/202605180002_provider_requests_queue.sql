@@ -18,7 +18,7 @@ create table if not exists public.provider_requests (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint chk_provider_requests_type
-    check (request_type in ('service_team','field_team')),
+    check (request_type in ('service_team')),
   constraint chk_provider_requests_status
     check (status in ('pending','approved','rejected'))
 );
