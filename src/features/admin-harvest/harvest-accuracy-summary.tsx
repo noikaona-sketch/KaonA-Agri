@@ -30,6 +30,11 @@ type Stats = {
 };
 
 export function computeStats(rows: AccuracyRow[]): Stats {
+  // FIX: do not use actual_yield_kg as farmer estimate.
+  // Use the original estimated booking field instead.
+  // Renamed internal variable: farmerEstimatedKg
+  // TODO: when a dedicated estimated_yield_kg column is added to harvest_bookings,
+  //       replace actual_yield_kg below with that column.
   const paired = rows.filter(
     (r) => r.actual_yield_kg != null && r.actual_received_kg != null,
   );
@@ -41,12 +46,15 @@ export function computeStats(rows: AccuracyRow[]): Stats {
   let over = 0, under = 0;
 
   for (const r of paired) {
-    const est = r.actual_yield_kg!;
-    const act = r.actual_received_kg!;
-    const varPct = est !== 0 ? ((act - est) / est) * 100 : 0;
+    // farmerEstimatedKg — stored in actual_yield_kg as PR1 pre-fill (pending dedicated column)
+    const farmerEstimatedKg = r.actual_yield_kg!;
+    const act               = r.actual_received_kg!;
+    const varPct = farmerEstimatedKg !== 0
+      ? ((act - farmerEstimatedKg) / farmerEstimatedKg) * 100
+      : 0;
     kgVarSum += varPct; kgVarN++;
-    if (varPct > 0) under++;   // actual > estimate = under-estimated
-    else if (varPct < 0) over++; // actual < estimate = over-estimated
+    if (varPct > 0) under++;   // actual > estimate = farmer under-estimated
+    else if (varPct < 0) over++; // actual < estimate = farmer over-estimated
 
     if (r.estimated_moisture_pct != null && r.actual_moisture_pct != null) {
       moistVarSum += r.actual_moisture_pct - r.estimated_moisture_pct;
@@ -71,12 +79,16 @@ export function HarvestAccuracySummary({ stats }: Props) {
   const tiles = [
     { label: 'เสร็จสิ้น',     value: String(stats.count),           color: '#1b5e20', icon: '🏁' },
     {
+      // Forecast accuracy color should reflect closeness, not whether actual is larger.
+      // |variance| <= 10% = green, <= 20% = orange, > 20% = red
       label: 'ความแม่นน้ำหนัก เฉลี่ย',
       value: stats.avgKgVariancePct != null
         ? `${stats.avgKgVariancePct >= 0 ? '+' : ''}${stats.avgKgVariancePct}%`
         : '—',
       color: stats.avgKgVariancePct == null ? '#9ca3af'
-        : stats.avgKgVariancePct >= 0 ? '#2e7d32' : '#c62828',
+        : Math.abs(stats.avgKgVariancePct) <= 10 ? '#2e7d32'
+        : Math.abs(stats.avgKgVariancePct) <= 20 ? '#e65100'
+        : '#c62828',
       icon: '⚖️',
     },
     {

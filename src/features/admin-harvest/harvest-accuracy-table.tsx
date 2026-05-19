@@ -7,13 +7,22 @@ function varPct(est: number | null, act: number | null): number | null {
   return Math.round(((act - est) / est) * 100 * 10) / 10;
 }
 
+// Forecast accuracy color: |variance| <= 10% = green, <= 20% = orange, > 20% = red
+// For moisture (invert=true): low diff = good, high diff = concern
 function VarBadge({ value, unit, invert }: { value: number | null; unit: string; invert?: boolean }) {
   if (value == null) return <span style={{ color: '#9ca3af' }}>—</span>;
-  const positive = value >= 0;
-  const good     = invert ? !positive : positive;
+  const abs = Math.abs(value);
+  let color: string;
+  if (invert) {
+    // moisture: lower diff is better
+    color = abs <= 2 ? '#2e7d32' : abs <= 5 ? '#e65100' : '#c62828';
+  } else {
+    // kg variance: closeness matters, not direction
+    color = abs <= 10 ? '#2e7d32' : abs <= 20 ? '#e65100' : '#c62828';
+  }
   return (
-    <span style={{ fontWeight: 700, color: good ? '#2e7d32' : '#c62828' }}>
-      {positive ? '+' : ''}{value}{unit}
+    <span style={{ fontWeight: 700, color }}>
+      {value >= 0 ? '+' : ''}{value}{unit}
     </span>
   );
 }
