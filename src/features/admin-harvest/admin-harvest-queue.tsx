@@ -10,7 +10,8 @@ import { useEffect, useState }         from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { ErrorState }                  from '@/shared/components/error-state';
 import { LoadingState }                from '@/shared/components/loading-state';
-import { HarvestQueueSummary }         from './harvest-queue-summary';
+import { HarvestQueueSummary }   from './harvest-queue-summary';
+import { HarvestEmptyState }     from './harvest-data-quality';
 import { HarvestQueueRow }             from './harvest-queue-row';
 import type { QueueRow, EditDraft }    from './harvest-queue-row';
 
@@ -138,7 +139,7 @@ export function AdminHarvestQueue() {
       {loading && <LoadingState label="กำลังโหลดคิว…" />}
       {error   && <ErrorState title="โหลดไม่สำเร็จ" detail={error} />}
       {!loading && !error && rows.length === 0 && (
-        <p style={{ color: '#9ca3af', textAlign: 'center', padding: '32px 0' }}>ไม่มีรายการในคิว</p>
+        <HarvestEmptyState message="ไม่มีรายการในคิว" />
       )}
 
       {!loading && !error && rows.length > 0 && (

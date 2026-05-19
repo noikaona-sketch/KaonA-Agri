@@ -3,9 +3,8 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { HarvestCompleteForm, CompletedActualDisplay, isCompleteFormValid, type CompleteFormState } from './harvest-complete-form';
-import { ErrorState } from '@/shared/components/error-state';
+import { HarvestDataQualityBadge } from './harvest-data-quality'; import { ErrorState } from '@/shared/components/error-state';
 import { LoadingState } from '@/shared/components/loading-state';
-
 type Booking = {
   id: string; status: string; truck_type: string;
   scheduled_date: string; scheduled_time_start: string | null;
@@ -21,7 +20,6 @@ type Booking = {
   product_name: string | null; seed_variety: string | null;
   grade_a_moisture_max: number | null; grade_b_moisture_max: number | null;
 };
-
 const STATUS_MAP: Record<string, { badge: string; label: string }> = {
   pending:   { badge: 'pending',   label: '⏳ รอยืนยัน' },
   confirmed: { badge: 'approved',  label: '✅ ยืนยัน' },
@@ -140,6 +138,13 @@ export function AdminHarvestList() {
                   <td><span className={`status-badge status-badge--${st.badge}`}>{st.label}</span></td>
                   <td>
                     {b.status === 'completed' ? (
+                      <>
+                      <HarvestDataQualityBadge
+                        status={b.status}
+                        actualReceivedKg={b.actual_received_kg}
+                        actualMoisturePct={b.actual_moisture_pct}
+                        actualCompletedAt={b.actual_completed_at}
+                      />
                       <CompletedActualDisplay
                         actualReceivedKg={b.actual_received_kg}
                         actualMoisturePct={b.actual_moisture_pct}
@@ -148,6 +153,7 @@ export function AdminHarvestList() {
                         farmerEstKg={b.actual_yield_kg}
                         farmerEstMoisture={b.quality_moisture}
                       />
+                      </>
                     ) : (
                       <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
                         {b.status === 'pending' && <button className="admin-btn admin-btn--success" onClick={() => confirm(b.id)} disabled={acting !== null} style={{ fontSize: 12, padding: '4px 8px', minHeight: 30 }}>✅</button>}
