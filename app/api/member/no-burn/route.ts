@@ -164,9 +164,9 @@ export async function POST(request: Request) {
         storage_path:       path,
         photo_type:         'no_burn',
         evidence_status:    'submitted',
-        lat:                lat ?? 0,
-        lng:                lng ?? 0,
-        accuracy:           accuracy ?? 0,
+        lat:                lat ?? null,
+        lng:                lng ?? null,
+        accuracy:           accuracy ?? null,
         captured_at:        capturedAt,
         uploaded_by:        caller.memberId,
       });
