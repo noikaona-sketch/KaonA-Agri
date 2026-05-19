@@ -1,6 +1,7 @@
 'use client';
 
-import type { AccuracyRow } from './harvest-accuracy-summary';
+import type { AccuracyRow }                        from './harvest-accuracy-summary';
+import { HarvestDataQualityBadge, HarvestEmptyState } from './harvest-data-quality';
 
 function varPct(est: number | null, act: number | null): number | null {
   if (est == null || act == null || est === 0) return null;
@@ -29,15 +30,11 @@ function VarBadge({ value, unit, invert }: { value: number | null; unit: string;
 
 export function HarvestAccuracyTable({ rows }: { rows: AccuracyRow[] }) {
   if (rows.length === 0) {
-    return (
-      <p style={{ color: '#9ca3af', textAlign: 'center', padding: '32px 0' }}>
-        ยังไม่มีข้อมูลเก็บเกี่ยวที่เสร็จสิ้น
-      </p>
-    );
+    return <HarvestEmptyState message="ยังไม่มีข้อมูลเก็บเกี่ยวที่เสร็จสิ้น" />;
   }
 
   return (
-    <div className="admin-table-wrap">
+    <div className="admin-table-wrap" style={{ overflowX: 'auto' }}>
       <table className="admin-table">
         <thead>
           <tr>

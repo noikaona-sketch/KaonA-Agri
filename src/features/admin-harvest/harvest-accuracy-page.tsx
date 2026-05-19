@@ -5,6 +5,7 @@ import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { ErrorState }                  from '@/shared/components/error-state';
 import { LoadingState }                from '@/shared/components/loading-state';
 import { HarvestAccuracySummary, computeStats } from './harvest-accuracy-summary';
+import { HarvestEmptyState }                        from './harvest-data-quality';
 import { HarvestAccuracyTable }        from './harvest-accuracy-table';
 import type { AccuracyRow }            from './harvest-accuracy-summary';
 
