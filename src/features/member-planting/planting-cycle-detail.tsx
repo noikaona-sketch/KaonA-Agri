@@ -6,7 +6,8 @@ import { useCurrentMember } from '@/providers/auth-provider';
 import { LoadingState } from '@/shared/components/loading-state';
 import { HarvestRatingForm } from '@/features/service-rating/harvest-rating-form';
 import { UIButton } from '@/shared/components/ui-button';
-import { HarvestBookingForm } from './harvest-booking-form';
+import { HarvestBookingForm }        from './harvest-booking-form';
+import { MemberHarvestBookingForm }  from '@/features/member-harvest/harvest-booking-form';
 import { SaleAppointmentForm } from './sale-appointment-form';
 import { ErrorState } from '@/shared/components/error-state';
 
@@ -366,6 +367,15 @@ export function PlantingCycleDetail({ cycleId }: { cycleId: string }) {
       )}
 
       {/* Rating modal */}
+      {/* ── P2: Farmer harvest forecast — shown when cycle is maturing/ready ── */}
+      {['maturing', 'fruiting', 'ready'].includes(cycle.status) && (
+        <MemberHarvestBookingForm
+          cycleId={cycle.id}
+          cropName={cycle.crop_name}
+          plotId={cycle.plots?.id ?? undefined}
+        />
+      )}
+
       {/* ── Burn/no-burn self-declaration (continuity tracking #217) ── */}
       <div className="kaona-card">
         <p style={{ margin: '0 0 10px', fontWeight: 700, fontSize: 15 }}>
