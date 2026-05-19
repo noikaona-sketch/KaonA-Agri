@@ -120,12 +120,38 @@ function NoBurnPageContent() {
 
     setSubmitting(true);
 
+    // Capture GPS once at submit time — best-effort, non-blocking.
+    // If geolocation is unavailable or denied the request still submits;
+    // lat/lng/accuracy are simply omitted from the FormData.
+    let gpsLat: number | null = null;
+    let gpsLng: number | null = null;
+    let gpsAcc: number | null = null;
+    if (typeof navigator !== 'undefined' && navigator.geolocation) {
+      try {
+        const pos = await new Promise<GeolocationPosition>((resolve, reject) =>
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout:            10000,
+            maximumAge:         0,
+          }),
+        );
+        gpsLat = pos.coords.latitude;
+        gpsLng = pos.coords.longitude;
+        gpsAcc = pos.coords.accuracy;
+      } catch {
+        // Denied or timed-out — proceed without GPS
+      }
+    }
+
     const token = await getBearerToken();
     const form  = new FormData();
     form.append('plot_id',          selectedPlot);
     form.append('consent_accepted', 'true');
     if (selectedCycle)    form.append('planting_cycle_id', selectedCycle);
     if (formNote.trim())  form.append('note',              formNote.trim());
+    if (gpsLat !== null)  form.append('lat',               String(gpsLat));
+    if (gpsLng !== null)  form.append('lng',               String(gpsLng));
+    if (gpsAcc !== null)  form.append('accuracy',          String(gpsAcc));
     photoFiles.forEach((file, i) => form.append(`photo_${i}`, file));
 
     const res = await fetch('/api/member/no-burn', {
