@@ -1,6 +1,6 @@
 export type AppRole = 'admin' | 'staff' | 'inspector' | 'leader' | 'truck_owner' | 'farmer';
 
-export type MemberStatus = 'pending' | 'approved' | 'rejected' | 'suspended';
+export type MemberStatus = 'pending' | 'pending_approval' | 'returned' | 'approved' | 'rejected' | 'suspended';
 
 export type AuthStatus =
   | 'loading'
