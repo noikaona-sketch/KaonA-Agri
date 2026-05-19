@@ -3,7 +3,8 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { HarvestCompleteForm, CompletedActualDisplay, isCompleteFormValid, type CompleteFormState } from './harvest-complete-form';
-import { HarvestDataQualityBadge } from './harvest-data-quality'; import { ErrorState } from '@/shared/components/error-state';
+import { HarvestDataQualityBadge } from './harvest-data-quality';
+import { ErrorState }              from '@/shared/components/error-state';
 import { LoadingState } from '@/shared/components/loading-state';
 type Booking = {
   id: string; status: string; truck_type: string;
