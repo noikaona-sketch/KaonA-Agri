@@ -2,19 +2,21 @@
 
 import { useState } from 'react';
 import { AdminWebShell } from '@/shared/components/admin-web-shell';
-import { AdminHarvestList }  from '@/features/admin-harvest/admin-harvest-list';
+import { AdminHarvestList }   from '@/features/admin-harvest/admin-harvest-list';
+import { HarvestDashboard }   from '@/features/admin-harvest/harvest-dashboard';
 import { AdminHarvestQueue } from '@/features/admin-harvest/admin-harvest-queue';
 import { AdminProviderRatings } from '@/features/service-rating/admin-provider-ratings';
 
-type Tab = 'queue' | 'bookings' | 'ratings';
+type Tab = 'dashboard' | 'queue' | 'bookings' | 'ratings';
 const TABS: { key: Tab; icon: string; label: string }[] = [
+  { key: 'dashboard', icon: '📊', label: 'สรุป' },
   { key: 'queue',    icon: '📋', label: 'คิวเกี่ยว' },
   { key: 'bookings', icon: '🚜', label: 'นัดรถเกี่ยว' },
   { key: 'ratings',  icon: '⭐', label: 'คะแนนผู้ให้บริการ' },
 ];
 
 export default function HarvestPage() {
-  const [tab, setTab] = useState<Tab>('queue');
+  const [tab, setTab] = useState<Tab>('dashboard');
   const cur = TABS.find((t) => t.key === tab)!;
   return (
     <AdminWebShell title={`${cur.icon} รถเกี่ยว — ${cur.label}`} subtitle="จัดการนัด ติดตาม และประเมินผู้ให้บริการ">
@@ -27,6 +29,7 @@ export default function HarvestPage() {
           </button>
         ))}
       </div>
+      {tab === 'dashboard' && <HarvestDashboard />}
       {tab === 'queue'    && <AdminHarvestQueue />}
       {tab === 'bookings' && <AdminHarvestList />}
       {tab === 'ratings'  && <AdminProviderRatings />}
