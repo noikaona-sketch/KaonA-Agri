@@ -12,7 +12,6 @@ import { ErrorState }                  from '@/shared/components/error-state';
 import { LoadingState }                from '@/shared/components/loading-state';
 import { HarvestQueueSummary }   from './harvest-queue-summary';
 import { HarvestEmptyState }     from './harvest-data-quality';
-import { useMemberReliability }  from './harvest-reliability';
 import { HarvestQueueRow }             from './harvest-queue-row';
 import type { QueueRow, EditDraft }    from './harvest-queue-row';
 

@@ -24,20 +24,20 @@ export type ReliabilityStats = {
   cancelRate: number; // 0–100
 };
 
-export type ReliabilityLevel = 'ดี' | 'เฝ้าระวัง' | 'เสี่ยง';
+export type ReliabilityLevel = 'ดี' | 'เฝ้าระวัง' | 'ต้องยืนยันซ้ำ';
 
 // ── Calculation ───────────────────────────────────────────────────────────────
 export function getReliabilityLevel(stats: ReliabilityStats): ReliabilityLevel {
   if (stats.total === 0) return 'ดี';
   if (stats.cancelRate <= 10) return 'ดี';
   if (stats.cancelRate <= 30) return 'เฝ้าระวัง';
-  return 'เสี่ยง';
+  return 'ต้องยืนยันซ้ำ';
 }
 
 const LEVEL_STYLE: Record<ReliabilityLevel, { color: string; bg: string; icon: string }> = {
   'ดี':         { color: '#2e7d32', bg: '#f0fdf4', icon: '✅' },
   'เฝ้าระวัง': { color: '#e65100', bg: '#fff3e0', icon: '⚠️' },
-  'เสี่ยง':     { color: '#c62828', bg: '#ffebee', icon: '🔴' },
+  'ต้องยืนยันซ้ำ':     { color: '#c62828', bg: '#ffebee', icon: '🔴' },
 };
 
 // ── Badge (compact — for queue row) ──────────────────────────────────────────
@@ -68,7 +68,7 @@ export function ReliabilitySummaryCard({ stats }: { stats: ReliabilityStats }) {
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
         <p style={{ margin: 0, fontWeight: 700, fontSize: 13, color: st.color }}>
-          {st.icon} ความน่าเชื่อถือ: {level}
+          {st.icon} ประวัติการจอง: {level}
         </p>
         <span style={{ fontSize: 12, color: '#6b7280' }}>
           ยกเลิก {stats.cancelRate}%
