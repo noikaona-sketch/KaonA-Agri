@@ -1,5 +1,7 @@
 'use client';
 
+import { ReliabilityBadge, type ReliabilityStats } from './harvest-reliability';
+
 const STATUS_CFG: Record<string, { label: string; color: string }> = {
   pending:   { label: '⏳ รอยืนยัน',  color: '#e65100' },
   confirmed: { label: '✅ ยืนยันแล้ว', color: '#2e7d32' },
@@ -30,6 +32,7 @@ const INPUT_STYLE = {
 
 export type QueueRow = {
   id:                     string;
+  member_id:              string | null;
   scheduled_date:         string;
   status:                 string;
   actual_yield_kg:        number | null;
@@ -61,17 +64,18 @@ export type EditDraft = {
 };
 
 type RowProps = {
-  r:           QueueRow;
-  acting:      string | null;
-  draft:       EditDraft;
-  onDraft:     (d: Partial<EditDraft>) => void;
-  onSavePlan:  () => void;
-  onConfirm:   () => void;
-  onComplete:  () => void;
+  r:                QueueRow;
+  acting:           string | null;
+  draft:            EditDraft;
+  onDraft:          (d: Partial<EditDraft>) => void;
+  onSavePlan:       () => void;
+  onConfirm:        () => void;
+  onComplete:       () => void;
+  reliabilityStats: ReliabilityStats | null;
 };
 
 export function HarvestQueueRow({
-  r, acting, draft, onDraft, onSavePlan, onConfirm, onComplete,
+  r, acting, draft, onDraft, onSavePlan, onConfirm, onComplete, reliabilityStats,
 }: RowProps) {
   const st    = STATUS_CFG[r.status] ?? { label: r.status, color: '#666' };
   const isAct = acting === r.id;
@@ -86,6 +90,7 @@ export function HarvestQueueRow({
         <p style={{ margin: '2px 0 0', fontSize: 12, color: '#6b7280' }}>
           {r.plot_name}{r.plot_province ? ` (${r.plot_province})` : ''}
         </p>
+        {reliabilityStats && <ReliabilityBadge stats={reliabilityStats} />}
         {r.note && (
           <p style={{ margin: '3px 0 0', fontSize: 11, color: '#9ca3af',
             fontStyle: 'italic', maxWidth: 160, overflow: 'hidden',

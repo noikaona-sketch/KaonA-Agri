@@ -16,7 +16,7 @@ import { HarvestQueueRow }             from './harvest-queue-row';
 import type { QueueRow, EditDraft }    from './harvest-queue-row';
 
 const QUEUE_SELECT =
-  'id,scheduled_date,status,actual_yield_kg,drying_preference,delivery_type,' +
+  'id,member_id,scheduled_date,status,actual_yield_kg,drying_preference,delivery_type,' +
   'estimated_moisture_pct,note,member_name,member_phone,' +
   'plot_name,plot_province,crop_name,area_planted_rai,' +
   'planned_delivery_date,assigned_dryer,admin_note,priority_score';
@@ -36,7 +36,8 @@ export function AdminHarvestQueue() {
   const [error,    setError]    = useState<string | null>(null);
   const [acting,   setActing]   = useState<string | null>(null);
   const [drafts,   setDrafts]   = useState<Record<string, EditDraft>>({});
-  const [filter,   setFilter]   = useState<'pending' | 'confirmed' | 'all'>('pending');
+  const [filter,       setFilter]       = useState<'pending' | 'confirmed' | 'all'>('pending');
+  const [reliabilityMap, setReliabilityMap] = useState<Record<string, import('./harvest-reliability').ReliabilityStats>>({});
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo,   setDateTo]   = useState('');
 
@@ -62,6 +63,25 @@ export function AdminHarvestQueue() {
       return next;
     });
     setLoading(false);
+    // Load reliability stats for all unique members in results
+    const memberIds = [...new Set((loaded).map((r) => r.member_id).filter(Boolean))] as string[];
+    if (memberIds.length > 0) {
+      const sb = createSupabaseBrowserClient();
+      const { data: bookings } = await sb.from('harvest_bookings')
+        .select('member_id,status').in('member_id', memberIds);
+      if (bookings) {
+        const map: Record<string, import('./harvest-reliability').ReliabilityStats> = {};
+        for (const mid of memberIds) {
+          const mb = (bookings as {member_id:string;status:string}[]).filter((b) => b.member_id === mid);
+          const completed = mb.filter((b) => b.status === 'completed').length;
+          const cancelled = mb.filter((b) => b.status === 'cancelled').length;
+          const pending   = mb.filter((b) => b.status === 'pending' || b.status === 'confirmed').length;
+          const total     = mb.length;
+          map[mid] = { completed, cancelled, pending, total, cancelRate: total > 0 ? Math.round((cancelled/total)*100) : 0 };
+        }
+        setReliabilityMap(map);
+      }
+    }
   }
 
   useEffect(() => { void load(); }, [filter, dateFrom, dateTo]);
@@ -164,6 +184,7 @@ export function AdminHarvestQueue() {
                   onSavePlan={() => void savePlan(r.id)}
                   onConfirm={()  => void transition(r.id, 'confirmed')}
                   onComplete={() => void transition(r.id, 'completed')}
+                  reliabilityStats={r.member_id ? (reliabilityMap[r.member_id] ?? null) : null}
                 />
               ))}
             </tbody>
