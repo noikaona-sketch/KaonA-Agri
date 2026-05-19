@@ -1,5 +1,7 @@
 'use client';
 
+import { HarvestMoisturePreview } from './harvest-moisture-preview';
+
 // ─────────────────────────────────────────────────────────────────────────────
 // HarvestCompleteForm — P2 PR5 (revised)
 //
@@ -102,7 +104,6 @@ type DisplayProps = {
   actualMoisturePct:  number | null;
   actualCompletedAt:  string | null;
   adminNote:          string | null;
-  // farmer estimates for variance display
   farmerEstKg?:       number | null;
   farmerEstMoisture?: number | null;
 };
@@ -173,6 +174,14 @@ export function CompletedActualDisplay({
           })}
         </p>
       )}
+      <div style={{ marginTop: 12 }}>
+        <HarvestMoisturePreview
+          farmerEstKg={farmerEstKg ?? null}
+          farmerEstMoisture={farmerEstMoisture ?? null}
+          actualReceivedKg={actualReceivedKg}
+          actualMoisturePct={actualMoisturePct}
+        />
+      </div>
     </div>
   );
 }
