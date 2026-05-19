@@ -33,6 +33,9 @@ const STATUS_STYLE: Record<string, { bg: string; color: string; label: string }>
   approved:             { bg: '#e8f5e9', color: '#2e7d32', label: '✅ อนุมัติแล้ว' },
   rejected:             { bg: '#fafafa', color: '#9e9e9e', label: '⛔ ไม่ผ่าน' },
   completed:            { bg: '#e8f5e9', color: '#2e7d32', label: '🏁 เสร็จสิ้น' },
+  // New statuses from #218 PR2A — nuanced, supportive framing
+  anomaly:              { bg: '#fef9c3', color: '#b45309', label: '⚠️ พบเหตุผิดปกติ — อยู่ระหว่างดูแล' },
+  seeking_support:      { bg: '#e0f2fe', color: '#0369a1', label: '🤝 กำลังรับคำแนะนำ' },
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
