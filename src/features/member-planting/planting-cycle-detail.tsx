@@ -14,7 +14,7 @@ type ProductRef = { name: string; seed_variety: string | null; days_to_harvest: 
 type PlotRef = { id: string; name: string; province: string | null };
 
 type Cycle = {
-  id: string; crop_name: string; season_year: number; status: string;
+  id: string; crop_name: string; season_year: number; status: string; burn_practice: string | null; burn_practice_note: string | null;
   planted_at: string | null; expected_harvest_at: string | null;
   area_planted_rai: number | null; estimated_yield_kg: number | null;
   quota_kg: number | null; source: string | null; confirmed_at: string | null;
@@ -78,6 +78,12 @@ export function PlantingCycleDetail({ cycleId }: { cycleId: string }) {
   const [showRating,   setShowRating]   = useState(false);
   const [showBooking,  setShowBooking]  = useState(false);
   const [showSale,     setShowSale]     = useState(false);
+
+  // Burn practice self-declaration (#217)
+  const [burnPractice,     setBurnPractice]     = useState<string>('unknown');
+  const [burnPracticeNote, setBurnPracticeNote] = useState<string>('');
+  const [savingBurn,       setSavingBurn]       = useState(false);
+  const [burnNotice,       setBurnNotice]       = useState<string | null>(null);
   const [selectedPlot, setSelectedPlot] = useState('');
   const [plantedDate, setPlantedDate]   = useState('');
   const [areaRai, setAreaRai]           = useState('');
@@ -90,7 +96,7 @@ export function PlantingCycleDetail({ cycleId }: { cycleId: string }) {
     const s = createSupabaseBrowserClient();
     const [cRes, pRes, plotsRes] = await Promise.all([
       s.from('planting_cycles')
-        .select('id,crop_name,season_year,status,planted_at,expected_harvest_at,area_planted_rai,estimated_yield_kg,quota_kg,source,confirmed_at,member_note,seed_qty_used,products(name,seed_variety,days_to_harvest,planting_guide),plots(id,name,province)')
+        .select('id,crop_name,season_year,status,planted_at,expected_harvest_at,area_planted_rai,estimated_yield_kg,quota_kg,source,confirmed_at,member_note,seed_qty_used,burn_practice,burn_practice_note,products(name,seed_variety,days_to_harvest,planting_guide),plots(id,name,province)')
         .eq('id', cycleId).maybeSingle(),
       s.from('planting_cycle_progress')
         .select('id,stage,description,recorded_at')
@@ -109,6 +115,9 @@ export function PlantingCycleDetail({ cycleId }: { cycleId: string }) {
       setSelectedPlot(normalizedCycle.plots?.id ?? '');
       setPlantedDate(normalizedCycle.planted_at?.slice(0, 10) ?? '');
       setAreaRai(String(normalizedCycle.area_planted_rai ?? ''));
+      // Sync burn practice state from DB
+      setBurnPractice(normalizedCycle.burn_practice ?? 'unknown');
+      setBurnPracticeNote(normalizedCycle.burn_practice_note ?? '');
     }
     setLoading(false);
   }
@@ -141,6 +150,26 @@ export function PlantingCycleDetail({ cycleId }: { cycleId: string }) {
     setSaving(false);
     setNewStage(''); setStageDesc(''); setShowProgress(false);
     setNotice('✅ บันทึกความคืบหน้าแล้ว'); await load();
+  }
+
+  // Save burn_practice self-declaration
+  async function saveBurnPractice() {
+    if (!cycleId || !burnPractice || burnPractice === 'unknown') return;
+    setSavingBurn(true);
+    setBurnNotice(null);
+    const s = createSupabaseBrowserClient();
+    const { error } = await s.from('planting_cycles').update({
+      burn_practice:      burnPractice,
+      burn_practice_note: burnPracticeNote.trim() || null,
+      updated_at:         new Date().toISOString(),
+    }).eq('id', cycleId);
+    setSavingBurn(false);
+    if (error) {
+      setBurnNotice(`❌ บันทึกไม่สำเร็จ: ${error.message}`);
+    } else {
+      setBurnNotice('✅ บันทึกข้อมูลการจัดการตอซังแล้ว');
+      setCycle((prev) => prev ? { ...prev, burn_practice: burnPractice, burn_practice_note: burnPracticeNote.trim() || null } : prev);
+    }
   }
 
   if (loading) return <LoadingState label="กำลังโหลด…" />;
@@ -337,6 +366,78 @@ export function PlantingCycleDetail({ cycleId }: { cycleId: string }) {
       )}
 
       {/* Rating modal */}
+      {/* ── Burn/no-burn self-declaration (continuity tracking #217) ── */}
+      <div className="kaona-card">
+        <p style={{ margin: '0 0 10px', fontWeight: 700, fontSize: 15 }}>
+          🔥 การจัดการตอซังหลังเก็บเกี่ยว
+        </p>
+        <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+          บันทึกวิธีจัดการตอซังในรอบนี้เพื่อติดตามแนวโน้มในระยะยาว
+        </p>
+
+        {/* Practice options */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
+          {([
+            { value: 'no_burn', label: '🌿 ไม่เผา',       color: '#2e7d32', bg: '#e8f5e9' },
+            { value: 'partial', label: '⚠️ บางส่วน',     color: '#e65100', bg: '#fff3e0' },
+            { value: 'burn',    label: '🔥 เผา',          color: '#c62828', bg: '#ffebee' },
+            { value: 'unknown', label: '❓ ยังไม่ระบุ',  color: '#9e9e9e', bg: '#f5f5f5' },
+          ] as const).map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => setBurnPractice(opt.value)}
+              style={{
+                padding: '10px 8px', borderRadius: 10, border: '2px solid',
+                borderColor: burnPractice === opt.value ? opt.color : '#e5e7eb',
+                background:  burnPractice === opt.value ? opt.bg : '#fff',
+                cursor: 'pointer', fontWeight: 700, fontSize: 13,
+                color: burnPractice === opt.value ? opt.color : 'var(--text-secondary)',
+                transition: 'border-color 0.15s, background 0.15s',
+              }}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Note */}
+        <label style={{ display: 'block', marginBottom: 10 }}>
+          <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+            รายละเอียดเพิ่มเติม (ไม่บังคับ)
+          </span>
+          <textarea
+            rows={2}
+            value={burnPracticeNote}
+            onChange={(e) => setBurnPracticeNote(e.target.value)}
+            placeholder="เช่น ไฟลามจากแปลงข้างเคียง, ไถกลบตอซัง, ทำปุ๋ยหมัก"
+            style={{ width: '100%', borderRadius: 8, border: '1px solid #d1d5db', padding: '8px 10px', fontSize: 13, resize: 'vertical', marginTop: 4 }}
+          />
+        </label>
+
+        {/* Notice */}
+        {burnNotice && (
+          <p style={{ margin: '0 0 10px', fontSize: 13,
+            color: burnNotice.startsWith('✅') ? '#1b5e20' : '#c62828' }}>
+            {burnNotice}
+          </p>
+        )}
+
+        <button
+          type="button"
+          onClick={() => void saveBurnPractice()}
+          disabled={savingBurn || burnPractice === 'unknown'}
+          style={{
+            width: '100%', padding: '11px', borderRadius: 10, border: 'none',
+            background: savingBurn || burnPractice === 'unknown' ? '#e5e7eb' : '#2e7d32',
+            color: savingBurn || burnPractice === 'unknown' ? '#9ca3af' : '#fff',
+            fontWeight: 700, fontSize: 14, cursor: burnPractice === 'unknown' ? 'not-allowed' : 'pointer',
+          }}
+        >
+          {savingBurn ? 'กำลังบันทึก…' : 'บันทึกข้อมูลการจัดการตอซัง'}
+        </button>
+      </div>
+
       {showRating && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, overflowY: 'auto', padding: '16px' }}>
           <div style={{ maxWidth: 480, margin: '0 auto' }}>

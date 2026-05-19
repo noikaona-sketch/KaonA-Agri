@@ -15,6 +15,7 @@ type Cycle = {
   confirmed_at: string | null;
   products: { name: string; seed_variety: string | null }[] | null;
   plots: { name: string }[] | null;
+  burn_practice: string | null;
 };
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: string }> = {
@@ -33,6 +34,13 @@ function daysUntil(dateStr: string | null): number | null {
   return Math.round((new Date(dateStr).getTime() - Date.now()) / 86400000);
 }
 
+
+const BURN_BADGE: Record<string, { label: string; color: string; bg: string } | undefined> = {
+  no_burn: { label: '🌿 ไม่เผา',    color: '#2e7d32', bg: '#e8f5e9' },
+  partial: { label: '⚠️ บางส่วน',  color: '#e65100', bg: '#fff3e0' },
+  burn:    { label: '🔥 เผา',        color: '#c62828', bg: '#ffebee' },
+};
+
 export function PlantingCycleList() {
   const member = useCurrentMember();
   const memberId = member?.member_id;
@@ -49,7 +57,7 @@ export function PlantingCycleList() {
       setLoading(true);
       const s = createSupabaseBrowserClient();
       let q = s.from('planting_cycles')
-        .select('id,crop_name,season_year,status,planted_at,expected_harvest_at,area_planted_rai,estimated_yield_kg,quota_kg,source,confirmed_at,products(name,seed_variety),plots(name)')
+        .select('id,crop_name,season_year,status,planted_at,expected_harvest_at,area_planted_rai,estimated_yield_kg,quota_kg,source,confirmed_at,burn_practice,products(name,seed_variety),plots(name)')
         .eq('member_id', memberId)
         .order('created_at', { ascending: false });
       if (activeOnly) q = q.not('status', 'in', '("harvested","cancelled")');
@@ -115,6 +123,15 @@ export function PlantingCycleList() {
 
               <div className="plot-card__meta">
                 {c.area_planted_rai && <span className="plot-card__tag">{c.area_planted_rai} ไร่</span>}
+              {c.burn_practice && BURN_BADGE[c.burn_practice] && (
+                <span className="plot-card__tag" style={{
+                  color: BURN_BADGE[c.burn_practice]!.color,
+                  background: BURN_BADGE[c.burn_practice]!.bg,
+                  border: `1px solid ${BURN_BADGE[c.burn_practice]!.color}44`,
+                }}>
+                  {BURN_BADGE[c.burn_practice]!.label}
+                </span>
+              )}
                 {c.estimated_yield_kg && <span className="plot-card__tag">~{c.estimated_yield_kg.toLocaleString()} กก.</span>}
                 {c.planted_at && <span className="plot-card__tag">ปลูก {new Date(c.planted_at).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}</span>}
               </div>
