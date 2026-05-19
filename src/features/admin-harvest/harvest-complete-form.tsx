@@ -18,7 +18,7 @@ export type CompleteFormState = {
 export function isCompleteFormValid(form: CompleteFormState): boolean {
   const kg   = Number(form.receivedKg);
   const mois = Number(form.actualMoisture);
-  return kg > 0 && mois > 0 && mois <= 100;
+  return kg > 0 && kg <= 100000 && mois >= 8 && mois <= 45;
 }
 
 type CompletingBooking = {

@@ -74,8 +74,8 @@ export function AdminHarvestList() {
       actual_completed_at: new Date().toISOString(),
       admin_note:          completeForm.adminNote.trim() || null,
     }).eq('id', completing.id);
+    if (saveErr) { setNotice(`❌ ${saveErr.message}`); setActing(null); return; }
     setActing(null);
-    if (saveErr) { setNotice(`❌ ${saveErr.message}`); return; }
     setCompleting(null);
     setCompleteForm({ receivedKg: '', actualMoisture: '', adminNote: '' });
     setNotice('🏁 บันทึกการเก็บเกี่ยวแล้ว'); await load();
