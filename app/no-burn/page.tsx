@@ -4,7 +4,8 @@ import { type ChangeEvent, useEffect, useState } from 'react';
 
 import { tryCreateSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useCurrentMember } from '@/providers/auth-provider';
-import { CompletenessReminder } from '@/shared/components/completeness-reminder';
+import { CompletenessReminder }   from '@/shared/components/completeness-reminder';
+import { NoBurnStatsBanner }      from '@/features/no-burn-community/no-burn-stats-banner';
 import { LoadingState }         from '@/shared/components/loading-state';
 import { ProtectedRoute }       from '@/shared/components/protected-route';
 import { UIButton }             from '@/shared/components/ui-button';
@@ -195,6 +196,7 @@ function NoBurnPageContent() {
     <div style={{ padding: '16px 16px 80px', maxWidth: 480, margin: '0 auto' }}>
 
       <CompletenessReminder />
+      <NoBurnStatsBanner />
 
       {/* Header */}
       <div style={{ marginBottom: 16 }}>
