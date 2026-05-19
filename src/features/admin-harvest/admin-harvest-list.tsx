@@ -1,9 +1,8 @@
 'use client';
-
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import { HarvestCompleteForm, CompletedActualDisplay, isCompleteFormValid, type CompleteFormState } from './harvest-complete-form';
 import { ErrorState } from '@/shared/components/error-state';
 import { LoadingState } from '@/shared/components/loading-state';
 
@@ -12,6 +11,7 @@ type Booking = {
   scheduled_date: string; scheduled_time_start: string | null;
   actual_date: string | null; actual_yield_kg: number | null;
   quality_grade: string | null; quality_moisture: number | null;
+  actual_received_kg: number | null; actual_moisture_pct: number | null; actual_completed_at: string | null; admin_note: string | null;
   truck_status: string | null; truck_lat: number | null; truck_lng: number | null;
   member_name: string; member_phone: string | null;
   crop_name: string; plot_name: string; plot_province: string | null;
@@ -43,7 +43,7 @@ export function AdminHarvestList() {
   const [acting, setActing]     = useState<string | null>(null);
   const [notice, setNotice]     = useState<string | null>(null);
   const [completing, setCompleting] = useState<Booking | null>(null);
-  const [completeForm, setCompleteForm] = useState({ yieldKg: '', moisture: '', grade: '', note: '' });
+  const [completeForm, setCompleteForm] = useState<CompleteFormState>({ receivedKg: '', actualMoisture: '', adminNote: '' });
 
   async function load() {
     setLoading(true);
@@ -64,39 +64,20 @@ export function AdminHarvestList() {
   }
 
   async function saveComplete() {
-    if (!completing) return;
+    if (!completing || !isCompleteFormValid(completeForm)) return;
     setActing(completing.id);
     const s = createSupabaseBrowserClient();
-    const moisture = Number(completeForm.moisture);
-    let grade = completeForm.grade;
-
-    // auto-calc grade ถ้าไม่ได้เลือก
-    if (!grade && moisture > 0) {
-      const aMax = completing.grade_a_moisture_max ?? 14.5;
-      const bMax = completing.grade_b_moisture_max ?? 18.0;
-      grade = moisture <= aMax ? 'A' : moisture <= bMax ? 'B' : moisture <= 25 ? 'C' : 'reject';
-    }
-
-    await s.from('harvest_bookings').update({
-      status: 'completed',
-      actual_date: new Date().toISOString().slice(0, 10),
-      actual_yield_kg: Number(completeForm.yieldKg) || null,
-      quality_moisture: moisture || null,
-      quality_grade: grade || null,
-      quality_note: completeForm.note || null,
+    const { error: saveErr } = await s.from('harvest_bookings').update({
+      status:              'completed',
+      actual_received_kg:  Number(completeForm.receivedKg),
+      actual_moisture_pct: Number(completeForm.actualMoisture),
+      actual_completed_at: new Date().toISOString(),
+      admin_note:          completeForm.adminNote.trim() || null,
     }).eq('id', completing.id);
-
-    // อัปเดต planting_cycle ด้วย
-    if (completeForm.yieldKg) {
-      await s.from('planting_cycles').update({
-        actual_yield_kg: Number(completeForm.yieldKg),
-        actual_harvest_at: new Date().toISOString().slice(0, 10),
-        status: 'harvested',
-      }).eq('id', completing.id);
-    }
-
-    setActing(null); setCompleting(null);
-    setCompleteForm({ yieldKg: '', moisture: '', grade: '', note: '' });
+    if (saveErr) { setNotice(`❌ ${saveErr.message}`); setActing(null); return; }
+    setActing(null);
+    setCompleting(null);
+    setCompleteForm({ receivedKg: '', actualMoisture: '', adminNote: '' });
     setNotice('🏁 บันทึกการเก็บเกี่ยวแล้ว'); await load();
   }
 
@@ -158,10 +139,21 @@ export function AdminHarvestList() {
                   </td>
                   <td><span className={`status-badge status-badge--${st.badge}`}>{st.label}</span></td>
                   <td>
-                    <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
-                      {b.status === 'pending' && <button className="admin-btn admin-btn--success" onClick={() => confirm(b.id)} disabled={acting !== null} style={{ fontSize: 12, padding: '4px 8px', minHeight: 30 }}>✅</button>}
-                      {b.status === 'confirmed' && <button className="admin-btn admin-btn--primary" onClick={() => { setCompleting(b); setCompleteForm({ yieldKg: String(b.estimated_yield_kg ?? ''), moisture: '', grade: '', note: '' }); }} disabled={acting !== null} style={{ fontSize: 12, padding: '4px 8px', minHeight: 30 }}>🏁 บันทึก</button>}
-                    </div>
+                    {b.status === 'completed' ? (
+                      <CompletedActualDisplay
+                        actualReceivedKg={b.actual_received_kg}
+                        actualMoisturePct={b.actual_moisture_pct}
+                        actualCompletedAt={b.actual_completed_at}
+                        adminNote={b.admin_note}
+                        farmerEstKg={b.actual_yield_kg}
+                        farmerEstMoisture={b.quality_moisture}
+                      />
+                    ) : (
+                      <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
+                        {b.status === 'pending' && <button className="admin-btn admin-btn--success" onClick={() => confirm(b.id)} disabled={acting !== null} style={{ fontSize: 12, padding: '4px 8px', minHeight: 30 }}>✅</button>}
+                        {b.status === 'confirmed' && <button className="admin-btn admin-btn--primary" onClick={() => { setCompleting(b); setCompleteForm({ receivedKg: '', actualMoisture: '', adminNote: '' }); }} disabled={acting !== null} style={{ fontSize: 12, padding: '4px 8px', minHeight: 30 }}>🏁 บันทึก</button>}
+                      </div>
+                    )}
                   </td>
                 </tr>
               );
@@ -179,52 +171,20 @@ export function AdminHarvestList() {
               <button className="admin-modal__close" onClick={() => setCompleting(null)}>×</button>
             </div>
             <div className="admin-modal__body">
-              <p style={{ margin: 0, fontSize: 14, color: '#4a6741', fontWeight: 600 }}>
-                {completing.crop_name} · {completing.plot_name} · {completing.member_name}
-              </p>
-              {completing.product_name && (
-                <div style={{ background: '#e3f2fd', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#1565c0' }}>
-                  🔬 {completing.product_name} {completing.seed_variety ?? ''} — เกรด A ≤{completing.grade_a_moisture_max ?? 14.5}% ชื้น
-                </div>
+              <HarvestCompleteForm
+                completing={completing}
+                form={completeForm}
+                onChange={(patch) => setCompleteForm((p) => ({ ...p, ...patch }))}
+              />
+              {!isCompleteFormValid(completeForm) && (
+                <p style={{ margin: '4px 0 0', fontSize: 12, color: '#e53e3e' }}>
+                  กรุณาระบุน้ำหนักรับจริงและความชื้นจริงก่อนบันทึก
+                </p>
               )}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <label className="reg-label">ผลผลิตจริง (กก.)
-                  <input className="reg-input" type="number" value={completeForm.yieldKg} onChange={(e) => setCompleteForm((p) => ({ ...p, yieldKg: e.target.value }))} />
-                </label>
-                <label className="reg-label">ความชื้น (%)
-                  <input className="reg-input" type="number" step="0.1" value={completeForm.moisture} onChange={(e) => setCompleteForm((p) => ({ ...p, moisture: e.target.value }))} placeholder="14.5" />
-                </label>
-              </div>
-              <label className="reg-label">เกรด (ระบบจะคำนวณจากความชื้นอัตโนมัติ)
-                <select className="reg-input" value={completeForm.grade} onChange={(e) => setCompleteForm((p) => ({ ...p, grade: e.target.value }))}>
-                  <option value="">คำนวณอัตโนมัติ</option>
-                  <option value="A">เกรด A</option>
-                  <option value="B">เกรด B</option>
-                  <option value="C">เกรด C</option>
-                  <option value="reject">Reject</option>
-                </select>
-              </label>
-              {completeForm.moisture && (
-                <div style={{ background: '#f7faf7', borderRadius: 8, padding: 10, fontSize: 14 }}>
-                  เกรดจากความชื้น {completeForm.moisture}%:&nbsp;
-                  <strong style={{ color: GRADE_COLOR[
-                    Number(completeForm.moisture) <= (completing.grade_a_moisture_max ?? 14.5) ? 'A' :
-                    Number(completeForm.moisture) <= (completing.grade_b_moisture_max ?? 18) ? 'B' :
-                    Number(completeForm.moisture) <= 25 ? 'C' : 'reject'
-                  ] }}>
-                    เกรด {Number(completeForm.moisture) <= (completing.grade_a_moisture_max ?? 14.5) ? 'A' :
-                      Number(completeForm.moisture) <= (completing.grade_b_moisture_max ?? 18) ? 'B' :
-                      Number(completeForm.moisture) <= 25 ? 'C' : 'Reject'}
-                  </strong>
-                </div>
-              )}
-              <label className="reg-label">หมายเหตุ
-                <input className="reg-input" value={completeForm.note} onChange={(e) => setCompleteForm((p) => ({ ...p, note: e.target.value }))} placeholder="หมายเหตุการเก็บเกี่ยว..." />
-              </label>
             </div>
             <div className="admin-modal__footer">
               <button className="admin-btn admin-btn--secondary" onClick={() => setCompleting(null)}>ยกเลิก</button>
-              <button className="admin-btn admin-btn--primary" onClick={saveComplete} disabled={acting !== null}>
+              <button className="admin-btn admin-btn--primary" onClick={saveComplete} disabled={acting !== null || !isCompleteFormValid(completeForm)}>
                 {acting ? '…' : '💾 บันทึก'}
               </button>
             </div>
