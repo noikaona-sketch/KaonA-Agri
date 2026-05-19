@@ -7,7 +7,8 @@ import { useCurrentMember } from '@/providers/auth-provider';
 import { MobileAppShell } from '@/shared/components/mobile-app-shell';
 import { LoadingState } from '@/shared/components/loading-state';
 import { ErrorState } from '@/shared/components/error-state';
-import { UIButton } from '@/shared/components/ui-button';
+import { UIButton }                from '@/shared/components/ui-button';
+import { NoBurnObservationForm }   from '@/features/no-burn-community/no-burn-observation-form';
 
 type Task = {
   id: string; result_status: string; result_note: string | null;
@@ -180,6 +181,13 @@ export default function InspectionTaskDetailPage({ params }: Props) {
           </>
         )}
       </div>
+
+      {/* Service team field observation — shown when task links to a no-burn request */}
+      {task.no_burn_requests?.[0]?.id && (
+        <NoBurnObservationForm
+          noBurnRequestId={task.no_burn_requests[0].id}
+        />
+      )}
     </MobileAppShell>
   );
 }
