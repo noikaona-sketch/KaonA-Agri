@@ -145,6 +145,8 @@ export function AdminHarvestList() {
                         actualMoisturePct={b.actual_moisture_pct}
                         actualCompletedAt={b.actual_completed_at}
                         adminNote={b.admin_note}
+                        farmerEstKg={b.actual_yield_kg}
+                        farmerEstMoisture={b.quality_moisture}
                       />
                     ) : (
                       <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>

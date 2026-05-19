@@ -98,14 +98,33 @@ export function HarvestCompleteForm({ completing, form, onChange }: Props) {
 // Shown instead of form to prevent casual editing of factory actuals.
 // ─────────────────────────────────────────────────────────────────────────────
 type DisplayProps = {
-  actualReceivedKg:  number | null;
-  actualMoisturePct: number | null;
-  actualCompletedAt: string | null;
-  adminNote:         string | null;
+  actualReceivedKg:   number | null;
+  actualMoisturePct:  number | null;
+  actualCompletedAt:  string | null;
+  adminNote:          string | null;
+  // farmer estimates for variance display
+  farmerEstKg?:       number | null;
+  farmerEstMoisture?: number | null;
 };
+
+function VarianceTag({ estimated, actual, unit }: { estimated: number; actual: number; unit: string }) {
+  const diff    = actual - estimated;
+  const pct     = estimated !== 0 ? ((diff / estimated) * 100).toFixed(1) : null;
+  const positive = diff >= 0;
+  return (
+    <span style={{
+      fontSize: 11, fontWeight: 700, marginLeft: 6,
+      color: positive ? '#2e7d32' : '#c62828',
+    }}>
+      {positive ? '+' : ''}{diff.toFixed(diff % 1 === 0 ? 0 : 1)} {unit}
+      {pct ? ` (${positive ? '+' : ''}${pct}%)` : ''}
+    </span>
+  );
+}
 
 export function CompletedActualDisplay({
   actualReceivedKg, actualMoisturePct, actualCompletedAt, adminNote,
+  farmerEstKg, farmerEstMoisture,
 }: DisplayProps) {
   return (
     <div style={{
@@ -115,16 +134,35 @@ export function CompletedActualDisplay({
       <p style={{ margin: '0 0 8px', fontWeight: 700, fontSize: 13, color: '#14532d' }}>
         ✅ ข้อมูลจริงจากโรงงาน (อ่านอย่างเดียว)
       </p>
+
+      {/* Received kg + variance vs farmer estimate */}
       <p style={{ margin: '0 0 4px', fontSize: 13 }}>
-        น้ำหนักรับจริง: <strong>
-          {actualReceivedKg != null ? `${actualReceivedKg.toLocaleString()} กก.` : '—'}
-        </strong>
+        น้ำหนักรับจริง:{' '}
+        <strong>{actualReceivedKg != null ? `${actualReceivedKg.toLocaleString()} กก.` : '—'}</strong>
+        {farmerEstKg && actualReceivedKg != null && (
+          <VarianceTag estimated={farmerEstKg} actual={actualReceivedKg} unit="กก." />
+        )}
       </p>
+      {farmerEstKg && (
+        <p style={{ margin: '0 0 6px', fontSize: 11, color: '#9ca3af' }}>
+          ประมาณการเกษตรกร: {farmerEstKg.toLocaleString()} กก.
+        </p>
+      )}
+
+      {/* Moisture + variance */}
       <p style={{ margin: '0 0 4px', fontSize: 13 }}>
-        ความชื้นจริง: <strong>
-          {actualMoisturePct != null ? `${actualMoisturePct}%` : '—'}
-        </strong>
+        ความชื้นจริง:{' '}
+        <strong>{actualMoisturePct != null ? `${actualMoisturePct}%` : '—'}</strong>
+        {farmerEstMoisture && actualMoisturePct != null && (
+          <VarianceTag estimated={farmerEstMoisture} actual={actualMoisturePct} unit="%" />
+        )}
       </p>
+      {farmerEstMoisture && (
+        <p style={{ margin: '0 0 6px', fontSize: 11, color: '#9ca3af' }}>
+          ประมาณการเกษตรกร: {farmerEstMoisture}%
+        </p>
+      )}
+
       {adminNote && (
         <p style={{ margin: '0 0 4px', fontSize: 12, color: '#166534' }}>💬 {adminNote}</p>
       )}
