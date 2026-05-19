@@ -1,83 +1,54 @@
-import { NextResponse } from 'next/server';
+import { NextResponse }               from 'next/server';
 import { createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
+import { resolveCaller }              from './harvest-booking-auth';
+import { validateBody }               from './harvest-booking-validation';
+import { validateCycle, checkDuplicate, insertBooking, listBookings } from './harvest-booking-repository';
+import type { HarvestBookingBody } from './harvest-booking-validation';
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as {
-      planting_cycle_id: string;
-      member_id: string;
-      scheduled_date: string;
-      scheduled_time_start?: string;
-      plot_id?: string;
-      truck_note?: string;
-    };
+    const s      = createServerSupabaseClient();
+    const caller = await resolveCaller(request, s);
+    if (!caller.ok) return caller.response;
 
-    if (!body.planting_cycle_id || !body.member_id || !body.scheduled_date) {
-      return NextResponse.json({ error: 'ข้อมูลไม่ครบ' }, { status: 400 });
+    const body = (await request.json()) as HarvestBookingBody;
+
+    const bodyErr = validateBody(body);
+    if (bodyErr) return bodyErr;
+
+    const cycleErr = await validateCycle(s, body.planting_cycle_id, caller.memberId);
+    if (cycleErr) return cycleErr;
+
+    const dupErr = await checkDuplicate(s, body.planting_cycle_id);
+    if (dupErr) return dupErr;
+
+    const { data, error } = await insertBooking(s, caller.memberId, body);
+    if (error || !data) {
+      console.error('[HARVEST_BOOKING] insert error:', error);
+      return NextResponse.json({ error: error ?? 'บันทึกไม่สำเร็จ' }, { status: 500 });
     }
 
-    const s = createServerSupabaseClient();
-
-    const { data: truckRole, error: roleErr } = await s
-      .from('member_roles')
-      .select('member_id')
-      .eq('member_id', body.member_id)
-      .eq('role', 'truck_owner')
-      .maybeSingle();
-    if (roleErr) return NextResponse.json({ error: roleErr.message }, { status: 500 });
-
-    let providerApproved = false;
-    if (!truckRole) {
-      const { data: providerRequest, error: providerErr } = await s
-        .from('provider_requests')
-        .select('id')
-        .eq('member_id', body.member_id)
-        .eq('request_type', 'service_team')
-        .eq('status', 'approved')
-        .limit(1)
-        .maybeSingle();
-      if (providerErr) return NextResponse.json({ error: providerErr.message }, { status: 500 });
-      providerApproved = Boolean(providerRequest);
-    }
-
-    if (!truckRole && !providerApproved) {
-      return NextResponse.json({ error: 'ยังไม่มีสิทธิ์นัดรถเกี่ยว (ต้องเป็นทีมบริการที่ผ่านอนุมัติ)' }, { status: 403 });
-    }
-
-    // ตรวจว่ามีการนัดอยู่แล้วหรือเปล่า
-    const { data: existing } = await s.from('harvest_bookings')
-      .select('id').eq('planting_cycle_id', body.planting_cycle_id)
-      .in('status', ['pending', 'confirmed']).maybeSingle();
-
-    if (existing) {
-      return NextResponse.json({ error: 'มีการนัดรถเกี่ยวอยู่แล้ว' }, { status: 409 });
-    }
-
-    const { data, error } = await s.from('harvest_bookings').insert({
-      planting_cycle_id:    body.planting_cycle_id,
-      member_id:            body.member_id,
-      scheduled_date:       body.scheduled_date,
-      scheduled_time_start: body.scheduled_time_start ?? null,
-      plot_id:              body.plot_id ?? null,
-      truck_note:           body.truck_note ?? null,
-      status: 'pending',
-    }).select('id').single();
-
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ ok: true, booking_id: data.id });
-  } catch (e) { return NextResponse.json({ error: String(e) }, { status: 500 }); }
+    return NextResponse.json({ ok: true, booking_id: data.id }, { status: 201 });
+  } catch (e) {
+    console.error('[HARVEST_BOOKING] POST exception:', e);
+    return NextResponse.json({ error: String(e) }, { status: 500 });
+  }
 }
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const cycleId = searchParams.get('cycle_id');
-  if (!cycleId) return NextResponse.json({ bookings: [] });
+  try {
+    const s      = createServerSupabaseClient();
+    const caller = await resolveCaller(request, s);
+    if (!caller.ok) return caller.response;
 
-  const s = createServerSupabaseClient();
-  const { data } = await s.from('harvest_bookings')
-    .select('id,scheduled_date,scheduled_time_start,status,actual_yield_kg,note')
-    .eq('planting_cycle_id', cycleId)
-    .order('scheduled_date');
+    const cycleId = new URL(request.url).searchParams.get('cycle_id');
+    if (!cycleId) return NextResponse.json({ bookings: [] });
 
-  return NextResponse.json({ bookings: data ?? [] });
+    const { data, error } = await listBookings(s, cycleId, caller.memberId);
+    if (error) return NextResponse.json({ error }, { status: 500 });
+
+    return NextResponse.json({ bookings: data });
+  } catch (e) {
+    return NextResponse.json({ error: String(e) }, { status: 500 });
+  }
 }
