@@ -10,8 +10,10 @@ export const ROLE_LABELS_TH: Record<AppRole, string> = {
 };
 
 export const MEMBER_STATUS_LABELS_TH: Record<MemberStatus, string> = {
-  pending: 'รออนุมัติ',
-  approved: 'อนุมัติแล้ว',
-  rejected: 'ไม่อนุมัติ',
-  suspended: 'ระงับการใช้งาน',
+  pending:          'รออนุมัติ',
+  pending_approval: 'รออนุมัติ',
+  returned:         'ส่งกลับแก้ไข',
+  approved:         'อนุมัติแล้ว',
+  rejected:         'ไม่อนุมัติ',
+  suspended:        'ระงับการใช้งาน',
 };

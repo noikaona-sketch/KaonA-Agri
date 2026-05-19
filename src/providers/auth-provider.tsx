@@ -16,7 +16,7 @@ import type {
 import { isAdminWebPath } from '@/shared/auth/admin-web-path';
 
 const APP_ROLES: AppRole[] = ['admin', 'staff', 'inspector', 'leader', 'truck_owner', 'farmer'];
-const MEMBER_STATUSES: MemberStatus[] = ['pending', 'approved', 'rejected', 'suspended'];
+const MEMBER_STATUSES: MemberStatus[] = ['pending', 'pending_approval', 'approved', 'rejected', 'returned', 'suspended'];
 
 const INITIAL_BRIDGE_DIAGNOSTICS: LiffBridgeDiagnostics = {
   supabaseUrlPresent: false,
@@ -218,7 +218,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
           } catch { /* sessionStorage full */ }
         }
 
-        if (bootstrapResult.status === 'pending') {
+        // Normalize: both 'pending' and 'pending_approval' DB values
+        // map to the same AuthStatus 'pending_approval'.
+        // 'pending' is inserted by LINE auth; 'pending_approval' by admin import.
+        if (bootstrapResult.status === 'pending' || bootstrapResult.status === 'pending_approval') {
           setStatus('pending_approval');
           return;
         }

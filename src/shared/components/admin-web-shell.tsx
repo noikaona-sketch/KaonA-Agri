@@ -25,7 +25,7 @@ const ALL_NAV: NavItem[] = [
 
 const DEPT_NAV: Record<string, string[]> = {
   super_admin: ['แดชบอร์ด','สมาชิก','เกษตร','เมล็ด','ขาย','คลัง','รถเกี่ยว','คะแนนบริการ','เครดิต','บริการ','เจ้าหน้าที่'],
-  admin:       ['แดชบอร์ด','สมาชิก','เกษตร','เมล็ด','ขาย','คลัง','รถเกี่ยว','คะแนนบริการ','เครดิต','บริการ','เจ้าหน้าที่'],
+  admin:       ['แดชบอร์ด','สมาชิก','เกษตร','เมล็ด','ขาย','คลัง','รถเกี่ยว','คะแนนบริการ','เครดิต','บริการ'],
   field:       ['แดชบอร์ด','สมาชิก','เกษตร','รถเกี่ยว','คะแนนบริการ','บริการ'],
   sales:       ['แดชบอร์ด','สมาชิก','เมล็ด','ขาย','คลัง','เครดิต'],
   accounting:  ['แดชบอร์ด','ขาย','คลัง','เครดิต'],
@@ -49,13 +49,31 @@ export function AdminWebShell({ title, subtitle, roleBadge, children }: AdminWeb
   const pathname = usePathname();
   const [dept, setDept] = useState('admin');
 
+  const [adminRole, setAdminRole] = useState<string | null>(null);
+
   useEffect(() => {
-    // อ่าน department จาก cookie (non-httpOnly)
-    const val = document.cookie.split(';').find((c) => c.trim().startsWith('kaona_admin_dept='));
-    if (val) setDept(val.split('=')[1]?.trim() ?? 'admin');
+    // Read department + admin_role from cookies (non-httpOnly, set at login)
+    const cookies = document.cookie.split(';').map((c) => c.trim());
+    const deptVal = cookies.find((c) => c.startsWith('kaona_admin_dept='));
+    if (deptVal) setDept(deptVal.split('=')[1]?.trim() ?? 'admin');
+    const roleVal = cookies.find((c) => c.startsWith('kaona_admin_role='));
+    if (roleVal) setAdminRole(roleVal.split('=')[1]?.trim() ?? null);
   }, []);
 
-  const navItems = getNavForDept(dept);
+  // visibleMenus = allMenus.filter(canAccess)
+  // admin_role (from admin_role_permissions table) adds a second filter layer.
+  // super_admin sees all menus. Other roles filtered by DEPT_NAV first,
+  // then restricted further if admin_role limits specific menus.
+  const ROLE_EXTRA_HIDDEN: Record<string, string[]> = {
+    // field_admin should not see financial menus even if dept allows it
+    field_admin:    ['เครดิต', 'ขาย'],
+    // seed_admin should not see harvest or financial menus
+    seed_admin:     ['รถเกี่ยว', 'เครดิต'],
+    // readonly_admin sees everything their dept allows but nothing is hidden further
+    readonly_admin: [],
+  };
+  const extraHidden = adminRole ? (ROLE_EXTRA_HIDDEN[adminRole] ?? []) : [];
+  const navItems = getNavForDept(dept).filter((n) => !extraHidden.includes(n.label));
   const deptLabel: Record<string, string> = {
     super_admin: 'Super Admin', admin: 'แอดมิน', field: 'ภาคสนาม',
     sales: 'ฝ่ายขาย', accounting: 'บัญชี', finance: 'การเงิน', stock: 'สต๊อก',
