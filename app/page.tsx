@@ -8,6 +8,7 @@ import { createSupabaseBrowserClient }             from '@/lib/supabase/client';
 import { LoadingState }                            from '@/shared/components/loading-state';
 import { MobileAppShell }                          from '@/shared/components/mobile-app-shell';
 import type { AppRole }                            from '@/shared/auth/auth-types';
+import { MemberDashboardFeed }                     from '@/features/engagement/member-dashboard-feed';
 
 // ─────────────────────────────────────────────────────────────────────
 // Helpers
@@ -194,6 +195,9 @@ function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: stri
     <MobileAppShell title="" subtitle="">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <HeroCard name={name} memberId={memberId} primaryRole="farmer" allRoles={allRoles} plots={plots} price={null} quota={quota} />
+
+        {/* P1.5 engagement feed — status + season + no-burn + announcement + price */}
+        <MemberDashboardFeed memberId={memberId} />
 
         {/* main menus */}
         <div>
