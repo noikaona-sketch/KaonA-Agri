@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
-import { HarvestCompleteForm, type CompleteFormState } from './harvest-complete-form';
+import { HarvestCompleteForm, CompletedActualDisplay, isCompleteFormValid, type CompleteFormState } from './harvest-complete-form';
 import { ErrorState } from '@/shared/components/error-state';
 import { LoadingState } from '@/shared/components/loading-state';
 
@@ -11,7 +11,7 @@ type Booking = {
   scheduled_date: string; scheduled_time_start: string | null;
   actual_date: string | null; actual_yield_kg: number | null;
   quality_grade: string | null; quality_moisture: number | null;
-  actual_received_kg: number | null; actual_moisture_pct: number | null; completed_at: string | null;
+  actual_received_kg: number | null; actual_moisture_pct: number | null; actual_completed_at: string | null; admin_note: string | null;
   truck_status: string | null; truck_lat: number | null; truck_lng: number | null;
   member_name: string; member_phone: string | null;
   crop_name: string; plot_name: string; plot_province: string | null;
@@ -43,7 +43,7 @@ export function AdminHarvestList() {
   const [acting, setActing]     = useState<string | null>(null);
   const [notice, setNotice]     = useState<string | null>(null);
   const [completing, setCompleting] = useState<Booking | null>(null);
-  const [completeForm, setCompleteForm] = useState<CompleteFormState>({ yieldKg: '', moisture: '', grade: '', note: '', receivedKg: '', actualMoisture: '' });
+  const [completeForm, setCompleteForm] = useState<CompleteFormState>({ receivedKg: '', actualMoisture: '', adminNote: '' });
 
   async function load() {
     setLoading(true);
@@ -64,40 +64,20 @@ export function AdminHarvestList() {
   }
 
   async function saveComplete() {
-    if (!completing) return;
+    if (!completing || !isCompleteFormValid(completeForm)) return;
     setActing(completing.id);
     const s = createSupabaseBrowserClient();
-    const moisture = Number(completeForm.moisture);
-    let grade = completeForm.grade;
-
-    if (!grade && moisture > 0) {
-      const aMax = completing.grade_a_moisture_max ?? 14.5;
-      const bMax = completing.grade_b_moisture_max ?? 18.0;
-      grade = moisture <= aMax ? 'A' : moisture <= bMax ? 'B' : moisture <= 25 ? 'C' : 'reject';
-    }
-
-    await s.from('harvest_bookings').update({
-      status: 'completed',
-      actual_date:         new Date().toISOString().slice(0, 10),
-      actual_yield_kg:     Number(completeForm.yieldKg)       || null,
-      quality_moisture:    moisture                             || null,
-      quality_grade:       grade                                || null,
-      quality_note:        completeForm.note                    || null,
-      actual_received_kg:  Number(completeForm.receivedKg)    || null,
-      actual_moisture_pct: Number(completeForm.actualMoisture) || null,
-      completed_at:        new Date().toISOString(),
+    const { error: saveErr } = await s.from('harvest_bookings').update({
+      status:              'completed',
+      actual_received_kg:  Number(completeForm.receivedKg),
+      actual_moisture_pct: Number(completeForm.actualMoisture),
+      actual_completed_at: new Date().toISOString(),
+      admin_note:          completeForm.adminNote.trim() || null,
     }).eq('id', completing.id);
-
-    if (completeForm.yieldKg) {
-      await s.from('planting_cycles').update({
-        actual_yield_kg: Number(completeForm.yieldKg),
-        actual_harvest_at: new Date().toISOString().slice(0, 10),
-        status: 'harvested',
-      }).eq('id', completing.id);
-    }
-
-    setActing(null); setCompleting(null);
-    setCompleteForm({ yieldKg: '', moisture: '', grade: '', note: '', receivedKg: '', actualMoisture: '' });
+    setActing(null);
+    if (saveErr) { setNotice(`❌ ${saveErr.message}`); return; }
+    setCompleting(null);
+    setCompleteForm({ receivedKg: '', actualMoisture: '', adminNote: '' });
     setNotice('🏁 บันทึกการเก็บเกี่ยวแล้ว'); await load();
   }
 
@@ -159,10 +139,19 @@ export function AdminHarvestList() {
                   </td>
                   <td><span className={`status-badge status-badge--${st.badge}`}>{st.label}</span></td>
                   <td>
-                    <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
-                      {b.status === 'pending' && <button className="admin-btn admin-btn--success" onClick={() => confirm(b.id)} disabled={acting !== null} style={{ fontSize: 12, padding: '4px 8px', minHeight: 30 }}>✅</button>}
-                      {b.status === 'confirmed' && <button className="admin-btn admin-btn--primary" onClick={() => { setCompleting(b); setCompleteForm({ yieldKg: String(b.estimated_yield_kg ?? ''), moisture: '', grade: '', note: '', receivedKg: '', actualMoisture: '' }); }} disabled={acting !== null} style={{ fontSize: 12, padding: '4px 8px', minHeight: 30 }}>🏁 บันทึก</button>}
-                    </div>
+                    {b.status === 'completed' ? (
+                      <CompletedActualDisplay
+                        actualReceivedKg={b.actual_received_kg}
+                        actualMoisturePct={b.actual_moisture_pct}
+                        actualCompletedAt={b.actual_completed_at}
+                        adminNote={b.admin_note}
+                      />
+                    ) : (
+                      <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
+                        {b.status === 'pending' && <button className="admin-btn admin-btn--success" onClick={() => confirm(b.id)} disabled={acting !== null} style={{ fontSize: 12, padding: '4px 8px', minHeight: 30 }}>✅</button>}
+                        {b.status === 'confirmed' && <button className="admin-btn admin-btn--primary" onClick={() => { setCompleting(b); setCompleteForm({ receivedKg: '', actualMoisture: '', adminNote: '' }); }} disabled={acting !== null} style={{ fontSize: 12, padding: '4px 8px', minHeight: 30 }}>🏁 บันทึก</button>}
+                      </div>
+                    )}
                   </td>
                 </tr>
               );
@@ -185,10 +174,15 @@ export function AdminHarvestList() {
                 form={completeForm}
                 onChange={(patch) => setCompleteForm((p) => ({ ...p, ...patch }))}
               />
+              {!isCompleteFormValid(completeForm) && (
+                <p style={{ margin: '4px 0 0', fontSize: 12, color: '#e53e3e' }}>
+                  กรุณาระบุน้ำหนักรับจริงและความชื้นจริงก่อนบันทึก
+                </p>
+              )}
             </div>
             <div className="admin-modal__footer">
               <button className="admin-btn admin-btn--secondary" onClick={() => setCompleting(null)}>ยกเลิก</button>
-              <button className="admin-btn admin-btn--primary" onClick={saveComplete} disabled={acting !== null}>
+              <button className="admin-btn admin-btn--primary" onClick={saveComplete} disabled={acting !== null || !isCompleteFormValid(completeForm)}>
                 {acting ? '…' : '💾 บันทึก'}
               </button>
             </div>

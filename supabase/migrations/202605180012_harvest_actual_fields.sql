@@ -18,11 +18,11 @@
 alter table public.harvest_bookings
   add column if not exists actual_received_kg  numeric(12, 2),
   add column if not exists actual_moisture_pct numeric(5, 1),
-  add column if not exists completed_at        timestamptz;
+  add column if not exists actual_completed_at timestamptz;
 
 comment on column public.harvest_bookings.actual_received_kg
   is 'Factory scale weight — actual received kg (≠ actual_yield_kg farmer estimate)';
 comment on column public.harvest_bookings.actual_moisture_pct
   is 'Factory-measured moisture % (≠ estimated_moisture_pct farmer estimate)';
-comment on column public.harvest_bookings.completed_at
-  is 'Timestamp when booking was marked completed';
+comment on column public.harvest_bookings.actual_completed_at
+  is 'Timestamp when actual harvest data was recorded and booking completed';
