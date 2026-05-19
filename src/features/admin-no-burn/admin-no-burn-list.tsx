@@ -29,6 +29,8 @@ const STATUS_CFG: Record<string, { badge: string; label: string; color: string }
   approved:            { badge: 'approved', label: '✅ อนุมัติ',               color: '#2e7d32' },
   rejected:            { badge: 'rejected', label: '⛔ ไม่อนุมัติ',            color: '#9e9e9e' },
   completed:           { badge: 'approved', label: '🏁 เสร็จสิ้น',             color: '#1b5e20' },
+  anomaly:             { badge: 'pending',  label: '⚠️ พบเหตุผิดปกติ',         color: '#b45309' },
+  seeking_support:     { badge: 'pending',  label: '🤝 ขอคำแนะนำ',            color: '#0369a1' },
 };
 
 // Statuses where staff can still act
@@ -137,6 +139,8 @@ export function AdminNoBurnList() {
           <option value="approved">✅ อนุมัติ</option>
           <option value="rejected">⛔ ไม่อนุมัติ</option>
           <option value="completed">🏁 เสร็จสิ้น</option>
+          <option value="anomaly">⚠️ พบเหตุผิดปกติ</option>
+          <option value="seeking_support">🤝 ขอคำแนะนำ</option>
         </select>
       </div>
 
