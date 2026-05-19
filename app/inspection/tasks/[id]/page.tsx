@@ -26,7 +26,8 @@ export default function InspectionTaskDetailPage({ params }: Props) {
   const [error, setError]     = useState<string | null>(null);
   const [saving, setSaving]   = useState(false);
   const [notice, setNotice]   = useState<string | null>(null);
-  const [result, setResult]   = useState<'pass' | 'fail'>('pass');
+  // result maps to inspections.result_status constraint values
+  const [result, setResult]   = useState<'passed' | 'failed' | 'needs_update'>('passed');
   const [note, setNote]       = useState('');
   const [showForm, setShowForm] = useState(false);
 
@@ -46,21 +47,51 @@ export default function InspectionTaskDetailPage({ params }: Props) {
     if (!task || !member?.member_id) return;
     setSaving(true);
     const s = createSupabaseBrowserClient();
-    const { error: e } = await s.from('inspections').update({
+
+    // Update inspections row first
+    const { error: inspErr } = await s.from('inspections').update({
       result_status: result,
-      result_note: note || null,
-      visited_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      result_note:   note || null,
+      visited_at:    new Date().toISOString(),
+      updated_at:    new Date().toISOString(),
     }).eq('id', task.id);
-    if (!e && task.no_burn_requests?.[0]?.id) {
-      await s.from('no_burn_requests').update({
-        status: result === 'pass' ? 'approved' : 'rejected',
-        review_note: note || null,
-      }).eq('id', task.no_burn_requests?.[0]?.id);
+
+    if (inspErr) {
+      setSaving(false);
+      setError(inspErr.message);
+      return;
     }
+
+    // Map inspection result → no_burn_requests status transition
+    // passed           → approved
+    // failed           → rejected
+    // needs_update     → inspection_required (send back for more evidence)
+    const noBurnStatusMap: Record<string, string> = {
+      passed:       'approved',
+      failed:       'rejected',
+      needs_update: 'inspection_required',
+    };
+    const noBurnStatus = noBurnStatusMap[result];
+    const noBurnId = task.no_burn_requests?.[0]?.id;
+
+    if (noBurnId && noBurnStatus) {
+      const { error: nbrErr } = await s.from('no_burn_requests').update({
+        status:      noBurnStatus,
+        review_note: note || null,
+      }).eq('id', noBurnId);
+      if (nbrErr) {
+        console.warn('[INSPECTION] no_burn_requests update failed:', nbrErr.message);
+        // Non-fatal — inspection result saved, status sync failed
+      }
+    }
+
     setSaving(false);
-    if (e) { setError(e.message); return; }
-    setNotice(`✅ บันทึกผลตรวจแล้ว — ${result === 'pass' ? 'ผ่าน' : 'ไม่ผ่าน'}`);
+    const resultLabel: Record<string, string> = {
+      passed:       'ผ่านการตรวจ ✅',
+      failed:       'ไม่ผ่าน ⛔',
+      needs_update: 'ต้องแก้ไขเพิ่มเติม 📋',
+    };
+    setNotice(`✅ บันทึกผลตรวจแล้ว — ${resultLabel[result] ?? result}`);
     setShowForm(false);
     setTask((p) => p ? { ...p, result_status: result, result_note: note || null } : p);
   }
@@ -68,7 +99,7 @@ export default function InspectionTaskDetailPage({ params }: Props) {
   if (loading) return <LoadingState label="กำลังโหลด…" />;
   if (error || !task) return <ErrorState title="ไม่พบข้อมูล" detail={error ?? ''} />;
 
-  const isDone = ['pass','fail'].includes(task.result_status);
+  const isDone = ['passed', 'failed', 'needs_update', 'completed'].includes(task.result_status);
 
   return (
     <MobileAppShell title="บันทึกผลตรวจ" subtitle="ตรวจสอบและบันทึกผลการตรวจแปลง">
@@ -104,9 +135,9 @@ export default function InspectionTaskDetailPage({ params }: Props) {
 
         {/* สถานะปัจจุบัน */}
         {isDone && (
-          <div className="kaona-card" style={{ background: task.result_status === 'pass' ? '#e8f5e9' : '#ffebee', borderColor: task.result_status === 'pass' ? '#a5d6a7' : '#ef9a9a' }}>
-            <p style={{ margin: 0, fontWeight: 800, fontSize: 16, color: task.result_status === 'pass' ? '#1b5e20' : '#c62828' }}>
-              {task.result_status === 'pass' ? '✅ ผ่านการตรวจ' : '❌ ไม่ผ่านการตรวจ'}
+          <div className="kaona-card" style={{ background: task.result_status === 'passed' ? '#e8f5e9' : task.result_status === 'needs_update' ? '#fff8e1' : '#ffebee', borderColor: task.result_status === 'passed' ? '#a5d6a7' : '#ef9a9a' }}>
+            <p style={{ margin: 0, fontWeight: 800, fontSize: 16, color: task.result_status === 'passed' ? '#1b5e20' : task.result_status === 'needs_update' ? '#e65100' : '#c62828' }}>
+              {task.result_status === 'passed' ? '✅ ผ่านการตรวจ' : task.result_status === 'needs_update' ? '📋 ต้องแก้ไขเพิ่มเติม' : '❌ ไม่ผ่านการตรวจ'}
             </p>
             {task.result_note && <p style={{ margin: '6px 0 0', fontSize: 14, color: 'var(--text-secondary)' }}>{task.result_note}</p>}
             {task.visited_at && <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-secondary)' }}>ตรวจเมื่อ {new Date(task.visited_at).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>}
@@ -121,11 +152,19 @@ export default function InspectionTaskDetailPage({ params }: Props) {
             ) : (
               <div className="kaona-card">
                 <p style={{ margin: '0 0 12px', fontWeight: 700, fontSize: 15 }}>📝 บันทึกผลการตรวจ</p>
-                <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-                  {(['pass', 'fail'] as const).map((r) => (
-                    <button key={r} onClick={() => setResult(r)}
-                      style={{ flex: 1, padding: '12px', borderRadius: 12, border: `2px solid ${result === r ? (r === 'pass' ? '#2e7d32' : '#c62828') : 'var(--border)'}`, background: result === r ? (r === 'pass' ? '#e8f5e9' : '#ffebee') : '#fff', cursor: 'pointer', fontWeight: 800, fontSize: 15, color: result === r ? (r === 'pass' ? '#1b5e20' : '#c62828') : 'var(--text-secondary)' }}>
-                      {r === 'pass' ? '✅ ผ่าน' : '❌ ไม่ผ่าน'}
+                <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+                  {([
+                    { value: 'passed',       label: '✅ ผ่าน',           bg: '#e8f5e9', border: '#2e7d32', color: '#1b5e20' },
+                    { value: 'needs_update', label: '📋 ต้องแก้ไข',     bg: '#fff8e1', border: '#e65100', color: '#e65100' },
+                    { value: 'failed',       label: '❌ ไม่ผ่าน',        bg: '#ffebee', border: '#c62828', color: '#c62828' },
+                  ] as const).map((opt) => (
+                    <button key={opt.value} onClick={() => setResult(opt.value)}
+                      style={{ flex: 1, minWidth: 80, padding: '10px 8px', borderRadius: 12,
+                        border: `2px solid ${result === opt.value ? opt.border : 'var(--border)'}`,
+                        background: result === opt.value ? opt.bg : '#fff',
+                        cursor: 'pointer', fontWeight: 800, fontSize: 13,
+                        color: result === opt.value ? opt.color : 'var(--text-secondary)' }}>
+                      {opt.label}
                     </button>
                   ))}
                 </div>
