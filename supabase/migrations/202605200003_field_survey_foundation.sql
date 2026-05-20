@@ -51,27 +51,71 @@ alter table public.survey_questions enable row level security;
 alter table public.survey_responses enable row level security;
 alter table public.survey_response_answers enable row level security;
 
--- Keep simple: anon can read active surveys/questions, and can submit responses.
-create policy if not exists surveys_read_active on public.surveys
+-- Idempotent cleanup for policy revisions
+DROP POLICY IF EXISTS surveys_read_active ON public.surveys;
+DROP POLICY IF EXISTS survey_questions_read ON public.survey_questions;
+DROP POLICY IF EXISTS survey_responses_insert ON public.survey_responses;
+DROP POLICY IF EXISTS survey_responses_read ON public.survey_responses;
+DROP POLICY IF EXISTS survey_answers_insert ON public.survey_response_answers;
+DROP POLICY IF EXISTS survey_answers_read ON public.survey_response_answers;
+
+-- Public can only see active surveys/questions.
+create policy surveys_read_active on public.surveys
 for select to anon, authenticated
 using (is_active = true);
 
-create policy if not exists survey_questions_read on public.survey_questions
+create policy survey_questions_read_active_parent on public.survey_questions
 for select to anon, authenticated
-using (true);
+using (
+  exists (
+    select 1 from public.surveys s
+    where s.id = survey_questions.survey_id
+      and s.is_active = true
+  )
+);
 
-create policy if not exists survey_responses_insert on public.survey_responses
-for insert to anon, authenticated
-with check (true);
+-- Members can insert/read only their own responses.
+create policy survey_responses_member_insert on public.survey_responses
+for insert to authenticated
+with check (
+  exists (
+    select 1 from public.members m
+    where m.id = survey_responses.member_id
+      and m.auth_user_id = auth.uid()
+  )
+);
 
-create policy if not exists survey_responses_read on public.survey_responses
-for select to anon, authenticated
-using (true);
+create policy survey_responses_member_read_own on public.survey_responses
+for select to authenticated
+using (
+  exists (
+    select 1 from public.members m
+    where m.id = survey_responses.member_id
+      and m.auth_user_id = auth.uid()
+  )
+);
 
-create policy if not exists survey_answers_insert on public.survey_response_answers
-for insert to anon, authenticated
-with check (true);
+-- Members can insert/read answers only for their own response rows.
+create policy survey_answers_member_insert on public.survey_response_answers
+for insert to authenticated
+with check (
+  exists (
+    select 1
+    from public.survey_responses r
+    join public.members m on m.id = r.member_id
+    where r.id = survey_response_answers.response_id
+      and m.auth_user_id = auth.uid()
+  )
+);
 
-create policy if not exists survey_answers_read on public.survey_response_answers
-for select to anon, authenticated
-using (true);
+create policy survey_answers_member_read_own on public.survey_response_answers
+for select to authenticated
+using (
+  exists (
+    select 1
+    from public.survey_responses r
+    join public.members m on m.id = r.member_id
+    where r.id = survey_response_answers.response_id
+      and m.auth_user_id = auth.uid()
+  )
+);
