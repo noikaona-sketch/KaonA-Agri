@@ -13,6 +13,12 @@ async function getBearerToken(): Promise<string | null> {
 type UseMemberHarvestBookingResult = {
   existing:     BookingStatusRow | null;
   marketPrice:  number | null;
+  queueSnapshot: {
+    pendingCount: number;
+    nearTermCount: number;
+    dryerRequiredCount: number;
+    moistureSensitiveCount: number;
+  } | null;
   loading:      boolean;
   submit:       (payload: Record<string, unknown>) => Promise<string | null>;
 };
@@ -23,6 +29,7 @@ export function useMemberHarvestBooking(
 ): UseMemberHarvestBookingResult {
   const [existing,    setExisting]    = useState<BookingStatusRow | null>(null);
   const [marketPrice, setMarketPrice] = useState<number | null>(null);
+  const [queueSnapshot, setQueueSnapshot] = useState<UseMemberHarvestBookingResult['queueSnapshot']>(null);
   const [loading,     setLoading]     = useState(true);
 
   useEffect(() => {
@@ -40,6 +47,29 @@ export function useMemberHarvestBooking(
         .limit(1)
         .maybeSingle();
       if (price) setMarketPrice(Number(price.price_per_kg));
+
+      // Read-only queue snapshot for lightweight contextual hints
+      const today = new Date();
+      const toIso = (d: Date) => d.toISOString().slice(0, 10);
+      const in7Days = new Date(today);
+      in7Days.setDate(in7Days.getDate() + 7);
+
+      const { data: queueRows } = await sb
+        .from('harvest_bookings')
+        .select('status,scheduled_date,drying_preference,estimated_moisture_pct')
+        .in('status', ['pending', 'confirmed'])
+        .gte('scheduled_date', toIso(today))
+        .lte('scheduled_date', toIso(in7Days));
+
+      if (queueRows) {
+        const nearTermCount = queueRows.length;
+        setQueueSnapshot({
+          pendingCount: queueRows.filter((r) => r.status === 'pending').length,
+          nearTermCount,
+          dryerRequiredCount: queueRows.filter((r) => r.drying_preference === 'required').length,
+          moistureSensitiveCount: queueRows.filter((r) => Number(r.estimated_moisture_pct ?? 0) >= 28).length,
+        });
+      }
 
       // Existing active booking
       const token = await getBearerToken();
@@ -72,5 +102,5 @@ export function useMemberHarvestBooking(
     return null;
   }
 
-  return { existing, marketPrice, loading, submit };
+  return { existing, marketPrice, queueSnapshot, loading, submit };
 }
