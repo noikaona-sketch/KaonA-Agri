@@ -72,6 +72,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'กรุณาระบุเหตุผล' }, { status: 400 });
 
     // Blocker 4: completeness gate สำหรับ approved
+    // NOTE: keep approval gate equivalent to legacy required fields.
     if (body.decision === 'approved') {
       const [{ data: m }, { data: memberRoles }, { data: memberPlots }, { data: memberVehicles }] = await Promise.all([
         s.from('members')
@@ -99,14 +100,23 @@ export async function POST(request: Request) {
           roles: (memberRoles ?? []).map((r) => r.role),
         });
 
-        if (!readiness.readyToApprove && !body.reason?.trim()) {
+        const missingGateFields = [
+          !m.phone && 'phone',
+          !m.subdistrict && 'subdistrict',
+          !m.district && 'district',
+          !m.province && 'province',
+          m.bank_verified_status !== 'verified' && 'bank_verified_status',
+        ].filter(Boolean) as string[];
+
+        if (missingGateFields.length > 0 && !body.reason?.trim()) {
           return NextResponse.json({
-            error: `ข้อมูลยังไม่ครบ: ${readiness.missingFields.join(', ')}`,
+            error: `ข้อมูลยังไม่ครบ: ${missingGateFields.join(', ')}`,
             incomplete: true,
-            missing_fields: readiness.missingFields.join(', '),
+            missing_fields: missingGateFields.join(', '),
             readyToApprove: readiness.readyToApprove,
             missingFields: readiness.missingFields,
             readinessReason: readiness.readinessReason,
+            gateMissingFields: missingGateFields,
           }, { status: 422 });
         }
       }
