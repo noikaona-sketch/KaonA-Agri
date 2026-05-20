@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import Link from 'next/link';
 import { AdminWebShell } from '@/shared/components/admin-web-shell';
 import { AdminHarvestList }   from '@/features/admin-harvest/admin-harvest-list';
 import { HarvestDashboard }        from '@/features/admin-harvest/harvest-dashboard';
@@ -28,7 +27,10 @@ export default function HarvestPage() {
     <AdminWebShell title={`${cur.icon} รถเกี่ยว — ${cur.label}`} subtitle="จัดการนัด ติดตาม และประเมินผู้ให้บริการ">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
         <div />
-        <Link href="/admin/harvest/analytics" className="admin-btn admin-btn--secondary" style={{ fontSize: 12, padding: '6px 10px' }}>📈 Analytics</Link>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Link href="/admin/harvest/timing" className="admin-btn admin-btn--secondary" style={{ fontSize: 12, padding: '6px 10px' }}>⏱️ Timing Flags</Link>
+          <Link href="/admin/harvest/analytics" className="admin-btn admin-btn--secondary" style={{ fontSize: 12, padding: '6px 10px' }}>📈 Analytics</Link>
+        </div>
       </div>
             <div style={{ display: 'flex', gap: 6, marginBottom: 20, borderBottom: '1px solid #e8ede8', paddingBottom: 12 }}>
         {TABS.map((t) => (
