@@ -32,7 +32,15 @@ export function MemberHarvestBookingForm({ cycleId, cropName, plotId, onSuccess 
   const [success,        setSuccess]        = useState(false);
 
   // Hook called at top level — submit function available throughout component
-  const { existing, marketPrice, loading, submit } = useMemberHarvestBooking(cycleId, cropName);
+  const { existing, marketPrice, queueSnapshot, loading, submit } = useMemberHarvestBooking(cycleId, cropName);
+
+  const hints: string[] = [];
+  if (queueSnapshot) {
+    if (queueSnapshot.nearTermCount >= 12) hints.push('ช่วงนี้คิวรับซื้อค่อนข้างแน่น');
+    if (queueSnapshot.pendingCount >= 6) hints.push('ควรแจ้งล่วงหน้า');
+    if (queueSnapshot.dryerRequiredCount >= 5) hints.push('อาจมีเวลารออบนานกว่าปกติ');
+    if (queueSnapshot.moistureSensitiveCount >= 4) hints.push('เป็นช่วงที่ความชื้นมีผลต่อคิวอบมากขึ้น');
+  }
 
   if (loading) return null;
   if (existing) return <HarvestBookingStatusCard booking={existing} />;
@@ -75,6 +83,23 @@ export function MemberHarvestBookingForm({ cycleId, cropName, plotId, onSuccess 
       <p style={{ margin: '0 0 14px', fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
         แจ้งข้อมูลเบื้องต้นเพื่อช่วยวางแผนโรงงาน — ข้อมูลจริงอาจเปลี่ยนแปลงได้
       </p>
+
+      {hints.length > 0 && (
+        <div style={{
+          background: '#eff6ff',
+          border: '1px solid #bfdbfe',
+          borderRadius: 10,
+          padding: '10px 12px',
+          marginBottom: 14,
+        }}>
+          <p style={{ margin: '0 0 6px', fontWeight: 700, fontSize: 13, color: '#1d4ed8' }}>
+            ℹ️ ข้อมูลช่วงเวลารับซื้อ (เพื่อประกอบการตัดสินใจ)
+          </p>
+          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: '#1f2937', lineHeight: 1.45 }}>
+            {hints.map((hint) => <li key={hint}>{hint}</li>)}
+          </ul>
+        </div>
+      )}
 
       <label>
         วันที่คาดว่าจะเก็บเกี่ยว <span style={{ color: '#e53e3e' }}>*</span>
