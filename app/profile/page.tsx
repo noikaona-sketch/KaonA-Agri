@@ -7,6 +7,7 @@ import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { ProtectedRoute } from '@/shared/components/protected-route';
 import { MobileAppShell } from '@/shared/components/mobile-app-shell';
 import { LoadingState } from '@/shared/components/loading-state';
+import { MemberAnnouncementsList } from '@/features/member-announcements/member-announcements-list';
 
 const ROLE_TH: Record<string, string> = {
   farmer: '🌽 เกษตรกร', truck_owner: '🚛 ทีมบริการ',
@@ -122,6 +123,8 @@ export default function ProfilePage() {
     <ProtectedRoute allowPending>
     <MobileAppShell title="" subtitle="">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingBottom: 16 }}>
+
+        <MemberAnnouncementsList />
 
         {/* ── Hero ── */}
         <div style={{ ...S.card, padding: '16px' }}>
