@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import Link from 'next/link';
 import { AdminWebShell } from '@/shared/components/admin-web-shell';
 import { AdminHarvestList }   from '@/features/admin-harvest/admin-harvest-list';
 import { HarvestDashboard }        from '@/features/admin-harvest/harvest-dashboard';
