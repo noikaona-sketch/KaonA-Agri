@@ -7,10 +7,11 @@ import { LoadingState } from '@/shared/components/loading-state';
 import { ErrorState } from '@/shared/components/error-state';
 
 type IntakeRow = {
+  id: string;
   scheduled_date: string;
   planned_delivery_date: string | null;
   status: string;
-  actual_yield_kg: number | null;
+  estimated_yield_kg: number | null;
   quality_moisture: number | null;
   drying_preference: string | null;
 };
@@ -38,12 +39,12 @@ function summarize(rows: IntakeRow[], days: string[]): DailyIntakeSummary[] {
     return {
       date: day,
       bookingCount: dayRows.length,
-      expectedTonnageKg: dayRows.reduce((sum, r) => sum + (r.actual_yield_kg ?? 0), 0),
+      expectedTonnageKg: dayRows.reduce((sum, r) => sum + (r.estimated_yield_kg ?? 0), 0),
       expectedMoistureAvg: moistureRows.length > 0
         ? moistureRows.reduce((sum, r) => sum + (r.quality_moisture ?? 0), 0) / moistureRows.length
         : null,
       dryingCount: dryingRows.length,
-      dryingTonnageKg: dryingRows.reduce((sum, r) => sum + (r.actual_yield_kg ?? 0), 0),
+      dryingTonnageKg: dryingRows.reduce((sum, r) => sum + (r.estimated_yield_kg ?? 0), 0),
       completedCount: dayRows.filter((r) => r.status === 'completed').length,
       pendingCount: dayRows.filter((r) => r.status === 'pending').length,
     };
@@ -68,12 +69,26 @@ export function HarvestIntakeCalendar() {
     void (async () => {
       const s = createSupabaseBrowserClient();
       const { data, error: err } = await s
-        .from('harvest_bookings')
-        .select('scheduled_date,planned_delivery_date,status,actual_yield_kg,quality_moisture,drying_preference')
+        .from('harvest_bookings_full')
+        .select('id,scheduled_date,planned_delivery_date,status,estimated_yield_kg,quality_moisture')
         .in('status', ['pending', 'confirmed', 'completed'])
         .limit(1000);
       if (err) setError(err.message);
-      else setRows((data as IntakeRow[]) ?? []);
+      else {
+        const viewRows = (data as Omit<IntakeRow, 'drying_preference'>[]) ?? [];
+        const ids = viewRows.map((r) => r.id);
+        let dryingMap: Record<string, string | null> = {};
+        if (ids.length > 0) {
+          const { data: dData } = await s
+            .from('harvest_bookings')
+            .select('id,drying_preference')
+            .in('id', ids);
+          for (const r of (dData as { id: string; drying_preference: string | null }[]) ?? []) {
+            dryingMap[r.id] = r.drying_preference;
+          }
+        }
+        setRows(viewRows.map((r) => ({ ...r, drying_preference: dryingMap[r.id] ?? null })));
+      }
       setLoading(false);
     })();
   }, []);
@@ -148,4 +163,3 @@ export function HarvestIntakeCalendar() {
     </div>
   );
 }
-
