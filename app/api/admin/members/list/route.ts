@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '../../../auth/line/line-auth-helpers';
 import { requireAdmin } from '../_admin-auth';
+import { evaluateMemberReadiness } from '../readiness-policy';
 
 export async function GET(request: Request) {
   try {
@@ -26,6 +27,15 @@ export async function GET(request: Request) {
     const members = ((data ?? []) as Record<string, unknown>[]).map((m) => {
       const roles = ((m.member_roles as { role: string; is_primary: boolean }[]) ?? []);
       const primary = roles.find((r) => r.is_primary)?.role ?? roles[0]?.role ?? null;
+      const readiness = evaluateMemberReadiness({
+        phone: (m.phone as string | null) ?? null,
+        bank_name: (m.bank_name as string | null) ?? null,
+        bank_account_number: (m.bank_account_number as string | null) ?? null,
+        bank_verified_status: (m.bank_verified_status as string | null) ?? null,
+        has_plots: ((m.plots as unknown[]) ?? []).length > 0,
+        roles: roles.map((r) => r.role),
+      });
+
       return {
         member_id:            m.id,
         full_name:            m.full_name,
@@ -37,6 +47,9 @@ export async function GET(request: Request) {
         has_plots:            ((m.plots as unknown[]) ?? []).length > 0,
         roles:                roles.map((r) => r.role),
         effective_role:       primary,
+        readyToApprove:       readiness.readyToApprove,
+        missingFields:        readiness.missingFields,
+        readinessReason:      readiness.readinessReason,
       };
     });
 
