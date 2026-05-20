@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import { readFile }     from 'fs/promises';
 import { join }         from 'path';
-import { requireAdmin } from '../_admin-auth';
+import { isForbidden, requireAdminPermission } from '../_admin-auth';
 
 export async function GET() {
-  const admin = await requireAdmin();
-  if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+  const auth = await requireAdminPermission('members.import');
+  if (isForbidden(auth)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   try {
     const filePath = join(process.cwd(), 'public', 'templates', 'member_import_template.xlsx');
