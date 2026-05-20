@@ -16,7 +16,8 @@
 import { useEffect, useState } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { LoadingState }     from '@/shared/components/loading-state';
-import { TonnageBar }       from './harvest-tonnage-bar';
+import { TonnageBar }            from './harvest-tonnage-bar';
+import { HarvestWorkloadSummary } from './harvest-workload-summary';
 import { ErrorState }   from '@/shared/components/error-state';
 
 type BookingRow = {
@@ -123,6 +124,7 @@ export function HarvestDashboard({ view = 'week' }: Props) {
   const maxTonnage = Math.max(...data.byDay.map((d) => d.tonnage), 1);
 
   return (
+    <>
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
       {/* ── 1. Status counts ── */}
@@ -187,5 +189,11 @@ export function HarvestDashboard({ view = 'week' }: Props) {
         </div>
       )}
     </div>
+
+    {/* Queue workload — 7-day incoming summary */}
+    <div style={{ marginTop: 24 }}>
+      <HarvestWorkloadSummary />
+    </div>
+    </>
   );
 }

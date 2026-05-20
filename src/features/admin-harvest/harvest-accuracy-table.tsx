@@ -74,7 +74,8 @@ export function HarvestAccuracyTable({ rows }: { rows: AccuracyRow[] }) {
                   {r.estimated_moisture_pct != null ? `${r.estimated_moisture_pct}%` : '—'}
                 </td>
                 <td style={{ fontSize: 13, fontWeight: 700 }}>
-                  {r.actual_moisture_pct != null ? `${r.actual_moisture_pct}%` : '—'}
+                  {(r.actual_moisture_pct ?? r.quality_moisture) != null
+                    ? `${(r.actual_moisture_pct ?? r.quality_moisture)}%` : '—'}
                 </td>
                 <td><VarBadge value={moistVar} unit="%" invert /></td>
                 <td style={{ fontSize: 12, color: '#6b7280', whiteSpace: 'nowrap' }}>

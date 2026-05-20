@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { AdminWebShell } from '@/shared/components/admin-web-shell';
 import { AdminHarvestList }   from '@/features/admin-harvest/admin-harvest-list';
-import { HarvestDashboard }      from '@/features/admin-harvest/harvest-dashboard';
+import { HarvestDashboard }        from '@/features/admin-harvest/harvest-dashboard';
 import { HarvestAccuracyPage }   from '@/features/admin-harvest/harvest-accuracy-page';
 import { AdminHarvestQueue } from '@/features/admin-harvest/admin-harvest-queue';
 import { AdminProviderRatings } from '@/features/service-rating/admin-provider-ratings';

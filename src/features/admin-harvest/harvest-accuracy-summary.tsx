@@ -20,6 +20,8 @@ export type AccuracyRow = {
   actual_moisture_pct:    number | null;
   actual_completed_at:    string | null;
   admin_note:             string | null;
+  // View column — factory moisture reading (quality_moisture in harvest_bookings_full)
+  quality_moisture:       number | null;
 };
 
 type Stats = {

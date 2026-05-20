@@ -17,8 +17,8 @@ type HistoryRow = {
   scheduled_date:         string;
   actual_completed_at:    string | null;
   status:                 string;
-  plot_name:              string;
-  crop_name:              string;
+  plot_name:              string | null;
+  crop_name:              string | null;
   actual_yield_kg:        number | null;
   actual_received_kg:     number | null;
   estimated_moisture_pct: number | null;
@@ -105,8 +105,8 @@ function HistoryTable({ rows }: { rows: HistoryRow[] }) {
                   </span>
                 </td>
                 <td style={{ fontSize: 12 }}>
-                  <p style={{ margin: 0 }}>{r.plot_name}</p>
-                  <p style={{ margin: 0, color: '#9ca3af', fontSize: 11 }}>{r.crop_name}</p>
+                  <p style={{ margin: 0 }}>{r.plot_name ?? '—'}</p>
+                  <p style={{ margin: 0, color: '#9ca3af', fontSize: 11 }}>{r.crop_name ?? '—'}</p>
                 </td>
                 <td style={{ fontSize: 12 }}>{r.actual_yield_kg ? `${r.actual_yield_kg.toLocaleString()}` : '—'}</td>
                 <td style={{ fontSize: 12, fontWeight: r.actual_received_kg ? 700 : 400 }}>
@@ -147,9 +147,10 @@ export function MemberHarvestHistory({ memberId, memberName, onClose }: Props) {
     void (async () => {
       const s = createSupabaseBrowserClient();
       const { data, error: err } = await s
-        .from('harvest_bookings_full')
+        // Query harvest_bookings directly — view missing PR1+ columns
+        .from('harvest_bookings')
         .select(
-          'id,scheduled_date,actual_completed_at,status,plot_name,crop_name,' +
+          'id,scheduled_date,actual_completed_at,status,plot_id,' +
           'actual_yield_kg,actual_received_kg,estimated_moisture_pct,actual_moisture_pct,admin_note',
         )
         .eq('member_id', memberId)
