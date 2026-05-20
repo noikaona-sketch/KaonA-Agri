@@ -33,6 +33,12 @@ const MENU = [
     color: '#e3f2fd', border: '#90caf9', statKey: 'orders_30d', statSuffix: 'คำสั่ง/30วัน',
   },
   {
+    href: '/admin/alerts', icon: '🔔', label: 'Alert Readiness',
+    desc: 'รายการพร้อมแจ้งเตือน (Preview เท่านั้น)',
+    color: '#fff3e0', border: '#ffcc80',
+  },
+
+  {
     href: '/admin/harvest', icon: '🚜', label: 'รถเกี่ยว',
     desc: 'นัดรถ · ติดตาม · บันทึกผล',
     color: '#e0f2f1', border: '#80cbc4',
