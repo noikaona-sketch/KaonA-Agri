@@ -12,10 +12,11 @@ export type ExportRow = {
   member_phone:           string | null;
   plot_name:              string;
   crop_name:              string;
-  actual_yield_kg:        number | null;  // farmer estimated kg (PR1 pre-fill)
+  actual_yield_kg:        number | null;  // farmer estimate (PR1 pre-fill)
   actual_received_kg:     number | null;
-  estimated_moisture_pct: number | null;
-  actual_moisture_pct:    number | null;
+  estimated_moisture_pct: number | null;  // PR1 field (null when from view)
+  actual_moisture_pct:    number | null;  // PR5 field (null when from view)
+  quality_moisture:       number | null;  // view fallback for actual moisture
   status:                 string;
   admin_note:             string | null;
 };
@@ -65,7 +66,7 @@ export function buildHarvestCsv(rows: ExportRow[]): string {
 
   for (const r of rows) {
     const kgVar   = varPct(r.actual_yield_kg, r.actual_received_kg);
-    const moistVar = varPct(r.estimated_moisture_pct, r.actual_moisture_pct);
+    const moistVar = varPct(r.estimated_moisture_pct, r.actual_moisture_pct ?? r.quality_moisture);
     lines.push([
       formatDate(r.actual_completed_at),
       r.member_name,
@@ -76,7 +77,7 @@ export function buildHarvestCsv(rows: ExportRow[]): string {
       r.actual_received_kg ?? '',
       kgVar,
       r.estimated_moisture_pct ?? '',
-      r.actual_moisture_pct ?? '',
+      (r.actual_moisture_pct ?? r.quality_moisture) ?? '',
       moistVar,
       r.status,
       r.admin_note ?? '',

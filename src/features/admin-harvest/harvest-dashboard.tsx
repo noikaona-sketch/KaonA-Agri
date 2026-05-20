@@ -21,12 +21,12 @@ import { HarvestWorkloadSummary } from './harvest-workload-summary';
 import { ErrorState }   from '@/shared/components/error-state';
 
 type BookingRow = {
-  id:                     string;
-  status:                 string;
-  scheduled_date:         string;
-  actual_yield_kg:        number | null;
-  drying_preference:      string | null;
-  estimated_moisture_pct: number | null;
+  id:               string;
+  status:           string;
+  scheduled_date:   string;
+  actual_yield_kg:  number | null;
+  quality_moisture: number | null;  // view: factory moisture (no estimated_moisture_pct in view)
+  // drying_preference not in view — dryerLoad removed
 };
 
 export type DayStat = {
@@ -53,7 +53,7 @@ function compute(rows: BookingRow[]): DashboardData {
 
   // Moisture stats (active rows with estimates)
   const moistures = active
-    .map((r) => r.estimated_moisture_pct)
+    .map((r) => r.quality_moisture)
     .filter((v): v is number => v !== null);
   const moistureMin = moistures.length ? Math.min(...moistures) : null;
   const moistureMax = moistures.length ? Math.max(...moistures) : null;
@@ -62,7 +62,8 @@ function compute(rows: BookingRow[]): DashboardData {
     : null;
 
   // Dryer load
-  const dryerRows  = active.filter((r) => r.drying_preference === 'required');
+  // drying_preference not in harvest_bookings_full view — dryer count hidden
+  const dryerRows  = active.filter(() => false);
   const dryerTonnage = dryerRows.reduce((s, r) => s + (r.actual_yield_kg ?? 0), 0);
 
   // Group by day
@@ -101,7 +102,7 @@ export function HarvestDashboard({ view = 'week' }: Props) {
       setLoading(true); setError(null);
       const s = createSupabaseBrowserClient();
       let q = s.from('harvest_bookings_full')
-        .select('id,status,scheduled_date,actual_yield_kg,drying_preference,estimated_moisture_pct')
+        .select('id,status,scheduled_date,actual_yield_kg,quality_moisture')
         .in('status', ['pending', 'confirmed', 'completed'])
         .order('scheduled_date', { ascending: true })
         .limit(500);
