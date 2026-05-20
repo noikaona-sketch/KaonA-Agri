@@ -157,17 +157,23 @@ export function HarvestWorkloadSummary() {
   useEffect(() => {
     void (async () => {
       const s = createSupabaseBrowserClient();
+      // Effective date = planned_delivery_date ?? scheduled_date.
+      // Filter applied client-side so both columns are respected correctly.
+      // DB query fetches all active bookings; in-memory filter by effective date.
       const from = new Date().toISOString().slice(0, 10);
       const to   = nextNDays(7)[6]; // D+6
       const { data, error: err } = await s
         .from('harvest_bookings_full')
         .select('scheduled_date,planned_delivery_date,status,actual_yield_kg,drying_preference')
         .in('status', ['pending', 'confirmed'])
-        .or(`scheduled_date.gte.${from},planned_delivery_date.gte.${from}`)
-        .lte('scheduled_date', to)
         .limit(500);
       if (err) setError(err.message);
-      else setRows((data as unknown as WorkloadRow[]) ?? []);
+      else setRows(
+        ((data as unknown as WorkloadRow[]) ?? []).filter((r) => {
+          const eff = (r.planned_delivery_date ?? r.scheduled_date).slice(0, 10);
+          return eff >= from && eff <= to;
+        })
+      );
       setLoading(false);
     })();
   }, []);
