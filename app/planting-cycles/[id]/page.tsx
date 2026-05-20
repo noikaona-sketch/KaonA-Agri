@@ -7,7 +7,7 @@ export default function PlantingCycleDetailPage({ params }: Props) {
   return (
     <MobileAppShell title="รายละเอียดรอบปลูก" subtitle="ติดตามและบันทึกความคืบหน้า">
       <div style={{ marginBottom: 12 }}>
-        <Link href="/planting-cycles" style={{ color: 'var(--primary)', fontWeight: 700, fontSize: 14, textDecoration: 'none' }}>← กลับรายการ</Link>
+        <Link href="/planting-cycles" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 40, padding: '0 10px', borderRadius: 10, color: 'var(--primary)', fontWeight: 700, fontSize: 14, textDecoration: 'none', background: '#edf7ed' }}>← กลับรายการ</Link>
       </div>
       <PlantingCycleDetail cycleId={params.id} />
     </MobileAppShell>

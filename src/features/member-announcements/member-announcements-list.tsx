@@ -25,6 +25,7 @@ const TYPE_LABEL: Record<CampaignType, string> = {
 
 export function MemberAnnouncementsList() {
   const [rows, setRows] = useState<AnnouncementRow[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const s = createSupabaseBrowserClient();
@@ -36,10 +37,28 @@ export function MemberAnnouncementsList() {
       .gte('end_date', new Date().toISOString().slice(0, 10))
       .order('start_date', { ascending: false })
       .limit(10)
-      .then(({ data }) => setRows((data as AnnouncementRow[] | null) ?? []));
+      .then(({ data }) => {
+        setRows((data as AnnouncementRow[] | null) ?? []);
+        setLoading(false);
+      });
   }, []);
 
-  if (rows.length === 0) return null;
+  if (loading) {
+    return (
+      <div className="kaona-card" style={{ gap: 8 }}>
+        <p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>กำลังโหลดประกาศล่าสุด…</p>
+      </div>
+    );
+  }
+
+  if (rows.length === 0) {
+    return (
+      <div className="kaona-card" style={{ gap: 8 }}>
+        <p style={{ margin: 0, fontWeight: 600, fontSize: 14 }}>📭 ยังไม่มีประกาศในช่วงนี้</p>
+        <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>เมื่อมีข้อมูลใหม่ ระบบจะแสดงที่หน้านี้</p>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -48,12 +67,12 @@ export function MemberAnnouncementsList() {
       </p>
       <div style={{ background: '#fff', border: '0.5px solid var(--color-border-tertiary,#e4ede4)', borderRadius: 14, padding: 12, display: 'grid', gap: 8 }}>
         {rows.map((row) => (
-          <div key={row.id} style={{ border: '1px solid #e5e7eb', borderRadius: 10, padding: '10px 12px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-              <p style={{ margin: 0, fontWeight: 600, fontSize: 14 }}>{row.title}</p>
-              <span style={{ fontSize: 11, color: '#6b7280' }}>{TYPE_LABEL[row.type]}</span>
+          <div key={row.id} style={{ border: '1px solid #e5e7eb', borderRadius: 10, padding: '10px 12px', overflow: 'hidden' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+              <p style={{ margin: 0, fontWeight: 600, fontSize: 14, lineHeight: 1.5, overflowWrap: 'anywhere' }}>{row.title}</p>
+              <span style={{ fontSize: 11, color: '#6b7280', flexShrink: 0 }}>{TYPE_LABEL[row.type]}</span>
             </div>
-            <p style={{ margin: '6px 0 0', fontSize: 12, color: '#374151', whiteSpace: 'pre-wrap' }}>{row.body}</p>
+            <p style={{ margin: '6px 0 0', fontSize: 12, color: '#374151', whiteSpace: 'pre-wrap', lineHeight: 1.6, overflowWrap: 'anywhere' }}>{row.body}</p>
           </div>
         ))}
       </div>

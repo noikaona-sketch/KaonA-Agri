@@ -21,7 +21,7 @@ export type BookingStatusRow = {
 export function HarvestBookingStatusCard({ booking }: { booking: BookingStatusRow }) {
   return (
     <div className="kaona-card" style={{ background: '#f0fdf4', border: '1px solid #86efac' }}>
-      <p style={{ margin: '0 0 4px', fontWeight: 700, fontSize: 15 }}>🌾 แจ้งเก็บเกี่ยวแล้ว</p>
+      <p style={{ margin: '0 0 4px', fontWeight: 700, fontSize: 15, lineHeight: 1.5 }}>🌾 แจ้งเก็บเกี่ยวแล้ว</p>
       <p style={{ margin: '0 0 4px', fontSize: 13 }}>
         วันที่คาด:{' '}
         {new Date(booking.scheduled_date).toLocaleDateString('th-TH', {

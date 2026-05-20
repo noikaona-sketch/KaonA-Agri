@@ -238,7 +238,7 @@ export default function ProfilePage() {
             ].map(([label, value], i, arr) => (
               <div key={label} style={{ ...S.row, borderBottom: i < arr.length - 1 ? undefined : 'none' }}>
                 <span style={{ fontSize: 13, color: 'var(--color-text-secondary,#888)' }}>{label}</span>
-                <span style={{ fontSize: 13, color: 'var(--color-text-primary,#111)', fontWeight: 500, maxWidth: '60%', textAlign: 'right' }}>{value}</span>
+                <span style={{ fontSize: 13, color: 'var(--color-text-primary,#111)', fontWeight: 500, maxWidth: '60%', textAlign: 'right', overflowWrap: 'anywhere', lineHeight: 1.45 }}>{value}</span>
               </div>
             ))}
           </div>
@@ -257,7 +257,7 @@ export default function ProfilePage() {
                 ].map(([label, value], i, arr) => (
                   <div key={label} style={{ ...S.row, borderBottom: i < arr.length - 1 ? undefined : 'none' }}>
                     <span style={{ fontSize: 13, color: 'var(--color-text-secondary,#888)' }}>{label}</span>
-                    <span style={{ fontSize: 13, color: 'var(--color-text-primary,#111)', fontWeight: 500 }}>{value}</span>
+                    <span style={{ fontSize: 13, color: 'var(--color-text-primary,#111)', fontWeight: 500, overflowWrap: 'anywhere', textAlign: 'right', maxWidth: '60%', lineHeight: 1.45 }}>{value}</span>
                   </div>
                 ))}
               </>
