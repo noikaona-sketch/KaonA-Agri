@@ -49,6 +49,9 @@ export async function GET(_req: Request, { params }: Params) {
 
 export async function PATCH(req: Request, { params }: Params) {
   try {
+    const admin = await requireAdmin();
+    if (!admin) return NextResponse.json({ error: 'ไม่มีสิทธิ์เข้าถึง' }, { status: 403 });
+
     const body = (await req.json()) as { status?: string; role?: string };
     const s = createServerSupabaseClient();
     const { id } = params;

@@ -1,16 +1,8 @@
 import { NextResponse }               from 'next/server';
 import { createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
+import { resolveApprovedMember } from '../_auth';
 
-// Option A: member_id from caller (useCurrentMember), validated server-side
-// TODO: migrate to cookie-based session auth once server auth cookies are implemented
-
-async function validateMember(memberId: string): Promise<boolean> {
-  if (!memberId) return false;
-  const s = createServerSupabaseClient();
-  const { data } = await s
-    .from('members').select('id,status').eq('id', memberId).maybeSingle();
-  return !!(data && (data as { status: string }).status === 'approved');
-}
+// Member identity resolved server-side from session token.
 
 type ReservationBody = {
   member_id: string;
@@ -27,14 +19,12 @@ export async function POST(request: Request) {
     const body = (await request.json()) as ReservationBody;
 
     // product_id is required — no variety_id fallback
-    if (!body.member_id || !body.product_id || !body.qty_reserved || body.qty_reserved <= 0)
+    if (!body.product_id || !body.qty_reserved || body.qty_reserved <= 0)
       return NextResponse.json({ error: 'ข้อมูลไม่ครบ' }, { status: 400 });
 
-    const valid = await validateMember(body.member_id);
-    if (!valid)
-      return NextResponse.json({ error: 'สมาชิกไม่ถูกต้องหรือยังไม่ได้รับอนุมัติ' }, { status: 403 });
-
     const s = createServerSupabaseClient();
+    const caller = await resolveApprovedMember(request, s);
+    if (!caller.ok) return caller.response;
     const { data: product, error: pErr } = await s.from('products')
       .select('id,name,seed_variety,brand,price_per_unit,product_type,is_active,deleted_at,seed_variety_id')
       .eq('id', body.product_id).maybeSingle();
@@ -71,7 +61,7 @@ export async function POST(request: Request) {
 
     const { error } = await s.from('seed_reservations').insert({
       reservation_no,
-      member_id:      body.member_id,
+      member_id:      caller.memberId,
       product_id:     product.id,
       seed_variety_id: p.seed_variety_id as string,   // snapshot at booking time
       variety_id:     null, lot_id: null, lot_no: null,
@@ -132,15 +122,10 @@ export type HistoryRow = {
 
 export async function GET(request: Request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const memberId = searchParams.get('member_id') ?? '';
-    if (!memberId) return NextResponse.json({ reservations: [] });
-
-    const valid = await validateMember(memberId);
-    if (!valid)
-      return NextResponse.json({ error: 'สมาชิกไม่ถูกต้อง' }, { status: 403 });
-
     const s = createServerSupabaseClient();
+    const caller = await resolveApprovedMember(request, s);
+    if (!caller.ok) return caller.response;
+    const memberId = caller.memberId;
 
     // ── Source 1: seed_reservations (จองตรง) ────────────────────────────
     const { data: seedRows, error: seedErr } = await s
