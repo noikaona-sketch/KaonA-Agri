@@ -17,7 +17,7 @@ const GUEST_NAV: RoleNavConfig = {
   tabs: [
     { label: 'สมัครสมาชิก', href: '/register',             iconKey: 'member'  },
     { label: 'มี PIN',       href: '/register?tab=pin',     iconKey: 'field'   },
-    { label: 'ติดต่อ admin', href: '/contact', iconKey: 'service' },
+    { label: 'ติดต่อแอดมิน', href: '/contact', iconKey: 'service' },
     { label: 'เกี่ยวกับ',   href: '/register?tab=about',   iconKey: 'admin'   },
   ],
 };
@@ -27,7 +27,7 @@ const PENDING_NAV: RoleNavConfig = {
   tabs: [
     { label: 'สถานะ',        href: '/',                     iconKey: 'member'  },
     { label: 'แก้ไขข้อมูล', href: '/register?tab=edit',    iconKey: 'field'   },
-    { label: 'ติดต่อ admin', href: '/contact', iconKey: 'service' },
+    { label: 'ติดต่อแอดมิน', href: '/contact', iconKey: 'service' },
     { label: 'โปรไฟล์',     href: '/profile',              iconKey: 'admin'   },
   ],
 };
@@ -36,48 +36,48 @@ const ROLE_NAV_MAP: Record<AppRole, RoleNavConfig> = {
   farmer: {
     tabs: [
       { label: 'หน้าแรก',   href: '/',                     iconKey: '🏠' },
-      { label: 'งานของฉัน',   href: '/notifications',        iconKey: '📋' },
-      { label: 'ติดต่อ',    href: '/contact', iconKey: '📞' },
+      { label: 'งาน/แจ้งเตือน', href: '/notifications', iconKey: '📋' },
+      { label: 'แบบสำรวจ', href: '/member/surveys', iconKey: '📝' },
       { label: 'โปรไฟล์',  href: '/profile',              iconKey: '👤' },
     ],
   },
   leader: {
     tabs: [
       { label: 'หน้าแรก',   href: '/',                     iconKey: '🏠' },
-      { label: 'งานของฉัน',   href: '/notifications',        iconKey: '📋' },
-      { label: 'ติดต่อ',    href: '/contact', iconKey: '📞' },
+      { label: 'งาน/แจ้งเตือน', href: '/notifications', iconKey: '📋' },
+      { label: 'แบบสำรวจ', href: '/member/surveys', iconKey: '📝' },
       { label: 'โปรไฟล์',  href: '/profile',              iconKey: '👤' },
     ],
   },
   inspector: {
     tabs: [
       { label: 'หน้าแรก',   href: '/',                     iconKey: '🏠' },
-      { label: 'งานของฉัน',   href: '/notifications',        iconKey: '📋' },
-      { label: 'ติดต่อ',    href: '/contact', iconKey: '📞' },
+      { label: 'งาน/แจ้งเตือน', href: '/notifications', iconKey: '📋' },
+      { label: 'แบบสำรวจ', href: '/member/surveys', iconKey: '📝' },
       { label: 'โปรไฟล์',  href: '/profile',              iconKey: '👤' },
     ],
   },
   truck_owner: {
     tabs: [
       { label: 'หน้าแรก',   href: '/',                     iconKey: '🏠' },
-      { label: 'งานของฉัน',   href: '/notifications',        iconKey: '📋' },
-      { label: 'ติดต่อ',    href: '/contact', iconKey: '📞' },
+      { label: 'งาน/แจ้งเตือน', href: '/notifications', iconKey: '📋' },
+      { label: 'แบบสำรวจ', href: '/member/surveys', iconKey: '📝' },
       { label: 'โปรไฟล์',  href: '/profile',              iconKey: '👤' },
     ],
   },
   staff: {
     tabs: [
       { label: 'หน้าแรก',   href: '/',                     iconKey: '🏠' },
-      { label: 'งานของฉัน',   href: '/notifications',        iconKey: '📋' },
-      { label: 'ติดต่อ',    href: '/contact', iconKey: '📞' },
+      { label: 'งาน/แจ้งเตือน', href: '/notifications', iconKey: '📋' },
+      { label: 'แบบสำรวจ', href: '/member/surveys', iconKey: '📝' },
       { label: 'โปรไฟล์',  href: '/profile',              iconKey: '👤' },
     ],
   },
   admin: {
     tabs: [
       { label: 'หน้าแรก',   href: '/',                     iconKey: '🏠' },
-      { label: 'งานของฉัน',   href: '/notifications',        iconKey: '📋' },
-      { label: 'ติดต่อ',    href: '/contact', iconKey: '📞' },
+      { label: 'งาน/แจ้งเตือน', href: '/notifications', iconKey: '📋' },
+      { label: 'แบบสำรวจ', href: '/member/surveys', iconKey: '📝' },
       { label: 'โปรไฟล์',  href: '/profile',              iconKey: '👤' },
     ],
   },
