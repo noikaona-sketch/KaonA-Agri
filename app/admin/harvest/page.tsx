@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { AdminWebShell } from '@/shared/components/admin-web-shell';
 import { AdminHarvestList }   from '@/features/admin-harvest/admin-harvest-list';
 import { HarvestDashboard }        from '@/features/admin-harvest/harvest-dashboard';
@@ -32,6 +33,9 @@ export default function HarvestPage() {
             {t.icon} {t.label}
           </button>
         ))}
+        <Link href="/admin/harvest/calendar" className="admin-btn admin-btn--secondary" style={{ fontSize: 13, padding: '7px 14px' }}>
+          🗓️ ปฏิทินรับเข้า
+        </Link>
       </div>
       {tab === 'dashboard' && <HarvestDashboard />}
       {tab === 'risk' && <HarvestRiskIndicator />}
