@@ -1,24 +1,24 @@
 'use client';
 
-import { useEffect, useState }         from 'react';
-import { createSupabaseBrowserClient } from '@/lib/supabase/client';
-import { ErrorState }                  from '@/shared/components/error-state';
-import { LoadingState }                from '@/shared/components/loading-state';
+import { useEffect, useState }           from 'react';
+import { createSupabaseBrowserClient }   from '@/lib/supabase/client';
+import { ErrorState }                    from '@/shared/components/error-state';
+import { LoadingState }                  from '@/shared/components/loading-state';
 import { HarvestAccuracySummary, computeStats } from './harvest-accuracy-summary';
+import { HarvestEmptyState }             from './harvest-data-quality';
+import { HarvestAccuracyTable }          from './harvest-accuracy-table';
 import { buildHarvestCsv, downloadCsv, todayFilename } from './harvest-export';
-import type { ExportRow } from './harvest-export';
-import { HarvestEmptyState }                        from './harvest-data-quality';
-import { HarvestAccuracyTable }        from './harvest-accuracy-table';
-import type { AccuracyRow }            from './harvest-accuracy-summary';
+import type { AccuracyRow }              from './harvest-accuracy-summary';
+import type { ExportRow }                from './harvest-export';
 
-// harvest_bookings_full view does not include PR1+ columns.
-// estimated_moisture_pct, actual_received_kg, actual_moisture_pct,
-// actual_completed_at, admin_note not in view — null fallbacks applied.
-const SELECT =
+// Two-query merge: view for names, table for P2 columns
+const VIEW_SELECT =
   'id,actual_yield_kg,quality_moisture,actual_date,' +
-  'estimated_moisture_pct,actual_received_kg,actual_moisture_pct,' +
-  'actual_completed_at,admin_note,' +
   'member_name,member_phone,plot_name,crop_name';
+const TABLE_SELECT =
+  'id,estimated_moisture_pct,actual_received_kg,' +
+  'actual_moisture_pct,actual_completed_at,admin_note';
+
 export function HarvestAccuracyPage() {
   const [rows,     setRows]     = useState<AccuracyRow[]>([]);
   const [loading,  setLoading]  = useState(true);
@@ -30,19 +30,24 @@ export function HarvestAccuracyPage() {
   async function load() {
     setLoading(true); setError(null);
     const s = createSupabaseBrowserClient();
-    let q = s
-      .from('harvest_bookings_full')
-      .select(SELECT)
-      .eq('status', 'completed')
-      .not('actual_yield_kg', 'is', null)
-      .order('actual_date', { ascending: false })
-      .limit(300);
+    let q = s.from('harvest_bookings_full').select(VIEW_SELECT)
+      .eq('status', 'completed').not('actual_yield_kg', 'is', null)
+      .order('actual_date', { ascending: false }).limit(300);
     if (dateFrom) q = q.gte('actual_date', dateFrom);
     if (dateTo)   q = q.lte('actual_date', dateTo);
     if (crop)     q = q.ilike('crop_name', `%${crop}%`);
-    const { data, error: err } = await q;
-    if (err) setError(err.message);
-    else setRows((data as unknown as AccuracyRow[]) ?? []);
+    const { data: viewData, error: viewErr } = await q;
+    if (viewErr) { setError(viewErr.message); setLoading(false); return; }
+    const viewRows = (viewData as unknown as Record<string, unknown>[]) ?? [];
+    const ids = viewRows.map((r) => r.id as string);
+    const p2Map: Record<string, Record<string, unknown>> = {};
+    if (ids.length > 0) {
+      const { data: tData } = await s.from('harvest_bookings')
+        .select(TABLE_SELECT).in('id', ids);
+      for (const r of (tData as unknown as Record<string, unknown>[]) ?? [])
+        p2Map[r.id as string] = r;
+    }
+    setRows(viewRows.map((r) => ({ ...r, ...p2Map[r.id as string] })) as unknown as AccuracyRow[]);
     setLoading(false);
   }
 
@@ -61,6 +66,7 @@ export function HarvestAccuracyPage() {
       actual_received_kg:     r.actual_received_kg,
       estimated_moisture_pct: r.estimated_moisture_pct,
       actual_moisture_pct:    r.actual_moisture_pct,
+      quality_moisture:       r.quality_moisture,
       status:                 'completed',
       admin_note:             r.admin_note,
     }));
@@ -69,7 +75,6 @@ export function HarvestAccuracyPage() {
 
   return (
     <div>
-      {/* Filters */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14, alignItems: 'center' }}>
         <label style={{ fontSize: 12, color: '#6b7280', display: 'flex', alignItems: 'center', gap: 4 }}>
           พืช
@@ -89,28 +94,19 @@ export function HarvestAccuracyPage() {
         </label>
         {(dateFrom || dateTo || crop) && (
           <button className="admin-btn admin-btn--secondary" style={{ fontSize: 12 }}
-            onClick={() => { setDateFrom(''); setDateTo(''); setCrop(''); }}>
-            ✕ ล้าง
-          </button>
+            onClick={() => { setDateFrom(''); setDateTo(''); setCrop(''); }}>✕ ล้าง</button>
         )}
-        <button
-          className="admin-btn admin-btn--secondary"
+        <button className="admin-btn admin-btn--secondary"
           style={{ fontSize: 12, marginLeft: 'auto' }}
-          disabled={rows.length === 0 || loading}
-          onClick={handleExport}
-        >
+          disabled={rows.length === 0 || loading} onClick={handleExport}>
           ⬇️ Export CSV ({rows.length} รายการ)
         </button>
       </div>
-
       {loading && <LoadingState label="กำลังโหลด…" />}
       {error   && <ErrorState title="โหลดไม่สำเร็จ" detail={error} />}
-
-      {!loading && !error && (
-        <>
-          <HarvestAccuracySummary stats={stats} />
-          <HarvestAccuracyTable rows={rows} />
-        </>
+      {!loading && !error && rows.length === 0 && <HarvestEmptyState message="ยังไม่มีข้อมูลเก็บเกี่ยวที่เสร็จสิ้น" />}
+      {!loading && !error && rows.length > 0 && (
+        <><HarvestAccuracySummary stats={stats} /><HarvestAccuracyTable rows={rows} /></>
       )}
     </div>
   );
