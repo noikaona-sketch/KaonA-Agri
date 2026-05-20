@@ -30,7 +30,8 @@ const STATUS_TH: Record<string, { label: string; color: string }> = {
   pending:   { label: '⏳ รอ',        color: '#e65100' },
   confirmed: { label: '✅ ยืนยัน',    color: '#2e7d32' },
   completed: { label: '🏁 เสร็จ',     color: '#1b5e20' },
-  cancelled: { label: '⛔ ยกเลิก',    color: '#9e9e9e' },
+  cancelled: { label: '⛔ ยกเลิก',      color: '#9e9e9e' },
+  no_show:   { label: '⚠️ ไม่มาตามนัด', color: '#b45309' },
 };
 
 function varPct(est: number | null, act: number | null): string | null {
@@ -53,8 +54,9 @@ function HistorySummary({ rows }: { rows: HistoryRow[] }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 14 }}>
       {[
-        { label: 'เสร็จสิ้น',   value: completed.length,                        color: '#2e7d32' },
-        { label: 'ยกเลิก',      value: cancelled,                               color: '#c62828' },
+        { label: 'เสร็จสิ้น',    value: completed.length,                       color: '#2e7d32' },
+        { label: 'ไม่มาตามนัด',  value: rows.filter((r) => r.status === 'no_show').length, color: '#b45309' },
+        { label: 'ยกเลิก',       value: cancelled,                              color: '#9e9e9e' },
         { label: 'รอดำเนินการ', value: active,                                  color: '#e65100' },
         { label: 'รับจริงรวม',  value: totalKg > 0 ? `${totalKg.toLocaleString()} กก.` : '—', color: '#1b5e20' },
         { label: 'ความชื้นเฉลี่ย', value: avgMoist ? `${avgMoist}%` : '—',    color: '#1565c0' },

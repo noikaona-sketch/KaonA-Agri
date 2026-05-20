@@ -75,9 +75,12 @@ export function AdminHarvestQueue() {
           const mb = (bookings as {member_id:string;status:string}[]).filter((b) => b.member_id === mid);
           const completed = mb.filter((b) => b.status === 'completed').length;
           const cancelled = mb.filter((b) => b.status === 'cancelled').length;
+          const no_show   = mb.filter((b) => b.status === 'no_show').length;
           const pending   = mb.filter((b) => b.status === 'pending' || b.status === 'confirmed').length;
           const total     = mb.length;
-          map[mid] = { completed, cancelled, pending, total, cancelRate: total > 0 ? Math.round((cancelled/total)*100) : 0 };
+          const cancelRate = total > 0 ? Math.round((cancelled/total)*100) : 0;
+          const noShowRate = total > 0 ? Math.round((no_show/total)*100) : 0;
+          map[mid] = { completed, cancelled, no_show, pending, total, cancelRate, noShowRate };
         }
         setReliabilityMap(map);
       }
@@ -104,7 +107,7 @@ export function AdminHarvestQueue() {
   }
 
   // Status transitions
-  async function transition(id: string, newStatus: 'confirmed' | 'completed') {
+  async function transition(id: string, newStatus: 'confirmed' | 'completed' | 'no_show') {
     setActing(id);
     const s = createSupabaseBrowserClient();
     const { error: txErr } = await s.from('harvest_bookings')
@@ -184,6 +187,7 @@ export function AdminHarvestQueue() {
                   onSavePlan={() => void savePlan(r.id)}
                   onConfirm={()  => void transition(r.id, 'confirmed')}
                   onComplete={() => void transition(r.id, 'completed')}
+                  onNoShow={()   => void transition(r.id, 'no_show')}
                   reliabilityStats={r.member_id ? (reliabilityMap[r.member_id] ?? null) : null}
                 />
               ))}
