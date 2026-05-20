@@ -16,7 +16,8 @@
 import { useEffect, useState } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { LoadingState }     from '@/shared/components/loading-state';
-import { TonnageBar }            from './harvest-tonnage-bar';
+import { TonnageBar }        from './harvest-tonnage-bar';
+import { HarvestDailyBoard } from './harvest-daily-board';
 import { HarvestWorkloadSummary } from './harvest-workload-summary';
 import { ErrorState }   from '@/shared/components/error-state';
 
@@ -87,7 +88,6 @@ function compute(rows: BookingRow[]): DashboardData {
     byDay,
   };
 }
-
 
 // ── Main component ────────────────────────────────────────────────────────────
 type Props = { view?: 'week' | 'all' };
@@ -195,6 +195,7 @@ export function HarvestDashboard({ view = 'week' }: Props) {
     <div style={{ marginTop: 24 }}>
       <HarvestWorkloadSummary />
     </div>
+    <div style={{ marginTop: 8 }}><HarvestDailyBoard /></div>
     </>
   );
 }
