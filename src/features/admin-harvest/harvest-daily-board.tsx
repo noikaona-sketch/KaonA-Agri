@@ -109,15 +109,22 @@ export function HarvestDailyBoard() {
   useEffect(() => {
     void (async () => {
       const s = createSupabaseBrowserClient();
+      // Fetch a 14-day window on scheduled_date as a safe net,
+      // then filter client-side by effectiveDate (planned_delivery_date ?? scheduled_date).
+      const window14 = new Date(Date.now() - 14 * 86400000).toISOString().slice(0, 10);
       const { data, error: err } = await s
         .from('harvest_bookings')
         .select('status,actual_yield_kg,scheduled_date,planned_delivery_date')
         .in('status', ['pending', 'confirmed', 'completed', 'no_show'])
-        .gte('scheduled_date', today)
-        .lte('scheduled_date', tomorrow)
+        .gte('scheduled_date', window14)
         .limit(500);
-      if (err) setError(err.message);
-      else setRows((data as unknown as BookingSlim[]) ?? []);
+      if (err) { setError(err.message); setLoading(false); return; }
+      const all = (data as unknown as BookingSlim[]) ?? [];
+      // Client-side filter: effectiveDate must be today or tomorrow
+      setRows(all.filter((r) => {
+        const eff = effectiveDate(r);
+        return eff === today || eff === tomorrow;
+      }));
       setLoading(false);
     })();
   }, [today, tomorrow]);
