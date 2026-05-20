@@ -48,20 +48,23 @@ export function HarvestValuePreview({ estimatedYieldKg, marketPricePerKg, estima
           🧮 เปรียบเทียบผลกระทบความชื้น (ตัวอย่าง {referenceMoisturePct}%)
         </p>
         <p style={{ margin: '3px 0 0' }}>
-          กรณีตัวอย่าง: ความชื้น 32% → 28% จะเห็นน้ำหนักและมูลค่าลดลงตามสัดส่วนของน้ำ
+          กรณีตัวอย่าง: ความชื้น 32% → 28% จะเห็นน้ำหนักเทียบเท่าหลังปรับความชื้นและมูลค่าเทียบเท่า
         </p>
         {canShowMoistureEstimate && adjustedWeightKg !== null && adjustedValueBaht !== null && valueDiffBaht !== null ? (
           <p style={{ margin: '4px 0 0' }}>
             จาก <strong>{estimatedMoisturePct}%</strong> ไป <strong>{referenceMoisturePct}%</strong>:
-            น้ำหนักเทียบเท่า ~ <strong>{adjustedWeightKg.toLocaleString()} กก.</strong>
-            {' '}และมูลค่าประมาณ ~ <strong>{adjustedValueBaht.toLocaleString()} บาท</strong>
-            {' '}(<strong>{valueDiffBaht.toLocaleString()} บาท</strong> เทียบกับน้ำหนักเดิม)
+            น้ำหนักเทียบเท่าความชื้น {referenceMoisturePct}% ~ <strong>{adjustedWeightKg.toLocaleString()} กก.</strong>
+            {' '}และมูลค่าเทียบเท่าตามน้ำหนักหลังปรับความชื้น ~ <strong>{adjustedValueBaht.toLocaleString()} บาท</strong>
+            {' '}(<strong>{valueDiffBaht.toLocaleString()} บาท</strong> ส่วนต่างจากการคำนวณเทียบเท่า ไม่ใช่ยอดจ่ายจริง)
           </p>
         ) : (
           <p style={{ margin: '4px 0 0' }}>
             ระบุความชื้นมากกว่า {referenceMoisturePct}% เพื่อดูการเปรียบเทียบกับน้ำหนักที่ความชื้น {referenceMoisturePct}%.
           </p>
         )}
+        <p style={{ margin: '4px 0 0', fontSize: 11 }}>
+          * ตัวเลขนี้ไม่ใช่ยอดจ่ายจริง, ไม่ใช่กติกาการรับซื้อ, และไม่ใช่คำแนะนำให้ตาก/ขาย
+        </p>
       </div>
     </div>
   );
