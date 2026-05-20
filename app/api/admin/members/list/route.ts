@@ -15,7 +15,7 @@ export async function GET(request: Request) {
       id, full_name, phone, status, created_at,
       bank_name, bank_account_number, bank_verified_status,
       member_roles!inner(role, is_primary),
-      plots(id)
+      plots!plots_member_id_fkey(id)
     `).order('created_at', { ascending: false }).limit(300);
 
     if (status) q = q.eq('status', status);

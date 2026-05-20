@@ -13,8 +13,8 @@ type Cycle = {
   expected_harvest_at: string | null; estimated_yield_kg: number | null;
   quota_kg: number | null; seed_qty_used: number | null;
   area_planted_rai: number | null;
-  members: { full_name: string; phone: string | null }[] | null;
-  plots: { name: string; province: string | null }[] | null;
+  member: { full_name: string; phone: string | null }[] | null;
+  plot: { name: string; province: string | null }[] | null;
 };
 
 type YieldCalc = {
@@ -54,7 +54,7 @@ export function NewAppointmentForm() {
     void (async () => {
       const s = createSupabaseBrowserClient();
       const { data } = await s.from('planting_cycles')
-        .select('id,crop_name,planted_at,expected_harvest_at,estimated_yield_kg,quota_kg,seed_qty_used,area_planted_rai,members(full_name,phone),plots(name,province)')
+        .select('id,crop_name,planted_at,expected_harvest_at,estimated_yield_kg,quota_kg,seed_qty_used,area_planted_rai,member:members!planting_cycles_member_id_fkey(full_name,phone),plot:plots!planting_cycles_plot_id_fkey(name,province)')
         .in('status', ['planted','growing','flowering','maturing','ready'])
         .order('expected_harvest_at');
       setCycles((data as Cycle[]) ?? []);
@@ -120,7 +120,7 @@ export function NewAppointmentForm() {
           <option value="">— เลือกรอบปลูก —</option>
           {cycles.map((c) => (
             <option key={c.id} value={c.id}>
-              {c.members?.[0]?.full_name} · {c.crop_name} · {c.plots?.[0]?.name ?? ''} {c.plots?.[0]?.province ?? ''}
+              {c.member?.[0]?.full_name} · {c.crop_name} · {c.plot?.[0]?.name ?? ''} {c.plot?.[0]?.province ?? ''}
               {c.expected_harvest_at ? ` · เก็บ ${new Date(c.expected_harvest_at).toLocaleDateString('th-TH')}` : ''}
             </option>
           ))}
@@ -131,10 +131,10 @@ export function NewAppointmentForm() {
       {selectedCycle && (
         <section style={{ background: '#f7faf7', borderRadius: 12, padding: 16, display: 'grid', gap: 8 }}>
           <p style={{ margin: 0, fontWeight: 700, fontSize: 15, color: '#0d3d1f' }}>
-            🌾 {selectedCycle.crop_name} · {selectedCycle.plots?.[0]?.name}
+            🌾 {selectedCycle.crop_name} · {selectedCycle.plot?.[0]?.name}
           </p>
           <p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>
-            สมาชิก: {selectedCycle.members?.[0]?.full_name} · {selectedCycle.members?.[0]?.phone ?? ''}
+            สมาชิก: {selectedCycle.member?.[0]?.full_name} · {selectedCycle.member?.[0]?.phone ?? ''}
           </p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginTop: 4 }}>
             {[
