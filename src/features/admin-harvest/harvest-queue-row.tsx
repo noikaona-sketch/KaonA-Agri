@@ -1,6 +1,8 @@
 'use client';
 
-import { ReliabilityBadge, type ReliabilityStats } from './harvest-reliability';
+import { useState }                                   from 'react';
+import { ReliabilityBadge, type ReliabilityStats }   from './harvest-reliability';
+import { MemberHarvestHistory }                       from './member-harvest-history';
 
 const STATUS_CFG: Record<string, { label: string; color: string }> = {
   pending:   { label: '⏳ รอยืนยัน',  color: '#e65100' },
@@ -77,11 +79,13 @@ type RowProps = {
 export function HarvestQueueRow({
   r, acting, draft, onDraft, onSavePlan, onConfirm, onComplete, reliabilityStats,
 }: RowProps) {
+  const [showHistory, setShowHistory] = useState(false);
   const st    = STATUS_CFG[r.status] ?? { label: r.status, color: '#666' };
   const isAct = acting === r.id;
   const canAct = (r.status === 'pending' || r.status === 'confirmed') && !isAct;
 
   return (
+    <>
     <tr>
       {/* Member / plot */}
       <td>
@@ -91,6 +95,9 @@ export function HarvestQueueRow({
           {r.plot_name}{r.plot_province ? ` (${r.plot_province})` : ''}
         </p>
         {reliabilityStats && <ReliabilityBadge stats={reliabilityStats} />}
+        {r.member_id && <button onClick={() => setShowHistory(true)}
+          style={{ marginTop: 4, fontSize: 11, color: '#1565c0', background: 'none',
+            border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>ดูประวัติ</button>}
         {r.note && (
           <p style={{ margin: '3px 0 0', fontSize: 11, color: '#9ca3af',
             fontStyle: 'italic', maxWidth: 160, overflow: 'hidden',
@@ -201,5 +208,9 @@ export function HarvestQueueRow({
         </div>
       </td>
     </tr>
+    {showHistory && r.member_id && <MemberHarvestHistory
+      memberId={r.member_id} memberName={r.member_name}
+      onClose={() => setShowHistory(false)} />}
+    </>
   );
 }
