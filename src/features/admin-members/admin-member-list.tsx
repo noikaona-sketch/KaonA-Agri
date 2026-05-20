@@ -10,6 +10,7 @@ type MemberRow = {
   status: string; roles: string[]; effective_role: string | null; created_at: string;
   bank_verified_status: string;
   has_plots: boolean; has_bank: boolean;
+  readyToApprove: boolean; missingFields: string[]; readinessReason: string[];
 };
 
 const ROLE_ICONS: Record<string, string> = {
@@ -34,11 +35,8 @@ const STATUS_BADGE: Record<string, { label: string; color: string; bg: string }>
 };
 
 function readinessIndicator(m: MemberRow) {
-  const issues: string[] = [];
-  if (!m.has_bank || m.bank_verified_status !== 'verified') issues.push('🏦');
-  if (!m.has_plots) issues.push('🌾');
-  if (issues.length === 0) return <span style={{ fontSize: 12, color: '#1b5e20', fontWeight: 600 }}>✅ พร้อม</span>;
-  return <span style={{ fontSize: 12, color: '#e65100' }} title={`ขาด: ${issues.join(' ')}`}>{issues.join('')} ขาด</span>;
+  if (m.readyToApprove) return <span style={{ fontSize: 12, color: '#1b5e20', fontWeight: 600 }}>✅ พร้อม</span>;
+  return <span style={{ fontSize: 12, color: '#e65100' }} title={`ขาด: ${(m.missingFields ?? []).join(', ')}`}>⚠️ ยังไม่ครบ</span>;
 }
 
 export function AdminMemberList() {

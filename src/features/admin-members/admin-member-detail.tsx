@@ -47,6 +47,7 @@ export function AdminMemberDetail({ memberId }: { memberId: string }) {
   const [notice,   setNotice]   = useState<string | null>(null);
   const [modal,    setModal]    = useState<'return' | 'reject' | null>(null);
   const [incompleteWarning, setIncompleteWarning] = useState<string | null>(null);
+  const [readiness, setReadiness] = useState<{ readyToApprove: boolean; missingFields: string[]; readinessReason: string[] } | null>(null);
 
   async function load() {
     setLoading(true); setError(null);
@@ -54,6 +55,7 @@ export function AdminMemberDetail({ memberId }: { memberId: string }) {
     const payload = (await res.json()) as {
       member?: MemberDetail; plots?: PlotRow[]; vehicles?: VehicleRow[];
       roles?: RoleRow[]; docs?: DocRow[]; logs?: LogRow[]; error?: string;
+      readyToApprove?: boolean; missingFields?: string[]; readinessReason?: string[];
     };
     if (!res.ok) { setError(payload.error ?? 'ไม่พบข้อมูลสมาชิก'); setLoading(false); return; }
     setMember(payload.member ?? null);
@@ -62,6 +64,11 @@ export function AdminMemberDetail({ memberId }: { memberId: string }) {
     setRoles(payload.roles ?? []);
     setDocs(payload.docs ?? []);
     setLogs(payload.logs ?? []);
+    setReadiness({
+      readyToApprove: payload.readyToApprove ?? false,
+      missingFields: payload.missingFields ?? [],
+      readinessReason: payload.readinessReason ?? [],
+    });
     setLoading(false);
   }
 
@@ -170,7 +177,7 @@ export function AdminMemberDetail({ memberId }: { memberId: string }) {
       </div>
 
       {/* Panels */}
-      <CompletenessChecklistPanel member={member} plots={plots} vehicles={vehicles} docs={docs} roles={roles} />
+      <CompletenessChecklistPanel member={member} plots={plots} vehicles={vehicles} docs={docs} roles={roles} readiness={readiness} />
       <BankAccountPanel bankName={member.bank_name} bankAccountNumber={member.bank_account_number} bankAccountName={member.bank_account_name} bankVerifiedStatus={member.bank_verified_status} acting={acting} onUpdateBank={(s) => void updateBankStatus(s)} />
 
       {/* ข้อมูลส่วนตัว */}

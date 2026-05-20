@@ -11,9 +11,10 @@ const DOC_LABEL: Record<string, string> = {
   land_doc: '📄 โฉนด/นส.3', vehicle_reg: '🚜 ทะเบียนรถ', other: '📎 อื่นๆ',
 };
 
-export function CompletenessChecklistPanel({ member, plots, vehicles, docs, roles }: {
+export function CompletenessChecklistPanel({ member, plots, vehicles, docs, roles, readiness }: {
   member: MemberInfo; plots: PlotRow[]; vehicles: VehicleRow[];
   docs: DocRow[]; roles: RoleRow[];
+  readiness: { readyToApprove: boolean; missingFields: string[]; readinessReason: string[] } | null;
 }) {
   const roleSet = new Set(roles.map((r) => r.role));
   const checks = [
@@ -29,7 +30,7 @@ export function CompletenessChecklistPanel({ member, plots, vehicles, docs, role
       ? [{ label: 'ยานพาหนะ', ok: vehicles.length > 0 }] : []),
   ];
   const passed = checks.filter((c) => c.ok).length;
-  const allPass = passed === checks.length;
+  const allPass = readiness?.readyToApprove ?? passed === checks.length;
 
   return (
     <section>
@@ -47,6 +48,11 @@ export function CompletenessChecklistPanel({ member, plots, vehicles, docs, role
           </div>
         ))}
       </div>
+      {readiness && !readiness.readyToApprove && readiness.missingFields.length > 0 && (
+        <div style={{ marginTop: 10, fontSize: 12, color: '#b45309' }}>
+          ขาดข้อมูล: {readiness.missingFields.join(', ')}
+        </div>
+      )}
       {docs.length > 0 && (
         <div style={{ marginTop: 12 }}>
           <p style={{ margin: '0 0 6px', fontSize: 13, fontWeight: 600, color: '#4a6741' }}>เอกสารประกอบ:</p>

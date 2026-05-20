@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '../../../auth/line/line-auth-helpers';
+import { requireAdmin } from '../_admin-auth';
+import { evaluateMemberReadiness } from '../readiness-policy';
 import { isForbidden, requireAdminPermission } from '../_admin-auth';
 
 const ALLOWED_DECISIONS = ['approved','rejected','returned','suspended','pending'];
@@ -75,33 +77,52 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'กรุณาระบุเหตุผล' }, { status: 400 });
 
     // Blocker 4: completeness gate สำหรับ approved
+    // NOTE: keep approval gate equivalent to legacy required fields.
     if (body.decision === 'approved') {
-      const { data: m } = await s.from('members')
-        .select('full_name,phone,subdistrict,district,province,citizen_id_masked,bank_verified_status')
-        .eq('id', body.memberId).maybeSingle();
+      const [{ data: m }, { data: memberRoles }, { data: memberPlots }, { data: memberVehicles }] = await Promise.all([
+        s.from('members')
+          .select('phone,address,subdistrict,district,province,citizen_id_masked,line_user_id,bank_name,bank_account_number,bank_verified_status')
+          .eq('id', body.memberId).maybeSingle(),
+        s.from('member_roles').select('role').eq('member_id', body.memberId),
+        s.from('plots').select('id').eq('member_id', body.memberId).is('deleted_at', null).limit(1),
+        s.from('member_vehicles').select('id').eq('member_id', body.memberId).is('deleted_at', null).limit(1),
+      ]);
 
       if (m) {
-        const mm = m as Record<string, string | null>;
-        const incomplete = !mm.phone || !mm.subdistrict || !mm.district || !mm.province;
-        const bankNotVerified = mm.bank_verified_status !== 'verified';
+        const readiness = evaluateMemberReadiness({
+          phone: m.phone,
+          address: m.address,
+          subdistrict: m.subdistrict,
+          district: m.district,
+          province: m.province,
+          citizen_id_masked: m.citizen_id_masked,
+          line_user_id: m.line_user_id,
+          bank_name: m.bank_name,
+          bank_account_number: m.bank_account_number,
+          bank_verified_status: m.bank_verified_status,
+          has_plots: (memberPlots ?? []).length > 0,
+          has_vehicles: (memberVehicles ?? []).length > 0,
+          roles: (memberRoles ?? []).map((r) => r.role),
+        });
 
-        if (incomplete || bankNotVerified) {
-          // ต้องมี override reason ถ้าข้อมูลยังไม่ครบ
-          if (!body.reason?.trim()) {
-            const missing = [
-              !mm.phone && 'เบอร์โทร',
-              !mm.subdistrict && 'ตำบล',
-              !mm.district && 'อำเภอ',
-              !mm.province && 'จังหวัด',
-              bankNotVerified && 'บัญชีธนาคารยังไม่ verified',
-            ].filter(Boolean).join(', ');
-            return NextResponse.json({
-              error: `ข้อมูลยังไม่ครบ: ${missing}`,
-              incomplete: true,
-              missing_fields: missing,
-            }, { status: 422 });
-          }
-          // มี override reason — อนุมัติได้แต่บันทึก override
+        const missingGateFields = [
+          !m.phone && 'phone',
+          !m.subdistrict && 'subdistrict',
+          !m.district && 'district',
+          !m.province && 'province',
+          m.bank_verified_status !== 'verified' && 'bank_verified_status',
+        ].filter(Boolean) as string[];
+
+        if (missingGateFields.length > 0 && !body.reason?.trim()) {
+          return NextResponse.json({
+            error: `ข้อมูลยังไม่ครบ: ${missingGateFields.join(', ')}`,
+            incomplete: true,
+            missing_fields: missingGateFields.join(', '),
+            readyToApprove: readiness.readyToApprove,
+            missingFields: readiness.missingFields,
+            readinessReason: readiness.readinessReason,
+            gateMissingFields: missingGateFields,
+          }, { status: 422 });
         }
       }
     }
