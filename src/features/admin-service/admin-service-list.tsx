@@ -15,7 +15,7 @@ type BookingRow = {
   status: string;
   note: string | null;
   created_at: string;
-  members: { full_name: string; phone: string | null }[] | null;
+  member: { full_name: string; phone: string | null }[] | null;
   assigned_to: { full_name: string } | null;
 };
 
@@ -47,7 +47,7 @@ export function AdminServiceList() {
     setLoading(true);
     const s = createSupabaseBrowserClient();
     let q = s.from('service_bookings')
-      .select('*,members(full_name,phone),assigned_to:assigned_to_member_id(full_name)')
+      .select('*,member:members!service_bookings_member_id_fkey(full_name,phone),assigned_to:assigned_to_member_id(full_name)')
       .order('created_at', { ascending: false })
       .limit(200);
     if (statusFilter) q = q.eq('status', statusFilter);
@@ -102,8 +102,8 @@ export function AdminServiceList() {
                 return (
                   <tr key={r.id}>
                     <td>
-                      <p style={{ margin: 0, fontWeight: 600 }}>{r.members?.[0]?.full_name ?? '—'}</p>
-                      <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>{r.members?.[0]?.phone ?? ''}</p>
+                      <p style={{ margin: 0, fontWeight: 600 }}>{r.member?.[0]?.full_name ?? '—'}</p>
+                      <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>{r.member?.[0]?.phone ?? ''}</p>
                     </td>
                     <td>{SERVICE_LABELS[r.service_type] ?? r.service_type}</td>
                     <td style={{ fontSize: 13, color: '#6b7280', whiteSpace: 'nowrap' }}>{r.scheduled_date ? new Date(r.scheduled_date).toLocaleDateString('th-TH') : '—'}</td>

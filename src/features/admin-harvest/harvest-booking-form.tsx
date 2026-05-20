@@ -11,8 +11,8 @@ type PlantingCycle = {
   id: string; crop_name: string; season_year: number;
   expected_harvest_at: string | null; estimated_yield_kg: number | null;
   area_planted_rai: number | null; member_id: string;
-  members: { full_name: string }[] | null;
-  plots: { id: string; name: string; province: string | null }[] | null;
+  member: { full_name: string }[] | null;
+  plot: { id: string; name: string; province: string | null }[] | null;
 };
 
 type Props = { cycleId?: string; onCreated: () => void };
@@ -44,7 +44,7 @@ export function HarvestBookingForm({ cycleId, onCreated }: Props) {
       const s = createSupabaseBrowserClient();
       const [cRes, tRes] = await Promise.all([
         s.from('planting_cycles')
-          .select('id,crop_name,season_year,expected_harvest_at,estimated_yield_kg,area_planted_rai,member_id,members(full_name),plots(id,name,province)')
+          .select('id,crop_name,season_year,expected_harvest_at,estimated_yield_kg,area_planted_rai,member_id,member:members!planting_cycles_member_id_fkey(full_name),plot:plots!planting_cycles_plot_id_fkey(id,name,province)')
           .in('status', ['planted','growing','flowering','maturing','fruiting','ready'])
           .order('expected_harvest_at'),
         s.from('members').select('id,full_name,phone').eq('status','approved').limit(100),
@@ -80,7 +80,7 @@ export function HarvestBookingForm({ cycleId, onCreated }: Props) {
     const { error: insertErr } = await s.from('harvest_bookings').insert({
       planting_cycle_id: form.planting_cycle_id,
       member_id: selectedCycle.member_id,
-      plot_id: selectedCycle.plots?.[0]?.id ?? null,
+      plot_id: selectedCycle.plot?.[0]?.id ?? null,
       truck_type: form.truck_type,
       truck_member_id: form.truck_type === 'internal' ? form.truck_member_id || null : null,
       external_truck_name: form.truck_type === 'external' ? form.external_truck_name || null : null,
@@ -122,13 +122,13 @@ export function HarvestBookingForm({ cycleId, onCreated }: Props) {
           <option value="">เลือกรอบปลูก…</option>
           {cycles.map((c) => (
             <option key={c.id} value={c.id}>
-              {c.members?.[0]?.full_name} — {c.crop_name} {c.season_year} · {c.plots?.[0]?.name}{c.plots?.[0]?.province ? ` (${c.plots[0].province})` : ''}
+              {c.member?.[0]?.full_name} — {c.crop_name} {c.season_year} · {c.plot?.[0]?.name}{c.plot?.[0]?.province ? ` (${c.plot?.[0]?.province})` : ''}
             </option>
           ))}
         </select>
         {selectedCycle && (
           <div style={{ marginTop: 10, background: '#e8f5e9', borderRadius: 10, padding: '12px 16px', display: 'flex', gap: 24, flexWrap: 'wrap' }}>
-            {[['แปลง', `${selectedCycle.plots?.[0]?.name ?? '—'} ${selectedCycle.plots?.[0]?.province ? `(${selectedCycle.plots[0].province})` : ''}`],
+            {[['แปลง', `${selectedCycle.plot?.[0]?.name ?? '—'} ${selectedCycle.plot?.[0]?.province ? `(${selectedCycle.plot?.[0]?.province})` : ''}`],
               ['พื้นที่', `${selectedCycle.area_planted_rai ?? '—'} ไร่`],
               ['คาดผลผลิต', `${(selectedCycle.estimated_yield_kg ?? 0).toLocaleString()} กก.`],
               ['คาดเก็บ', selectedCycle.expected_harvest_at ? new Date(selectedCycle.expected_harvest_at).toLocaleDateString('th-TH') : '—']

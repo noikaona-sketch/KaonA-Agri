@@ -61,6 +61,7 @@ export function HarvestAccuracyPage() {
       actual_received_kg:     r.actual_received_kg,
       estimated_moisture_pct: r.estimated_moisture_pct,
       actual_moisture_pct:    r.actual_moisture_pct,
+      quality_moisture:       r.quality_moisture,
       status:                 'completed',
       admin_note:             r.admin_note,
     }));
