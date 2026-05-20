@@ -5,10 +5,11 @@ import { ReliabilityBadge, type ReliabilityStats }   from './harvest-reliability
 import { MemberHarvestHistory }                       from './member-harvest-history';
 
 const STATUS_CFG: Record<string, { label: string; color: string }> = {
-  pending:   { label: '⏳ รอยืนยัน',  color: '#e65100' },
-  confirmed: { label: '✅ ยืนยันแล้ว', color: '#2e7d32' },
-  completed: { label: '🏁 เสร็จสิ้น',  color: '#1b5e20' },
-  cancelled: { label: '⛔ ยกเลิก',     color: '#9e9e9e' },
+  pending:   { label: '⏳ รอยืนยัน',    color: '#e65100' },
+  confirmed: { label: '✅ ยืนยันแล้ว',  color: '#2e7d32' },
+  completed: { label: '🏁 เสร็จสิ้น',   color: '#1b5e20' },
+  cancelled: { label: '⛔ ยกเลิก',       color: '#9e9e9e' },
+  no_show:   { label: '⚠️ ไม่มาตามนัด', color: '#b45309' },
 };
 
 const DRYING_TH: Record<string, string> = {
@@ -73,11 +74,12 @@ type RowProps = {
   onSavePlan:       () => void;
   onConfirm:        () => void;
   onComplete:       () => void;
+  onNoShow:         () => void;
   reliabilityStats: ReliabilityStats | null;
 };
 
 export function HarvestQueueRow({
-  r, acting, draft, onDraft, onSavePlan, onConfirm, onComplete, reliabilityStats,
+  r, acting, draft, onDraft, onSavePlan, onConfirm, onComplete, onNoShow, reliabilityStats,
 }: RowProps) {
   const [showHistory, setShowHistory] = useState(false);
   const st    = STATUS_CFG[r.status] ?? { label: r.status, color: '#666' };
@@ -200,6 +202,12 @@ export function HarvestQueueRow({
                 <button className="admin-btn admin-btn--primary"
                   style={{ fontSize: 12 }} disabled={isAct} onClick={onComplete}>
                   🏁 เสร็จสิ้น
+                </button>
+              )}
+              {r.status === 'confirmed' && (
+                <button className="admin-btn admin-btn--secondary"
+                  style={{ fontSize: 12, color: '#b45309' }} disabled={isAct} onClick={onNoShow}>
+                  ⚠️ ไม่มาตามนัด
                 </button>
               )}
             </div>
