@@ -11,7 +11,7 @@ type Order = {
   status: string; payment_status: string; payment_method: string | null;
   total: number; paid_amount: number; created_at: string;
   pickup_date: string | null; reserved_until: string | null;
-  members: { full_name: string; phone: string | null }[] | null;
+  member: { full_name: string; phone: string | null }[] | null;
 };
 
 const STATUS_MAP: Record<string, { badge: string; label: string }> = {
@@ -35,7 +35,7 @@ export function AdminOrdersList() {
     setLoading(true);
     const s = createSupabaseBrowserClient();
     let q = s.from('sale_orders')
-      .select('id,order_number,order_type,status,payment_status,payment_method,total,paid_amount,created_at,pickup_date,reserved_until,members(full_name,phone)')
+      .select('id,order_number,order_type,status,payment_status,payment_method,total,paid_amount,created_at,pickup_date,reserved_until,member:members!sale_orders_member_id_fkey(full_name,phone)')
       .order('created_at', { ascending: false }).limit(200);
     if (typeFilter) q = q.eq('order_type', typeFilter);
     if (statusFilter) q = q.eq('status', statusFilter);
@@ -112,8 +112,8 @@ export function AdminOrdersList() {
                   <tr key={o.id}>
                     <td style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 12 }}>{o.order_number}</td>
                     <td>
-                      <p style={{ margin: 0, fontWeight: 600 }}>{o.members?.[0]?.full_name ?? '—'}</p>
-                      <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>{o.members?.[0]?.phone ?? ''}</p>
+                      <p style={{ margin: 0, fontWeight: 600 }}>{o.member?.[0]?.full_name ?? '—'}</p>
+                      <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>{o.member?.[0]?.phone ?? ''}</p>
                     </td>
                     <td>{isReservation ? '📋 จอง' : '💰 ขาย'}</td>
                     <td style={{ fontWeight: 700 }}>{o.total.toLocaleString()} บาท</td>

@@ -20,7 +20,7 @@ type Appt = {
   total_amount: number;
   location_note: string | null;
   note: string | null;
-  members: { full_name: string; phone: string | null }[] | null;
+  member: { full_name: string; phone: string | null }[] | null;
   planting_cycles: { crop_name: string; plot_id: string }[] | null;
 };
 
@@ -46,7 +46,7 @@ export function AdminAppointmentsList() {
     setLoading(true);
     const s = createSupabaseBrowserClient();
     let q = s.from('sale_appointments')
-      .select('*,members(full_name,phone),planting_cycles(crop_name,plot_id)')
+      .select('*,member:members!sale_appointments_member_id_fkey(full_name,phone),planting_cycles(crop_name,plot_id)')
       .order('appointment_date').limit(200);
     if (statusFilter) q = q.eq('status', statusFilter);
     const { data, error: err } = await q;
@@ -139,8 +139,8 @@ export function AdminAppointmentsList() {
                       {isToday && <span style={{ display: 'block', fontSize: 10, color: '#2e7d32', fontWeight: 800 }}>วันนี้!</span>}
                     </td>
                     <td>
-                      <p style={{ margin: 0, fontWeight: 600 }}>{a.members?.[0]?.full_name ?? '—'}</p>
-                      <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>{a.members?.[0]?.phone ?? ''}</p>
+                      <p style={{ margin: 0, fontWeight: 600 }}>{a.member?.[0]?.full_name ?? '—'}</p>
+                      <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>{a.member?.[0]?.phone ?? ''}</p>
                     </td>
                     <td style={{ fontWeight: 600 }}>{a.planting_cycles?.[0]?.crop_name ?? '—'}</td>
                     <td style={{ whiteSpace: 'nowrap', fontSize: 13 }}>
@@ -182,7 +182,7 @@ export function AdminAppointmentsList() {
             </div>
             <div className="admin-modal__body">
               <p style={{ margin: 0, fontSize: 14, color: '#4a6741' }}>
-                <strong>{completing.members?.[0]?.full_name}</strong> · {completing.planting_cycles?.[0]?.crop_name}
+                <strong>{completing.member?.[0]?.full_name}</strong> · {completing.planting_cycles?.[0]?.crop_name}
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <label className="reg-label">ปริมาณจริง (กก.) <span className="reg-required">*</span>

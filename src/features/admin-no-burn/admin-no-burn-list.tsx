@@ -16,7 +16,7 @@ type NoBurnRow = {
   submitted_at: string;
   review_note:  string | null;
   consent_accepted: boolean | null;
-  members:         { full_name: string; phone: string | null }[] | null;
+  member:         { full_name: string; phone: string | null }[] | null;
   plots:           { name: string; area_rai: number }[] | null;
   planting_cycles: { crop_name: string; season_year: number }[] | null;
 };
@@ -58,7 +58,7 @@ export function AdminNoBurnList() {
       .from('no_burn_requests')
       .select(
         'id,member_id,status,submitted_at,review_note,consent_accepted,' +
-        'members(full_name,phone),' +
+        'member:members!no_burn_requests_member_id_fkey(full_name,phone),' +
         'plots(name,area_rai),' +
         'planting_cycles(crop_name,season_year)',
       )
@@ -181,10 +181,10 @@ export function AdminNoBurnList() {
                     {/* Member */}
                     <td>
                       <p style={{ margin: 0, fontWeight: 600 }}>
-                        {r.members?.[0]?.full_name ?? '—'}
+                        {r.member?.[0]?.full_name ?? '—'}
                       </p>
                       <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>
-                        {r.members?.[0]?.phone ?? ''}
+                        {r.member?.[0]?.phone ?? ''}
                       </p>
                     </td>
 
