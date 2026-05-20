@@ -10,7 +10,7 @@ type ViewRow = {
   id: string;
   scheduled_date: string;
   status: string;
-  actual_yield_kg: number | null;
+  estimated_yield_kg: number | null;
   quality_moisture: number | null;
 };
 
@@ -34,7 +34,7 @@ function summarize(days: 7 | 30, rows: (ViewRow & P2Row)[]): AnalyticsSummary {
   const total = rows.length;
   const completed = rows.filter((r) => r.status === 'completed').length;
   const noShow = rows.filter((r) => r.status === 'no_show').length;
-  const totalTonnageKg = rows.reduce((s, r) => s + (r.actual_received_kg ?? r.actual_yield_kg ?? 0), 0);
+  const totalTonnageKg = rows.reduce((s, r) => s + (r.actual_received_kg ?? r.estimated_yield_kg ?? 0), 0);
 
   const expectedMoisture = rows
     .map((r) => r.estimated_moisture_pct)
@@ -43,9 +43,9 @@ function summarize(days: 7 | 30, rows: (ViewRow & P2Row)[]): AnalyticsSummary {
     ? Math.round((expectedMoisture.reduce((s, v) => s + v, 0) / expectedMoisture.length) * 10) / 10
     : null;
 
-  const deltaRows = rows.filter((r) => r.actual_yield_kg != null && r.actual_received_kg != null);
+  const deltaRows = rows.filter((r) => r.estimated_yield_kg != null && r.actual_received_kg != null);
   const expectedVsActualDeltaKg = deltaRows.length
-    ? deltaRows.reduce((s, r) => s + ((r.actual_received_kg ?? 0) - (r.actual_yield_kg ?? 0)), 0)
+    ? deltaRows.reduce((s, r) => s + ((r.actual_received_kg ?? 0) - (r.estimated_yield_kg ?? 0)), 0)
     : null;
 
   return {
@@ -91,7 +91,7 @@ export function HarvestAnalyticsPage() {
 
       const { data: vData, error: vErr } = await s
         .from('harvest_bookings_full')
-        .select('id,scheduled_date,status,actual_yield_kg,quality_moisture')
+        .select('id,scheduled_date,status,estimated_yield_kg,quality_moisture')
         .gte('scheduled_date', from30)
         .in('status', ['pending', 'confirmed', 'completed', 'no_show'])
         .order('scheduled_date', { ascending: false })
