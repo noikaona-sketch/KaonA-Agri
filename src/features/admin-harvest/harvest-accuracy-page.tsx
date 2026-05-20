@@ -9,9 +9,11 @@ import { HarvestEmptyState }                        from './harvest-data-quality
 import { HarvestAccuracyTable }        from './harvest-accuracy-table';
 import type { AccuracyRow }            from './harvest-accuracy-summary';
 
+// harvest_bookings_full view does not include PR1+ columns.
+// estimated_moisture_pct, actual_received_kg, actual_moisture_pct,
+// actual_completed_at, admin_note not in view — null fallbacks applied.
 const SELECT =
-  'id,actual_yield_kg,estimated_moisture_pct,actual_received_kg,' +
-  'actual_moisture_pct,actual_completed_at,' +
+  'id,actual_yield_kg,quality_moisture,actual_date,' +
   'member_name,member_phone,plot_name,crop_name';
 
 export function HarvestAccuracyPage() {
@@ -29,11 +31,11 @@ export function HarvestAccuracyPage() {
       .from('harvest_bookings_full')
       .select(SELECT)
       .eq('status', 'completed')
-      .not('actual_received_kg', 'is', null)
-      .order('actual_completed_at', { ascending: false })
+      .not('actual_yield_kg', 'is', null)
+      .order('actual_date', { ascending: false })
       .limit(300);
-    if (dateFrom) q = q.gte('actual_completed_at', dateFrom);
-    if (dateTo)   q = q.lte('actual_completed_at', dateTo + 'T23:59:59');
+    if (dateFrom) q = q.gte('actual_date', dateFrom);
+    if (dateTo)   q = q.lte('actual_date', dateTo);
     if (crop)     q = q.ilike('crop_name', `%${crop}%`);
     const { data, error: err } = await q;
     if (err) setError(err.message);
