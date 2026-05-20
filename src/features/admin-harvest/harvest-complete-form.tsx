@@ -49,7 +49,6 @@ export function HarvestCompleteForm({ completing, form, onChange }: Props) {
     { value: 'high_moisture', label: 'high moisture' },
     { value: 'lower_yield_than_expected', label: 'lower yield than expected' },
     { value: 'farmer_rescheduled', label: 'farmer rescheduled' },
-    { value: 'no_show', label: 'no_show' },
     { value: 'other', label: 'other' },
   ] as const;
 
@@ -172,7 +171,6 @@ export function CompletedActualDisplay({
     high_moisture: 'high moisture',
     lower_yield_than_expected: 'lower yield than expected',
     farmer_rescheduled: 'farmer rescheduled',
-    no_show: 'no_show',
     other: 'other',
   };
   return (

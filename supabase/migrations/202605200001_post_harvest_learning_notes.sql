@@ -23,7 +23,6 @@ alter table public.harvest_bookings
         'high_moisture',
         'lower_yield_than_expected',
         'farmer_rescheduled',
-        'no_show',
         'other'
       ]::text[]
     )
