@@ -17,11 +17,11 @@ import { LoadingState }                from '@/shared/components/loading-state';
 import { ErrorState }                  from '@/shared/components/error-state';
 
 type WorkloadRow = {
-  scheduled_date:       string;
+  scheduled_date:        string;
   planned_delivery_date: string | null;
-  status:               string;
-  actual_yield_kg:      number | null;
-  drying_preference:    string | null;
+  status:                string;
+  actual_yield_kg:       number | null;
+  // drying_preference not in harvest_bookings_full view yet — removed until view is updated
 };
 
 type DayStat = {
@@ -40,14 +40,13 @@ function dateKey(row: WorkloadRow): string {
 function buildDayStats(rows: WorkloadRow[], days: string[]): DayStat[] {
   return days.map((date) => {
     const dayRows = rows.filter((r) => dateKey(r) === date);
-    let pendingKg = 0, confirmedKg = 0, dryingKg = 0;
+    let pendingKg = 0, confirmedKg = 0;
     for (const r of dayRows) {
       const kg = r.actual_yield_kg ?? 0;
       if (r.status === 'pending')   pendingKg   += kg;
       if (r.status === 'confirmed') confirmedKg += kg;
-      if (r.drying_preference === 'required') dryingKg += kg;
     }
-    return { date, pendingKg, confirmedKg, dryingKg, bookingCount: dayRows.length };
+    return { date, pendingKg, confirmedKg, dryingKg: 0, bookingCount: dayRows.length };
   });
 }
 
@@ -67,14 +66,12 @@ function SummaryTiles({ today, week }: {
   const fmt = (n: number) => n > 0 ? `${(n / 1000).toFixed(1)} ต.` : '—';
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, marginBottom: 16 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 10, marginBottom: 16 }}>
       {[
         { label: 'วันนี้ — รอ',     value: fmt(today.pendingKg),   color: '#e65100' },
         { label: 'วันนี้ — ยืนยัน', value: fmt(today.confirmedKg), color: '#2e7d32' },
-        { label: 'วันนี้ — ต้องอบ', value: fmt(today.dryingKg),    color: '#b45309' },
         { label: '7 วัน — รอ',      value: fmt(week.pendingKg),    color: '#e65100' },
         { label: '7 วัน — ยืนยัน',  value: fmt(week.confirmedKg),  color: '#2e7d32' },
-        { label: '7 วัน — ต้องอบ',  value: fmt(week.dryingKg),     color: '#b45309' },
       ].map((s) => (
         <div key={s.label} style={{
           background: '#f9fafb', borderRadius: 10,
@@ -109,7 +106,6 @@ function DailyTable({ days }: { days: DayStat[] }) {
             <th>วันที่</th>
             <th>รอ (ต.)</th>
             <th>ยืนยัน (ต.)</th>
-            <th>ต้องอบ (ต.)</th>
             <th>รวมคิว</th>
             <th style={{ minWidth: 120 }}>แผนภาพ</th>
           </tr>
@@ -131,9 +127,6 @@ function DailyTable({ days }: { days: DayStat[] }) {
                 </td>
                 <td style={{ fontSize: 12, color: '#2e7d32' }}>
                   {d.confirmedKg > 0 ? (d.confirmedKg / 1000).toFixed(1) : '—'}
-                </td>
-                <td style={{ fontSize: 12, color: '#b45309' }}>
-                  {d.dryingKg > 0 ? (d.dryingKg / 1000).toFixed(1) : '—'}
                 </td>
                 <td style={{ fontSize: 12 }}>{d.bookingCount > 0 ? `${d.bookingCount} คิว` : '—'}</td>
                 <td>
@@ -163,8 +156,10 @@ export function HarvestWorkloadSummary() {
       const from = new Date().toISOString().slice(0, 10);
       const to   = nextNDays(7)[6]; // D+6
       const { data, error: err } = await s
-        .from('harvest_bookings_full')
-        .select('scheduled_date,planned_delivery_date,status,actual_yield_kg,drying_preference')
+        // Query harvest_bookings directly — harvest_bookings_full view
+        // does not include PR1+ columns (drying_preference, planned_delivery_date).
+        .from('harvest_bookings')
+        .select('scheduled_date,planned_delivery_date,status,actual_yield_kg')
         .in('status', ['pending', 'confirmed'])
         .limit(500);
       if (err) setError(err.message);
