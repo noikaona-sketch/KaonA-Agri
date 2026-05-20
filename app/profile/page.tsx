@@ -101,7 +101,6 @@ export default function ProfilePage() {
 
     void (async () => {
       const today = new Date().toISOString().slice(0, 10);
-    void (async () => {
       const { data: { session } } = await s.auth.getSession();
       const authHeaders = session?.access_token
         ? { Authorization: `Bearer ${session.access_token}` }
@@ -133,26 +132,29 @@ export default function ProfilePage() {
         s.from('planting_cycles').select('id,status').eq('member_id', member.member_id).is('deleted_at', null),
       ]);
       if (cancelled) return;
-
-
-      const [m, p, d, cr, pr] = await Promise.all([
-      s.from('members').select('full_name,phone,address,citizen_id_masked,status,bank_name,bank_account_number,bank_account_name').eq('id', member.member_id).maybeSingle(),
-      // member identity is resolved server-side from Bearer token
-      fetch('/api/member/plots', { headers: authHeaders }).then((r) => r.json()),
-      s.from('member_documents').select('doc_type,verified,file_url').eq('member_id', member.member_id),
-      fetch('/api/member/credit').then((r) => r.json()),
-      s.from('provider_requests')
-        .select('id,request_type,status,reviewed_by,reviewed_at,created_at')
-        .eq('member_id', member.member_id)
-        .in('request_type', ['service_team', 'field_team'])
-        .order('created_at', { ascending: false }),
-    ]);
       setData((m.data as MemberData | null));
       setPlots(((p as { plots?: PlotSummary[] }).plots ?? []));
       setDocs((d.data as DocRow[] | null) ?? []);
       setCredit((cr as { account?: CreditAccount }).account ?? null);
       setProviderRequests(((pr.data as ProviderRequestRow[] | null) ?? []));
+      const surveys = ((surveysRes as { surveys?: Array<{ id: string }> }).surveys ?? []);
+      const completedSurveyIds = new Set(
+        ((responsesRes.data as Array<{ survey_id: string }> | null) ?? []).map((row) => row.survey_id),
+      );
+      const pendingSurveys = surveys.filter((survey) => !completedSurveyIds.has(survey.id)).length;
+      const cycles = (cyclesRes.data as Array<{ status: string }> | null) ?? [];
+      setLive({
+        activeAnnouncements: announcementRes.count ?? 0,
+        pendingSurveys,
+        nextHarvestBooking: (nextBookingRes.data as { scheduled_date: string; status: string } | null) ?? null,
+        activeCycles: cycles.filter((cycle) => cycle.status !== 'completed').length,
+        completedCycles: cycles.filter((cycle) => cycle.status === 'completed').length,
+      });
     })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [member?.member_id]);
 
   if (!member || !data) return <LoadingState label="กำลังโหลด…" />;
