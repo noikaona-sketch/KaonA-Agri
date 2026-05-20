@@ -14,7 +14,7 @@ type CycleRow = {
   planted_at: string | null;
   expected_harvest_at: string | null;
   created_at: string;
-  members: { full_name: string }[] | null;
+  member: { full_name: string }[] | null;
   plots: { name: string; area_rai: number }[] | null;
 };
 
@@ -38,7 +38,7 @@ export function AdminPlantingList() {
       setLoading(true);
       const s = createSupabaseBrowserClient();
       let q = s.from('planting_cycles')
-        .select('id,crop_name,season_year,status,planted_at,expected_harvest_at,created_at,members(full_name),plots(name,area_rai)')
+        .select('id,crop_name,season_year,status,planted_at,expected_harvest_at,created_at,member:members!planting_cycles_member_id_fkey(full_name),plots(name,area_rai)')
         .order('created_at', { ascending: false })
         .limit(200);
       if (statusFilter) q = q.eq('status', statusFilter);
@@ -84,7 +84,7 @@ export function AdminPlantingList() {
                 const st = STATUS_MAP[r.status] ?? { badge: 'pending', label: r.status };
                 return (
                   <tr key={r.id}>
-                    <td style={{ fontWeight: 600 }}>{r.members?.[0]?.full_name ?? '—'}</td>
+                    <td style={{ fontWeight: 600 }}>{r.member?.[0]?.full_name ?? '—'}</td>
                     <td>{r.plots?.[0]?.name ?? '—'} {r.plots?.[0]?.area_rai ? <span style={{ fontSize: 12, color: '#6b7280' }}>({r.plots[0].area_rai} ไร่)</span> : null}</td>
                     <td style={{ fontWeight: 600 }}>{r.crop_name}</td>
                     <td>{r.season_year}</td>
