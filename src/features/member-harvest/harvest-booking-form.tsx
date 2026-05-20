@@ -55,6 +55,7 @@ export function MemberHarvestBookingForm({ cycleId, cropName, plotId, onSuccess 
   }
 
   const yieldNum = Number(estimatedYield);
+  const moistureNum = Number(moisturePct);
 
   async function handleSubmit() {
     setError(null);
@@ -115,7 +116,11 @@ export function MemberHarvestBookingForm({ cycleId, cropName, plotId, onSuccess 
       </label>
 
       {marketPrice !== null && yieldNum > 0 && (
-        <HarvestValuePreview estimatedYieldKg={yieldNum} marketPricePerKg={marketPrice} />
+        <HarvestValuePreview
+          estimatedYieldKg={yieldNum}
+          marketPricePerKg={marketPrice}
+          estimatedMoisturePct={moisturePct ? moistureNum : undefined}
+        />
       )}
 
       <DryingSelector   value={dryingPref}  onChange={setDryingPref}  disabled={submitting} />
