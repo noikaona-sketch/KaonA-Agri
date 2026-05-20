@@ -9,6 +9,11 @@ type Stats = {
   plots_total: number; orders_30d: number; revenue_30d: number;
   reservations_pending: number; stock_low_count: number;
   appointments_upcoming: number;
+  campaigns_active: number;
+  survey_responses_recent: number;
+  surveys_active: number;
+  harvest_intake_pending: number;
+  alert_ready_count: number;
 };
 
 const MENU = [
@@ -36,6 +41,7 @@ const MENU = [
     href: '/admin/alerts', icon: '🔔', label: 'Alert Readiness',
     desc: 'รายการพร้อมแจ้งเตือน (Preview เท่านั้น)',
     color: '#fff3e0', border: '#ffcc80',
+    statKey: 'alert_ready_count', statSuffix: 'สัญญาณพร้อม',
   },
 
   {
@@ -115,6 +121,29 @@ export default function AdminDashboardPage() {
           );
         })}
       </div>
+      {stats && (
+        <div style={{ marginTop: 18, display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 12 }}>
+          <div className="admin-kpi-card">
+            <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>Active campaigns</p>
+            <p style={{ margin: '4px 0 0', fontSize: 22, fontWeight: 800 }}>{stats.campaigns_active}</p>
+          </div>
+          <div className="admin-kpi-card">
+            <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>Survey response signal (7 วัน)</p>
+            <p style={{ margin: '4px 0 0', fontSize: 22, fontWeight: 800 }}>{stats.survey_responses_recent}</p>
+            <p style={{ margin: '4px 0 0', fontSize: 12, color: '#9ca3af' }}>จากแบบสำรวจ active {stats.surveys_active} รายการ</p>
+          </div>
+          <div className="admin-kpi-card">
+            <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>Harvest intake pressure</p>
+            <p style={{ margin: '4px 0 0', fontSize: 22, fontWeight: 800 }}>{stats.harvest_intake_pending}</p>
+            <p style={{ margin: '4px 0 0', fontSize: 12, color: '#9ca3af' }}>คิว pending + confirmed</p>
+          </div>
+          <Link href="/admin/alerts" className="admin-kpi-card" style={{ textDecoration: 'none' }}>
+            <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>Alert readiness</p>
+            <p style={{ margin: '4px 0 0', fontSize: 22, fontWeight: 800, color: '#1d4ed8' }}>{stats.alert_ready_count}</p>
+            <p style={{ margin: '4px 0 0', fontSize: 12, color: '#1d4ed8' }}>เปิดหน้ารายละเอียด →</p>
+          </Link>
+        </div>
+      )}
     </AdminWebShell>
   );
 }

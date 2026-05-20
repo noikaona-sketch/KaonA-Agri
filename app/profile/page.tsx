@@ -45,6 +45,13 @@ type ProviderRequestRow = {
   reviewed_at: string | null;
   created_at: string;
 };
+type MemberLiveSnapshot = {
+  activeAnnouncements: number;
+  pendingSurveys: number;
+  nextHarvestBooking: { scheduled_date: string; status: string } | null;
+  activeCycles: number;
+  completedCycles: number;
+};
 
 const DOC_LABEL: Record<string, string> = {
   thai_id_card: '🪪 บัตรประชาชน',
@@ -85,28 +92,72 @@ export default function ProfilePage() {
   const [credit, setCredit] = useState<CreditAccount | null>(null);
   const [docs,   setDocs]   = useState<DocRow[]>([]);
   const [providerRequests, setProviderRequests] = useState<ProviderRequestRow[]>([]);
+  const [live, setLive] = useState<MemberLiveSnapshot | null>(null);
 
   useEffect(() => {
     if (!member?.member_id) return;
     const s = createSupabaseBrowserClient();
-    void Promise.all([
-      s.from('members').select('full_name,phone,address,citizen_id_masked,status,bank_name,bank_account_number,bank_account_name').eq('id', member.member_id).maybeSingle(),
-      // ใช้ API route แทน browser client เพราะ plots RLS ต้องการ auth.uid() ที่อาจยังไม่ ready
-      fetch(`/api/member/plots?member_id=${member.member_id}`).then((r) => r.json()),
-      s.from('member_documents').select('doc_type,verified,file_url').eq('member_id', member.member_id),
-      fetch('/api/member/credit').then((r) => r.json()),
-      s.from('provider_requests')
-        .select('id,request_type,status,reviewed_by,reviewed_at,created_at')
-        .eq('member_id', member.member_id)
-        .in('request_type', ['service_team', 'field_team'])
-        .order('created_at', { ascending: false }),
-    ]).then(([m, p, d, cr, pr]) => {
+    let cancelled = false;
+
+    void (async () => {
+      const today = new Date().toISOString().slice(0, 10);
+      const { data: { session } } = await s.auth.getSession();
+      const authHeaders = session?.access_token
+        ? { Authorization: `Bearer ${session.access_token}` }
+        : undefined;
+      const [
+        m, p, d, cr, pr,
+        announcementRes, surveysRes, responsesRes, nextBookingRes, cyclesRes,
+      ] = await Promise.all([
+        s.from('members').select('full_name,phone,address,citizen_id_masked,status,bank_name,bank_account_number,bank_account_name').eq('id', member.member_id).maybeSingle(),
+        fetch('/api/member/plots', { headers: authHeaders }).then((r) => r.json()),
+        s.from('member_documents').select('doc_type,verified,file_url').eq('member_id', member.member_id),
+        fetch('/api/member/credit').then((r) => r.json()),
+        s.from('provider_requests')
+          .select('id,request_type,status,reviewed_by,reviewed_at,created_at')
+          .eq('member_id', member.member_id)
+          .in('request_type', ['service_team', 'field_team'])
+          .order('created_at', { ascending: false }),
+        s.from('campaign_announcements').select('id', { count: 'exact', head: true })
+          .eq('is_active', true)
+          .lte('start_date', today)
+          .gte('end_date', today),
+        fetch('/api/member/surveys').then((r) => r.ok ? r.json() : { surveys: [] }),
+        s.from('survey_responses').select('survey_id').eq('member_id', member.member_id),
+        s.from('harvest_bookings').select('scheduled_date,status')
+          .eq('member_id', member.member_id)
+          .in('status', ['pending', 'confirmed'])
+          .gte('scheduled_date', today)
+          .order('scheduled_date', { ascending: true }).limit(1).maybeSingle(),
+        s.from('planting_cycles').select('id,status').eq('member_id', member.member_id).is('deleted_at', null),
+      ]);
+      if (cancelled) return;
+
       setData((m.data as MemberData | null));
       setPlots(((p as { plots?: PlotSummary[] }).plots ?? []));
       setDocs((d.data as DocRow[] | null) ?? []);
       setCredit((cr as { account?: CreditAccount }).account ?? null);
       setProviderRequests(((pr.data as ProviderRequestRow[] | null) ?? []));
-    });
+
+      const surveyIds = new Set((((surveysRes as { surveys?: { id: string }[] })?.surveys) ?? []).map((item) => item.id));
+      const answered = new Set(((responsesRes.data as { survey_id: string }[] | null) ?? []).map((item) => item.survey_id));
+      let pendingSurveys = 0;
+      surveyIds.forEach((id) => { if (!answered.has(id)) pendingSurveys += 1; });
+      const cycleRows = (cyclesRes.data as { status: string | null }[] | null) ?? [];
+      const activeCycles = cycleRows.filter((row) => row.status === 'active' || row.status === 'planned').length;
+      const completedCycles = cycleRows.filter((row) => row.status === 'completed').length;
+      setLive({
+        activeAnnouncements: announcementRes.count ?? 0,
+        pendingSurveys,
+        nextHarvestBooking: (nextBookingRes.data as { scheduled_date: string; status: string } | null) ?? null,
+        activeCycles,
+        completedCycles,
+      });
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [member?.member_id]);
 
   if (!member || !data) return <LoadingState label="กำลังโหลด…" />;
@@ -125,6 +176,39 @@ export default function ProfilePage() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingBottom: 16 }}>
 
         <MemberAnnouncementsList />
+        {live && (
+          <div style={{ ...S.card, padding: 14, display: 'grid', gap: 10 }}>
+            <p style={{ margin: 0, fontWeight: 600, fontSize: 14 }}>สรุปข้อมูลล่าสุดของคุณ</p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              <div style={{ background: '#f8fafc', borderRadius: 10, padding: '8px 10px' }}>
+                <p style={{ margin: 0, fontSize: 12, color: '#64748b' }}>ประกาศที่ยังใช้งาน</p>
+                <p style={{ margin: '2px 0 0', fontSize: 16, fontWeight: 700 }}>{live.activeAnnouncements} รายการ</p>
+              </div>
+              <div style={{ background: live.pendingSurveys > 0 ? '#fff7ed' : '#f8fafc', borderRadius: 10, padding: '8px 10px' }}>
+                <p style={{ margin: 0, fontSize: 12, color: '#64748b' }}>แบบสำรวจที่รอตอบ</p>
+                <p style={{ margin: '2px 0 0', fontSize: 16, fontWeight: 700 }}>{live.pendingSurveys} รายการ</p>
+              </div>
+            </div>
+            <div style={{ borderTop: '0.5px solid var(--color-border-tertiary,#e4ede4)', paddingTop: 10 }}>
+              <p style={{ margin: 0, fontSize: 12, color: '#64748b' }}>สถานะเก็บเกี่ยว / รอบปลูก</p>
+              <p style={{ margin: '4px 0 0', fontSize: 13, color: '#111827' }}>
+                {live.nextHarvestBooking
+                  ? `นัดเก็บเกี่ยวถัดไป ${new Date(live.nextHarvestBooking.scheduled_date).toLocaleDateString('th-TH')} (${live.nextHarvestBooking.status})`
+                  : 'ยังไม่มีนัดเก็บเกี่ยวที่รอดำเนินการ'}
+              </p>
+              <p style={{ margin: '4px 0 0', fontSize: 13, color: '#111827' }}>
+                รอบปลูกที่กำลังเดินงาน {live.activeCycles} รอบ · เสร็จสิ้นแล้ว {live.completedCycles} รอบ
+              </p>
+            </div>
+            {live.pendingSurveys > 0 ? (
+              <Link href="/member/surveys" style={{ fontSize: 13, color: '#185FA5', textDecoration: 'none', fontWeight: 600 }}>
+                ไปตอบแบบสำรวจล่าสุด →
+              </Link>
+            ) : (
+              <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>ตอนนี้ไม่มีแบบสำรวจค้างตอบ</p>
+            )}
+          </div>
+        )}
 
         {/* ── Hero ── */}
         <div style={{ ...S.card, padding: '16px' }}>

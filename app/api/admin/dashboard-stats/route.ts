@@ -12,7 +12,7 @@ export async function GET() {
     const [
       membersRes, pendingRes, plotsRes,
       ordersRes,  reservationsRes, stockAlerts,
-      salesSummary, appointmentsRes,
+      salesSummary, appointmentsRes, campaignsRes, surveyResponsesRecentRes, surveyResponsesPendingRes, harvestPendingRes, alertReadinessCyclesRes,
     ] = await Promise.all([
       // จำนวนสมาชิกทั้งหมด
       s.from('members').select('id', { count: 'exact', head: true }).eq('status', 'approved'),
@@ -36,6 +36,14 @@ export async function GET() {
       s.from('sale_appointments').select('id', { count: 'exact', head: true })
         .gte('appointment_date', new Date().toISOString().slice(0, 10))
         .in('status', ['scheduled', 'confirmed']),
+      s.from('campaign_announcements').select('id', { count: 'exact', head: true }).eq('is_active', true)
+        .lte('start_date', new Date().toISOString().slice(0, 10))
+        .gte('end_date', new Date().toISOString().slice(0, 10)),
+      s.from('survey_responses').select('id', { count: 'exact', head: true })
+        .gte('created_at', new Date(Date.now() - 7 * 86400000).toISOString()),
+      s.from('surveys').select('id', { count: 'exact', head: true }).eq('is_active', true),
+      s.from('harvest_bookings').select('id', { count: 'exact', head: true }).in('status', ['pending', 'confirmed']),
+      s.from('planting_cycles').select('id', { count: 'exact', head: true }).in('status', ['planned', 'growing']),
     ]);
 
     // คำนวณรายได้ 30 วัน
@@ -52,6 +60,11 @@ export async function GET() {
       reservations_pending: reservationsRes.count ?? 0,
       stock_low_count:      stockAlerts.count ?? 0,
       appointments_upcoming: appointmentsRes.count ?? 0,
+      campaigns_active: campaignsRes.count ?? 0,
+      survey_responses_recent: surveyResponsesRecentRes.count ?? 0,
+      surveys_active: surveyResponsesPendingRes.count ?? 0,
+      harvest_intake_pending: harvestPendingRes.count ?? 0,
+      alert_ready_count: alertReadinessCyclesRes.count ?? 0,
     });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
