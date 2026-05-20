@@ -6,10 +6,11 @@ import { LoadingState } from '@/shared/components/loading-state';
 import { ErrorState } from '@/shared/components/error-state';
 
 type BookingRiskRow = {
+  id: string;
   status: string;
-  actual_yield_kg: number | null;
   scheduled_date: string;
   planned_delivery_date: string | null;
+  estimated_yield_kg: number | null;
 };
 
 type RiskLevel = 'green' | 'yellow' | 'red';
@@ -58,9 +59,9 @@ export function HarvestRiskIndicator() {
       setLoading(true);
       setError(null);
       const s = createSupabaseBrowserClient();
-      const { data, error: qErr } = await s
+      const { data: tableRows, error: qErr } = await s
         .from('harvest_bookings')
-        .select('status,actual_yield_kg,scheduled_date,planned_delivery_date')
+        .select('id,status,scheduled_date,planned_delivery_date')
         .in('status', ['pending', 'confirmed', 'completed', 'no_show'])
         .gte('scheduled_date', weekStart)
         .limit(800);
@@ -69,7 +70,30 @@ export function HarvestRiskIndicator() {
         setLoading(false);
         return;
       }
-      setRows((data as BookingRiskRow[]) ?? []);
+
+      const ids = ((tableRows as { id: string }[] | null) ?? []).map((r) => r.id);
+      const estimateMap: Record<string, number | null> = {};
+      if (ids.length > 0) {
+        const { data: viewRows, error: vErr } = await s
+          .from('harvest_bookings_full')
+          .select('id,estimated_yield_kg')
+          .in('id', ids)
+          .limit(800);
+        if (vErr) {
+          setError(vErr.message);
+          setLoading(false);
+          return;
+        }
+        for (const row of (viewRows as { id: string; estimated_yield_kg: number | null }[] | null) ?? []) {
+          estimateMap[row.id] = row.estimated_yield_kg ?? null;
+        }
+      }
+
+      const merged = ((tableRows as Omit<BookingRiskRow, 'estimated_yield_kg'>[] | null) ?? []).map((r) => ({
+        ...r,
+        estimated_yield_kg: estimateMap[r.id] ?? null,
+      }));
+      setRows(merged);
       setLoading(false);
     })();
   }, [weekStart]);
@@ -82,7 +106,7 @@ export function HarvestRiskIndicator() {
     return d === today && (r.status === 'pending' || r.status === 'confirmed');
   });
 
-  const todayExpectedKg = activeToday.reduce((sum, r) => sum + (r.actual_yield_kg ?? 0), 0);
+  const todayExpectedKg = activeToday.reduce((sum, r) => sum + (r.estimated_yield_kg ?? 0), 0);
   const queueLoadRatio = DAILY_CAPACITY_KG > 0 ? todayExpectedKg / DAILY_CAPACITY_KG : 0;
 
   const pendingAll = rows.filter((r) => r.status === 'pending').length;
