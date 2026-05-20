@@ -5,12 +5,14 @@ import { AdminWebShell } from '@/shared/components/admin-web-shell';
 import { AdminHarvestList }   from '@/features/admin-harvest/admin-harvest-list';
 import { HarvestDashboard }        from '@/features/admin-harvest/harvest-dashboard';
 import { HarvestAccuracyPage }   from '@/features/admin-harvest/harvest-accuracy-page';
+import { HarvestRiskIndicator } from '@/features/admin-harvest/harvest-risk-indicator';
 import { AdminHarvestQueue } from '@/features/admin-harvest/admin-harvest-queue';
 import { AdminProviderRatings } from '@/features/service-rating/admin-provider-ratings';
 
-type Tab = 'dashboard' | 'accuracy' | 'queue' | 'bookings' | 'ratings';
+type Tab = 'dashboard' | 'risk' | 'accuracy' | 'queue' | 'bookings' | 'ratings';
 const TABS: { key: Tab; icon: string; label: string }[] = [
   { key: 'dashboard', icon: '📊', label: 'สรุป' },
+  { key: 'risk', icon: '⚠️', label: 'ความเสี่ยง' },
   { key: 'accuracy',  icon: '🎯', label: 'ความแม่น' },
   { key: 'queue',    icon: '📋', label: 'คิวเกี่ยว' },
   { key: 'bookings', icon: '🚜', label: 'นัดรถเกี่ยว' },
@@ -32,6 +34,7 @@ export default function HarvestPage() {
         ))}
       </div>
       {tab === 'dashboard' && <HarvestDashboard />}
+      {tab === 'risk' && <HarvestRiskIndicator />}
       {tab === 'accuracy'  && <HarvestAccuracyPage />}
       {tab === 'queue'    && <AdminHarvestQueue />}
       {tab === 'bookings' && <AdminHarvestList />}
