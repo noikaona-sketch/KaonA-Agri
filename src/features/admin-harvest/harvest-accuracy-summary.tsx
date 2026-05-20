@@ -19,6 +19,7 @@ export type AccuracyRow = {
   actual_received_kg:     number | null;
   actual_moisture_pct:    number | null;
   actual_completed_at:    string | null;
+  admin_note:             string | null;
 };
 
 type Stats = {
