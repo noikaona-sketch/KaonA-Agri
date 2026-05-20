@@ -20,6 +20,11 @@ type Cycle = {
   area_planted_rai: number | null; estimated_yield_kg: number | null;
   quota_kg: number | null; source: string | null; confirmed_at: string | null;
   member_note: string | null; seed_qty_used: number | null;
+  expected_yield_per_rai_kg: number | null;
+  expected_price_per_kg: number | null;
+  expected_cost_per_rai: number | null;
+  expected_cost_per_rai_burn: number | null;
+  expected_cost_per_rai_no_burn: number | null;
   products: ProductRef | null;
   plots: PlotRef | null;
 };
@@ -92,12 +97,21 @@ export function PlantingCycleDetail({ cycleId }: { cycleId: string }) {
   const [stageDesc, setStageDesc]       = useState('');
   const [saving, setSaving]             = useState(false);
   const [notice, setNotice]             = useState<string | null>(null);
+  const [economics, setEconomics]       = useState({
+    expectedYieldPerRaiKg: '',
+    expectedPricePerKg: '',
+    expectedCostPerRai: '',
+    expectedCostPerRaiBurn: '',
+    expectedCostPerRaiNoBurn: '',
+  });
+  const [savingEconomics, setSavingEconomics] = useState(false);
+  const [economicsNotice, setEconomicsNotice] = useState<string | null>(null);
 
   async function load() {
     const s = createSupabaseBrowserClient();
     const [cRes, pRes, plotsRes] = await Promise.all([
       s.from('planting_cycles')
-        .select('id,crop_name,season_year,status,planted_at,expected_harvest_at,area_planted_rai,estimated_yield_kg,quota_kg,source,confirmed_at,member_note,seed_qty_used,burn_practice,burn_practice_note,products(name,seed_variety,days_to_harvest,planting_guide),plots(id,name,province)')
+        .select('id,crop_name,season_year,status,planted_at,expected_harvest_at,area_planted_rai,estimated_yield_kg,quota_kg,source,confirmed_at,member_note,seed_qty_used,burn_practice,burn_practice_note,expected_yield_per_rai_kg,expected_price_per_kg,expected_cost_per_rai,expected_cost_per_rai_burn,expected_cost_per_rai_no_burn,products(name,seed_variety,days_to_harvest,planting_guide),plots(id,name,province)')
         .eq('id', cycleId).maybeSingle(),
       s.from('planting_cycle_progress')
         .select('id,stage,description,recorded_at')
@@ -119,8 +133,42 @@ export function PlantingCycleDetail({ cycleId }: { cycleId: string }) {
       // Sync burn practice state from DB
       setBurnPractice(normalizedCycle.burn_practice ?? 'unknown');
       setBurnPracticeNote(normalizedCycle.burn_practice_note ?? '');
+      setEconomics({
+        expectedYieldPerRaiKg: normalizedCycle.expected_yield_per_rai_kg != null ? String(normalizedCycle.expected_yield_per_rai_kg) : '',
+        expectedPricePerKg: normalizedCycle.expected_price_per_kg != null ? String(normalizedCycle.expected_price_per_kg) : '',
+        expectedCostPerRai: normalizedCycle.expected_cost_per_rai != null ? String(normalizedCycle.expected_cost_per_rai) : '',
+        expectedCostPerRaiBurn: normalizedCycle.expected_cost_per_rai_burn != null ? String(normalizedCycle.expected_cost_per_rai_burn) : '',
+        expectedCostPerRaiNoBurn: normalizedCycle.expected_cost_per_rai_no_burn != null ? String(normalizedCycle.expected_cost_per_rai_no_burn) : '',
+      });
     }
     setLoading(false);
+  }
+
+  async function saveEconomics() {
+    setSavingEconomics(true);
+    setEconomicsNotice(null);
+    const s = createSupabaseBrowserClient();
+    const parse = (v: string) => {
+      if (!v.trim()) return null;
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    };
+    const payload = {
+      expected_yield_per_rai_kg: parse(economics.expectedYieldPerRaiKg),
+      expected_price_per_kg: parse(economics.expectedPricePerKg),
+      expected_cost_per_rai: parse(economics.expectedCostPerRai),
+      expected_cost_per_rai_burn: parse(economics.expectedCostPerRaiBurn),
+      expected_cost_per_rai_no_burn: parse(economics.expectedCostPerRaiNoBurn),
+      updated_at: new Date().toISOString(),
+    };
+    const { error } = await s.from('planting_cycles').update(payload).eq('id', cycleId);
+    setSavingEconomics(false);
+    if (error) {
+      setEconomicsNotice(`❌ บันทึกไม่สำเร็จ: ${error.message}`);
+      return;
+    }
+    setEconomicsNotice('✅ บันทึกข้อมูลเศรษฐศาสตร์การปลูกแล้ว');
+    await load();
   }
 
   useEffect(() => { void load(); }, [cycleId, memberId]);
@@ -178,6 +226,15 @@ export function PlantingCycleDetail({ cycleId }: { cycleId: string }) {
 
   const days = daysUntil(cycle.expected_harvest_at);
   const needConfirm = cycle.source === 'order' && !cycle.confirmed_at;
+  const expectedYield = Number(economics.expectedYieldPerRaiKg) || 0;
+  const expectedPrice = Number(economics.expectedPricePerKg) || 0;
+  const expectedCost = Number(economics.expectedCostPerRai) || 0;
+  const expectedRevenue = expectedYield * expectedPrice;
+  const expectedProfit = expectedRevenue - expectedCost;
+  const burnCost = Number(economics.expectedCostPerRaiBurn) || expectedCost;
+  const noBurnCost = Number(economics.expectedCostPerRaiNoBurn) || expectedCost;
+  const burnProfit = expectedRevenue - burnCost;
+  const noBurnProfit = expectedRevenue - noBurnCost;
 
   return (
     <div className="mobile-stack" style={{ paddingBottom: 24 }}>
@@ -201,6 +258,39 @@ export function PlantingCycleDetail({ cycleId }: { cycleId: string }) {
           <UIButton fullWidth onClick={() => setShowConfirm(true)}>📅 ระบุแปลงและวันปลูก</UIButton>
         </div>
       )}
+
+      <div className="kaona-card">
+        <p style={{ margin: '0 0 12px', fontWeight: 800, fontSize: 16 }}>💰 เศรษฐศาสตร์การปลูก (เบื้องต้น)</p>
+        <div className="mobile-stack" style={{ gap: 10 }}>
+          <label className="reg-label">ต้นทุนคาดการณ์ต่อไร่ (บาท)
+            <input className="reg-input" type="number" step="0.01" value={economics.expectedCostPerRai} onChange={(e) => setEconomics((p) => ({ ...p, expectedCostPerRai: e.target.value }))} placeholder="3500" />
+          </label>
+          <label className="reg-label">ผลผลิตคาดการณ์ต่อไร่ (กก.)
+            <input className="reg-input" type="number" step="0.01" value={economics.expectedYieldPerRaiKg} onChange={(e) => setEconomics((p) => ({ ...p, expectedYieldPerRaiKg: e.target.value }))} placeholder="1200" />
+          </label>
+          <label className="reg-label">ราคาขายคาดการณ์ต่อกก. (บาท)
+            <input className="reg-input" type="number" step="0.01" value={economics.expectedPricePerKg} onChange={(e) => setEconomics((p) => ({ ...p, expectedPricePerKg: e.target.value }))} placeholder="8.5" />
+          </label>
+          <div style={{ background: '#f7faf7', border: '1px solid #dce8dc', borderRadius: 12, padding: 12 }}>
+            <p style={{ margin: '0 0 6px', fontWeight: 700 }}>สรุปต่อไร่</p>
+            <p style={{ margin: 0, fontSize: 14 }}>รายได้คาดการณ์: <b>{expectedRevenue.toLocaleString()} บาท</b></p>
+            <p style={{ margin: '6px 0 0', fontSize: 14 }}>กำไรคาดการณ์: <b>{expectedProfit.toLocaleString()} บาท</b></p>
+          </div>
+          <p style={{ margin: '8px 0 0', fontWeight: 700, fontSize: 14 }}>เปรียบเทียบการจัดการตอซัง (ฐานข้อมูลเริ่มต้น)</p>
+          <label className="reg-label">ต้นทุนแบบเผา (บาท/ไร่)
+            <input className="reg-input" type="number" step="0.01" value={economics.expectedCostPerRaiBurn} onChange={(e) => setEconomics((p) => ({ ...p, expectedCostPerRaiBurn: e.target.value }))} placeholder="3200" />
+          </label>
+          <label className="reg-label">ต้นทุนแบบไม่เผา (บาท/ไร่)
+            <input className="reg-input" type="number" step="0.01" value={economics.expectedCostPerRaiNoBurn} onChange={(e) => setEconomics((p) => ({ ...p, expectedCostPerRaiNoBurn: e.target.value }))} placeholder="3800" />
+          </label>
+          <div style={{ background: '#fff', border: '1px dashed #a5d6a7', borderRadius: 12, padding: 12, fontSize: 14 }}>
+            <p style={{ margin: 0 }}>กำไรคาดการณ์ (เผา): <b>{burnProfit.toLocaleString()} บาท/ไร่</b></p>
+            <p style={{ margin: '6px 0 0' }}>กำไรคาดการณ์ (ไม่เผา): <b>{noBurnProfit.toLocaleString()} บาท/ไร่</b></p>
+          </div>
+          {economicsNotice && <p style={{ margin: 0, fontWeight: 700 }}>{economicsNotice}</p>}
+          <UIButton fullWidth onClick={saveEconomics} loading={savingEconomics} disabled={savingEconomics}>บันทึกข้อมูลเศรษฐศาสตร์</UIButton>
+        </div>
+      </div>
 
       {showConfirm && (
         <div className="kaona-card">
