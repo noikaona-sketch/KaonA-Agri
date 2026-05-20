@@ -15,6 +15,7 @@ type QueueItem = {
     citizen_id_masked: string; registration_type: string | null;
     address: string | null; created_at: string;
   } | null;
+  missingDocuments?: string[];
 };
 
 export function AdminApprovalQueue() {
@@ -76,6 +77,7 @@ export function AdminApprovalQueue() {
                 <th>เลขบัตร</th>
                 <th>ประเภท</th>
                 <th>ที่อยู่</th>
+                <th>เอกสารที่ขาด</th>
                 <th>วันที่ยื่น</th>
                 <th style={{ textAlign: 'center' }}>การดำเนินการ</th>
               </tr>
@@ -101,6 +103,20 @@ export function AdminApprovalQueue() {
                   </td>
                   <td style={{ fontSize: 12, color: '#6b7280', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {item.member?.address ?? '—'}
+                  </td>
+                  <td>
+                    {(item.missingDocuments?.length ?? 0) === 0 ? (
+                      <span style={{ fontSize: 12, fontWeight: 600, color: '#1b5e20', background: '#e8f5e9', border: '1px solid #a5d6a7', borderRadius: 999, padding: '3px 8px' }}>
+                        ✅ ครบ
+                      </span>
+                    ) : (
+                      <span
+                        title={(item.missingDocuments ?? []).join(', ')}
+                        style={{ fontSize: 12, fontWeight: 700, color: '#e65100', background: '#fff8e1', border: '1px solid #ffd54f', borderRadius: 999, padding: '3px 8px', cursor: 'help' }}
+                      >
+                        ⚠️ ขาด {(item.missingDocuments ?? []).length} รายการ
+                      </span>
+                    )}
                   </td>
                   <td style={{ fontSize: 12, color: '#6b7280', whiteSpace: 'nowrap' }}>
                     {new Date(item.created_at).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}

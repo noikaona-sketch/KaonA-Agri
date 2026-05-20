@@ -6,6 +6,18 @@ import { isForbidden, requireAdminPermission } from '../_admin-auth';
 
 const ALLOWED_DECISIONS = ['approved','rejected','returned','suspended','pending'];
 
+const DOC_LABEL: Record<string, string> = {
+  thai_id_card: 'บัตรประชาชน',
+  bank_book: 'หลักฐานบัญชีธนาคาร',
+  land_doc: 'หลักฐานแปลง/ที่ดิน',
+  vehicle_reg: 'ทะเบียนรถ',
+};
+
+const ROLE_REQUIRED_DOCS: Record<string, string[]> = {
+  farmer: ['thai_id_card', 'bank_book', 'land_doc'],
+  truck_owner: ['vehicle_reg', 'bank_book'],
+};
+
 export async function GET() {
   try {
     const _ar_get = await requireAdminPermission('members.read');
@@ -25,7 +37,46 @@ export async function GET() {
       .order('created_at', { ascending: true }).limit(100);
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ items: data ?? [] });
+
+    const rows = (data ?? []) as Record<string, unknown>[];
+    const memberIds = rows.map((r) => String(r.member_id)).filter(Boolean);
+    const [{ data: roleRows }, { data: docRows }] = await Promise.all([
+      memberIds.length
+        ? s.from('member_roles').select('member_id,role').in('member_id', memberIds)
+        : Promise.resolve({ data: [] }),
+      memberIds.length
+        ? s.from('member_documents').select('member_id,doc_type').in('member_id', memberIds)
+        : Promise.resolve({ data: [] }),
+    ]);
+
+    const rolesByMember = new Map<string, string[]>();
+    for (const r of (roleRows ?? []) as { member_id: string; role: string }[]) {
+      rolesByMember.set(r.member_id, [...(rolesByMember.get(r.member_id) ?? []), r.role]);
+    }
+    const docsByMember = new Map<string, Set<string>>();
+    for (const d of (docRows ?? []) as { member_id: string; doc_type: string }[]) {
+      docsByMember.set(d.member_id, new Set([...(docsByMember.get(d.member_id) ?? []), d.doc_type]));
+    }
+
+    const items = rows.map((row) => {
+      const memberId = String(row.member_id);
+      const roles = rolesByMember.get(memberId) ?? [];
+      const uploadedDocs = docsByMember.get(memberId) ?? new Set<string>();
+      const requiredDocs = new Set<string>();
+      for (const role of roles) {
+        for (const docType of ROLE_REQUIRED_DOCS[role] ?? []) requiredDocs.add(docType);
+      }
+      const missingDocuments = [...requiredDocs]
+        .filter((docType) => !uploadedDocs.has(docType))
+        .map((docType) => DOC_LABEL[docType] ?? docType);
+
+      return {
+        ...row,
+        missingDocuments,
+      };
+    });
+
+    return NextResponse.json({ items });
   } catch (e) { return NextResponse.json({ error: String(e) }, { status: 500 }); }
 }
 
