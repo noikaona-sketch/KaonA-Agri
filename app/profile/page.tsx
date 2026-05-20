@@ -97,39 +97,45 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!member?.member_id) return;
     const s = createSupabaseBrowserClient();
-    void Promise.all([
-      s.from('members').select('full_name,phone,address,citizen_id_masked,status,bank_name,bank_account_number,bank_account_name').eq('id', member.member_id).maybeSingle(),
-      // ใช้ API route แทน browser client เพราะ plots RLS ต้องการ auth.uid() ที่อาจยังไม่ ready
-      fetch(`/api/member/plots?member_id=${member.member_id}`).then((r) => r.json()),
-      s.from('member_documents').select('doc_type,verified,file_url').eq('member_id', member.member_id),
-      fetch('/api/member/credit').then((r) => r.json()),
-      s.from('provider_requests')
-        .select('id,request_type,status,reviewed_by,reviewed_at,created_at')
-        .eq('member_id', member.member_id)
-        .in('request_type', ['service_team', 'field_team'])
-        .order('created_at', { ascending: false }),
-    ]).then(([m, p, d, cr, pr]) => {
+    let cancelled = false;
+
+    void (async () => {
+      const today = new Date().toISOString().slice(0, 10);
+      const [
+        m, p, d, cr, pr,
+        announcementRes, surveysRes, responsesRes, nextBookingRes, cyclesRes,
+      ] = await Promise.all([
+        s.from('members').select('full_name,phone,address,citizen_id_masked,status,bank_name,bank_account_number,bank_account_name').eq('id', member.member_id).maybeSingle(),
+        // ใช้ API route แทน browser client เพราะ plots RLS ต้องการ auth.uid() ที่อาจยังไม่ ready
+        fetch(`/api/member/plots?member_id=${member.member_id}`).then((r) => r.json()),
+        s.from('member_documents').select('doc_type,verified,file_url').eq('member_id', member.member_id),
+        fetch('/api/member/credit').then((r) => r.json()),
+        s.from('provider_requests')
+          .select('id,request_type,status,reviewed_by,reviewed_at,created_at')
+          .eq('member_id', member.member_id)
+          .in('request_type', ['service_team', 'field_team'])
+          .order('created_at', { ascending: false }),
+        s.from('campaign_announcements').select('id', { count: 'exact', head: true })
+          .eq('is_active', true)
+          .lte('start_date', today)
+          .gte('end_date', today),
+        fetch('/api/member/surveys').then((r) => r.ok ? r.json() : { surveys: [] }),
+        s.from('survey_responses').select('survey_id').eq('member_id', member.member_id),
+        s.from('harvest_bookings').select('scheduled_date,status')
+          .eq('member_id', member.member_id)
+          .in('status', ['pending', 'confirmed'])
+          .gte('scheduled_date', today)
+          .order('scheduled_date', { ascending: true }).limit(1).maybeSingle(),
+        s.from('planting_cycles').select('id,status').eq('member_id', member.member_id).is('deleted_at', null),
+      ]);
+      if (cancelled) return;
+
       setData((m.data as MemberData | null));
       setPlots(((p as { plots?: PlotSummary[] }).plots ?? []));
       setDocs((d.data as DocRow[] | null) ?? []);
       setCredit((cr as { account?: CreditAccount }).account ?? null);
       setProviderRequests(((pr.data as ProviderRequestRow[] | null) ?? []));
-    });
 
-    void Promise.all([
-      s.from('campaign_announcements').select('id', { count: 'exact', head: true })
-        .eq('is_active', true)
-        .lte('start_date', new Date().toISOString().slice(0, 10))
-        .gte('end_date', new Date().toISOString().slice(0, 10)),
-      fetch('/api/member/surveys').then((r) => r.ok ? r.json() : { surveys: [] }),
-      s.from('survey_responses').select('survey_id').eq('member_id', member.member_id),
-      s.from('harvest_bookings').select('scheduled_date,status')
-        .eq('member_id', member.member_id)
-        .in('status', ['pending', 'confirmed'])
-        .gte('scheduled_date', new Date().toISOString().slice(0, 10))
-        .order('scheduled_date', { ascending: true }).limit(1).maybeSingle(),
-      s.from('planting_cycles').select('id,status').eq('member_id', member.member_id).is('deleted_at', null),
-    ]).then(([announcementRes, surveysRes, responsesRes, nextBookingRes, cyclesRes]) => {
       const surveyIds = new Set((((surveysRes as { surveys?: { id: string }[] })?.surveys) ?? []).map((item) => item.id));
       const answered = new Set(((responsesRes.data as { survey_id: string }[] | null) ?? []).map((item) => item.survey_id));
       let pendingSurveys = 0;
@@ -144,7 +150,11 @@ export default function ProfilePage() {
         activeCycles,
         completedCycles,
       });
-    });
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [member?.member_id]);
 
   if (!member || !data) return <LoadingState label="กำลังโหลด…" />;
