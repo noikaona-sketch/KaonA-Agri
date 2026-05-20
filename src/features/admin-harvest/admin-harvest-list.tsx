@@ -12,6 +12,7 @@ type Booking = {
   actual_date: string | null; actual_yield_kg: number | null;
   quality_grade: string | null; quality_moisture: number | null;
   actual_received_kg: number | null; actual_moisture_pct: number | null; actual_completed_at: string | null; admin_note: string | null;
+  post_harvest_tags: string[] | null;
   truck_status: string | null; truck_lat: number | null; truck_lng: number | null;
   member_name: string; member_phone: string | null;
   crop_name: string; plot_name: string; plot_province: string | null;
@@ -42,7 +43,7 @@ export function AdminHarvestList() {
   const [acting, setActing]     = useState<string | null>(null);
   const [notice, setNotice]     = useState<string | null>(null);
   const [completing, setCompleting] = useState<Booking | null>(null);
-  const [completeForm, setCompleteForm] = useState<CompleteFormState>({ receivedKg: '', actualMoisture: '', adminNote: '' });
+  const [completeForm, setCompleteForm] = useState<CompleteFormState>({ receivedKg: '', actualMoisture: '', adminNote: '', learningTags: [] });
 
   async function load() {
     setLoading(true);
@@ -60,7 +61,7 @@ export function AdminHarvestList() {
     let p2List: Record<string, Record<string, unknown>> = {};
     if (ids2.length > 0) {
       const { data: tData } = await s.from('harvest_bookings')
-        .select('id,actual_received_kg,actual_moisture_pct,actual_completed_at,admin_note,drying_preference')
+        .select('id,actual_received_kg,actual_moisture_pct,actual_completed_at,admin_note,post_harvest_tags,drying_preference')
         .in('id', ids2);
       for (const r of (tData as unknown as Record<string, unknown>[]) ?? [])
         p2List[r.id as string] = r;
@@ -90,11 +91,12 @@ export function AdminHarvestList() {
       actual_moisture_pct: Number(completeForm.actualMoisture),
       actual_completed_at: new Date().toISOString(),
       admin_note:          completeForm.adminNote.trim() || null,
+      post_harvest_tags:   completeForm.learningTags.length ? completeForm.learningTags : null,
     }).eq('id', completing.id);
     if (saveErr) { setNotice(`❌ ${saveErr.message}`); setActing(null); return; }
     setActing(null);
     setCompleting(null);
-    setCompleteForm({ receivedKg: '', actualMoisture: '', adminNote: '' });
+    setCompleteForm({ receivedKg: '', actualMoisture: '', adminNote: '', learningTags: [] });
     setNotice('🏁 บันทึกการเก็บเกี่ยวแล้ว'); await load();
   }
 
@@ -169,6 +171,7 @@ export function AdminHarvestList() {
                         actualMoisturePct={b.actual_moisture_pct}
                         actualCompletedAt={b.actual_completed_at}
                         adminNote={b.admin_note}
+                        learningTags={b.post_harvest_tags}
                         farmerEstKg={b.actual_yield_kg}
                         farmerEstMoisture={b.quality_moisture}
                       />
@@ -176,7 +179,7 @@ export function AdminHarvestList() {
                     ) : (
                       <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
                         {b.status === 'pending' && <button className="admin-btn admin-btn--success" onClick={() => confirm(b.id)} disabled={acting !== null} style={{ fontSize: 12, padding: '4px 8px', minHeight: 30 }}>✅</button>}
-                        {b.status === 'confirmed' && <button className="admin-btn admin-btn--primary" onClick={() => { setCompleting(b); setCompleteForm({ receivedKg: '', actualMoisture: '', adminNote: '' }); }} disabled={acting !== null} style={{ fontSize: 12, padding: '4px 8px', minHeight: 30 }}>🏁 บันทึก</button>}
+                        {b.status === 'confirmed' && <button className="admin-btn admin-btn--primary" onClick={() => { setCompleting(b); setCompleteForm({ receivedKg: '', actualMoisture: '', adminNote: '', learningTags: [] }); }} disabled={acting !== null} style={{ fontSize: 12, padding: '4px 8px', minHeight: 30 }}>🏁 บันทึก</button>}
                       </div>
                     )}
                   </td>

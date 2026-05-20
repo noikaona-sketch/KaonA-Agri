@@ -15,6 +15,7 @@ export type CompleteFormState = {
   receivedKg:    string;   // required — factory actual kg
   actualMoisture: string;  // required — factory measured moisture %
   adminNote:     string;   // optional — internal staff note
+  learningTags:  string[]; // optional — lightweight post-harvest reason tags
 };
 
 export function isCompleteFormValid(form: CompleteFormState): boolean {
@@ -41,6 +42,15 @@ type Props = {
 export function HarvestCompleteForm({ completing, form, onChange }: Props) {
   const farmerEstKg   = completing.actual_yield_kg;
   const farmerEstMois = completing.estimated_moisture_pct;
+  const tagOptions = [
+    { value: 'rain_came_early', label: 'rain came early' },
+    { value: 'harvester_unavailable', label: 'harvester unavailable' },
+    { value: 'transport_delay', label: 'transport delay' },
+    { value: 'high_moisture', label: 'high moisture' },
+    { value: 'lower_yield_than_expected', label: 'lower yield than expected' },
+    { value: 'farmer_rescheduled', label: 'farmer rescheduled' },
+    { value: 'other', label: 'other' },
+  ] as const;
 
   return (
     <>
@@ -86,9 +96,34 @@ export function HarvestCompleteForm({ completing, form, onChange }: Props) {
       </div>
 
       {/* Admin note — optional */}
+      <div>
+        <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, color: '#4a6741' }}>
+          Post-harvest learning tags (optional)
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+          {tagOptions.map((tag) => {
+            const checked = form.learningTags.includes(tag.value);
+            return (
+              <label key={tag.value} style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 12 }}>
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={(e) => {
+                    const next = e.target.checked
+                      ? [...form.learningTags, tag.value]
+                      : form.learningTags.filter((v) => v !== tag.value);
+                    onChange({ learningTags: next });
+                  }}
+                />
+                {tag.label}
+              </label>
+            );
+          })}
+        </div>
+      </div>
       <label className="reg-label">
-        หมายเหตุผู้ดูแล
-        <input className="reg-input" value={form.adminNote} placeholder="หมายเหตุภายใน (ไม่บังคับ)"
+        หมายเหตุผู้ดูแล (ไม่บังคับ)
+        <input className="reg-input" maxLength={240} value={form.adminNote} placeholder="หมายเหตุสั้น ๆ (ไม่บังคับ)"
           onChange={(e) => onChange({ adminNote: e.target.value })} />
       </label>
     </>
@@ -104,6 +139,7 @@ type DisplayProps = {
   actualMoisturePct:  number | null;
   actualCompletedAt:  string | null;
   adminNote:          string | null;
+  learningTags:       string[] | null;
   farmerEstKg?:       number | null;
   farmerEstMoisture?: number | null;
 };
@@ -125,8 +161,18 @@ function VarianceTag({ estimated, actual, unit }: { estimated: number; actual: n
 
 export function CompletedActualDisplay({
   actualReceivedKg, actualMoisturePct, actualCompletedAt, adminNote,
+  learningTags,
   farmerEstKg, farmerEstMoisture,
 }: DisplayProps) {
+  const labelMap: Record<string, string> = {
+    rain_came_early: 'rain came early',
+    harvester_unavailable: 'harvester unavailable',
+    transport_delay: 'transport delay',
+    high_moisture: 'high moisture',
+    lower_yield_than_expected: 'lower yield than expected',
+    farmer_rescheduled: 'farmer rescheduled',
+    other: 'other',
+  };
   return (
     <div style={{
       background: '#f0fdf4', borderRadius: 10,
@@ -162,6 +208,18 @@ export function CompletedActualDisplay({
         <p style={{ margin: '0 0 6px', fontSize: 11, color: '#9ca3af' }}>
           ประมาณการเกษตรกร: {farmerEstMoisture}%
         </p>
+      )}
+      {learningTags && learningTags.length > 0 && (
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '0 0 8px' }}>
+          {learningTags.map((tag) => (
+            <span key={tag} style={{
+              fontSize: 11, fontWeight: 600, borderRadius: 999, padding: '2px 8px',
+              background: '#dcfce7', color: '#166534', border: '1px solid #86efac',
+            }}>
+              🏷️ {labelMap[tag] ?? tag}
+            </span>
+          ))}
+        </div>
       )}
 
       {adminNote && (
