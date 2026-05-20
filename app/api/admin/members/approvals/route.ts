@@ -2,11 +2,15 @@ import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '../../../auth/line/line-auth-helpers';
 import { requireAdmin } from '../_admin-auth';
 import { evaluateMemberReadiness } from '../readiness-policy';
+import { isForbidden, requireAdminPermission } from '../_admin-auth';
 
 const ALLOWED_DECISIONS = ['approved','rejected','returned','suspended','pending'];
 
 export async function GET() {
   try {
+    const _ar_get = await requireAdminPermission('members.read');
+    if (isForbidden(_ar_get)) return _ar_get.forbidden;
+
     const s = createServerSupabaseClient();
     const { data, error } = await s
       .from('approvals')
@@ -28,8 +32,9 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     // ── Blocker 1: server-side admin validation ──────────────────────
-    const admin = await requireAdmin();
-    if (!admin) return NextResponse.json({ error: 'ไม่มีสิทธิ์เข้าถึง — กรุณาเข้าสู่ระบบ admin' }, { status: 403 });
+    const _ar_post = await requireAdminPermission('members.approve');
+    if (isForbidden(_ar_post)) return _ar_post.forbidden;
+    const { admin } = _ar_post;
 
     const body = (await request.json()) as {
       memberId?:   string;
