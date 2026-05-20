@@ -37,7 +37,7 @@ export function MemberHarvestBookingForm({ cycleId, cropName, plotId, onSuccess 
   const hints: string[] = [];
   if (queueSnapshot) {
     if (queueSnapshot.nearTermCount >= 12) hints.push('ช่วงนี้คิวรับซื้อค่อนข้างแน่น');
-    if (queueSnapshot.pendingCount >= 6) hints.push('ควรแจ้งล่วงหน้า');
+    if (queueSnapshot.pendingCount >= 6) hints.push('ช่วงนี้มีรายการรอยืนยันหลายรายการ');
     if (queueSnapshot.dryerRequiredCount >= 5) hints.push('อาจมีเวลารออบนานกว่าปกติ');
     if (queueSnapshot.moistureSensitiveCount >= 4) hints.push('เป็นช่วงที่ความชื้นมีผลต่อคิวอบมากขึ้น');
   }
