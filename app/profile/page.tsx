@@ -89,10 +89,16 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!member?.member_id) return;
     const s = createSupabaseBrowserClient();
-    void Promise.all([
+    void (async () => {
+      const { data: { session } } = await s.auth.getSession();
+      const authHeaders = session?.access_token
+        ? { Authorization: `Bearer ${session.access_token}` }
+        : undefined;
+
+      const [m, p, d, cr, pr] = await Promise.all([
       s.from('members').select('full_name,phone,address,citizen_id_masked,status,bank_name,bank_account_number,bank_account_name').eq('id', member.member_id).maybeSingle(),
-      // ใช้ API route แทน browser client เพราะ plots RLS ต้องการ auth.uid() ที่อาจยังไม่ ready
-      fetch(`/api/member/plots?member_id=${member.member_id}`).then((r) => r.json()),
+      // member identity is resolved server-side from Bearer token
+      fetch('/api/member/plots', { headers: authHeaders }).then((r) => r.json()),
       s.from('member_documents').select('doc_type,verified,file_url').eq('member_id', member.member_id),
       fetch('/api/member/credit').then((r) => r.json()),
       s.from('provider_requests')
@@ -100,13 +106,13 @@ export default function ProfilePage() {
         .eq('member_id', member.member_id)
         .in('request_type', ['service_team', 'field_team'])
         .order('created_at', { ascending: false }),
-    ]).then(([m, p, d, cr, pr]) => {
+    ]);
       setData((m.data as MemberData | null));
       setPlots(((p as { plots?: PlotSummary[] }).plots ?? []));
       setDocs((d.data as DocRow[] | null) ?? []);
       setCredit((cr as { account?: CreditAccount }).account ?? null);
       setProviderRequests(((pr.data as ProviderRequestRow[] | null) ?? []));
-    });
+    })();
   }, [member?.member_id]);
 
   if (!member || !data) return <LoadingState label="กำลังโหลด…" />;

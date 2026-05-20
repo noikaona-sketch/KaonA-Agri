@@ -10,10 +10,7 @@ const PLOT_SELECT =
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/member/plots
-//
-// Mode A — Bearer token (preferred): resolves member_id server-side.
-// Mode B — ?member_id=<uuid> (legacy, backward-compat): no auth check.
-// Mode A takes priority when Authorization header is present.
+// Requires Bearer token and resolves member_id server-side.
 // ─────────────────────────────────────────────────────────────────────────────
 export async function GET(request: Request) {
   try {

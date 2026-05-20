@@ -81,7 +81,7 @@ export async function POST(request: Request) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GET /api/member/seed-reservation?member_id=<uuid>
+// GET /api/member/seed-reservation
 //
 // Returns combined purchase history from 3 sources (all existing tables):
 //   1. seed_reservations           — direct seed reservations
