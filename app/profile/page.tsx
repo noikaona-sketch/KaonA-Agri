@@ -130,6 +130,24 @@ export default function ProfilePage() {
       ]);
       if (cancelled) return;
 
+    void (async () => {
+      const { data: { session } } = await s.auth.getSession();
+      const authHeaders = session?.access_token
+        ? { Authorization: `Bearer ${session.access_token}` }
+        : undefined;
+
+      const [m, p, d, cr, pr] = await Promise.all([
+      s.from('members').select('full_name,phone,address,citizen_id_masked,status,bank_name,bank_account_number,bank_account_name').eq('id', member.member_id).maybeSingle(),
+      // member identity is resolved server-side from Bearer token
+      fetch('/api/member/plots', { headers: authHeaders }).then((r) => r.json()),
+      s.from('member_documents').select('doc_type,verified,file_url').eq('member_id', member.member_id),
+      fetch('/api/member/credit').then((r) => r.json()),
+      s.from('provider_requests')
+        .select('id,request_type,status,reviewed_by,reviewed_at,created_at')
+        .eq('member_id', member.member_id)
+        .in('request_type', ['service_team', 'field_team'])
+        .order('created_at', { ascending: false }),
+    ]);
       setData((m.data as MemberData | null));
       setPlots(((p as { plots?: PlotSummary[] }).plots ?? []));
       setDocs((d.data as DocRow[] | null) ?? []);
@@ -155,6 +173,7 @@ export default function ProfilePage() {
     return () => {
       cancelled = true;
     };
+    })();
   }, [member?.member_id]);
 
   if (!member || !data) return <LoadingState label="กำลังโหลด…" />;
@@ -313,7 +332,7 @@ export default function ProfilePage() {
             ].map(([label, value], i, arr) => (
               <div key={label} style={{ ...S.row, borderBottom: i < arr.length - 1 ? undefined : 'none' }}>
                 <span style={{ fontSize: 13, color: 'var(--color-text-secondary,#888)' }}>{label}</span>
-                <span style={{ fontSize: 13, color: 'var(--color-text-primary,#111)', fontWeight: 500, maxWidth: '60%', textAlign: 'right' }}>{value}</span>
+                <span style={{ fontSize: 13, color: 'var(--color-text-primary,#111)', fontWeight: 500, maxWidth: '60%', textAlign: 'right', overflowWrap: 'anywhere', lineHeight: 1.45 }}>{value}</span>
               </div>
             ))}
           </div>
@@ -332,7 +351,7 @@ export default function ProfilePage() {
                 ].map(([label, value], i, arr) => (
                   <div key={label} style={{ ...S.row, borderBottom: i < arr.length - 1 ? undefined : 'none' }}>
                     <span style={{ fontSize: 13, color: 'var(--color-text-secondary,#888)' }}>{label}</span>
-                    <span style={{ fontSize: 13, color: 'var(--color-text-primary,#111)', fontWeight: 500 }}>{value}</span>
+                    <span style={{ fontSize: 13, color: 'var(--color-text-primary,#111)', fontWeight: 500, overflowWrap: 'anywhere', textAlign: 'right', maxWidth: '60%', lineHeight: 1.45 }}>{value}</span>
                   </div>
                 ))}
               </>

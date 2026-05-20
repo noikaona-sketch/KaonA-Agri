@@ -42,7 +42,13 @@ export function MemberHarvestBookingForm({ cycleId, cropName, plotId, onSuccess 
     if (queueSnapshot.moistureSensitiveCount >= 4) hints.push('เป็นช่วงที่ความชื้นมีผลต่อคิวอบมากขึ้น');
   }
 
-  if (loading) return null;
+  if (loading) {
+    return (
+      <div className="kaona-card">
+        <p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>กำลังโหลดข้อมูลการจองเก็บเกี่ยว…</p>
+      </div>
+    );
+  }
   if (existing) return <HarvestBookingStatusCard booking={existing} />;
   if (success) {
     return (
@@ -102,15 +108,15 @@ export function MemberHarvestBookingForm({ cycleId, cropName, plotId, onSuccess 
         </div>
       )}
 
-      <label>
+      <label className="reg-label">
         วันที่คาดว่าจะเก็บเกี่ยว <span style={{ color: '#e53e3e' }}>*</span>
-        <input type="date" value={scheduledDate} min={today} disabled={submitting}
+        <input className="reg-input" type="date" value={scheduledDate} min={today} disabled={submitting}
           onChange={(e) => setScheduledDate(e.target.value)} />
       </label>
 
-      <label>
+      <label className="reg-label">
         น้ำหนักผลผลิตที่คาดไว้ (กก.) <span style={{ color: '#e53e3e' }}>*</span>
-        <input type="number" inputMode="decimal" min="0" step="100"
+        <input className="reg-input" type="number" inputMode="decimal" min="0" step="100"
           value={estimatedYield} disabled={submitting} placeholder="เช่น 5000"
           onChange={(e) => setEstimatedYield(e.target.value)} />
       </label>
@@ -127,15 +133,15 @@ export function MemberHarvestBookingForm({ cycleId, cropName, plotId, onSuccess 
       <DeliverySelector value={deliveryType} onChange={setDeliveryType} disabled={submitting} />
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
-        <label>
+        <label className="reg-label">
           ความชื้นโดยประมาณ (%) <span style={{ fontSize: 11, color: '#9ca3af' }}>ไม่บังคับ</span>
-          <input type="number" inputMode="decimal" min="0" max="100" step="0.5"
+          <input className="reg-input" type="number" inputMode="decimal" min="0" max="100" step="0.5"
             value={moisturePct} disabled={submitting} placeholder="เช่น 28.5"
             onChange={(e) => setMoisturePct(e.target.value)} />
         </label>
-        <label>
+        <label className="reg-label">
           วิธีประเมินความชื้น
-          <select value={moistureSource} disabled={submitting || !moisturePct}
+          <select className="reg-input" value={moistureSource} disabled={submitting || !moisturePct}
             onChange={(e) => setMoistureSource(e.target.value)}>
             <option value="">เลือก</option>
             <option value="farmer_estimate">ประเมินจากประสบการณ์</option>
@@ -145,9 +151,9 @@ export function MemberHarvestBookingForm({ cycleId, cropName, plotId, onSuccess 
         </label>
       </div>
 
-      <label>
+      <label className="reg-label">
         หมายเหตุ <span style={{ fontSize: 11, color: '#9ca3af' }}>ไม่บังคับ</span>
-        <textarea rows={2} value={note} disabled={submitting}
+        <textarea className="reg-input reg-textarea" rows={3} value={note} disabled={submitting}
           placeholder="เช่น สภาพแปลง ปัญหาที่พบ จุดนัดหมาย"
           onChange={(e) => setNote(e.target.value)} />
       </label>
