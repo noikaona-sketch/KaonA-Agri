@@ -47,7 +47,25 @@ export function AdminHarvestList() {
   async function load() {
     setLoading(true);
     const s = createSupabaseBrowserClient();
-    const { data, error: err } = await s.from('harvest_bookings_full').select('*').order('scheduled_date').limit(200);
+    // View columns for display; P2 actuals fetched from table and merged
+    const VIEW_LIST_SELECT = 'id,member_id,scheduled_date,status,actual_date,actual_yield_kg,' +
+      'quality_grade,quality_moisture,note,member_name,member_phone,' +
+      'plot_name,plot_province,crop_name,area_planted_rai,' +
+      'grade_a_moisture_max,grade_b_moisture_max,product_name,seed_variety,' +
+      'truck_member_name,estimated_yield_kg';
+    const { data: vData, error: err } = await s
+      .from('harvest_bookings_full').select(VIEW_LIST_SELECT).order('scheduled_date').limit(200);
+    const vRows = (vData as unknown as Record<string, unknown>[]) ?? [];
+    const ids2 = vRows.map((r) => r.id as string);
+    let p2List: Record<string, Record<string, unknown>> = {};
+    if (ids2.length > 0) {
+      const { data: tData } = await s.from('harvest_bookings')
+        .select('id,actual_received_kg,actual_moisture_pct,actual_completed_at,admin_note,drying_preference')
+        .in('id', ids2);
+      for (const r of (tData as unknown as Record<string, unknown>[]) ?? [])
+        p2List[r.id as string] = r;
+    }
+    const data = vRows.map((r) => ({ ...r, ...p2List[r.id as string] }));
     if (err) setError(err.message);
     else setBookings((data as Booking[]) ?? []);
     setLoading(false);

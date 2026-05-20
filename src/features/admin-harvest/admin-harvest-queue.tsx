@@ -15,10 +15,13 @@ import { HarvestEmptyState }     from './harvest-data-quality';
 import { HarvestQueueRow }             from './harvest-queue-row';
 import type { QueueRow, EditDraft }    from './harvest-queue-row';
 
-const QUEUE_SELECT =
-  'id,member_id,scheduled_date,status,actual_yield_kg,drying_preference,delivery_type,' +
-  'estimated_moisture_pct,note,member_name,member_phone,' +
-  'plot_name,plot_province,crop_name,area_planted_rai,' +
+// harvest_bookings_full view does not include PR1-PR5 columns.
+// Use view for names/join fields; merge P2 fields from harvest_bookings table.
+const VIEW_SELECT =
+  'id,member_id,scheduled_date,status,actual_yield_kg,note,member_name,member_phone,' +
+  'plot_name,plot_province,crop_name,area_planted_rai';
+const TABLE_P2_SELECT =
+  'id,drying_preference,delivery_type,estimated_moisture_pct,' +
   'planned_delivery_date,assigned_dryer,admin_note,priority_score';
 
 function emptyDraft(r: QueueRow): EditDraft {
@@ -44,22 +47,30 @@ export function AdminHarvestQueue() {
   async function load() {
     setLoading(true); setError(null);
     const s = createSupabaseBrowserClient();
-    let q = s.from('harvest_bookings_full').select(QUEUE_SELECT)
+    let vq = s.from('harvest_bookings_full').select(VIEW_SELECT)
       .order('scheduled_date', { ascending: true }).limit(200);
-    if (filter !== 'all') q = q.eq('status', filter);
-    // Date filter on planned_delivery_date (admin plan date, not scheduled_date)
-    if (dateFrom) q = q.gte('planned_delivery_date', dateFrom);
-    if (dateTo)   q = q.lte('planned_delivery_date', dateTo);
-    const { data, error: err } = await q;
+    if (filter !== 'all') vq = vq.eq('status', filter);
+    const { data: vData, error: err } = await vq;
     if (err) { setError(err.message); setLoading(false); return; }
-    const loaded = (data as unknown as QueueRow[]) ?? [];
+    const vRows = (vData as unknown as Record<string, unknown>[]) ?? [];
+    const ids = vRows.map((r) => r.id as string);
+    let p2: Record<string, Record<string, unknown>> = {};
+    if (ids.length > 0) {
+      const { data: tData } = await s.from('harvest_bookings')
+        .select(TABLE_P2_SELECT).in('id', ids);
+      for (const r of (tData as unknown as Record<string, unknown>[]) ?? [])
+        p2[r.id as string] = r;
+    }
+    const merged = vRows.map((r) => ({ ...r, ...p2[r.id as string] }));
+    const loaded = (merged as unknown as QueueRow[]).filter((r) => {
+      if (!dateFrom && !dateTo) return true;
+      const d = (r.planned_delivery_date ?? '') as string;
+      return (!dateFrom || d >= dateFrom) && (!dateTo || d <= dateTo);
+    });
     setRows(loaded);
-    // Initialise drafts from loaded data (preserve unsaved edits if row already in draft)
     setDrafts((prev) => {
       const next = { ...prev };
-      for (const r of loaded) {
-        if (!next[r.id]) next[r.id] = emptyDraft(r);
-      }
+      for (const r of loaded) if (!next[r.id]) next[r.id] = emptyDraft(r);
       return next;
     });
     setLoading(false);
