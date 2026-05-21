@@ -1,7 +1,4 @@
-'use client';
-
-import { FormEvent, useState } from 'react';
-import { AdminWebShell } from '@/shared/components/admin-web-shell';
+@@ -5,111 +5,201 @@ import { AdminWebShell } from '@/shared/components/admin-web-shell';
 import { AdminApprovalQueue } from '@/features/admin-members/admin-approval-queue';
 import { AdminMemberList } from '@/features/admin-members/admin-member-list';
 import { AdminRolesManager } from '@/features/admin-roles/admin-roles-manager';
@@ -26,7 +23,8 @@ type PreviewResponse = {
   duplicateCandidates: Array<Record<string, unknown>>;
   summary?: Record<string, unknown>;
 };
- type ConfirmResponse = {
+
+type ConfirmResponse = {
   ok: boolean;
   insertedCount: number;
   blockedCount: number;
@@ -34,8 +32,6 @@ type PreviewResponse = {
   errors: string[];
   warnings?: string[];
 };
-
-
 
 export default function AdminMembersPage() {
   const [tab, setTab] = useState<Tab>('approvals');
@@ -47,7 +43,6 @@ export default function AdminMembersPage() {
   const [confirmOverrideDuplicate, setConfirmOverrideDuplicate] = useState(false);
   const [confirmResult, setConfirmResult] = useState<ConfirmResponse | null>(null);
 
-
   const cur = TABS.find((t) => t.key === tab)!;
 
   const onPreview = async (e: FormEvent) => {
@@ -56,6 +51,7 @@ export default function AdminMembersPage() {
       setRequestError('กรุณาเลือกไฟล์ก่อน preview');
       return;
     }
+
     setLoadingPreview(true);
     setRequestError(null);
     const form = new FormData();
@@ -69,8 +65,6 @@ export default function AdminMembersPage() {
       }
       setPreview(data);
       setConfirmResult(null);
-
-
     } catch {
       setRequestError('เกิดข้อผิดพลาดเครือข่ายระหว่าง preview');
     } finally {
@@ -80,6 +74,7 @@ export default function AdminMembersPage() {
 
   const onConfirmImport = async () => {
     if (!preview?.rows?.length) return;
+
     setConfirming(true);
     setRequestError(null);
     setConfirmResult(null);
@@ -120,10 +115,14 @@ export default function AdminMembersPage() {
       {tab === 'import' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <h3 style={{ margin: 0 }}>📥 Import สมาชิก (Preview Only)</h3>
-          <a href="/api/admin/members/import-template" download className="admin-btn admin-btn--secondary" style={{ width: 'fit-content' }}>📄 ดาวน์โหลด Template (.xlsx)</a>
+         <a href="/api/admin/members/import-template" download className="admin-btn admin-btn--secondary" style={{ width: 'fit-content' }}>
+            📄 ดาวน์โหลด Template (.xlsx)
+          </a>
           <form onSubmit={onPreview} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <input type="file" accept=".csv,.xlsx" onChange={(ev) => setFile(ev.target.files?.[0] ?? null)} />
-            <button type="submit" className="admin-btn admin-btn--primary" disabled={loadingPreview}>{loadingPreview ? 'กำลัง preview...' : 'Preview'}</button>
+                       <button type="submit" className="admin-btn admin-btn--primary" disabled={loadingPreview}>
+              {loadingPreview ? 'กำลัง preview...' : 'Preview'}
+            </button>
             <button
               type="button"
               className="admin-btn admin-btn--secondary"
@@ -133,28 +132,27 @@ export default function AdminMembersPage() {
             >
               {confirming ? 'กำลังยืนยัน...' : 'Confirm Import'}
             </button>
-          </form>
-          <label style={{ fontSize: 13, color: '#6b7280', display: 'flex', gap: 8, alignItems: 'center' }}>
-            <input type="checkbox" checked={confirmOverrideDuplicate} onChange={(e) => setConfirmOverrideDuplicate(e.target.checked)} />
-            อนุญาต override duplicates (ต้องเปิดเมื่อระบบแจ้ง duplicate)
-          </label>
-          <div style={{ fontSize: 13, color: '#6b7280' }}>
-            ⚠️ Import นี้ไม่มี auto approve และสมาชิกที่ import จะเข้า pending approval เท่านั้น
-          </div>
-
-          {requestError && <div style={{ color: '#b91c1c', fontSize: 13 }}>{requestError}</div>}
-
-            <button type="button" className="admin-btn admin-btn--secondary" disabled title="coming next PR">Confirm Import (coming next PR)</button>
+            <label style={{ fontSize: 13, color: '#6b7280', display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input type="checkbox" checked={confirmOverrideDuplicate} onChange={(e) => setConfirmOverrideDuplicate(e.target.checked)} />
+              อนุญาต override duplicates (ต้องเปิดเมื่อระบบแจ้ง duplicate)
+            </label>
+            <div style={{ fontSize: 13, color: '#6b7280' }}>⚠️ Import นี้ไม่มี auto approve และสมาชิกที่ import จะเข้า pending approval เท่านั้น</div>
           </form>
 
           {requestError && <div style={{ color: '#b91c1c', fontSize: 13 }}>{requestError}</div>}
 
           {preview && (
             <>
-              <pre style={{ margin: 0, background: '#f8fafc', padding: 10, borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 12 }}>summary: {JSON.stringify(preview.summary ?? {}, null, 2)}</pre>
+                       <pre style={{ margin: 0, background: '#f8fafc', padding: 10, borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 12 }}>
+                summary: {JSON.stringify(preview.summary ?? {}, null, 2)}
+              </pre>
               {preview.errors?.length > 0 && <div style={{ color: '#b91c1c', fontSize: 13 }}>Errors: {preview.errors.join(' | ')}</div>}
               {preview.warnings?.length > 0 && <div style={{ color: '#b45309', fontSize: 13 }}>Warnings: {preview.warnings.join(' | ')}</div>}
-              {preview.duplicateCandidates?.length > 0 && <pre style={{ margin: 0, background: '#fff7ed', padding: 10, borderRadius: 8, border: '1px solid #fed7aa', fontSize: 12 }}>duplicateCandidates: {JSON.stringify(preview.duplicateCandidates, null, 2)}</pre>}
+                          {preview.duplicateCandidates?.length > 0 && (
+                <pre style={{ margin: 0, background: '#fff7ed', padding: 10, borderRadius: 8, border: '1px solid #fed7aa', fontSize: 12 }}>
+                  duplicateCandidates: {JSON.stringify(preview.duplicateCandidates, null, 2)}
+                </pre>
+              )}
 
               {confirmResult && (
                 <pre style={{ margin: 0, background: '#ecfdf5', padding: 10, borderRadius: 8, border: '1px solid #a7f3d0', fontSize: 12 }}>
@@ -164,12 +162,32 @@ export default function AdminMembersPage() {
 
               <div className="admin-table-wrap">
                 <table className="admin-table">
-                  <thead><tr><th>Row</th><th>Full name</th><th>Phone</th><th>CID masked</th><th>District</th><th>Province</th></tr></thead>
+                               <thead>
+                    <tr>
+                      <th>Row</th>
+                      <th>Full name</th>
+                      <th>Phone</th>
+                      <th>CID masked</th>
+                      <th>District</th>
+                      <th>Province</th>
+                    </tr>
+                  </thead>
                   <tbody>
-                    {preview.rows?.length === 0 && <tr><td colSpan={6} style={{ textAlign: 'center', color: '#9ca3af' }}>ไม่มีข้อมูล</td></tr>}
+                                        {preview.rows?.length === 0 && (
+                      <tr>
+                        <td colSpan={6} style={{ textAlign: 'center', color: '#9ca3af' }}>
+                          ไม่มีข้อมูล
+                        </td>
+                      </tr>
+                    )}
                     {preview.rows?.map((r, idx) => (
                       <tr key={idx}>
-                        <td>{String(r.rowNumber ?? '')}</td><td>{String(r.full_name ?? '')}</td><td>{String(r.phone ?? '')}</td><td>{String(r.citizen_id_masked ?? '')}</td><td>{String(r.district ?? '')}</td><td>{String(r.province ?? '')}</td>
+                                        <td>{String(r.rowNumber ?? '')}</td>
+                        <td>{String(r.full_name ?? '')}</td>
+                        <td>{String(r.phone ?? '')}</td>
+                        <td>{String(r.citizen_id_masked ?? '')}</td>
+                        <td>{String(r.district ?? '')}</td>
+                        <td>{String(r.province ?? '')}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -181,4 +199,4 @@ export default function AdminMembersPage() {
       )}
     </AdminWebShell>
   );
-}
+}      
