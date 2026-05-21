@@ -65,6 +65,13 @@ function toMaskedCitizen(raw: string): string {
   return `${digits.slice(0, 1)}${'*'.repeat(Math.max(0, digits.length - 3))}${digits.slice(-2)}`;
 }
 
+
+function maskBankAccount(raw: string): string {
+  const digits = raw.replace(/\s+/g, '');
+  if (!digits) return '';
+  if (digits.length <= 4) return '*'.repeat(digits.length);
+  return `${'*'.repeat(digits.length - 4)}${digits.slice(-4)}`;
+}
 function isSafeMaskedCitizen(value: string): boolean {
   const v = value.trim();
   if (!v) return false;
@@ -98,7 +105,8 @@ function buildRows(records: Record<string, string>[]) {
 
     const bank_name = norm(rec.bank_name) || null;
     const bank_account_name = norm(rec.bank_account_name) || null;
-    const bank_account_number = norm(rec.bank_account_number) || null;
+    const bankRaw = norm(rec.bank_account_number);
+    const bank_account_number = bankRaw ? maskBankAccount(bankRaw) : null;
     const line_user_id = norm(rec.line_user_id) || null;
 
     if (!full_name) errors.push(`แถว ${rowNo}: full_name จำเป็นต้องระบุ`);

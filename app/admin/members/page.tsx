@@ -38,6 +38,7 @@ export default function AdminMembersPage() {
   const [confirmResult, setConfirmResult] = useState<string | null>(null);
 
   const cur = TABS.find((t) => t.key === tab)!;
+  const canConfirm = !!preview && preview.ok === true && preview.errors.length === 0;
 
   const onPreview = async (e: FormEvent) => {
     e.preventDefault();
@@ -113,7 +114,7 @@ export default function AdminMembersPage() {
           <form onSubmit={onPreview} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <input type="file" accept=".csv,.xlsx" onChange={(ev) => setFile(ev.target.files?.[0] ?? null)} />
             <button type="submit" className="admin-btn admin-btn--primary" disabled={loadingPreview}>{loadingPreview ? 'กำลัง preview...' : 'Preview'}</button>
-            <button type="button" className="admin-btn admin-btn--secondary" disabled={loadingConfirm || !file} onClick={onConfirm}>{loadingConfirm ? 'กำลัง confirm...' : 'Confirm Import'}</button>
+            <button type="button" className="admin-btn admin-btn--secondary" disabled={loadingConfirm || !canConfirm} onClick={onConfirm}>{loadingConfirm ? 'กำลัง confirm...' : 'Confirm Import'}</button>
           </form>
 
           <label style={{ display: 'inline-flex', gap: 8, alignItems: 'center', fontSize: 13 }}>
