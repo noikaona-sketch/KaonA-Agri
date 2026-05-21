@@ -184,12 +184,13 @@ function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: stri
   }, [memberId]);
 
   const FARMER_MENU = [
-    { href: '/service/reservations', icon: '🌽', label: 'จองเมล็ดพันธุ์', desc: 'จองข้าวโพด', accent: true },
-    { href: '/planting-cycles/new', icon: '🌱', label: 'แจ้งปลูก',        desc: 'บันทึกรอบปลูก' },
-    { href: '/plots',               icon: '📅', label: 'จองคิวขาย',       desc: 'นัดวันขาย' },
-    { href: '/no-burn',             icon: '📸', label: 'ส่งรูปแปลง',      desc: 'รูปแปลง/ไม่เผา' },
-    { href: '/no-burn',             icon: '🌿', label: 'โครงการไม่เผา',   desc: 'สมัครโครงการ' },
-    { href: '/planting-cycles',     icon: '📊', label: 'ประวัติรอบปลูก',   desc: 'ประวัติและยอดขาย' },
+    { href: '/service/reservations', icon: '🌽', label: 'จองเมล็ดพันธุ์',   desc: 'จองข้าวโพด', accent: true },
+    { href: '/planting-cycles/new', icon: '🌱',  label: 'แจ้งปลูก',          desc: 'บันทึกรอบปลูก' },
+    { href: '/plots',               icon: '📅',  label: 'จองคิวขาย',         desc: 'นัดวันขาย' },
+    { href: '/no-burn',             icon: '📸',  label: 'ส่งรูปแปลง',        desc: 'รูปแปลง/ไม่เผา' },
+    { href: '/no-burn',             icon: '🌿',  label: 'โครงการไม่เผา',     desc: 'สมัครโครงการ' },
+    { href: '/planting-cycles',     icon: '📊',  label: 'ประวัติรอบปลูก',     desc: 'ประวัติและยอดขาย' },
+    { href: '/harvest/calculator',  icon: '💧',  label: 'คำนวณ ชื้น/บาท',    desc: 'ขายเลย vs รอให้แห้ง' },
   ];
 
   return (
