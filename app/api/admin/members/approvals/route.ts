@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '../../../auth/line/line-auth-helpers';
-import { requireAdmin } from '../_admin-auth';
 import { evaluateMemberReadiness } from '../readiness-policy';
 import { isForbidden, requireAdminPermission } from '../_admin-auth';
 
@@ -58,6 +57,10 @@ export async function GET() {
       docsByMember.set(d.member_id, new Set([...(docsByMember.get(d.member_id) ?? []), d.doc_type]));
     }
 
+    let readyToApproveCount = 0;
+    let missingDocumentsCount = 0;
+    let bankNotVerifiedCount = 0;
+
     const items = rows.map((row) => {
       const memberId = String(row.member_id);
       const roles = rolesByMember.get(memberId) ?? [];
@@ -70,13 +73,36 @@ export async function GET() {
         .filter((docType) => !uploadedDocs.has(docType))
         .map((docType) => DOC_LABEL[docType] ?? docType);
 
+      const member = row.member as { bank_verified_status?: string | null } | null;
+      const bankNotVerified = member?.bank_verified_status !== 'verified';
+      const hasMissingDocuments = missingDocuments.length > 0;
+
+      if (!hasMissingDocuments && !bankNotVerified) readyToApproveCount += 1;
+      if (hasMissingDocuments) missingDocumentsCount += 1;
+      if (bankNotVerified) bankNotVerifiedCount += 1;
+
       return {
         ...row,
         missingDocuments,
       };
     });
 
-    return NextResponse.json({ items });
+    const { count: returnedMembersCount, error: returnedError } = await s
+      .from('members')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'returned');
+    if (returnedError) return NextResponse.json({ error: returnedError.message }, { status: 500 });
+
+    return NextResponse.json({
+      items,
+      summary: {
+        pendingApprovals: rows.length,
+        readyToApprove: readyToApproveCount,
+        missingDocuments: missingDocumentsCount,
+        bankNotVerified: bankNotVerifiedCount,
+        returnedMembers: returnedMembersCount ?? 0,
+      },
+    });
   } catch (e) { return NextResponse.json({ error: String(e) }, { status: 500 }); }
 }
 
