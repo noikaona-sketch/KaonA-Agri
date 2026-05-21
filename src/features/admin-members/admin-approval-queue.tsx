@@ -18,8 +18,17 @@ type QueueItem = {
   missingDocuments?: string[];
 };
 
+type QueueSummary = {
+  pendingApprovals: number;
+  readyToApprove: number;
+  missingDocuments: number;
+  bankNotVerified: number;
+  returnedMembers: number;
+};
+
 export function AdminApprovalQueue() {
   const [items, setItems]     = useState<QueueItem[]>([]);
+  const [summary, setSummary] = useState<QueueSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [actingId, setActingId] = useState<string | null>(null);
   const [error, setError]     = useState<string | null>(null);
@@ -28,9 +37,10 @@ export function AdminApprovalQueue() {
   async function loadQueue() {
     setLoading(true); setError(null);
     const res = await fetch('/api/admin/members/approvals');
-    const payload = (await res.json()) as { items?: QueueItem[]; error?: string };
+    const payload = (await res.json()) as { items?: QueueItem[]; summary?: QueueSummary; error?: string };
     if (!res.ok) { setError(payload.error ?? 'โหลดไม่สำเร็จ'); setLoading(false); return; }
     setItems(payload.items ?? []);
+    setSummary(payload.summary ?? null);
     setLoading(false);
   }
 
@@ -59,6 +69,15 @@ export function AdminApprovalQueue() {
       {notice && (
         <div style={{ background: '#e8f5e9', border: '1px solid #a5d6a7', borderRadius: 10, padding: '10px 14px', marginBottom: 14, color: '#1b5e20', fontWeight: 600 }}>
           {notice}
+        </div>
+      )}
+      {summary && (
+        <div style={{ marginBottom: 14, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8 }}>
+          <KpiCard label="Pending approvals" value={summary.pendingApprovals} />
+          <KpiCard label="Ready to approve" value={summary.readyToApprove} tone="green" />
+          <KpiCard label="Missing documents" value={summary.missingDocuments} tone="amber" />
+          <KpiCard label="Bank not verified" value={summary.bankNotVerified} tone="orange" />
+          <KpiCard label="Returned members" value={summary.returnedMembers} tone="red" />
         </div>
       )}
 
@@ -144,6 +163,25 @@ export function AdminApprovalQueue() {
           </table>
         </div>
       )}
+    </div>
+  );
+}
+
+function KpiCard({ label, value, tone = 'neutral' }: { label: string; value: number; tone?: 'neutral' | 'green' | 'amber' | 'orange' | 'red' }) {
+  const toneStyle = tone === 'green'
+    ? { border: '#a5d6a7', bg: '#e8f5e9', text: '#1b5e20' }
+    : tone === 'amber'
+      ? { border: '#ffd54f', bg: '#fff8e1', text: '#e65100' }
+      : tone === 'orange'
+        ? { border: '#ffcc80', bg: '#fff3e0', text: '#ef6c00' }
+        : tone === 'red'
+          ? { border: '#ef9a9a', bg: '#ffebee', text: '#b71c1c' }
+          : { border: '#d1d5db', bg: '#f9fafb', text: '#111827' };
+
+  return (
+    <div style={{ border: `1px solid ${toneStyle.border}`, background: toneStyle.bg, borderRadius: 10, padding: '10px 12px' }}>
+      <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 600 }}>{label}</div>
+      <div style={{ fontSize: 24, fontWeight: 800, lineHeight: 1.1, color: toneStyle.text }}>{value}</div>
     </div>
   );
 }
