@@ -63,6 +63,17 @@ function toMaskedCitizen(raw: string): string {
   return `${digits.slice(0, 1)}${'*'.repeat(Math.max(0, digits.length - 3))}${digits.slice(-2)}`;
 }
 
+function isSafeMaskedCitizen(value: string): boolean {
+  const v = value.trim();
+  if (!v) return false;
+  const hasMaskChar = /[*xX]/.test(v);
+  if (!hasMaskChar) return false;
+
+  const visibleDigits = (v.match(/\d/g) ?? []).length;
+  // Fail closed: if too many visible digits, treat as unsafe.
+  return visibleDigits <= 4;
+}
+
 function maskBankAccount(raw: string): string {
   const digits = raw.replace(/\s+/g, '');
   if (!digits) return '';
@@ -126,8 +137,18 @@ export async function POST(request: Request) {
       const phone = norm(rec.phone) || null;
       const district = norm(rec.district) || null;
       const province = norm(rec.province) || null;
-      const citizenRaw = norm(rec.citizen_id_masked || rec.citizen_id);
-      const citizen_id_masked = citizenRaw ? toMaskedCitizen(citizenRaw) : null;
+      const citizenMaskedInput = norm(rec.citizen_id_masked);
+      const citizenRawInput = norm(rec.citizen_id);
+      let citizen_id_masked: string | null = null;
+      if (citizenMaskedInput) {
+        if (isSafeMaskedCitizen(citizenMaskedInput)) {
+          citizen_id_masked = citizenMaskedInput;
+        } else {
+          warnings.push(`แถว ${rowNo}: citizen_id_masked ไม่ปลอดภัย จึงไม่แสดงค่าใน preview`);
+        }
+      } else if (citizenRawInput) {
+        citizen_id_masked = toMaskedCitizen(citizenRawInput);
+      }
       const bank_name = norm(rec.bank_name) || null;
       const bank_account_name = norm(rec.bank_account_name) || null;
       const bank_account_number_masked = norm(rec.bank_account_number) ? maskBankAccount(rec.bank_account_number) : null;
