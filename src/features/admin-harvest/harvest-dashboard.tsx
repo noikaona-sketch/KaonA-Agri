@@ -25,9 +25,9 @@ type BookingRow = {
   id:               string;
   status:           string;
   scheduled_date:   string;
-  actual_yield_kg:  number | null;
-  estimated_moisture_pct: number | null;
-  drying_preference: 'required' | 'optional' | null;
+  estimated_tonnage:  number | null;
+  estimated_moisture: number | null;
+  requires_dryer: boolean | null;
 };
 
 export type DayStat = {
@@ -52,11 +52,11 @@ type DashboardData = {
 
 function compute(rows: BookingRow[]): DashboardData {
   const active = rows.filter((r) => r.status === 'pending' || r.status === 'confirmed');
-  const expectedTonnageKg = active.reduce((sum, r) => sum + (r.actual_yield_kg ?? 0), 0);
+  const expectedTonnageKg = active.reduce((sum, r) => sum + (r.estimated_tonnage ?? 0), 0);
 
   // Moisture stats (active rows with estimates)
   const moistures = active
-    .map((r) => r.estimated_moisture_pct)
+        .map((r) => r.estimated_moisture)
     .filter((v): v is number => v !== null);
   const moistureMin = moistures.length ? Math.min(...moistures) : null;
   const moistureMax = moistures.length ? Math.max(...moistures) : null;
@@ -65,8 +65,8 @@ function compute(rows: BookingRow[]): DashboardData {
     : null;
 
   // Dryer load (read-only count by farmer preference)
-  const dryerRows  = active.filter((r) => r.drying_preference === 'required');
-  const dryerTonnage = dryerRows.reduce((s, r) => s + (r.actual_yield_kg ?? 0), 0);
+  const dryerRows  = active.filter((r) => r.requires_dryer === true);
+  const dryerTonnage = dryerRows.reduce((s, r) => s + (r.estimated_tonnage ?? 0), 0);
 
   // Group by day
   const dayMap: Record<string, DayStat> = {};
@@ -75,7 +75,7 @@ function compute(rows: BookingRow[]): DashboardData {
     if (!dayMap[d]) dayMap[d] = { date: d, pending: 0, confirmed: 0, tonnage: 0 };
     if (r.status === 'pending')   dayMap[d].pending++;
     if (r.status === 'confirmed') dayMap[d].confirmed++;
-    dayMap[d].tonnage += r.actual_yield_kg ?? 0;
+    dayMap[d].tonnage += r.estimated_tonnage ?? 0;
   }
   const byDay = Object.values(dayMap).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 14);
 
@@ -104,7 +104,7 @@ export function HarvestDashboard({ view = 'week' }: Props) {
       setLoading(true); setError(null);
       const s = createSupabaseBrowserClient();
       let q = s.from('harvest_bookings')
-        .select('id,status,scheduled_date,actual_yield_kg,estimated_moisture_pct,drying_preference')
+        .select('id,status,scheduled_date,estimated_tonnage,estimated_moisture,requires_dryer')
         .in('status', ['pending', 'confirmed', 'completed'])
         .order('scheduled_date', { ascending: true })
         .limit(500);
