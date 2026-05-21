@@ -29,6 +29,7 @@ export type AdminPermission =
   | 'finance.read'
   | 'finance.write'
   | 'reports.read'
+  | 'harvest.read'
   | 'admin_users.manage';
 
 // All permission keys — used for matrix UI
@@ -39,7 +40,7 @@ export const ALL_PERMISSIONS: AdminPermission[] = [
   'service.read', 'service.write',
   'seed.read', 'seed.write',
   'finance.read', 'finance.write',
-  'reports.read', 'admin_users.manage',
+  'reports.read', 'harvest.read', 'admin_users.manage',
 ];
 
 // Default role → permissions (used as fallback when DB not available)
@@ -64,7 +65,7 @@ export const ROLE_DEFAULT_PERMISSIONS: Record<AdminRole, AdminPermission[]> = {
     'finance.read', 'finance.write', 'members.read',
   ],
   readonly_admin: [
-    'reports.read', 'members.read', 'market_prices.read',
+    'reports.read', 'harvest.read', 'members.read', 'market_prices.read',
     'field.read', 'service.read', 'seed.read', 'finance.read',
   ],
 };
