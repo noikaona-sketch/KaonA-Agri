@@ -3,6 +3,7 @@
 import { useState } from 'react';
 
 import { UIButton }                from '@/shared/components/ui-button';
+import { getWeatherReadinessForecast } from '@/shared/weather/weather-readiness';
 import { HarvestBookingStatusCard }         from './harvest-booking-status-card';
 import { HarvestValuePreview }              from './harvest-value-preview';
 import { useMemberHarvestBooking }          from './use-member-harvest-booking';
@@ -16,6 +17,7 @@ type Props = {
 
 export function MemberHarvestBookingForm({ cycleId, cropName, plotId, onSuccess }: Props) {
   const today = new Date().toISOString().slice(0, 10);
+  const weatherReadiness = getWeatherReadinessForecast({ startDate: today, days: 7 });
 
   // Form state
   const [expectedDateFrom, setExpectedDateFrom] = useState('');
@@ -76,6 +78,7 @@ export function MemberHarvestBookingForm({ cycleId, cropName, plotId, onSuccess 
 
   const yieldNum = Number(estimatedTonnage);
   const moistureNum = Number(moisturePct);
+  const hasSelectedRange = Boolean(expectedDateFrom && expectedDateTo);
 
   async function handleSubmit() {
     setError(null);
@@ -129,6 +132,51 @@ export function MemberHarvestBookingForm({ cycleId, cropName, plotId, onSuccess 
           <input className="reg-input" type="date" value={expectedDateTo} min={expectedDateFrom || today} disabled={submitting}
             onChange={(e) => setExpectedDateTo(e.target.value)} />
         </label>
+      </div>
+      <div style={{
+        border: '1px solid #e5e7eb',
+        borderRadius: 10,
+        padding: '10px 12px',
+        marginTop: 12,
+        marginBottom: 14,
+        background: '#f9fafb',
+      }}>
+        <p style={{ margin: '0 0 8px', fontWeight: 700, fontSize: 13 }}>พยากรณ์ความพร้อมเก็บเกี่ยว (7 วัน)</p>
+        <p style={{ margin: '0 0 10px', fontSize: 12, color: '#6b7280' }}>
+          {hasSelectedRange ? 'ไฮไลต์ช่วงวันที่เลือกไว้เพื่อช่วยตัดสินใจ' : 'แสดงความพร้อมของ 7 วันถัดไป'}
+        </p>
+        <div style={{ display: 'grid', gap: 6 }}>
+          {weatherReadiness.map((day) => {
+            const isSelected = hasSelectedRange
+              && day.date >= expectedDateFrom
+              && day.date <= expectedDateTo;
+            const levelBadge = day.level === 'suitable' ? '🟢 suitable' : day.level === 'caution' ? '🟡 caution' : '🔴 rain_risk';
+            return (
+              <div key={day.date} style={{
+                display: 'grid',
+                gridTemplateColumns: '1.1fr 1fr 1fr',
+                gap: 8,
+                alignItems: 'center',
+                borderRadius: 8,
+                padding: '8px 10px',
+                background: isSelected ? '#eff6ff' : '#fff',
+                border: isSelected ? '1px solid #93c5fd' : '1px solid #e5e7eb',
+              }}>
+                <div>
+                  <p style={{ margin: 0, fontSize: 12, color: '#374151' }}>{day.date}</p>
+                  <p style={{ margin: 0, fontSize: 12, fontWeight: 700 }}>{levelBadge}</p>
+                </div>
+                <div style={{ fontSize: 12, color: '#1f2937' }}>
+                  <p style={{ margin: 0 }}>rainfall_mm: {day.rainfall_mm ?? '-'}</p>
+                  <p style={{ margin: 0 }}>rain_probability: {day.rain_probability ?? '-'}</p>
+                </div>
+                <p style={{ margin: 0, fontSize: 12, color: '#374151' }}>
+                  label: {day.label}
+                </p>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       <label className="reg-label">
