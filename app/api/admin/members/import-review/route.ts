@@ -118,8 +118,23 @@ export async function POST(req: Request) {
 
   const s = createServerSupabaseClient();
   if (body.action === 'mark_needs_correction') {
-    const { error } = await s.from('members').update({ status: 'returned', updated_at: new Date().toISOString() }).in('id', ids).eq('registration_type', 'admin_import');
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    const stamp = new Date().toISOString();
+    const { data: existing, error: readError } = await s.from('members')
+      .select('id,notes')
+      .in('id', ids)
+      .eq('registration_type', 'admin_import');
+    if (readError) return NextResponse.json({ error: readError.message }, { status: 500 });
+
+    const updates = (existing ?? []).map((row) => {
+      const base = (row.notes ?? '').trim();
+      const marker = `[import_review][needs_correction] ${stamp}`;
+      const notes = base ? `${base}
+${marker}` : marker;
+      return s.from('members').update({ notes, updated_at: stamp }).eq('id', row.id).eq('registration_type', 'admin_import');
+    });
+    const results = await Promise.all(updates);
+    const failed = results.find((r) => r.error);
+    if (failed?.error) return NextResponse.json({ error: failed.error.message }, { status: 500 });
     return NextResponse.json({ ok: true });
   }
   if (body.action === 'bulk_status_note') {
