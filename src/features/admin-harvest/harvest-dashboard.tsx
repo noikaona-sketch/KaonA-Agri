@@ -61,6 +61,8 @@ type DashboardData = {
   peakDaysCount: number;
   busiestDay: string | null;
   maxEstimatedTonnage: number;
+  rainRiskDaysCount: number;
+  highTonnageRainRiskDaysCount: number;
 };
 
 const DAY_MS = 86400000;
@@ -120,6 +122,20 @@ function compute(rows: BookingRow[]): DashboardData {
   const peakDaysCount = byDay.filter((d) => getAlertLevel(d.tonnage) === 'peak').length;
   const busiest = byDay.reduce<DayStat | null>((max, day) => (!max || day.tonnage > max.tonnage ? day : max), null);
 
+  const startDate = byDay[0]?.date ?? null;
+  const endDate = byDay[byDay.length - 1]?.date ?? null;
+  const totalDays = startDate && endDate
+    ? Math.floor((Date.parse(`${endDate}T00:00:00Z`) - Date.parse(`${startDate}T00:00:00Z`)) / DAY_MS) + 1
+    : 0;
+  const weatherByDate = totalDays > 0
+    ? getWeatherReadinessForecast({ startDate, days: totalDays }).reduce<Record<string, WeatherReadinessLevel>>((acc, d) => {
+      acc[d.date] = d.level;
+      return acc;
+    }, {})
+    : {};
+  const rainRiskDaysCount = byDay.filter((d) => weatherByDate[d.date] === 'rain_risk').length;
+  const highTonnageRainRiskDaysCount = byDay.filter((d) => d.tonnage >= 50 && weatherByDate[d.date] === 'rain_risk').length;
+
   return {
     expectedTonnage,
     pendingCount:   rows.filter((r) => r.status === 'pending').length,
@@ -132,6 +148,8 @@ function compute(rows: BookingRow[]): DashboardData {
     peakDaysCount,
     busiestDay: busiest?.date ?? null,
     maxEstimatedTonnage: busiest?.tonnage ?? 0,
+    rainRiskDaysCount,
+    highTonnageRainRiskDaysCount,
   };
 }
 
@@ -169,12 +187,16 @@ export function HarvestDashboard({ view = 'week' }: Props) {
   if (!data)   return null;
 
   const maxTonnage = Math.max(...data.byDay.map((d) => d.tonnage), 1);
-  const weatherByDate = data.byDay.length > 0
-    ? getWeatherReadinessForecast({ startDate: data.byDay[0].date, days: data.byDay.length })
-      .reduce<Record<string, WeatherReadinessLevel>>((acc, day) => {
-        acc[day.date] = day.level;
-        return acc;
-      }, {})
+  const startDate = data.byDay[0]?.date ?? null;
+  const endDate = data.byDay[data.byDay.length - 1]?.date ?? null;
+  const totalDays = startDate && endDate
+    ? Math.floor((Date.parse(`${endDate}T00:00:00Z`) - Date.parse(`${startDate}T00:00:00Z`)) / DAY_MS) + 1
+    : 0;
+  const weatherByDate = totalDays > 0
+    ? getWeatherReadinessForecast({ startDate, days: totalDays }).reduce<Record<string, WeatherReadinessLevel>>((acc, day) => {
+      acc[day.date] = day.level;
+      return acc;
+    }, {})
     : {};
 
   return (
@@ -238,6 +260,15 @@ export function HarvestDashboard({ view = 'week' }: Props) {
         </div>
       </div>
 
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 12, fontWeight: 700, padding: '6px 10px', borderRadius: 999, background: '#eff6ff', color: '#1d4ed8' }}>
+          🌧️ Rain risk days: {data.rainRiskDaysCount}
+        </span>
+        <span style={{ fontSize: 12, fontWeight: 700, padding: '6px 10px', borderRadius: 999, background: '#fff1f2', color: '#be123c' }}>
+          ⚠️ High tonnage + rain risk: {data.highTonnageRainRiskDaysCount}
+        </span>
+      </div>
+
       {/* ── 4. Moisture range ── */}
       {data.moistureAvg !== null && (
         <div style={{ background: '#e3f2fd', borderRadius: 10, padding: '12px 14px', border: '1px solid #90caf9' }}>
@@ -293,8 +324,9 @@ export function HarvestDashboard({ view = 'week' }: Props) {
               {data.byDay.map((d) => {
                 const level = getAlertLevel(d.tonnage);
                 const alertText = level === 'peak' ? '🔴 peak' : level === 'busy' ? '🟡 busy' : '🟢 normal';
+                const isHighTonnageRainRisk = d.tonnage >= 50 && weatherByDate[d.date] === 'rain_risk';
                 return (
-                <tr key={`row-${d.date}`}>
+                <tr key={`row-${d.date}`} style={isHighTonnageRainRisk ? { background: '#fff7ed' } : undefined}>
                   <td style={{ padding: '8px 10px', borderBottom: '1px solid #f3f4f6' }}>{d.date}</td>
                   <td style={{ padding: '8px 10px', borderBottom: '1px solid #f3f4f6' }}>{d.pending + d.confirmed}</td>
                   <td style={{ padding: '8px 10px', borderBottom: '1px solid #f3f4f6' }}>{d.pending}</td>
