@@ -26,6 +26,7 @@ type PreviewResponse = {
   duplicateCandidates: Array<Record<string, unknown>>;
   summary?: Record<string, unknown>;
 };
+ codex/add-csv/xlsx-preview-parser-for-imports-xwkd0o
 type ConfirmResponse = {
   ok: boolean;
   insertedCount: number;
@@ -34,6 +35,8 @@ type ConfirmResponse = {
   errors: string[];
   warnings?: string[];
 };
+
+
 
 export default function AdminMembersPage() {
   const [tab, setTab] = useState<Tab>('approvals');
@@ -44,6 +47,7 @@ export default function AdminMembersPage() {
   const [confirming, setConfirming] = useState(false);
   const [confirmOverrideDuplicate, setConfirmOverrideDuplicate] = useState(false);
   const [confirmResult, setConfirmResult] = useState<ConfirmResponse | null>(null);
+
 
   const cur = TABS.find((t) => t.key === tab)!;
 
@@ -66,6 +70,8 @@ export default function AdminMembersPage() {
       }
       setPreview(data);
       setConfirmResult(null);
+
+
     } catch {
       setRequestError('เกิดข้อผิดพลาดเครือข่ายระหว่าง preview');
     } finally {
@@ -139,17 +145,24 @@ export default function AdminMembersPage() {
 
           {requestError && <div style={{ color: '#b91c1c', fontSize: 13 }}>{requestError}</div>}
 
+            <button type="button" className="admin-btn admin-btn--secondary" disabled title="coming next PR">Confirm Import (coming next PR)</button>
+          </form>
+
+          {requestError && <div style={{ color: '#b91c1c', fontSize: 13 }}>{requestError}</div>}
+
           {preview && (
             <>
               <pre style={{ margin: 0, background: '#f8fafc', padding: 10, borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 12 }}>summary: {JSON.stringify(preview.summary ?? {}, null, 2)}</pre>
               {preview.errors?.length > 0 && <div style={{ color: '#b91c1c', fontSize: 13 }}>Errors: {preview.errors.join(' | ')}</div>}
               {preview.warnings?.length > 0 && <div style={{ color: '#b45309', fontSize: 13 }}>Warnings: {preview.warnings.join(' | ')}</div>}
               {preview.duplicateCandidates?.length > 0 && <pre style={{ margin: 0, background: '#fff7ed', padding: 10, borderRadius: 8, border: '1px solid #fed7aa', fontSize: 12 }}>duplicateCandidates: {JSON.stringify(preview.duplicateCandidates, null, 2)}</pre>}
+
               {confirmResult && (
                 <pre style={{ margin: 0, background: '#ecfdf5', padding: 10, borderRadius: 8, border: '1px solid #a7f3d0', fontSize: 12 }}>
                   confirmResult: {JSON.stringify(confirmResult, null, 2)}
                 </pre>
               )}
+
               <div className="admin-table-wrap">
                 <table className="admin-table">
                   <thead><tr><th>Row</th><th>Full name</th><th>Phone</th><th>CID masked</th><th>District</th><th>Province</th></tr></thead>
