@@ -141,20 +141,16 @@ export function MemberHarvestBookingForm({ cycleId, cropName, plotId, onSuccess 
         marginBottom: 14,
         background: '#f9fafb',
       }}>
-        <p style={{ margin: '0 0 8px', fontWeight: 700, fontSize: 13 }}>พยากรณ์ความพร้อมเก็บเกี่ยว (7 วันล่วงหน้า)</p>
+        <p style={{ margin: '0 0 8px', fontWeight: 700, fontSize: 13 }}>พยากรณ์ความพร้อมเก็บเกี่ยว (7 วัน)</p>
         <p style={{ margin: '0 0 10px', fontSize: 12, color: '#6b7280' }}>
           {hasSelectedRange ? 'ไฮไลต์ช่วงวันที่เลือกไว้เพื่อช่วยตัดสินใจ' : 'แสดงความพร้อมของ 7 วันถัดไป'}
         </p>
         <div style={{ display: 'grid', gap: 6 }}>
-          {weatherReadiness.length === 0 ? (
-            <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>
-              ยังไม่มีข้อมูลพยากรณ์อากาศสำหรับช่วงวันที่เลือก
-            </p>
-          ) : weatherReadiness.map((day) => {
+          {weatherReadiness.map((day) => {
             const isSelected = hasSelectedRange
               && day.date >= expectedDateFrom
               && day.date <= expectedDateTo;
-            const levelBadge = day.level === 'suitable' ? '🟢 พร้อมเก็บเกี่ยว' : day.level === 'caution' ? '🟡 ควรเผื่อเวลา' : '🔴 เสี่ยงฝนสูง';
+            const levelBadge = day.level === 'suitable' ? '🟢 suitable' : day.level === 'caution' ? '🟡 caution' : '🔴 rain_risk';
             return (
               <div key={day.date} style={{
                 display: 'grid',
@@ -171,11 +167,11 @@ export function MemberHarvestBookingForm({ cycleId, cropName, plotId, onSuccess 
                   <p style={{ margin: 0, fontSize: 12, fontWeight: 700 }}>{levelBadge}</p>
                 </div>
                 <div style={{ fontSize: 12, color: '#1f2937' }}>
-                  <p style={{ margin: 0 }}>ปริมาณฝน (มม.): {day.rainfall_mm ?? '-'}</p>
-                  <p style={{ margin: 0 }}>โอกาสฝนตก (%): {day.rain_probability ?? '-'}</p>
+                  <p style={{ margin: 0 }}>rainfall_mm: {day.rainfall_mm ?? '-'}</p>
+                  <p style={{ margin: 0 }}>rain_probability: {day.rain_probability ?? '-'}</p>
                 </div>
                 <p style={{ margin: 0, fontSize: 12, color: '#374151' }}>
-                  {day.label}
+                  label: {day.label}
                 </p>
               </div>
             );

@@ -20,6 +20,7 @@ import { TonnageBar }        from './harvest-tonnage-bar';
 import { HarvestDailyBoard } from './harvest-daily-board';
 import { HarvestWorkloadSummary } from './harvest-workload-summary';
 import { ErrorState }   from '@/shared/components/error-state';
+import { getWeatherReadinessForecast, type WeatherReadinessLevel } from '@/shared/weather/weather-readiness';
 
 type BookingRow = {
   id:               string;
@@ -39,6 +40,12 @@ export type DayStat = {
 };
 
 type DailyAlertLevel = 'normal' | 'busy' | 'peak';
+
+function weatherBadge(level: WeatherReadinessLevel): string {
+  if (level === 'suitable') return '☀️ suitable';
+  if (level === 'caution') return '🌦️ caution';
+  return '🌧️ rain risk';
+}
 
 type DashboardData = {
   expectedTonnage: number;
@@ -162,6 +169,13 @@ export function HarvestDashboard({ view = 'week' }: Props) {
   if (!data)   return null;
 
   const maxTonnage = Math.max(...data.byDay.map((d) => d.tonnage), 1);
+  const weatherByDate = data.byDay.length > 0
+    ? getWeatherReadinessForecast({ startDate: data.byDay[0].date, days: data.byDay.length })
+      .reduce<Record<string, WeatherReadinessLevel>>((acc, day) => {
+        acc[day.date] = day.level;
+        return acc;
+      }, {})
+    : {};
 
   return (
     <>
@@ -241,6 +255,14 @@ export function HarvestDashboard({ view = 'week' }: Props) {
         </div>
       )}
 
+      {data.byDay.length === 0 && (
+        <div style={{ border: '1px dashed #d1d5db', borderRadius: 10, padding: '12px 14px', background: '#f9fafb' }}>
+          <p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>
+            ยังไม่มีข้อมูลโหลดรายวันในช่วงวันที่เลือก
+          </p>
+        </div>
+      )}
+
       {/* ── 5. Tonnage by day ── */}
       {data.byDay.length > 0 && (
         <div>
@@ -262,7 +284,7 @@ export function HarvestDashboard({ view = 'week' }: Props) {
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 520, fontSize: 13 }}>
             <thead>
               <tr style={{ background: '#f9fafb' }}>
-                {['วันที่', 'Booking ทั้งหมด', 'รอ', 'ยืนยัน', 'ตันคาดการณ์', 'Alert'].map((h) => (
+                {['วันที่', 'Booking ทั้งหมด', 'รอ', 'ยืนยัน', 'ตันคาดการณ์', 'Weather', 'Alert'].map((h) => (
                   <th key={h} style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>{h}</th>
                 ))}
               </tr>
@@ -278,6 +300,7 @@ export function HarvestDashboard({ view = 'week' }: Props) {
                   <td style={{ padding: '8px 10px', borderBottom: '1px solid #f3f4f6' }}>{d.pending}</td>
                   <td style={{ padding: '8px 10px', borderBottom: '1px solid #f3f4f6' }}>{d.confirmed}</td>
                   <td style={{ padding: '8px 10px', borderBottom: '1px solid #f3f4f6' }}>{d.tonnage.toFixed(1)}</td>
+                  <td style={{ padding: '8px 10px', borderBottom: '1px solid #f3f4f6', fontWeight: 700 }}>{weatherBadge(weatherByDate[d.date] ?? 'suitable')}</td>
                   <td style={{ padding: '8px 10px', borderBottom: '1px solid #f3f4f6', fontWeight: 700 }}>{alertText}</td>
                 </tr>
               )})}
