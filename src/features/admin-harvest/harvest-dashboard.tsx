@@ -24,7 +24,8 @@ import { ErrorState }   from '@/shared/components/error-state';
 type BookingRow = {
   id:               string;
   status:           string;
-  scheduled_date:   string;
+  expected_date_from: string | null;
+  expected_date_to: string | null;
   estimated_tonnage:  number | null;
   estimated_moisture: number | null;
   requires_dryer: boolean | null;
@@ -37,8 +38,10 @@ export type DayStat = {
   tonnage:   number;
 };
 
+type DailyAlertLevel = 'normal' | 'busy' | 'peak';
+
 type DashboardData = {
-  expectedTonnageKg: number;
+  expectedTonnage: number;
   pendingCount:     number;
   confirmedCount:   number;
   completedCount:   number;
@@ -48,11 +51,27 @@ type DashboardData = {
   moistureAvg:      number | null;
   moistureMax:      number | null;
   byDay:            DayStat[];
+  peakDaysCount: number;
+  busiestDay: string | null;
+  maxEstimatedTonnage: number;
 };
+
+const DAY_MS = 86400000;
+
+function toDateOnly(value: string | null): string | null {
+  if (!value) return null;
+  return value.slice(0, 10);
+}
+
+function getAlertLevel(tonnage: number): DailyAlertLevel {
+  if (tonnage >= 100) return 'peak';
+  if (tonnage >= 50) return 'busy';
+  return 'normal';
+}
 
 function compute(rows: BookingRow[]): DashboardData {
   const active = rows.filter((r) => r.status === 'pending' || r.status === 'confirmed');
-  const expectedTonnageKg = active.reduce((sum, r) => sum + (r.estimated_tonnage ?? 0), 0);
+  const expectedTonnage = active.reduce((sum, r) => sum + (r.estimated_tonnage ?? 0), 0);
 
   // Moisture stats (active rows with estimates)
   const moistures = active
@@ -71,16 +90,31 @@ function compute(rows: BookingRow[]): DashboardData {
   // Group by day
   const dayMap: Record<string, DayStat> = {};
   for (const r of active) {
-    const d = r.scheduled_date.slice(0, 10);
-    if (!dayMap[d]) dayMap[d] = { date: d, pending: 0, confirmed: 0, tonnage: 0 };
-    if (r.status === 'pending')   dayMap[d].pending++;
-    if (r.status === 'confirmed') dayMap[d].confirmed++;
-    dayMap[d].tonnage += r.estimated_tonnage ?? 0;
+    const from = toDateOnly(r.expected_date_from);
+    const to = toDateOnly(r.expected_date_to) ?? from;
+    if (!from || !to) continue;
+
+    const startTs = Date.parse(`${from}T00:00:00Z`);
+    const endTs = Date.parse(`${to}T00:00:00Z`);
+    if (Number.isNaN(startTs) || Number.isNaN(endTs) || endTs < startTs) continue;
+
+    const days = Math.floor((endTs - startTs) / DAY_MS) + 1;
+    const dailyTonnage = (r.estimated_tonnage ?? 0) / days;
+
+    for (let i = 0; i < days; i++) {
+      const date = new Date(startTs + i * DAY_MS).toISOString().slice(0, 10);
+      if (!dayMap[date]) dayMap[date] = { date, pending: 0, confirmed: 0, tonnage: 0 };
+      if (r.status === 'pending') dayMap[date].pending++;
+      if (r.status === 'confirmed') dayMap[date].confirmed++;
+      dayMap[date].tonnage += dailyTonnage;
+    }
   }
   const byDay = Object.values(dayMap).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 14);
+  const peakDaysCount = byDay.filter((d) => getAlertLevel(d.tonnage) === 'peak').length;
+  const busiest = byDay.reduce<DayStat | null>((max, day) => (!max || day.tonnage > max.tonnage ? day : max), null);
 
   return {
-    expectedTonnageKg,
+    expectedTonnage,
     pendingCount:   rows.filter((r) => r.status === 'pending').length,
     confirmedCount: rows.filter((r) => r.status === 'confirmed').length,
     completedCount: rows.filter((r) => r.status === 'completed').length,
@@ -88,6 +122,9 @@ function compute(rows: BookingRow[]): DashboardData {
     dryerTonnage,
     moistureMin, moistureAvg, moistureMax,
     byDay,
+    peakDaysCount,
+    busiestDay: busiest?.date ?? null,
+    maxEstimatedTonnage: busiest?.tonnage ?? 0,
   };
 }
 
@@ -104,14 +141,14 @@ export function HarvestDashboard({ view = 'week' }: Props) {
       setLoading(true); setError(null);
       const s = createSupabaseBrowserClient();
       let q = s.from('harvest_bookings')
-        .select('id,status,scheduled_date,estimated_tonnage,estimated_moisture,requires_dryer')
+        .select('id,status,expected_date_from,expected_date_to,estimated_tonnage,estimated_moisture,requires_dryer')
         .in('status', ['pending', 'confirmed', 'completed'])
-        .order('scheduled_date', { ascending: true })
+        .order('expected_date_from', { ascending: true })
         .limit(500);
       if (view === 'week') {
         const from = new Date().toISOString().slice(0, 10);
         const to   = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
-        q = q.gte('scheduled_date', from).lte('scheduled_date', to);
+        q = q.gte('expected_date_to', from).lte('expected_date_from', to);
       }
       const { data: rows, error: err } = await q;
       if (err) { setError(err.message); setLoading(false); return; }
@@ -138,7 +175,7 @@ export function HarvestDashboard({ view = 'week' }: Props) {
           🚚 ปริมาณรับเข้าคาดการณ์รวม
         </p>
         <p style={{ margin: 0, fontSize: 13, color: '#0f172a' }}>
-          <strong>{(data.expectedTonnageKg / 1000).toFixed(1)} ตัน</strong> จากคิวที่ยังรอ/ยืนยัน
+          <strong>{data.expectedTonnage.toFixed(1)} ตัน</strong> จากคิวที่ยังรอ/ยืนยัน
         </p>
       </div>
 
@@ -168,8 +205,23 @@ export function HarvestDashboard({ view = 'week' }: Props) {
         </p>
         <p style={{ margin: 0, fontSize: 13, color: '#713f12' }}>
           <strong>{data.dryerRequired}</strong> คิว ·{' '}
-          <strong>{(data.dryerTonnage / 1000).toFixed(1)} ตัน</strong> คาดการณ์
+          <strong>{data.dryerTonnage.toFixed(1)} ตัน</strong> คาดการณ์
         </p>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }}>
+        <div style={{ background: '#fff1f2', borderRadius: 10, padding: '12px 14px', border: '1px solid #fecdd3' }}>
+          <p style={{ margin: 0, fontSize: 11, color: '#9f1239' }}>Peak days</p>
+          <p style={{ margin: '2px 0 0', fontWeight: 800, fontSize: 24, color: '#be123c' }}>{data.peakDaysCount}</p>
+        </div>
+        <div style={{ background: '#eff6ff', borderRadius: 10, padding: '12px 14px', border: '1px solid #bfdbfe' }}>
+          <p style={{ margin: 0, fontSize: 11, color: '#1d4ed8' }}>Busiest day</p>
+          <p style={{ margin: '2px 0 0', fontWeight: 700, fontSize: 16, color: '#1e3a8a' }}>{data.busiestDay ?? '-'}</p>
+        </div>
+        <div style={{ background: '#f0fdf4', borderRadius: 10, padding: '12px 14px', border: '1px solid #bbf7d0' }}>
+          <p style={{ margin: 0, fontSize: 11, color: '#166534' }}>Max estimated tonnage</p>
+          <p style={{ margin: '2px 0 0', fontWeight: 800, fontSize: 24, color: '#166534' }}>{data.maxEstimatedTonnage.toFixed(1)} ตัน</p>
+        </div>
       </div>
 
       {/* ── 4. Moisture range ── */}
@@ -210,21 +262,25 @@ export function HarvestDashboard({ view = 'week' }: Props) {
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 520, fontSize: 13 }}>
             <thead>
               <tr style={{ background: '#f9fafb' }}>
-                {['วันที่', 'Booking ทั้งหมด', 'รอ', 'ยืนยัน', 'ตันคาดการณ์'].map((h) => (
+                {['วันที่', 'Booking ทั้งหมด', 'รอ', 'ยืนยัน', 'ตันคาดการณ์', 'Alert'].map((h) => (
                   <th key={h} style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {data.byDay.map((d) => (
+              {data.byDay.map((d) => {
+                const level = getAlertLevel(d.tonnage);
+                const alertText = level === 'peak' ? '🔴 peak' : level === 'busy' ? '🟡 busy' : '🟢 normal';
+                return (
                 <tr key={`row-${d.date}`}>
                   <td style={{ padding: '8px 10px', borderBottom: '1px solid #f3f4f6' }}>{d.date}</td>
                   <td style={{ padding: '8px 10px', borderBottom: '1px solid #f3f4f6' }}>{d.pending + d.confirmed}</td>
                   <td style={{ padding: '8px 10px', borderBottom: '1px solid #f3f4f6' }}>{d.pending}</td>
                   <td style={{ padding: '8px 10px', borderBottom: '1px solid #f3f4f6' }}>{d.confirmed}</td>
-                  <td style={{ padding: '8px 10px', borderBottom: '1px solid #f3f4f6' }}>{(d.tonnage / 1000).toFixed(1)}</td>
+                  <td style={{ padding: '8px 10px', borderBottom: '1px solid #f3f4f6' }}>{d.tonnage.toFixed(1)}</td>
+                  <td style={{ padding: '8px 10px', borderBottom: '1px solid #f3f4f6', fontWeight: 700 }}>{alertText}</td>
                 </tr>
-              ))}
+              )})}
             </tbody>
           </table>
         </div>
