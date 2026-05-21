@@ -7,8 +7,9 @@ import { AdminMemberList } from '@/features/admin-members/admin-member-list';
 import { AdminRolesManager } from '@/features/admin-roles/admin-roles-manager';
 import { AdminGroups } from '@/features/admin-groups/admin-groups';
 import { AdminCreatePin } from '@/features/admin-invites/admin-create-pin';
+import { AdminImportReview } from '@/features/admin-members/admin-import-review';
 
-type Tab = 'approvals' | 'list' | 'roles' | 'groups' | 'pin' | 'import';
+type Tab = 'approvals' | 'list' | 'roles' | 'groups' | 'pin' | 'import' | 'import_review';
 const TABS: { key: Tab; icon: string; label: string }[] = [
   { key: 'approvals', icon: '✅', label: 'คิวอนุมัติ' },
   { key: 'list', icon: '👥', label: 'สมาชิกทั้งหมด' },
@@ -16,6 +17,7 @@ const TABS: { key: Tab; icon: string; label: string }[] = [
   { key: 'groups', icon: '🗂️', label: 'กลุ่ม' },
   { key: 'pin', icon: '🔑', label: 'สร้าง PIN' },
   { key: 'import', icon: '📥', label: 'Import' },
+  { key: 'import_review', icon: '🛠️', label: 'Import Review' },
 ];
 
 type PreviewResponse = {
@@ -75,6 +77,7 @@ export default function AdminMembersPage() {
       {tab === 'roles' && <AdminRolesManager />}
       {tab === 'groups' && <AdminGroups />}
       {tab === 'pin' && <AdminCreatePin />}
+      {tab === 'import_review' && <AdminImportReview />}
       {tab === 'import' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <h3 style={{ margin: 0 }}>📥 Import สมาชิก (Preview Only)</h3>
