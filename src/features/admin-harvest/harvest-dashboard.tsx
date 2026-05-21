@@ -37,7 +37,10 @@ export type DayStat = {
   pending:   number;
   confirmed: number;
   tonnage:   number;
+  weatherLevel: WeatherReadinessLevel;
 };
+
+type DayStatBase = Omit<DayStat, 'weatherLevel'>;
 
 type DailyAlertLevel = 'normal' | 'busy' | 'peak';
 
@@ -98,7 +101,7 @@ function compute(rows: BookingRow[]): DashboardData {
   const dryerTonnage = dryerRows.reduce((s, r) => s + (r.estimated_tonnage ?? 0), 0);
 
   // Group by day
-  const dayMap: Record<string, DayStat> = {};
+  const dayMap: Record<string, DayStatBase> = {};
   for (const r of active) {
     const from = toDateOnly(r.expected_date_from);
     const to = toDateOnly(r.expected_date_to) ?? from;
@@ -119,8 +122,21 @@ function compute(rows: BookingRow[]): DashboardData {
       dayMap[date].tonnage += dailyTonnage;
     }
   }
-  const byDay = Object.values(dayMap).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 14);
-  const peakDaysCount = byDay.filter((d) => getAlertLevel(d.tonnage) === 'peak').length;
+  const byDayBase = Object.values(dayMap).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 14);
+  const peakDaysCount = byDayBase.filter((d) => getAlertLevel(d.tonnage) === 'peak').length;
+  const weatherByDate = byDayBase.length
+    ? new Map(
+        getWeatherReadinessForecast({ startDate: byDayBase[0].date, days: byDayBase.length }).map((item) => [item.date, item.level]),
+      )
+    : new Map<string, WeatherReadinessLevel>();
+  const byDay: DayStat[] = byDayBase.map((d) => ({
+    ...d,
+    weatherLevel: weatherByDate.get(d.date) ?? 'suitable',
+  }));
+  const rainRiskDaysCount = byDay.filter((d) => d.weatherLevel === 'rain_risk').length;
+  const highTonnageRainRiskDaysCount = byDay.filter(
+    (d) => getAlertLevel(d.tonnage) === 'peak' && d.weatherLevel === 'rain_risk',
+  ).length;
   const busiest = byDay.reduce<DayStat | null>((max, day) => (!max || day.tonnage > max.tonnage ? day : max), null);
 
   const startDate = byDay[0]?.date ?? null;
@@ -208,7 +224,7 @@ export function HarvestDashboard({ view = 'week' }: Props) {
       </div>
 
       {/* ── 2. Status counts ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10 }}>
         {[
           { label: 'รอยืนยัน',   value: data.pendingCount,   color: '#e65100' },
           { label: 'ยืนยันแล้ว', value: data.confirmedCount, color: '#2e7d32' },
@@ -237,7 +253,7 @@ export function HarvestDashboard({ view = 'week' }: Props) {
         </p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10 }}>
         <div style={{ background: '#fff1f2', borderRadius: 10, padding: '12px 14px', border: '1px solid #fecdd3' }}>
           <p style={{ margin: 0, fontSize: 11, color: '#9f1239' }}>Peak days</p>
           <p style={{ margin: '2px 0 0', fontWeight: 800, fontSize: 24, color: '#be123c' }}>{data.peakDaysCount}</p>
@@ -249,6 +265,11 @@ export function HarvestDashboard({ view = 'week' }: Props) {
         <div style={{ background: '#f0fdf4', borderRadius: 10, padding: '12px 14px', border: '1px solid #bbf7d0' }}>
           <p style={{ margin: 0, fontSize: 11, color: '#166534' }}>Max estimated tonnage</p>
           <p style={{ margin: '2px 0 0', fontWeight: 800, fontSize: 24, color: '#166534' }}>{data.maxEstimatedTonnage.toFixed(1)} ตัน</p>
+        </div>
+        <div style={{ background: '#eff6ff', borderRadius: 10, padding: '12px 14px', border: '1px solid #93c5fd' }}>
+          <p style={{ margin: 0, fontSize: 11, color: '#1e40af' }}>🌧️ Rain-risk days</p>
+          <p style={{ margin: '2px 0 0', fontWeight: 800, fontSize: 24, color: '#1e3a8a' }}>{data.rainRiskDaysCount}</p>
+          <p style={{ margin: '3px 0 0', fontSize: 11, color: '#1d4ed8' }}>High tonnage + rain risk: <strong>{data.highTonnageRainRiskDaysCount}</strong></p>
         </div>
       </div>
 

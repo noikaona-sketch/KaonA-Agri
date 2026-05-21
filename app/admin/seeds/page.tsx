@@ -19,7 +19,7 @@ export default function AdminSeedsPage() {
   const [tab, setTab] = useState<Tab>('movements');
   const cur = TABS.find((t) => t.key === tab)!;
   return (
-    <AdminWebShell title={`${cur.icon} เมล็ดพันธุ์ — ${cur.label}`} subtitle="จัดการ Supplier พันธุ์ และการเคลื่อนไหว (ปิดหน้ารับเข้า LOT แบบเดิม)">
+    <AdminWebShell title={`${cur.icon} เมล็ดพันธุ์ — ${cur.label}`} subtitle="จัดการ Supplier พันธุ์ และการเคลื่อนไหว">
       <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap', borderBottom: '1px solid #e8ede8', paddingBottom: 12 }}>
         {TABS.map((t) => (
           <button key={t.key} onClick={() => setTab(t.key)}
