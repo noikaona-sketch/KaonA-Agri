@@ -51,9 +51,9 @@ type WeatherRow = {
 };
 
 const WEATHER_UI: Record<WeatherReadinessLevel, WeatherRow> = {
-  suitable: { level: 'suitable', icon: '☀️', text: 'suitable' },
-  caution: { level: 'caution', icon: '🌦️', text: 'caution' },
-  rain_risk: { level: 'rain_risk', icon: '🌧️', text: 'rain_risk' },
+  suitable: { level: 'suitable', icon: '☀️', text: '☀️ suitable' },
+  caution: { level: 'caution', icon: '🌦️', text: '🌦️ caution' },
+  rain_risk: { level: 'rain_risk', icon: '🌧️', text: '🌧️ rain risk' },
 };
 
 type DashboardData = {
@@ -318,7 +318,7 @@ export function HarvestDashboard({ view = 'week' }: Props) {
                   <td style={{ padding: '8px 10px', borderBottom: '1px solid #f3f4f6' }}>{d.pending}</td>
                   <td style={{ padding: '8px 10px', borderBottom: '1px solid #f3f4f6' }}>{d.confirmed}</td>
                   <td style={{ padding: '8px 10px', borderBottom: '1px solid #f3f4f6' }}>{d.tonnage.toFixed(1)}</td>
-                  <td style={{ padding: '8px 10px', borderBottom: '1px solid #f3f4f6', fontWeight: 700 }}>{weatherUi.icon} {weatherUi.text}</td>
+                  <td style={{ padding: '8px 10px', borderBottom: '1px solid #f3f4f6', fontWeight: 700 }}>{weatherUi.text}</td>
                   <td style={{ padding: '8px 10px', borderBottom: '1px solid #f3f4f6', fontWeight: 700 }}>{alertText}{isHighTonnageRainRisk ? ' · 🌧️ high-tonnage risk' : ''}</td>
                 </tr>
               )})}
