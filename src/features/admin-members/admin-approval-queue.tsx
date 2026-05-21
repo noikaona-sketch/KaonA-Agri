@@ -23,10 +23,19 @@ type QueueItem = {
   missingDocuments?: string[];
 };
 
+type QueueSummary = {
+  pendingApprovals: number;
+  readyToApprove: number;
+  missingDocuments: number;
+  bankNotVerified: number;
+  returnedMembers: number;
+};
+
 type QueueFilter = 'all' | 'ready' | 'missing_docs' | 'bank_not_verified' | 'returned';
 
 export function AdminApprovalQueue() {
   const [items, setItems]     = useState<QueueItem[]>([]);
+  const [summary, setSummary] = useState<QueueSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [actingId, setActingId] = useState<string | null>(null);
   const [error, setError]     = useState<string | null>(null);
@@ -38,9 +47,17 @@ export function AdminApprovalQueue() {
   async function loadQueue() {
     setLoading(true); setError(null);
     const res = await fetch('/api/admin/members/approvals');
-    const payload = (await res.json()) as { items?: QueueItem[]; error?: string };
+    const payload = (await res.json()) as { items?: QueueItem[]; summary?: QueueSummary; error?: string };
     if (!res.ok) { setError(payload.error ?? 'โหลดไม่สำเร็จ'); setLoading(false); return; }
-    setItems(payload.items ?? []);
+    const nextItems = payload.items ?? [];
+    setItems(nextItems);
+    setSummary(payload.summary ?? {
+      pendingApprovals: nextItems.length,
+      readyToApprove: nextItems.filter((item) => (item.missingDocuments?.length ?? 0) === 0 && item.member?.bank_verified_status === 'verified').length,
+      missingDocuments: nextItems.filter((item) => (item.missingDocuments?.length ?? 0) > 0).length,
+      bankNotVerified: nextItems.filter((item) => item.member?.bank_verified_status !== 'verified').length,
+      returnedMembers: nextItems.filter((item) => item.member?.status === 'returned').length,
+    });
     setLoading(false);
   }
 
@@ -134,7 +151,11 @@ export function AdminApprovalQueue() {
                 color: activeFilter === value ? '#1b5e20' : '#374151',
               }}
             >
-              {label}
+              {label}{value === 'all' && summary ? ` (${summary.pendingApprovals})` : ''}
+              {value === 'ready' && summary ? ` (${summary.readyToApprove})` : ''}
+              {value === 'missing_docs' && summary ? ` (${summary.missingDocuments})` : ''}
+              {value === 'bank_not_verified' && summary ? ` (${summary.bankNotVerified})` : ''}
+              {value === 'returned' && summary ? ` (${summary.returnedMembers})` : ''}
             </button>
           ))}
         </div>
