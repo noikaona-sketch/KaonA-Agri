@@ -1,5 +1,6 @@
 'use client';
 
+import { UIButton } from '@/shared/components/ui-button';
 import { DRYING_OPTIONS, DELIVERY_OPTIONS } from './harvest-booking-options';
 
 const BOOKING_STATUS_TH: Record<string, string> = {
@@ -16,9 +17,20 @@ export type BookingStatusRow = {
   drying_preference:     string | null;
   delivery_type:         string | null;
   estimated_moisture_pct: number | null;
+  note?:                 string | null;
+  actual_yield_kg?:      number | null;
 };
 
-export function HarvestBookingStatusCard({ booking }: { booking: BookingStatusRow }) {
+type Props = {
+  booking: BookingStatusRow;
+  onEdit?: () => void;
+  onCancel?: () => void;
+  busy?: boolean;
+};
+
+export function HarvestBookingStatusCard({ booking, onEdit, onCancel, busy = false }: Props) {
+  const editable = booking.status === 'pending' || booking.status === 'confirmed';
+
   return (
     <div className="kaona-card" style={{ background: '#f0fdf4', border: '1px solid #86efac' }}>
       <p style={{ margin: '0 0 4px', fontWeight: 700, fontSize: 15, lineHeight: 1.5 }}>🌾 แจ้งเก็บเกี่ยวแล้ว</p>
@@ -42,6 +54,15 @@ export function HarvestBookingStatusCard({ booking }: { booking: BookingStatusRo
           การส่ง:{' '}
           {DELIVERY_OPTIONS.find((o) => o.value === booking.delivery_type)?.label}
         </p>
+      )}
+      {editable && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 10 }}>
+          <UIButton type="button" onClick={onEdit} disabled={busy}>แก้ไขแผน</UIButton>
+          <UIButton type="button" variant="ghost" onClick={onCancel} disabled={busy}>ยกเลิกแผน</UIButton>
+        </div>
+      )}
+      {!editable && booking.status === 'completed' && (
+        <p style={{ margin: '10px 0 0', fontSize: 12, color: '#6b7280' }}>รายการที่เสร็จสิ้นแล้วไม่สามารถแก้ไขหรือยกเลิกได้</p>
       )}
     </div>
   );

@@ -21,6 +21,9 @@ type UseMemberHarvestBookingResult = {
   } | null;
   loading:      boolean;
   submit:       (payload: Record<string, unknown>) => Promise<string | null>;
+  update:       (payload: Record<string, unknown>) => Promise<string | null>;
+  cancel:       (bookingId: string) => Promise<string | null>;
+  refresh:      () => Promise<void>;
 };
 
 export function useMemberHarvestBooking(
@@ -32,12 +35,21 @@ export function useMemberHarvestBooking(
   const [queueSnapshot, setQueueSnapshot] = useState<UseMemberHarvestBookingResult['queueSnapshot']>(null);
   const [loading,     setLoading]     = useState(true);
 
+  async function refresh() {
+    const token = await getBearerToken();
+    const res = await fetch(`/api/member/harvest-booking?cycle_id=${cycleId}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) return;
+    const json = (await res.json()) as { bookings?: BookingStatusRow[] };
+    setExisting((json.bookings ?? [])[0] ?? null);
+  }
+
   useEffect(() => {
     const sb = tryCreateSupabaseBrowserClient();
     if (!sb) { setLoading(false); return; }
 
     void (async () => {
-      // Market price
       const { data: price } = await sb
         .from('market_prices')
         .select('price_per_kg')
@@ -48,7 +60,6 @@ export function useMemberHarvestBooking(
         .maybeSingle();
       if (price) setMarketPrice(Number(price.price_per_kg));
 
-      // Read-only queue snapshot for lightweight contextual hints
       const today = new Date();
       const toIso = (d: Date) => d.toISOString().slice(0, 10);
       const in7Days = new Date(today);
@@ -71,18 +82,7 @@ export function useMemberHarvestBooking(
         });
       }
 
-      // Existing active booking
-      const token = await getBearerToken();
-      const res = await fetch(`/api/member/harvest-booking?cycle_id=${cycleId}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      if (res.ok) {
-        const json = (await res.json()) as { bookings?: BookingStatusRow[] };
-        const active = json.bookings?.find(
-          (b) => b.status === 'pending' || b.status === 'confirmed',
-        ) ?? null;
-        setExisting(active);
-      }
+      await refresh();
       setLoading(false);
     })();
   }, [cycleId, cropName]);
@@ -99,8 +99,35 @@ export function useMemberHarvestBooking(
     });
     const json = (await res.json()) as { ok?: boolean; error?: string };
     if (!res.ok || json.error) return json.error ?? 'บันทึกไม่สำเร็จ';
+    await refresh();
     return null;
   }
 
-  return { existing, marketPrice, queueSnapshot, loading, submit };
+  async function update(payload: Record<string, unknown>): Promise<string | null> {
+    const token = await getBearerToken();
+    const res = await fetch('/api/member/harvest-booking', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: JSON.stringify({ action: 'update', ...payload }),
+    });
+    const json = (await res.json()) as { error?: string };
+    if (!res.ok || json.error) return json.error ?? 'แก้ไขไม่สำเร็จ';
+    await refresh();
+    return null;
+  }
+
+  async function cancel(bookingId: string): Promise<string | null> {
+    const token = await getBearerToken();
+    const res = await fetch('/api/member/harvest-booking', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: JSON.stringify({ id: bookingId, action: 'cancel' }),
+    });
+    const json = (await res.json()) as { error?: string };
+    if (!res.ok || json.error) return json.error ?? 'ยกเลิกไม่สำเร็จ';
+    await refresh();
+    return null;
+  }
+
+  return { existing, marketPrice, queueSnapshot, loading, submit, update, cancel, refresh };
 }

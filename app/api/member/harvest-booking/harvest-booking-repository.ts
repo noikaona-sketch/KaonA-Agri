@@ -3,6 +3,8 @@ import { createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
 import { HARVESTABLE_STATUSES }       from './harvest-booking-validation';
 import type { HarvestBookingBody }    from './harvest-booking-validation';
 
+type UpdateBookingBody = Partial<HarvestBookingBody> & { id: string };
+
 type Supabase = ReturnType<typeof createServerSupabaseClient>;
 
 // Verify cycle exists, belongs to caller, and is in a harvestable status.
@@ -94,4 +96,70 @@ export async function listBookings(
     .order('scheduled_date', { ascending: false });
 
   return { data: data ?? [], error: error?.message ?? null };
+}
+
+
+// Update a member-owned booking if it is still editable.
+export async function updateBooking(
+  s: Supabase,
+  memberId: string,
+  body: UpdateBookingBody,
+): Promise<{ data: { id: string; status: string } | null; error: string | null }> {
+  const { data: current, error: loadErr } = await s
+    .from('harvest_bookings')
+    .select('id,status,member_id')
+    .eq('id', body.id)
+    .maybeSingle();
+
+  if (loadErr) return { data: null, error: loadErr.message };
+  if (!current || current.member_id !== memberId) return { data: null, error: 'NOT_FOUND' };
+  if (current.status === 'completed') return { data: null, error: 'COMPLETED_READ_ONLY' };
+  if (current.status === 'cancelled') return { data: null, error: 'CANCELLED_READ_ONLY' };
+
+  const patch: Record<string, unknown> = {};
+  if (body.scheduled_date !== undefined) patch.scheduled_date = body.scheduled_date;
+  if (body.note !== undefined) patch.note = body.note ?? null;
+  if (body.drying_preference !== undefined) patch.drying_preference = body.drying_preference;
+  if (body.delivery_type !== undefined) patch.delivery_type = body.delivery_type;
+  if (body.estimated_moisture_pct !== undefined) patch.estimated_moisture_pct = body.estimated_moisture_pct ?? null;
+  if (body.moisture_source !== undefined) patch.moisture_source = body.moisture_source ?? null;
+  if (body.estimated_yield_kg !== undefined) patch.actual_yield_kg = body.estimated_yield_kg ?? null;
+
+  const { data, error } = await s
+    .from('harvest_bookings')
+    .update(patch)
+    .eq('id', body.id)
+    .eq('member_id', memberId)
+    .select('id,status')
+    .single();
+
+  return { data: data as { id: string; status: string } | null, error: error?.message ?? null };
+}
+
+// Soft cancel only: update status to cancelled (no delete).
+export async function cancelBooking(
+  s: Supabase,
+  memberId: string,
+  bookingId: string,
+): Promise<{ data: { id: string; status: string } | null; error: string | null }> {
+  const { data: current, error: loadErr } = await s
+    .from('harvest_bookings')
+    .select('id,status,member_id')
+    .eq('id', bookingId)
+    .maybeSingle();
+
+  if (loadErr) return { data: null, error: loadErr.message };
+  if (!current || current.member_id !== memberId) return { data: null, error: 'NOT_FOUND' };
+  if (current.status === 'completed') return { data: null, error: 'COMPLETED_READ_ONLY' };
+  if (current.status === 'cancelled') return { data: current as { id: string; status: string }, error: null };
+
+  const { data, error } = await s
+    .from('harvest_bookings')
+    .update({ status: 'cancelled' })
+    .eq('id', bookingId)
+    .eq('member_id', memberId)
+    .select('id,status')
+    .single();
+
+  return { data: data as { id: string; status: string } | null, error: error?.message ?? null };
 }

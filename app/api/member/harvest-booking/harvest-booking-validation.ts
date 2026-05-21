@@ -21,12 +21,9 @@ export type HarvestBookingBody = {
   estimated_yield_kg?:    number;
 };
 
-export function validateBody(
-  body: HarvestBookingBody,
+export function validateEditableFields(
+  body: Partial<HarvestBookingBody>,
 ): ReturnType<typeof NextResponse.json> | null {
-  if (!body.planting_cycle_id || !body.scheduled_date) {
-    return NextResponse.json({ error: 'กรุณาระบุรอบปลูกและวันที่คาดว่าจะเก็บเกี่ยว' }, { status: 400 });
-  }
   if (body.drying_preference && !(VALID_DRYING as readonly string[]).includes(body.drying_preference)) {
     return NextResponse.json({ error: 'drying_preference ไม่ถูกต้อง' }, { status: 400 });
   }
@@ -37,4 +34,13 @@ export function validateBody(
     return NextResponse.json({ error: 'moisture_source ไม่ถูกต้อง' }, { status: 400 });
   }
   return null;
+}
+
+export function validateBody(
+  body: HarvestBookingBody,
+): ReturnType<typeof NextResponse.json> | null {
+  if (!body.planting_cycle_id || !body.scheduled_date) {
+    return NextResponse.json({ error: 'กรุณาระบุรอบปลูกและวันที่คาดว่าจะเก็บเกี่ยว' }, { status: 400 });
+  }
+  return validateEditableFields(body);
 }
