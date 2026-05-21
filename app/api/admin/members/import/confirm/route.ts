@@ -194,7 +194,7 @@ export async function POST(request: Request) {
       }, { status: 500 });
     }
 
-    await s.from('audit_logs').insert({
+    const { error: auditError } = await s.from('audit_logs').insert({
       actor_member_id: null,
       actor_role: `admin:${permission.admin.adminRole}`,
       action: 'members.import.confirm',
@@ -206,9 +206,10 @@ export async function POST(request: Request) {
         duplicate_count: duplicateCandidates.length,
         import_note: norm(body.importNote) || null,
       },
-    }).then(() => {
-      // best-effort audit only
     });
+    if (auditError) {
+      warnings.push(`audit log skipped: ${auditError.message}`);
+    }
 
     return NextResponse.json({
       ok: true,
