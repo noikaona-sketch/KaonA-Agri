@@ -83,6 +83,7 @@ export async function GET() {
 
       return {
         ...row,
+        roles,
         missingDocuments,
       };
     });

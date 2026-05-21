@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { ErrorState } from '@/shared/components/error-state';
 import { LoadingState } from '@/shared/components/loading-state';
@@ -9,14 +9,20 @@ import { LoadingState } from '@/shared/components/loading-state';
 type QueueItem = {
   id: string;
   member_id: string;
+  status?: string;
   created_at: string;
+  roles?: string[];
   member: {
     id: string; full_name: string; phone: string | null;
     citizen_id_masked: string; registration_type: string | null;
     address: string | null; created_at: string;
+    status?: string | null;
+    bank_verified_status?: string | null;
   } | null;
   missingDocuments?: string[];
 };
+
+type QueueFilter = 'all' | 'ready_to_approve' | 'missing_documents' | 'bank_not_verified' | 'returned_correction_needed';
 
 type QueueSummary = {
   pendingApprovals: number;
@@ -33,6 +39,29 @@ export function AdminApprovalQueue() {
   const [actingId, setActingId] = useState<string | null>(null);
   const [error, setError]     = useState<string | null>(null);
   const [notice, setNotice]   = useState<string | null>(null);
+  const [activeFilter, setActiveFilter] = useState<QueueFilter>('all');
+  const [activeRole, setActiveRole] = useState('all_roles');
+
+  const roleOptions = useMemo(() => {
+    const roles = new Set(items.flatMap((item) => item.roles ?? []));
+    return ['all_roles', ...Array.from(roles).sort((a, b) => a.localeCompare(b))];
+  }, [items]);
+
+  const filteredItems = useMemo(() => {
+    const byStatusFilter = items.filter((item) => {
+      const missingCount = item.missingDocuments?.length ?? 0;
+      const bankNotVerified = item.member?.bank_verified_status !== 'verified';
+
+      if (activeFilter === 'all') return true;
+      if (activeFilter === 'ready_to_approve') return missingCount === 0 && !bankNotVerified;
+      if (activeFilter === 'missing_documents') return missingCount > 0;
+      if (activeFilter === 'bank_not_verified') return bankNotVerified;
+      return item.status === 'returned' || item.status === 'needs_update' || item.member?.status === 'returned';
+    });
+
+    if (activeRole === 'all_roles') return byStatusFilter;
+    return byStatusFilter.filter((item) => (item.roles ?? []).includes(activeRole));
+  }, [activeFilter, activeRole, items]);
 
   async function loadQueue() {
     setLoading(true); setError(null);
@@ -81,10 +110,34 @@ export function AdminApprovalQueue() {
         </div>
       )}
 
-      {items.length === 0 ? (
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+        <label>
+          Queue filter{' '}
+          <select value={activeFilter} onChange={(event) => setActiveFilter(event.target.value as QueueFilter)}>
+            <option value="all">all</option>
+            <option value="ready_to_approve">ready to approve</option>
+            <option value="missing_documents">missing documents</option>
+            <option value="bank_not_verified">bank not verified</option>
+            <option value="returned_correction_needed">returned / correction needed</option>
+          </select>
+        </label>
+        {roleOptions.length > 1 ? (
+          <label>
+            Role{' '}
+            <select value={activeRole} onChange={(event) => setActiveRole(event.target.value)}>
+              <option value="all_roles">all roles</option>
+              {roleOptions.filter((role) => role !== 'all_roles').map((role) => (
+                <option key={role} value={role}>{role}</option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+      </div>
+
+      {filteredItems.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '48px 0', color: '#9ca3af' }}>
           <div style={{ fontSize: 48 }}>✅</div>
-          <p style={{ margin: '8px 0 0', fontWeight: 600 }}>ไม่มีคำขอรออนุมัติ</p>
+          <p style={{ margin: '8px 0 0', fontWeight: 600 }}>{items.length === 0 ? 'ไม่มีคำขอรออนุมัติ' : 'ไม่พบคำขอที่ตรงกับตัวกรอง'}</p>
         </div>
       ) : (
         <div className="admin-table-wrap">
@@ -102,7 +155,7 @@ export function AdminApprovalQueue() {
               </tr>
             </thead>
             <tbody>
-              {items.map((item) => (
+              {filteredItems.map((item) => (
                 <tr key={item.id}>
                   <td>
                     <Link href={`/admin/members/${item.member_id}`}
@@ -119,6 +172,11 @@ export function AdminApprovalQueue() {
                       {item.member?.registration_type === 'self' ? '🌾 สมัครเอง' :
                        item.member?.registration_type === 'admin_created' ? '⚙️ admin สร้าง' : '—'}
                     </span>
+                    {(item.roles?.length ?? 0) > 0 ? (
+                      <div style={{ marginTop: 4, fontSize: 11, color: '#6b7280' }}>
+                        Role: {(item.roles ?? []).join(', ')}
+                      </div>
+                    ) : null}
                   </td>
                   <td style={{ fontSize: 12, color: '#6b7280', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {item.member?.address ?? '—'}
