@@ -71,3 +71,84 @@ export async function GET(request: Request) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ bookings: data ?? [] });
 }
+
+type PatchBody = {
+  id: string;
+  status?: 'cancelled';
+  expected_date_from?: string;
+  expected_date_to?: string;
+  estimated_tonnage?: number;
+  estimated_moisture?: number | null;
+  requires_dryer?: boolean;
+  note?: string | null;
+};
+
+export async function PATCH(request: Request) {
+  try {
+    const s = createServerSupabaseClient();
+    const auth = await resolveApprovedMember(request, s);
+    if (!auth.ok) return auth.response;
+
+    const body = (await request.json()) as PatchBody;
+    if (!body.id) return NextResponse.json({ error: 'id จำเป็น' }, { status: 400 });
+
+    const { data: booking, error: findError } = await s
+      .from('harvest_bookings')
+      .select('id, member_id, status')
+      .eq('id', body.id)
+      .eq('member_id', auth.memberId)
+      .maybeSingle();
+
+    if (findError) return NextResponse.json({ error: findError.message }, { status: 500 });
+    if (!booking) return NextResponse.json({ error: 'ไม่พบรายการจองของสมาชิก' }, { status: 404 });
+
+    if (body.status === 'cancelled') {
+      if (booking.status === 'completed') {
+        return NextResponse.json({ error: 'ไม่สามารถแก้ไขหรือยกเลิกรายการที่เสร็จสิ้นแล้ว' }, { status: 409 });
+      }
+      if (booking.status === 'cancelled') {
+        return NextResponse.json({ ok: true });
+      }
+
+      const { error } = await s
+        .from('harvest_bookings')
+        .update({ status: 'cancelled' })
+        .eq('id', body.id)
+        .eq('member_id', auth.memberId);
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ ok: true });
+    }
+
+    if (booking.status === 'completed' || booking.status === 'cancelled') {
+      return NextResponse.json({ error: 'ไม่สามารถแก้ไขรายการที่เสร็จสิ้นหรือยกเลิกแล้ว' }, { status: 409 });
+    }
+
+    const update: Record<string, unknown> = {};
+    if (body.expected_date_from !== undefined) update.expected_date_from = body.expected_date_from;
+    if (body.expected_date_to !== undefined) update.expected_date_to = body.expected_date_to;
+    if (body.estimated_tonnage !== undefined) {
+      if (!Number.isFinite(body.estimated_tonnage) || body.estimated_tonnage <= 0) {
+        return NextResponse.json({ error: 'estimated_tonnage ต้องมากกว่า 0' }, { status: 400 });
+      }
+      update.estimated_tonnage = body.estimated_tonnage;
+    }
+    if (body.estimated_moisture !== undefined) update.estimated_moisture = body.estimated_moisture;
+    if (body.requires_dryer !== undefined) update.requires_dryer = body.requires_dryer;
+    if (body.note !== undefined) update.note = body.note;
+
+    if (Object.keys(update).length === 0) {
+      return NextResponse.json({ error: 'ไม่มีข้อมูลสำหรับแก้ไข' }, { status: 400 });
+    }
+
+    const { error } = await s
+      .from('harvest_bookings')
+      .update(update)
+      .eq('id', body.id)
+      .eq('member_id', auth.memberId);
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  } catch (e) {
+    return NextResponse.json({ error: String(e) }, { status: 500 });
+  }
+}

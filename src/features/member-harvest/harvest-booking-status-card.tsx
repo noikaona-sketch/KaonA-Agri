@@ -1,7 +1,5 @@
 'use client';
 
-import { DRYING_OPTIONS, DELIVERY_OPTIONS } from './harvest-booking-options';
-
 const BOOKING_STATUS_TH: Record<string, string> = {
   pending:   '⏳ รอยืนยัน',
   confirmed: '✅ ยืนยันแล้ว',
@@ -11,11 +9,13 @@ const BOOKING_STATUS_TH: Record<string, string> = {
 
 export type BookingStatusRow = {
   id:                    string;
-  scheduled_date:        string;
+  expected_date_from:    string;
+  expected_date_to:      string;
+  estimated_tonnage:     number;
+  estimated_moisture:    number | null;
+  requires_dryer:        boolean;
+  note:                  string | null;
   status:                string;
-  drying_preference:     string | null;
-  delivery_type:         string | null;
-  estimated_moisture_pct: number | null;
 };
 
 export function HarvestBookingStatusCard({ booking }: { booking: BookingStatusRow }) {
@@ -24,23 +24,28 @@ export function HarvestBookingStatusCard({ booking }: { booking: BookingStatusRo
       <p style={{ margin: '0 0 4px', fontWeight: 700, fontSize: 15, lineHeight: 1.5 }}>🌾 แจ้งเก็บเกี่ยวแล้ว</p>
       <p style={{ margin: '0 0 4px', fontSize: 13 }}>
         วันที่คาด:{' '}
-        {new Date(booking.scheduled_date).toLocaleDateString('th-TH', {
+        {new Date(booking.expected_date_from).toLocaleDateString('th-TH', {
+          day: 'numeric', month: 'long', year: 'numeric',
+        })}
+        {' '}ถึง{' '}
+        {new Date(booking.expected_date_to).toLocaleDateString('th-TH', {
           day: 'numeric', month: 'long', year: 'numeric',
         })}
       </p>
       <p style={{ margin: '0 0 4px', fontSize: 13 }}>
         สถานะ: {BOOKING_STATUS_TH[booking.status] ?? booking.status}
       </p>
-      {booking.drying_preference && booking.drying_preference !== 'unknown' && (
+      <p style={{ margin: '0 0 4px', fontSize: 12, color: '#6b7280' }}>
+        ปริมาณคาดการณ์: {booking.estimated_tonnage.toLocaleString()} ตัน
+      </p>
+      {booking.estimated_moisture !== null && (
         <p style={{ margin: '0 0 4px', fontSize: 12, color: '#6b7280' }}>
-          การอบ:{' '}
-          {DRYING_OPTIONS.find((o) => o.value === booking.drying_preference)?.label}
+          ความชื้นโดยประมาณ: {booking.estimated_moisture}%
         </p>
       )}
-      {booking.delivery_type && booking.delivery_type !== 'unknown' && (
+      {booking.requires_dryer && (
         <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>
-          การส่ง:{' '}
-          {DELIVERY_OPTIONS.find((o) => o.value === booking.delivery_type)?.label}
+          ต้องการอบลดความชื้น
         </p>
       )}
     </div>
