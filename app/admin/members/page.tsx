@@ -31,10 +31,14 @@ export default function AdminMembersPage() {
   const [tab, setTab] = useState<Tab>('approvals');
   const [file, setFile] = useState<File | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
+  const [loadingConfirm, setLoadingConfirm] = useState(false);
+  const [overrideDuplicate, setOverrideDuplicate] = useState(false);
   const [preview, setPreview] = useState<PreviewResponse | null>(null);
   const [requestError, setRequestError] = useState<string | null>(null);
+  const [confirmResult, setConfirmResult] = useState<string | null>(null);
 
   const cur = TABS.find((t) => t.key === tab)!;
+  const canConfirm = !!preview && preview.ok === true && preview.errors.length === 0;
 
   const onPreview = async (e: FormEvent) => {
     e.preventDefault();
@@ -44,6 +48,7 @@ export default function AdminMembersPage() {
     }
     setLoadingPreview(true);
     setRequestError(null);
+    setConfirmResult(null);
     const form = new FormData();
     form.append('file', file);
 
@@ -58,6 +63,33 @@ export default function AdminMembersPage() {
       setRequestError('เกิดข้อผิดพลาดเครือข่ายระหว่าง preview');
     } finally {
       setLoadingPreview(false);
+    }
+  };
+
+  const onConfirm = async () => {
+    if (!file) {
+      setRequestError('กรุณาเลือกไฟล์ก่อน confirm');
+      return;
+    }
+    setLoadingConfirm(true);
+    setRequestError(null);
+    setConfirmResult(null);
+    const form = new FormData();
+    form.append('file', file);
+    form.append('overrideDuplicate', String(overrideDuplicate));
+
+    try {
+      const res = await fetch('/api/admin/members/import/confirm', { method: 'POST', body: form });
+      const data = (await res.json()) as { ok: boolean; inserted?: number; message?: string; errors?: string[] };
+      if (!res.ok || !data.ok) {
+        setRequestError(data.errors?.[0] ?? data.message ?? 'confirm ไม่สำเร็จ');
+        return;
+      }
+      setConfirmResult(data.message ?? `นำเข้าสำเร็จ ${data.inserted ?? 0} รายการ`);
+    } catch {
+      setRequestError('เกิดข้อผิดพลาดเครือข่ายระหว่าง confirm');
+    } finally {
+      setLoadingConfirm(false);
     }
   };
 
@@ -77,15 +109,22 @@ export default function AdminMembersPage() {
       {tab === 'pin' && <AdminCreatePin />}
       {tab === 'import' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <h3 style={{ margin: 0 }}>📥 Import สมาชิก (Preview Only)</h3>
+          <h3 style={{ margin: 0 }}>📥 Import สมาชิก</h3>
           <a href="/api/admin/members/import-template" download className="admin-btn admin-btn--secondary" style={{ width: 'fit-content' }}>📄 ดาวน์โหลด Template (.xlsx)</a>
           <form onSubmit={onPreview} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <input type="file" accept=".csv,.xlsx" onChange={(ev) => setFile(ev.target.files?.[0] ?? null)} />
             <button type="submit" className="admin-btn admin-btn--primary" disabled={loadingPreview}>{loadingPreview ? 'กำลัง preview...' : 'Preview'}</button>
-            <button type="button" className="admin-btn admin-btn--secondary" disabled title="coming next PR">Confirm Import (coming next PR)</button>
+            <button type="button" className="admin-btn admin-btn--secondary" disabled={loadingConfirm || !canConfirm} onClick={onConfirm}>{loadingConfirm ? 'กำลัง confirm...' : 'Confirm Import'}</button>
           </form>
 
+          <label style={{ display: 'inline-flex', gap: 8, alignItems: 'center', fontSize: 13 }}>
+            <input type="checkbox" checked={overrideDuplicate} onChange={(e) => setOverrideDuplicate(e.target.checked)} />
+            overrideDuplicate=true (ยอมให้ import แม้พบ duplicate)
+          </label>
+          <div style={{ fontSize: 12, color: '#475569' }}>หมายเหตุ: ข้อมูลที่ import จะอยู่สถานะ pending และไม่มี auto approve</div>
+
           {requestError && <div style={{ color: '#b91c1c', fontSize: 13 }}>{requestError}</div>}
+          {confirmResult && <div style={{ color: '#166534', fontSize: 13 }}>{confirmResult}</div>}
 
           {preview && (
             <>
