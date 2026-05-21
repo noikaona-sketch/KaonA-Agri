@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { ErrorState } from '@/shared/components/error-state';
 import { LoadingState } from '@/shared/components/loading-state';
@@ -14,9 +14,16 @@ type QueueItem = {
     id: string; full_name: string; phone: string | null;
     citizen_id_masked: string; registration_type: string | null;
     address: string | null; created_at: string;
+    bank_verified_status?: string | null;
+    status?: string | null;
+    district?: string | null;
+    province?: string | null;
   } | null;
+  roles?: string[];
   missingDocuments?: string[];
 };
+
+type QueueFilter = 'all' | 'ready' | 'missing_docs' | 'bank_not_verified' | 'returned';
 
 export function AdminApprovalQueue() {
   const [items, setItems]     = useState<QueueItem[]>([]);
@@ -24,6 +31,9 @@ export function AdminApprovalQueue() {
   const [actingId, setActingId] = useState<string | null>(null);
   const [error, setError]     = useState<string | null>(null);
   const [notice, setNotice]   = useState<string | null>(null);
+  const [activeFilter, setActiveFilter] = useState<QueueFilter>('all');
+  const [roleFilter, setRoleFilter] = useState('all');
+  const [areaFilter, setAreaFilter] = useState('all');
 
   async function loadQueue() {
     setLoading(true); setError(null);
@@ -35,6 +45,46 @@ export function AdminApprovalQueue() {
   }
 
   useEffect(() => { void loadQueue(); }, []);
+
+  const roleOptions = useMemo(() => {
+    const roles = new Set<string>();
+    for (const item of items) {
+      for (const role of item.roles ?? []) roles.add(role);
+    }
+    return ['all', ...Array.from(roles).sort()];
+  }, [items]);
+
+  const areaOptions = useMemo(() => {
+    const areas = new Set<string>();
+    for (const item of items) {
+      const p = item.member?.province?.trim();
+      const d = item.member?.district?.trim();
+      if (p || d) areas.add([p, d].filter(Boolean).join(' / '));
+    }
+    return ['all', ...Array.from(areas).sort((a, b) => a.localeCompare(b, 'th'))];
+  }, [items]);
+
+  const filteredItems = useMemo(() => {
+    return items.filter((item) => {
+      const missingCount = item.missingDocuments?.length ?? 0;
+      const bankVerified = item.member?.bank_verified_status === 'verified';
+      const isReady = missingCount === 0 && bankVerified;
+      const isReturned = item.member?.status === 'returned';
+
+      const matchMain =
+        activeFilter === 'all' ||
+        (activeFilter === 'ready' && isReady) ||
+        (activeFilter === 'missing_docs' && missingCount > 0) ||
+        (activeFilter === 'bank_not_verified' && !bankVerified) ||
+        (activeFilter === 'returned' && isReturned);
+
+      const matchRole = roleFilter === 'all' || (item.roles ?? []).includes(roleFilter);
+      const itemArea = [item.member?.province?.trim(), item.member?.district?.trim()].filter(Boolean).join(' / ');
+      const matchArea = areaFilter === 'all' || itemArea === areaFilter;
+
+      return matchMain && matchRole && matchArea;
+    });
+  }, [activeFilter, areaFilter, items, roleFilter]);
 
   async function review(approvalId: string, memberId: string, decision: 'approved' | 'rejected') {
     if (!window.confirm(decision === 'approved' ? 'อนุมัติสมาชิกนี้?' : 'ไม่อนุมัติสมาชิกนี้?')) return;
@@ -62,10 +112,58 @@ export function AdminApprovalQueue() {
         </div>
       )}
 
-      {items.length === 0 ? (
+      <div style={{ display: 'grid', gap: 10, marginBottom: 14 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {[
+            ['all', 'ทั้งหมด'],
+            ['ready', 'พร้อมอนุมัติ'],
+            ['missing_docs', 'เอกสารไม่ครบ'],
+            ['bank_not_verified', 'bank ยังไม่ verify'],
+            ['returned', 'ตีกลับ / แก้ไข'],
+          ].map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setActiveFilter(value as QueueFilter)}
+              className="admin-btn"
+              style={{
+                padding: '6px 10px',
+                fontSize: 13,
+                border: activeFilter === value ? '1px solid #2e7d32' : '1px solid #d1d5db',
+                background: activeFilter === value ? '#e8f5e9' : '#fff',
+                color: activeFilter === value ? '#1b5e20' : '#374151',
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+            role:
+            <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="admin-select" style={{ minWidth: 170 }}>
+              <option value="all">ทุก role</option>
+              {roleOptions.filter((v) => v !== 'all').map((role) => (
+                <option key={role} value={role}>{role}</option>
+              ))}
+            </select>
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+            จังหวัด/อำเภอ:
+            <select value={areaFilter} onChange={(e) => setAreaFilter(e.target.value)} className="admin-select" style={{ minWidth: 200 }}>
+              <option value="all">ทุกพื้นที่</option>
+              {areaOptions.filter((v) => v !== 'all').map((area) => (
+                <option key={area} value={area}>{area}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+      </div>
+
+      {filteredItems.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '48px 0', color: '#9ca3af' }}>
           <div style={{ fontSize: 48 }}>✅</div>
-          <p style={{ margin: '8px 0 0', fontWeight: 600 }}>ไม่มีคำขอรออนุมัติ</p>
+          <p style={{ margin: '8px 0 0', fontWeight: 600 }}>ไม่พบรายการตามตัวกรอง</p>
         </div>
       ) : (
         <div className="admin-table-wrap">
@@ -83,7 +181,7 @@ export function AdminApprovalQueue() {
               </tr>
             </thead>
             <tbody>
-              {items.map((item) => (
+              {filteredItems.map((item) => (
                 <tr key={item.id}>
                   <td>
                     <Link href={`/admin/members/${item.member_id}`}

@@ -30,7 +30,7 @@ export async function GET() {
         id, member_id, status, created_at,
         member:members!approvals_member_id_fkey (
           id, full_name, phone, citizen_id_masked, status,
-          registration_type, address, created_at, bank_verified_status
+          registration_type, address, created_at, bank_verified_status, district, province
         )
       `)
       .eq('resource_type', 'member').eq('status', 'pending')
@@ -72,6 +72,7 @@ export async function GET() {
 
       return {
         ...row,
+        roles,
         missingDocuments,
       };
     });
