@@ -35,9 +35,9 @@ const MOCK_FORECAST_PATTERN: ReadonlyArray<Pick<WeatherDay, 'rainfall_mm' | 'rai
 ];
 
 const WEATHER_LABELS: Record<WeatherReadinessLevel, string> = {
-  suitable: 'Suitable for harvest',
-  caution: 'Harvest with caution',
-  rain_risk: 'Rain risk - consider rescheduling',
+  suitable: 'สภาพอากาศเอื้อต่อการเก็บเกี่ยว',
+  caution: 'เก็บเกี่ยวได้ แต่ควรเผื่อความเสี่ยงฝน',
+  rain_risk: 'เสี่ยงฝนสูง แนะนำปรับวันเก็บเกี่ยว',
 };
 
 function toIsoDate(date: Date): string {
