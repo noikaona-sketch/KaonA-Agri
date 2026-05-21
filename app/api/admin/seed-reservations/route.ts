@@ -1,6 +1,13 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
 import { requireAdminPermission, isForbidden } from '../members/_admin-auth';
+import {
+  sendLineMessage,
+  seedConfirmedMessage,
+  seedCancelledMessage,
+} from '@/lib/line/push-message';
+
+export const dynamic = 'force-dynamic';
 
 // GET — รายการจองทั้งหมด: รวม seed_reservations + sale_orders (order_type=reservation)
 export async function GET(request: Request) {
@@ -118,6 +125,47 @@ export async function POST(request: Request) {
     const now = new Date().toISOString();
     const isSO = body.source === 'sale_order';
 
+    // ── helper: ดึง line_user_id + ข้อมูลจอง สำหรับ push notification ──
+    async function getReservationForPush(id: string, source: 'seed_reservation' | 'sale_order') {
+      if (source === 'sale_order') {
+        const { data } = await s.from('sale_orders')
+          .select('order_number,member_id,members!sale_orders_member_id_fkey(line_user_id),order_items(product_name,product_name_snapshot,product_unit,qty),pickup_slots(pickup_date,pickup_time)')
+          .eq('id', id).single();
+        if (!data) return null;
+        const m    = data.members as unknown as { line_user_id: string | null } | null;
+        const item = (data.order_items as { product_name: string; product_name_snapshot: string | null; product_unit: string; qty: number }[])?.[0];
+        const slot = data.pickup_slots as unknown as { pickup_date: string; pickup_time: string } | null;
+        const pickupDate = slot
+          ? `${new Date(slot.pickup_date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })} ${slot.pickup_time}`
+          : null;
+        return {
+          lineUserId:     m?.line_user_id ?? null,
+          reservationNo:  data.order_number,
+          productName:    item?.product_name ?? item?.product_name_snapshot ?? '—',
+          qty:            item?.qty ?? 0,
+          unit:           item?.product_unit ?? 'ถุง',
+          pickupDate,
+        };
+      } else {
+        const { data } = await s.from('seed_reservations')
+          .select('reservation_no,variety_name,qty_reserved,pickup_date,members!seed_reservations_member_id_fkey(line_user_id)')
+          .eq('id', id).single();
+        if (!data) return null;
+        const m = data.members as unknown as { line_user_id: string | null } | null;
+        const pickupDate = data.pickup_date
+          ? new Date(data.pickup_date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })
+          : null;
+        return {
+          lineUserId:    m?.line_user_id ?? null,
+          reservationNo: data.reservation_no,
+          productName:   data.variety_name,
+          qty:           Number(data.qty_reserved),
+          unit:          'ถุง',
+          pickupDate,
+        };
+      }
+    }
+
     // ── confirm ───────────────────────────────────────────────────────
     if (body.action === 'confirm') {
       if (isSO) {
@@ -133,11 +181,20 @@ export async function POST(request: Request) {
         const { error } = await s.from('seed_reservations').update(patch).eq('id', body.reservation_id).eq('status', 'pending');
         if (error) return NextResponse.json({ error: error.message }, { status: 500 });
       }
+      // ── LINE push: แจ้ง farmer ว่ายืนยันแล้ว ──
+      const info = await getReservationForPush(body.reservation_id, body.source ?? 'seed_reservation');
+      if (info) {
+        await sendLineMessage(info.lineUserId, [
+          seedConfirmedMessage(info.reservationNo, info.productName, info.qty, info.unit, info.pickupDate),
+        ]);
+      }
       return NextResponse.json({ ok: true });
     }
 
     // ── cancel ────────────────────────────────────────────────────────
     if (body.action === 'cancel') {
+      // ดึงข้อมูลก่อน cancel (หลัง cancel อาจหาไม่เจอ)
+      const infoForCancel = await getReservationForPush(body.reservation_id, body.source ?? 'seed_reservation');
       if (isSO) {
         const { error } = await s.from('sale_orders')
           .update({ status: 'cancelled', updated_at: now } as Record<string, unknown>)
@@ -146,6 +203,12 @@ export async function POST(request: Request) {
       } else {
         const { error } = await s.rpc('cancel_reservation', { p_reservation_id: body.reservation_id, p_reason: body.reason ?? null });
         if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+      }
+      // ── LINE push: แจ้ง farmer ว่าถูกยกเลิก ──
+      if (infoForCancel) {
+        await sendLineMessage(infoForCancel.lineUserId, [
+          seedCancelledMessage(infoForCancel.reservationNo, body.reason),
+        ]);
       }
       return NextResponse.json({ ok: true });
     }
