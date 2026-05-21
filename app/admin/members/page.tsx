@@ -26,8 +26,7 @@ type PreviewResponse = {
   duplicateCandidates: Array<Record<string, unknown>>;
   summary?: Record<string, unknown>;
 };
- codex/add-csv/xlsx-preview-parser-for-imports-xwkd0o
-type ConfirmResponse = {
+ type ConfirmResponse = {
   ok: boolean;
   insertedCount: number;
   blockedCount: number;
