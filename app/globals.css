@@ -154,6 +154,14 @@ body {
 .confirm-dialog__actions { display: flex; justify-content: flex-end; gap: 8px; }
 
 @keyframes spin { to { transform: rotate(360deg); } }
+@keyframes shimmer { from { background-position: -400px 0; } to { background-position: 400px 0; } }
+.skeleton { border-radius: 8px; background: linear-gradient(90deg, var(--border) 25%, #f0f4f0 50%, var(--border) 75%); background-size: 400px 100%; animation: shimmer 1.4s ease-in-out infinite; }
+.loading-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; gap: 12px; }
+.loading-screen__dots { display: flex; gap: 6px; }
+.loading-screen__dot { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); opacity: 0.3; animation: dot-pulse 1.2s ease-in-out infinite; }
+.loading-screen__dot:nth-child(2) { animation-delay: 0.2s; }
+.loading-screen__dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes dot-pulse { 0%,100% { opacity: 0.3; transform: scale(1); } 50% { opacity: 1; transform: scale(1.3); } }
 
 
 .field-team-list { display: grid; gap: 10px; }

@@ -12,7 +12,8 @@ export async function GET() {
   checks.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ? '✅' : '❌ missing';
 
   const key = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
-  checks.key_looks_like_service_role = key.length > 100 ? '✅ (long key)' : '⚠️ might be anon key (too short)';
+  // Vercel Supabase Integration may shorten display of key — rely on auth.admin test below instead
+  checks.key_looks_like_service_role = key.length > 0 ? '✅ key present (verified by auth_admin_access below)' : '❌ missing';
 
   // ทดสอบ auth.admin.listUsers (ต้องการ service_role)
   try {
