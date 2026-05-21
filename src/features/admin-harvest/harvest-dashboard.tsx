@@ -37,7 +37,10 @@ export type DayStat = {
   pending:   number;
   confirmed: number;
   tonnage:   number;
+  weatherLevel: WeatherReadinessLevel;
 };
+
+type DayStatBase = Omit<DayStat, 'weatherLevel'>;
 
 type DailyAlertLevel = 'normal' | 'busy' | 'peak';
 
@@ -103,7 +106,7 @@ function compute(rows: BookingRow[]): DashboardData {
   const dryerTonnage = dryerRows.reduce((s, r) => s + (r.estimated_tonnage ?? 0), 0);
 
   // Group by day
-  const dayMap: Record<string, DayStat> = {};
+  const dayMap: Record<string, DayStatBase> = {};
   for (const r of active) {
     const from = toDateOnly(r.expected_date_from);
     const to = toDateOnly(r.expected_date_to) ?? from;
@@ -124,16 +127,20 @@ function compute(rows: BookingRow[]): DashboardData {
       dayMap[date].tonnage += dailyTonnage;
     }
   }
-  const byDay = Object.values(dayMap).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 14);
-  const peakDaysCount = byDay.filter((d) => getAlertLevel(d.tonnage) === 'peak').length;
-  const weatherByDate = byDay.length
+  const byDayBase = Object.values(dayMap).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 14);
+  const peakDaysCount = byDayBase.filter((d) => getAlertLevel(d.tonnage) === 'peak').length;
+  const weatherByDate = byDayBase.length
     ? new Map(
-        getWeatherReadinessForecast({ startDate: byDay[0].date, days: byDay.length }).map((item) => [item.date, item.level]),
+        getWeatherReadinessForecast({ startDate: byDayBase[0].date, days: byDayBase.length }).map((item) => [item.date, item.level]),
       )
     : new Map<string, WeatherReadinessLevel>();
-  const rainRiskDaysCount = byDay.filter((d) => weatherByDate.get(d.date) === 'rain_risk').length;
+  const byDay: DayStat[] = byDayBase.map((d) => ({
+    ...d,
+    weatherLevel: weatherByDate.get(d.date) ?? 'suitable',
+  }));
+  const rainRiskDaysCount = byDay.filter((d) => d.weatherLevel === 'rain_risk').length;
   const highTonnageRainRiskDaysCount = byDay.filter(
-    (d) => getAlertLevel(d.tonnage) === 'peak' && weatherByDate.get(d.date) === 'rain_risk',
+    (d) => getAlertLevel(d.tonnage) === 'peak' && d.weatherLevel === 'rain_risk',
   ).length;
   const busiest = byDay.reduce<DayStat | null>((max, day) => (!max || day.tonnage > max.tonnage ? day : max), null);
 
@@ -302,8 +309,7 @@ export function HarvestDashboard({ view = 'week' }: Props) {
               {data.byDay.map((d) => {
                 const level = getAlertLevel(d.tonnage);
                 const alertText = level === 'peak' ? '🔴 peak' : level === 'busy' ? '🟡 busy' : '🟢 normal';
-                const weatherForecast = getWeatherReadinessForecast({ startDate: d.date, days: 1 })[0];
-                const weatherUi = weatherForecast ? WEATHER_UI[weatherForecast.level] : WEATHER_UI.suitable;
+                const weatherUi = WEATHER_UI[d.weatherLevel];
                 const isHighTonnageRainRisk = level === 'peak' && weatherUi.level === 'rain_risk';
                 return (
                 <tr key={`row-${d.date}`} style={isHighTonnageRainRisk ? { background: '#fff1f2' } : undefined}>
