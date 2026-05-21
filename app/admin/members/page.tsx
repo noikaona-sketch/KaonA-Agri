@@ -39,25 +39,51 @@ export default function AdminMembersPage() {
       {tab === 'pin'       && <AdminCreatePin />}
       {tab === 'import'    && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 600 }}>
-          <h3 style={{ margin: 0 }}>📥 Import สมาชิกจาก Excel</h3>
+          <h3 style={{ margin: 0 }}>📥 Import สมาชิกจาก Excel (Scaffold)</h3>
           <p style={{ margin: 0, color: '#6b7280', fontSize: 14 }}>
-            ดาวน์โหลด template แล้วกรอกข้อมูลสมาชิก จากนั้นอัปโหลดเพื่อ preview ก่อน import
+            ดาวน์โหลด template แล้วกรอกข้อมูลสมาชิก จากนั้นอัปโหลดเพื่อ preview และตรวจสอบความถูกต้องก่อนยืนยัน import
           </p>
           <a href="/api/admin/members/import-template" download
             className="admin-btn admin-btn--secondary" style={{ width: 'fit-content' }}>
             📄 ดาวน์โหลด Template (.xlsx)
           </a>
+
+          <div style={{ border: '1px dashed #cfd8dc', borderRadius: 10, padding: '16px', background: '#fafafa' }}>
+            <p style={{ margin: '0 0 8px', fontWeight: 700 }}>📤 Upload Area (placeholder)</p>
+            <p style={{ margin: 0, color: '#6b7280', fontSize: 13 }}>
+              รองรับเฉพาะ scaffold phase 2 — ยังไม่เปิดอัปโหลดจริง และยังไม่มี parser
+            </p>
+          </div>
+
+          <div style={{ background: '#f8fafc', borderRadius: 10, padding: '14px 16px', border: '1px solid #e2e8f0' }}>
+            <p style={{ margin: '0 0 8px', fontWeight: 700 }}>🧭 Import Flow Steps</p>
+            <ol style={{ margin: 0, paddingLeft: 18, color: '#475569', lineHeight: 1.9, fontSize: 14 }}>
+              <li>Upload</li>
+              <li>Preview</li>
+              <li>Validate</li>
+              <li>Confirm Import</li>
+            </ol>
+          </div>
+
           <div style={{ background: '#fff8e1', borderRadius: 10, padding: '14px 16px', border: '1px solid #ffe082', fontSize: 13 }}>
             <p style={{ margin: '0 0 6px', fontWeight: 700, color: '#e65100' }}>⚠️ กฎสำคัญ</p>
             <ul style={{ margin: 0, paddingLeft: 18, color: '#6b7280', lineHeight: 2 }}>
-              <li>สมาชิกที่ import จะได้สถานะ <strong>pending_approval</strong> เสมอ — ไม่มี auto approve</li>
-              <li>เลขบัตรประชาชนจะถูก mask อัตโนมัติ — ไม่เก็บข้อมูลดิบ</li>
-              <li>ตรวจสอบ preview ก่อนยืนยัน import ทุกครั้ง</li>
+              <li>ไม่มี auto approve</li>
+              <li>ต้อง preview ก่อน import ทุกครั้ง</li>
+              <li>ต้องตรวจ duplicate detection ก่อน import</li>
             </ul>
           </div>
-          <p style={{ margin: 0, fontSize: 13, color: '#9ca3af' }}>
-            * หน้า preview import จะพร้อมในเร็วๆ นี้ (PR5)
-          </p>
+
+          <div style={{ borderRadius: 10, padding: '14px 16px', border: '1px solid #e5e7eb', background: '#ffffff' }}>
+            <p style={{ margin: '0 0 8px', fontWeight: 700 }}>🔌 API Contract Placeholders</p>
+            <ul style={{ margin: 0, paddingLeft: 18, color: '#6b7280', lineHeight: 1.8, fontSize: 13 }}>
+              <li><code>POST /api/admin/members/import/preview</code> → not implemented yet</li>
+              <li><code>POST /api/admin/members/import/confirm</code> → not implemented yet</li>
+            </ul>
+            <p style={{ margin: '8px 0 0', fontSize: 12, color: '#9ca3af' }}>
+              หมายเหตุ: endpoint ทั้งสองถูกป้องกันด้วยสิทธิ์ <code>members.import</code>
+            </p>
+          </div>
         </div>
       )}
     </AdminWebShell>
