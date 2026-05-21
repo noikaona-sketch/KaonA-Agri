@@ -26,8 +26,8 @@ type BookingRow = {
   status:           string;
   scheduled_date:   string;
   actual_yield_kg:  number | null;
-  quality_moisture: number | null;  // view: factory moisture (no estimated_moisture_pct in view)
-  // drying_preference not in view — dryerLoad removed
+  estimated_moisture_pct: number | null;
+  drying_preference: 'required' | 'optional' | null;
 };
 
 export type DayStat = {
@@ -38,6 +38,7 @@ export type DayStat = {
 };
 
 type DashboardData = {
+  expectedTonnageKg: number;
   pendingCount:     number;
   confirmedCount:   number;
   completedCount:   number;
@@ -51,10 +52,11 @@ type DashboardData = {
 
 function compute(rows: BookingRow[]): DashboardData {
   const active = rows.filter((r) => r.status === 'pending' || r.status === 'confirmed');
+  const expectedTonnageKg = active.reduce((sum, r) => sum + (r.actual_yield_kg ?? 0), 0);
 
   // Moisture stats (active rows with estimates)
   const moistures = active
-    .map((r) => r.quality_moisture)
+    .map((r) => r.estimated_moisture_pct)
     .filter((v): v is number => v !== null);
   const moistureMin = moistures.length ? Math.min(...moistures) : null;
   const moistureMax = moistures.length ? Math.max(...moistures) : null;
@@ -62,9 +64,8 @@ function compute(rows: BookingRow[]): DashboardData {
     ? Math.round((moistures.reduce((s, v) => s + v, 0) / moistures.length) * 10) / 10
     : null;
 
-  // Dryer load
-  // drying_preference not in harvest_bookings_full view — dryer count hidden
-  const dryerRows  = active.filter(() => false);
+  // Dryer load (read-only count by farmer preference)
+  const dryerRows  = active.filter((r) => r.drying_preference === 'required');
   const dryerTonnage = dryerRows.reduce((s, r) => s + (r.actual_yield_kg ?? 0), 0);
 
   // Group by day
@@ -79,6 +80,7 @@ function compute(rows: BookingRow[]): DashboardData {
   const byDay = Object.values(dayMap).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 14);
 
   return {
+    expectedTonnageKg,
     pendingCount:   rows.filter((r) => r.status === 'pending').length,
     confirmedCount: rows.filter((r) => r.status === 'confirmed').length,
     completedCount: rows.filter((r) => r.status === 'completed').length,
@@ -101,8 +103,8 @@ export function HarvestDashboard({ view = 'week' }: Props) {
     void (async () => {
       setLoading(true); setError(null);
       const s = createSupabaseBrowserClient();
-      let q = s.from('harvest_bookings_full')
-        .select('id,status,scheduled_date,actual_yield_kg,quality_moisture')
+      let q = s.from('harvest_bookings')
+        .select('id,status,scheduled_date,actual_yield_kg,estimated_moisture_pct,drying_preference')
         .in('status', ['pending', 'confirmed', 'completed'])
         .order('scheduled_date', { ascending: true })
         .limit(500);
@@ -128,7 +130,19 @@ export function HarvestDashboard({ view = 'week' }: Props) {
     <>
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-      {/* ── 1. Status counts ── */}
+      {/* ── 1. Expected incoming tonnage ── */}
+      <div style={{
+        background: '#ecfeff', borderRadius: 10, padding: '12px 14px', border: '1px solid #67e8f9',
+      }}>
+        <p style={{ margin: '0 0 4px', fontWeight: 700, fontSize: 13, color: '#155e75' }}>
+          🚚 ปริมาณรับเข้าคาดการณ์รวม
+        </p>
+        <p style={{ margin: 0, fontSize: 13, color: '#0f172a' }}>
+          <strong>{(data.expectedTonnageKg / 1000).toFixed(1)} ตัน</strong> จากคิวที่ยังรอ/ยืนยัน
+        </p>
+      </div>
+
+      {/* ── 2. Status counts ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }}>
         {[
           { label: 'รอยืนยัน',   value: data.pendingCount,   color: '#e65100' },
@@ -147,7 +161,7 @@ export function HarvestDashboard({ view = 'week' }: Props) {
         ))}
       </div>
 
-      {/* ── 2. Dryer load ── */}
+      {/* ── 3. Dryer load ── */}
       <div style={{ background: '#fff8e1', borderRadius: 10, padding: '12px 14px', border: '1px solid #fde047' }}>
         <p style={{ margin: '0 0 4px', fontWeight: 700, fontSize: 13, color: '#713f12' }}>
           🔥 ต้องการอบ
@@ -158,7 +172,7 @@ export function HarvestDashboard({ view = 'week' }: Props) {
         </p>
       </div>
 
-      {/* ── 3. Moisture range ── */}
+      {/* ── 4. Moisture range ── */}
       {data.moistureAvg !== null && (
         <div style={{ background: '#e3f2fd', borderRadius: 10, padding: '12px 14px', border: '1px solid #90caf9' }}>
           <p style={{ margin: '0 0 4px', fontWeight: 700, fontSize: 13, color: '#0d47a1' }}>
@@ -175,7 +189,7 @@ export function HarvestDashboard({ view = 'week' }: Props) {
         </div>
       )}
 
-      {/* ── 4. Tonnage by day ── */}
+      {/* ── 5. Tonnage by day ── */}
       {data.byDay.length > 0 && (
         <div>
           <p style={{ margin: '0 0 10px', fontWeight: 700, fontSize: 13 }}>
@@ -187,6 +201,32 @@ export function HarvestDashboard({ view = 'week' }: Props) {
           {data.byDay.map((d) => (
             <TonnageBar key={d.date} day={d} maxTonnage={maxTonnage} />
           ))}
+        </div>
+      )}
+
+      {data.byDay.length > 0 && (
+        <div style={{ overflowX: 'auto' }}>
+          <p style={{ margin: '8px 0 10px', fontWeight: 700, fontSize: 13 }}>📋 ตารางโหลดรายวัน</p>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 520, fontSize: 13 }}>
+            <thead>
+              <tr style={{ background: '#f9fafb' }}>
+                {['วันที่', 'Booking ทั้งหมด', 'รอ', 'ยืนยัน', 'ตันคาดการณ์'].map((h) => (
+                  <th key={h} style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {data.byDay.map((d) => (
+                <tr key={`row-${d.date}`}>
+                  <td style={{ padding: '8px 10px', borderBottom: '1px solid #f3f4f6' }}>{d.date}</td>
+                  <td style={{ padding: '8px 10px', borderBottom: '1px solid #f3f4f6' }}>{d.pending + d.confirmed}</td>
+                  <td style={{ padding: '8px 10px', borderBottom: '1px solid #f3f4f6' }}>{d.pending}</td>
+                  <td style={{ padding: '8px 10px', borderBottom: '1px solid #f3f4f6' }}>{d.confirmed}</td>
+                  <td style={{ padding: '8px 10px', borderBottom: '1px solid #f3f4f6' }}>{(d.tonnage / 1000).toFixed(1)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
