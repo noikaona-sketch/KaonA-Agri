@@ -63,6 +63,7 @@ type DashboardData = {
   maxEstimatedTonnage: number;
   rainRiskDaysCount: number;
   highTonnageRainRiskDaysCount: number;
+  weatherByDate: Record<string, WeatherReadinessLevel>;
 };
 
 const DAY_MS = 86400000;
@@ -134,7 +135,9 @@ function compute(rows: BookingRow[]): DashboardData {
     }, {})
     : {};
   const rainRiskDaysCount = byDay.filter((d) => weatherByDate[d.date] === 'rain_risk').length;
-  const highTonnageRainRiskDaysCount = byDay.filter((d) => d.tonnage >= 50 && weatherByDate[d.date] === 'rain_risk').length;
+  const highTonnageRainRiskDaysCount = byDay.filter(
+    (d) => getAlertLevel(d.tonnage) === 'peak' && weatherByDate[d.date] === 'rain_risk',
+  ).length;
 
   return {
     expectedTonnage,
@@ -150,6 +153,7 @@ function compute(rows: BookingRow[]): DashboardData {
     maxEstimatedTonnage: busiest?.tonnage ?? 0,
     rainRiskDaysCount,
     highTonnageRainRiskDaysCount,
+    weatherByDate,
   };
 }
 
@@ -187,18 +191,6 @@ export function HarvestDashboard({ view = 'week' }: Props) {
   if (!data)   return null;
 
   const maxTonnage = Math.max(...data.byDay.map((d) => d.tonnage), 1);
-  const startDate = data.byDay[0]?.date ?? null;
-  const endDate = data.byDay[data.byDay.length - 1]?.date ?? null;
-  const totalDays = startDate && endDate
-    ? Math.floor((Date.parse(`${endDate}T00:00:00Z`) - Date.parse(`${startDate}T00:00:00Z`)) / DAY_MS) + 1
-    : 0;
-  const weatherByDate = totalDays > 0
-    ? getWeatherReadinessForecast({ startDate, days: totalDays }).reduce<Record<string, WeatherReadinessLevel>>((acc, day) => {
-      acc[day.date] = day.level;
-      return acc;
-    }, {})
-    : {};
-
   return (
     <>
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -324,7 +316,8 @@ export function HarvestDashboard({ view = 'week' }: Props) {
               {data.byDay.map((d) => {
                 const level = getAlertLevel(d.tonnage);
                 const alertText = level === 'peak' ? '🔴 peak' : level === 'busy' ? '🟡 busy' : '🟢 normal';
-                const isHighTonnageRainRisk = d.tonnage >= 50 && weatherByDate[d.date] === 'rain_risk';
+                const weatherLevel = data.weatherByDate[d.date] ?? 'suitable';
+                const isHighTonnageRainRisk = getAlertLevel(d.tonnage) === 'peak' && weatherLevel === 'rain_risk';
                 return (
                 <tr key={`row-${d.date}`} style={isHighTonnageRainRisk ? { background: '#fff7ed' } : undefined}>
                   <td style={{ padding: '8px 10px', borderBottom: '1px solid #f3f4f6' }}>{d.date}</td>
@@ -332,7 +325,7 @@ export function HarvestDashboard({ view = 'week' }: Props) {
                   <td style={{ padding: '8px 10px', borderBottom: '1px solid #f3f4f6' }}>{d.pending}</td>
                   <td style={{ padding: '8px 10px', borderBottom: '1px solid #f3f4f6' }}>{d.confirmed}</td>
                   <td style={{ padding: '8px 10px', borderBottom: '1px solid #f3f4f6' }}>{d.tonnage.toFixed(1)}</td>
-                  <td style={{ padding: '8px 10px', borderBottom: '1px solid #f3f4f6', fontWeight: 700 }}>{weatherBadge(weatherByDate[d.date] ?? 'suitable')}</td>
+                  <td style={{ padding: '8px 10px', borderBottom: '1px solid #f3f4f6', fontWeight: 700 }}>{weatherBadge(weatherLevel)}</td>
                   <td style={{ padding: '8px 10px', borderBottom: '1px solid #f3f4f6', fontWeight: 700 }}>{alertText}</td>
                 </tr>
               )})}
