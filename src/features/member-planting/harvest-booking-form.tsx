@@ -25,16 +25,18 @@ export function HarvestBookingForm({ cycleId, memberId, plotId, expectedHarvestA
   async function submit() {
     if (!date) { setError('กรุณาเลือกวันนัด'); return; }
     setSaving(true); setError(null);
-    const res = await fetch('/api/member/harvest-booking', {
+    const res = await fetch('/api/member/harvest-bookings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         planting_cycle_id: cycleId,
         member_id: memberId,
-        scheduled_date: date,
-        scheduled_time_start: time,
-        plot_id: plotId ?? null,
-        truck_note: note || null,
+        expected_date_from: date,
+        expected_date_to: date,
+        estimated_tonnage: estimatedYieldKg ? Number((estimatedYieldKg/1000).toFixed(2)) : undefined,
+        estimated_moisture: undefined,
+        requires_dryer: false,
+        note: note || null,
       }),
     });
     const d = (await res.json()) as { ok?: boolean; error?: string; booking_id?: string };
