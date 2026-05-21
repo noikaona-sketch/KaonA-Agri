@@ -101,11 +101,15 @@ export async function PATCH(request: Request) {
 
     if (findError) return NextResponse.json({ error: findError.message }, { status: 500 });
     if (!booking) return NextResponse.json({ error: 'ไม่พบรายการจองของสมาชิก' }, { status: 404 });
-    if (booking.status === 'completed') {
-      return NextResponse.json({ error: 'ไม่สามารถแก้ไขหรือยกเลิกรายการที่เสร็จสิ้นแล้ว' }, { status: 409 });
-    }
 
     if (body.status === 'cancelled') {
+      if (booking.status === 'completed') {
+        return NextResponse.json({ error: 'ไม่สามารถแก้ไขหรือยกเลิกรายการที่เสร็จสิ้นแล้ว' }, { status: 409 });
+      }
+      if (booking.status === 'cancelled') {
+        return NextResponse.json({ ok: true });
+      }
+
       const { error } = await s
         .from('harvest_bookings')
         .update({ status: 'cancelled' })
@@ -113,6 +117,10 @@ export async function PATCH(request: Request) {
         .eq('member_id', auth.memberId);
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
       return NextResponse.json({ ok: true });
+    }
+
+    if (booking.status === 'completed' || booking.status === 'cancelled') {
+      return NextResponse.json({ error: 'ไม่สามารถแก้ไขรายการที่เสร็จสิ้นหรือยกเลิกแล้ว' }, { status: 409 });
     }
 
     const update: Record<string, unknown> = {};
