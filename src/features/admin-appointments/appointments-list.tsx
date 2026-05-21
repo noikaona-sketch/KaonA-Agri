@@ -13,7 +13,7 @@ type Appointment = {
   appointment_time: string | null; estimated_qty_kg: number;
   actual_qty_kg: number | null; price_per_kg: number;
   total_amount: number; location_note: string | null;
-  members: { full_name: string; phone: string | null }[] | null;
+  member: { full_name: string; phone: string | null }[] | null;
   planting_cycles: { crop_name: string; season_year: number }[] | null;
 };
 
@@ -37,7 +37,7 @@ export function AppointmentsList() {
     setLoading(true);
     const s = createSupabaseBrowserClient();
     let q = s.from('sale_appointments')
-      .select('id,appointment_number,status,payment_status,appointment_date,appointment_time,estimated_qty_kg,actual_qty_kg,price_per_kg,total_amount,location_note,members(full_name,phone),planting_cycles(crop_name,season_year)')
+      .select('id,appointment_number,status,payment_status,appointment_date,appointment_time,estimated_qty_kg,actual_qty_kg,price_per_kg,total_amount,location_note,member:members!sale_appointments_member_id_fkey(full_name,phone),planting_cycles(crop_name,season_year)')
       .order('appointment_date').limit(200);
     if (statusFilter) q = q.eq('status', statusFilter);
     const { data, error: err } = await q;
@@ -118,8 +118,8 @@ export function AppointmentsList() {
                   <tr key={item.id} style={{ background: isToday ? '#f9fff9' : undefined }}>
                     <td style={{ fontFamily: 'monospace', fontSize: 12, fontWeight: 700 }}>{item.appointment_number}</td>
                     <td>
-                      <p style={{ margin: 0, fontWeight: 600 }}>{item.members?.[0]?.full_name ?? '—'}</p>
-                      <p style={{ margin: 0, fontSize: 11, color: '#6b7280' }}>{item.members?.[0]?.phone ?? ''}</p>
+                      <p style={{ margin: 0, fontWeight: 600 }}>{item.member?.[0]?.full_name ?? '—'}</p>
+                      <p style={{ margin: 0, fontSize: 11, color: '#6b7280' }}>{item.member?.[0]?.phone ?? ''}</p>
                     </td>
                     <td style={{ fontWeight: 600 }}>
                       {item.planting_cycles?.[0]?.crop_name ?? '—'}

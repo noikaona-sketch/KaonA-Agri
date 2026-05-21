@@ -13,7 +13,7 @@ type Appt = {
   price_per_kg: number; total_amount: number;
   paid_amount: number; location_note: string | null; note: string | null;
   quota_remaining_kg: number | null;
-  members: { full_name: string; phone: string | null }[] | null;
+  member: { full_name: string; phone: string | null }[] | null;
   planting_cycles: { crop_name: string; season_year: number; product_id: string | null }[] | null;
 };
 
@@ -39,7 +39,7 @@ export function AppointmentDetail({ appointmentId }: Props) {
   async function load() {
     const s = createSupabaseBrowserClient();
     const { data, error: err } = await s.from('sale_appointments')
-      .select('*,members(full_name,phone),planting_cycles(crop_name,season_year,product_id)')
+      .select('*,member:members!sale_appointments_member_id_fkey(full_name,phone),planting_cycles(crop_name,season_year,product_id)')
       .eq('id', appointmentId).maybeSingle();
     if (err) setError(err.message);
     else {
@@ -110,7 +110,7 @@ export function AppointmentDetail({ appointmentId }: Props) {
           <table className="admin-table">
             <tbody>
               {[
-                ['สมาชิก', `${appt.members?.[0]?.full_name ?? '—'} (${appt.members?.[0]?.phone ?? '—'})`],
+                ['สมาชิก', `${appt.member?.[0]?.full_name ?? '—'} (${appt.member?.[0]?.phone ?? '—'})`],
                 ['พืช/ฤดูกาล', `${appt.planting_cycles?.[0]?.crop_name ?? '—'} ปี ${appt.planting_cycles?.[0]?.season_year ?? '—'}`],
                 ['ปริมาณคาด', `${appt.estimated_qty_kg.toLocaleString()} กก.`],
                 ['สถานที่', appt.location_note ?? '—'],
