@@ -61,3 +61,5 @@ POST /api/member/register
      ↓
 status = 'pending_approval' → รอ admin อนุมัติ
 ```
+| [7](issue-admin-member-import-execution-phase-2.md) | Admin import flow (phase 2) | Safe import flow with preview, confirm execution, repair review, audit logging, rollback safety | P1 |
+
