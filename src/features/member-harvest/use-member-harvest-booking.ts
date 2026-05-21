@@ -21,6 +21,7 @@ type UseMemberHarvestBookingResult = {
   } | null;
   loading:      boolean;
   submit:       (payload: Record<string, unknown>) => Promise<string | null>;
+  update:       (payload: Record<string, unknown>) => Promise<string | null>;
 };
 
 export function useMemberHarvestBooking(
@@ -56,30 +57,30 @@ export function useMemberHarvestBooking(
 
       const { data: queueRows } = await sb
         .from('harvest_bookings')
-        .select('status,scheduled_date,drying_preference,estimated_moisture_pct')
-        .in('status', ['pending', 'confirmed'])
-        .gte('scheduled_date', toIso(today))
-        .lte('scheduled_date', toIso(in7Days));
+        .select('status,expected_date_from,requires_dryer,estimated_moisture')
+        .in('status', ['planned'])
+        .gte('expected_date_from', toIso(today))
+        .lte('expected_date_from', toIso(in7Days));
 
       if (queueRows) {
         const nearTermCount = queueRows.length;
         setQueueSnapshot({
-          pendingCount: queueRows.filter((r) => r.status === 'pending').length,
+          pendingCount: queueRows.filter((r) => r.status === 'planned').length,
           nearTermCount,
-          dryerRequiredCount: queueRows.filter((r) => r.drying_preference === 'required').length,
-          moistureSensitiveCount: queueRows.filter((r) => Number(r.estimated_moisture_pct ?? 0) >= 28).length,
+          dryerRequiredCount: queueRows.filter((r) => r.requires_dryer).length,
+          moistureSensitiveCount: queueRows.filter((r) => Number(r.estimated_moisture ?? 0) >= 28).length,
         });
       }
 
       // Existing active booking
       const token = await getBearerToken();
-      const res = await fetch(`/api/member/harvest-booking?cycle_id=${cycleId}`, {
+      const res = await fetch('/api/member/harvest-bookings', {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (res.ok) {
         const json = (await res.json()) as { bookings?: BookingStatusRow[] };
         const active = json.bookings?.find(
-          (b) => b.status === 'pending' || b.status === 'confirmed',
+          (b) => b.status === 'planned',
         ) ?? null;
         setExisting(active);
       }
@@ -89,7 +90,7 @@ export function useMemberHarvestBooking(
 
   async function submit(payload: Record<string, unknown>): Promise<string | null> {
     const token = await getBearerToken();
-    const res = await fetch('/api/member/harvest-booking', {
+    const res = await fetch('/api/member/harvest-bookings', {
       method:  'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -102,5 +103,20 @@ export function useMemberHarvestBooking(
     return null;
   }
 
-  return { existing, marketPrice, queueSnapshot, loading, submit };
+  async function update(payload: Record<string, unknown>): Promise<string | null> {
+    const token = await getBearerToken();
+    const res = await fetch('/api/member/harvest-bookings', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(payload),
+    });
+    const json = (await res.json()) as { ok?: boolean; error?: string };
+    if (!res.ok || json.error) return json.error ?? 'บันทึกไม่สำเร็จ';
+    return null;
+  }
+
+  return { existing, marketPrice, queueSnapshot, loading, submit, update };
 }

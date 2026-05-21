@@ -3,11 +3,9 @@
 import { useState } from 'react';
 
 import { UIButton }                from '@/shared/components/ui-button';
-import { DryingSelector, DeliverySelector } from './harvest-booking-options';
 import { HarvestBookingStatusCard }         from './harvest-booking-status-card';
 import { HarvestValuePreview }              from './harvest-value-preview';
 import { useMemberHarvestBooking }          from './use-member-harvest-booking';
-import type { DryingPref, DeliveryType }    from './harvest-booking-options';
 
 type Props = {
   cycleId:   string;
@@ -20,19 +18,19 @@ export function MemberHarvestBookingForm({ cycleId, cropName, plotId, onSuccess 
   const today = new Date().toISOString().slice(0, 10);
 
   // Form state
-  const [scheduledDate,  setScheduledDate]  = useState('');
-  const [estimatedYield, setEstimatedYield] = useState('');
-  const [dryingPref,     setDryingPref]     = useState<DryingPref>('unknown');
-  const [deliveryType,   setDeliveryType]   = useState<DeliveryType>('unknown');
+  const [expectedDateFrom, setExpectedDateFrom] = useState('');
+  const [expectedDateTo, setExpectedDateTo] = useState('');
+  const [estimatedTonnage, setEstimatedTonnage] = useState('');
+  const [requiresDryer, setRequiresDryer] = useState(false);
   const [moisturePct,    setMoisturePct]    = useState('');
-  const [moistureSource, setMoistureSource] = useState('');
   const [note,           setNote]           = useState('');
   const [submitting,     setSubmitting]     = useState(false);
   const [error,          setError]          = useState<string | null>(null);
   const [success,        setSuccess]        = useState(false);
 
   // Hook called at top level — submit function available throughout component
-  const { existing, marketPrice, queueSnapshot, loading, submit } = useMemberHarvestBooking(cycleId, cropName);
+  const { existing, marketPrice, queueSnapshot, loading, submit, update } = useMemberHarvestBooking(cycleId, cropName);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   const hints: string[] = [];
   if (queueSnapshot) {
@@ -49,7 +47,23 @@ export function MemberHarvestBookingForm({ cycleId, cropName, plotId, onSuccess 
       </div>
     );
   }
-  if (existing) return <HarvestBookingStatusCard booking={existing} />;
+  if (existing && !isEditMode) return <div><HarvestBookingStatusCard booking={existing} />
+    {existing.status !== 'completed' && <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+      <UIButton type="button" onClick={() => {
+        setExpectedDateFrom(existing.expected_date_from);
+        setExpectedDateTo(existing.expected_date_to);
+        setEstimatedTonnage(String(existing.estimated_tonnage));
+        setMoisturePct(existing.estimated_moisture === null ? '' : String(existing.estimated_moisture));
+        setRequiresDryer(existing.requires_dryer);
+        setNote(existing.note ?? '');
+        setIsEditMode(true);
+      }}>แก้ไข</UIButton>
+      <UIButton type="button" variant="secondary" onClick={() => void (async () => {
+        const err = await update({ id: existing.id, status: 'cancelled' });
+        if (err) setError(err); else window.location.reload();
+      })()}>ยกเลิก</UIButton>
+    </div>}
+  </div>;
   if (success) {
     return (
       <div className="kaona-card" style={{ background: '#f0fdf4', border: '1px solid #86efac' }}>
@@ -60,25 +74,23 @@ export function MemberHarvestBookingForm({ cycleId, cropName, plotId, onSuccess 
     );
   }
 
-  const yieldNum = Number(estimatedYield);
+  const yieldNum = Number(estimatedTonnage);
   const moistureNum = Number(moisturePct);
 
   async function handleSubmit() {
     setError(null);
-    if (!scheduledDate)               { setError('กรุณาระบุวันที่คาดว่าจะเก็บเกี่ยว'); return; }
-    if (!estimatedYield || yieldNum <= 0) { setError('กรุณาระบุน้ำหนักผลผลิตที่คาดไว้ (กก.)'); return; }
+    if (!expectedDateFrom || !expectedDateTo)               { setError('กรุณาระบุช่วงวันที่คาดว่าจะเก็บเกี่ยว'); return; }
+    if (!estimatedTonnage || yieldNum <= 0) { setError('กรุณาระบุน้ำหนักผลผลิตที่คาดไว้ (ตัน)'); return; }
 
     setSubmitting(true);
-    const err = await submit({
-      planting_cycle_id:      cycleId,
-      scheduled_date:         scheduledDate,
-      plot_id:                plotId,
+    const err = await (existing ? update : submit)({
+      ...(existing ? { id: existing.id } : {}),
+      expected_date_from: expectedDateFrom,
+      expected_date_to: expectedDateTo,
+      estimated_tonnage: yieldNum,
+      estimated_moisture: moisturePct ? Number(moisturePct) : undefined,
+      requires_dryer: requiresDryer,
       note:                   note.trim() || undefined,
-      drying_preference:      dryingPref,
-      delivery_type:          deliveryType,
-      estimated_yield_kg:     yieldNum,
-      estimated_moisture_pct: moisturePct ? Number(moisturePct) : undefined,
-      moisture_source:        moistureSource || undefined,
     });
     setSubmitting(false);
     if (err) { setError(err); } else { setSuccess(true); onSuccess?.(); }
@@ -108,29 +120,35 @@ export function MemberHarvestBookingForm({ cycleId, cropName, plotId, onSuccess 
         </div>
       )}
 
-      <label className="reg-label">
-        วันที่คาดว่าจะเก็บเกี่ยว <span style={{ color: '#e53e3e' }}>*</span>
-        <input className="reg-input" type="date" value={scheduledDate} min={today} disabled={submitting}
-          onChange={(e) => setScheduledDate(e.target.value)} />
-      </label>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <label className="reg-label">วันที่เริ่มต้น <span style={{ color: '#e53e3e' }}>*</span>
+          <input className="reg-input" type="date" value={expectedDateFrom} min={today} disabled={submitting}
+            onChange={(e) => setExpectedDateFrom(e.target.value)} />
+        </label>
+        <label className="reg-label">วันที่สิ้นสุด <span style={{ color: '#e53e3e' }}>*</span>
+          <input className="reg-input" type="date" value={expectedDateTo} min={expectedDateFrom || today} disabled={submitting}
+            onChange={(e) => setExpectedDateTo(e.target.value)} />
+        </label>
+      </div>
 
       <label className="reg-label">
-        น้ำหนักผลผลิตที่คาดไว้ (กก.) <span style={{ color: '#e53e3e' }}>*</span>
+        น้ำหนักผลผลิตที่คาดไว้ (ตัน) <span style={{ color: '#e53e3e' }}>*</span>
         <input className="reg-input" type="number" inputMode="decimal" min="0" step="100"
-          value={estimatedYield} disabled={submitting} placeholder="เช่น 5000"
-          onChange={(e) => setEstimatedYield(e.target.value)} />
+          value={estimatedTonnage} disabled={submitting} placeholder="เช่น 12"
+          onChange={(e) => setEstimatedTonnage(e.target.value)} />
       </label>
 
       {marketPrice !== null && yieldNum > 0 && (
         <HarvestValuePreview
-          estimatedYieldKg={yieldNum}
+          estimatedYieldKg={yieldNum * 1000}
           marketPricePerKg={marketPrice}
           estimatedMoisturePct={moisturePct ? moistureNum : undefined}
         />
       )}
-
-      <DryingSelector   value={dryingPref}  onChange={setDryingPref}  disabled={submitting} />
-      <DeliverySelector value={deliveryType} onChange={setDeliveryType} disabled={submitting} />
+      <label className="reg-label" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <input type="checkbox" checked={requiresDryer} onChange={(e) => setRequiresDryer(e.target.checked)} />
+        ต้องการอบลดความชื้น
+      </label>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
         <label className="reg-label">
@@ -139,16 +157,7 @@ export function MemberHarvestBookingForm({ cycleId, cropName, plotId, onSuccess 
             value={moisturePct} disabled={submitting} placeholder="เช่น 28.5"
             onChange={(e) => setMoisturePct(e.target.value)} />
         </label>
-        <label className="reg-label">
-          วิธีประเมินความชื้น
-          <select className="reg-input" value={moistureSource} disabled={submitting || !moisturePct}
-            onChange={(e) => setMoistureSource(e.target.value)}>
-            <option value="">เลือก</option>
-            <option value="farmer_estimate">ประเมินจากประสบการณ์</option>
-            <option value="field_test">ทดสอบในแปลง</option>
-            <option value="factory_measure">วัดจากโรงงาน</option>
-          </select>
-        </label>
+        <div />
       </div>
 
       <label className="reg-label">
@@ -168,10 +177,10 @@ export function MemberHarvestBookingForm({ cycleId, cropName, plotId, onSuccess 
       )}
 
       <UIButton fullWidth type="button"
-        disabled={submitting || !scheduledDate || !estimatedYield}
+        disabled={submitting || !expectedDateFrom || !expectedDateTo || !estimatedTonnage}
         loading={submitting}
         onClick={() => void handleSubmit()}>
-        {submitting ? 'กำลังบันทึก…' : 'บันทึกแผนเก็บเกี่ยว'}
+        {submitting ? 'กำลังบันทึก…' : existing ? 'บันทึกการแก้ไข' : 'บันทึกแผนเก็บเกี่ยว'}
       </UIButton>
     </div>
   );
