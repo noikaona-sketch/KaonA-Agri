@@ -9,6 +9,9 @@ import { LoadingState } from '@/shared/components/loading-state';
 type YieldConfig = {
   id: string; crop_type: string; seed_to_yield_ratio: number;
   yield_per_rai: number; quota_per_seed_kg: number; note: string | null;
+  standard_cost_per_rai_burn: number | null;
+  standard_cost_per_rai_no_burn: number | null;
+  standard_price_per_kg: number | null;
 };
 
 type MarketPrice = {
@@ -54,6 +57,9 @@ export function YieldConfigPanel() {
       yield_per_rai: Number(editing.yield_per_rai),
       quota_per_seed_kg: Number(editing.quota_per_seed_kg),
       note: editing.note,
+      standard_cost_per_rai_burn:    editing.standard_cost_per_rai_burn    ? Number(editing.standard_cost_per_rai_burn)    : null,
+      standard_cost_per_rai_no_burn: editing.standard_cost_per_rai_no_burn ? Number(editing.standard_cost_per_rai_no_burn) : null,
+      standard_price_per_kg:         editing.standard_price_per_kg         ? Number(editing.standard_price_per_kg)         : null,
     });
     setSaving(false); setEditing(null);
     setNotice('✅ บันทึกค่า yield แล้ว');
@@ -96,31 +102,41 @@ export function YieldConfigPanel() {
         <div className="admin-table-wrap">
           <table className="admin-table">
             <thead>
-              <tr><th>ชนิดพืช</th><th>1 กก.เมล็ด → กก.ผลผลิต</th><th>ผลผลิต/ไร่ (กก.)</th><th>โควต้า/กก.เมล็ด</th><th>ราคาปัจจุบัน</th><th></th></tr>
+              <tr>
+                <th>ชนิดพืช</th><th>ผลผลิต/ไร่</th>
+                <th>ต้นทุน/ไร่ (เผา)</th><th>ต้นทุน/ไร่ (ไม่เผา)</th>
+                <th>ราคามาตรฐาน</th><th></th>
+              </tr>
             </thead>
             <tbody>
               {configs.map((c) => (
                 <tr key={c.id}>
                   {editing?.id === c.id ? (
                     <>
-                      <td style={{ fontWeight: 700 }}>{c.crop_type}</td>
-                      <td><input className="reg-input" type="number" value={editing.seed_to_yield_ratio} onChange={(e) => setEditing((p) => p ? { ...p, seed_to_yield_ratio: Number(e.target.value) } : p)} style={{ width: 90 }} /></td>
-                      <td><input className="reg-input" type="number" value={editing.yield_per_rai} onChange={(e) => setEditing((p) => p ? { ...p, yield_per_rai: Number(e.target.value) } : p)} style={{ width: 90 }} /></td>
-                      <td><input className="reg-input" type="number" value={editing.quota_per_seed_kg} onChange={(e) => setEditing((p) => p ? { ...p, quota_per_seed_kg: Number(e.target.value) } : p)} style={{ width: 90 }} /></td>
-                      <td style={{ color: '#6b7280' }}>{latestPrices[c.crop_type] ?? '—'} บาท/กก.</td>
-                      <td style={{ display: 'flex', gap: 4 }}>
-                        <button className="admin-btn admin-btn--success" onClick={saveConfig} disabled={saving} style={{ fontSize: 12, minHeight: 30, padding: '4px 8px' }}>💾</button>
-                        <button className="admin-btn admin-btn--secondary" onClick={() => setEditing(null)} style={{ fontSize: 12, minHeight: 30, padding: '4px 8px' }}>✕</button>
+                      <td style={{ fontWeight:700 }}>{c.crop_type}</td>
+                      <td><input className="reg-input" type="number" value={editing.yield_per_rai} onChange={(e) => setEditing((p) => p ? { ...p, yield_per_rai: Number(e.target.value) } : p)} style={{ width:80 }} /></td>
+                      <td><input className="reg-input" type="number" placeholder="เช่น 4500" value={editing.standard_cost_per_rai_burn ?? ''} onChange={(e) => setEditing((p) => p ? { ...p, standard_cost_per_rai_burn: e.target.value ? Number(e.target.value) : null } : p)} style={{ width:90 }} /></td>
+                      <td><input className="reg-input" type="number" placeholder="เช่น 4200" value={editing.standard_cost_per_rai_no_burn ?? ''} onChange={(e) => setEditing((p) => p ? { ...p, standard_cost_per_rai_no_burn: e.target.value ? Number(e.target.value) : null } : p)} style={{ width:90 }} /></td>
+                      <td><input className="reg-input" type="number" step="0.01" placeholder="เช่น 4.50" value={editing.standard_price_per_kg ?? ''} onChange={(e) => setEditing((p) => p ? { ...p, standard_price_per_kg: e.target.value ? Number(e.target.value) : null } : p)} style={{ width:80 }} /></td>
+                      <td style={{ display:'flex', gap:4 }}>
+                        <button className="admin-btn admin-btn--success" onClick={saveConfig} disabled={saving} style={{ fontSize:12, minHeight:30, padding:'4px 8px' }}>💾</button>
+                        <button className="admin-btn admin-btn--secondary" onClick={() => setEditing(null)} style={{ fontSize:12, minHeight:30, padding:'4px 8px' }}>✕</button>
                       </td>
                     </>
                   ) : (
                     <>
-                      <td style={{ fontWeight: 700 }}>{c.crop_type}</td>
-                      <td><span className="status-badge status-badge--approved">{c.seed_to_yield_ratio} กก.</span></td>
+                      <td style={{ fontWeight:700 }}>{c.crop_type}</td>
                       <td>{c.yield_per_rai.toLocaleString()} กก./ไร่</td>
-                      <td>{c.quota_per_seed_kg.toLocaleString()} กก.</td>
-                      <td style={{ fontWeight: 700, color: '#1b5e20' }}>{latestPrices[c.crop_type] ?? '—'} บาท/กก.</td>
-                      <td><button className="admin-btn admin-btn--ghost" onClick={() => setEditing({ ...c, _price: '' })} style={{ fontSize: 12, minHeight: 30, padding: '4px 8px' }}>✏️ แก้ไข</button></td>
+                      <td style={{ color: c.standard_cost_per_rai_burn ? '#111' : '#9ca3af' }}>
+                        {c.standard_cost_per_rai_burn ? `฿${c.standard_cost_per_rai_burn.toLocaleString()}` : 'ยังไม่ตั้ง'}
+                      </td>
+                      <td style={{ color: c.standard_cost_per_rai_no_burn ? '#27500A' : '#9ca3af' }}>
+                        {c.standard_cost_per_rai_no_burn ? `฿${c.standard_cost_per_rai_no_burn.toLocaleString()}` : 'ยังไม่ตั้ง'}
+                      </td>
+                      <td style={{ fontWeight:700, color:'#1b5e20' }}>
+                        {c.standard_price_per_kg ? `${c.standard_price_per_kg} บาท/กก.` : (latestPrices[c.crop_type] ? `${latestPrices[c.crop_type]} บาท/กก.` : '—')}
+                      </td>
+                      <td><button className="admin-btn admin-btn--ghost" onClick={() => setEditing({ ...c, _price:'' })} style={{ fontSize:12, minHeight:30, padding:'4px 8px' }}>✏️</button></td>
                     </>
                   )}
                 </tr>
@@ -128,6 +144,9 @@ export function YieldConfigPanel() {
             </tbody>
           </table>
         </div>
+        <p style={{ margin:'8px 0 0', fontSize:12, color:'#9ca3af' }}>
+          💡 ต้นทุนและราคามาตรฐานใช้เป็น fallback เมื่อเกษตรกรไม่ได้กรอกต้นทุนเอง
+        </p>
       </section>
 
       {/* Market Price */}

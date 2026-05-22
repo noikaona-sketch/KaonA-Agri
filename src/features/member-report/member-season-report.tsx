@@ -5,10 +5,11 @@ import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
 type CycleReport = {
   id: string; crop_name: string; season_year: number; status: string;
-  area_planted_rai: number; actual_yield_kg: number | null; estimated_yield_kg: number | null;
+  area_planted_rai: number; actual_yield_kg: number | null;
   total_qty_sold_kg: number; burn_practice: string; no_burn_approved: boolean;
-  cost_per_rai: number; total_cost: number; expected_price_per_kg: number;
-  estimated_revenue: number; estimated_profit: number;
+  cost_per_rai: number; cost_source: 'member' | 'standard';
+  price_per_kg: number; price_source: 'member' | 'standard';
+  total_cost: number; estimated_revenue: number; estimated_profit: number;
   cost_saving_from_no_burn: number | null;
   sales: { appointment_date: string; actual_qty_kg: number | null; pickup_location_name: string | null }[];
 };
@@ -132,14 +133,21 @@ export function MemberSeasonReport({ memberId }: { memberId: string }) {
                 {/* ผลผลิตและต้นทุน */}
                 <div style={{ background: 'var(--color-background-secondary)', borderRadius: 10, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 5 }}>
                   {[
-                    { label: 'พื้นที่ปลูก',          value: `${fmt(c.area_planted_rai, 1)} ไร่` },
-                    { label: 'ผลผลิตต่อไร่',         value: yieldPerRai ? `${fmt(yieldPerRai, 0)} กก./ไร่` : '—' },
-                    { label: 'ต้นทุนต่อไร่',          value: c.cost_per_rai > 0 ? `฿${fmt(c.cost_per_rai)}` : 'ไม่ได้กรอก' },
-                    { label: 'ราคาที่คาดไว้',         value: c.expected_price_per_kg > 0 ? `${c.expected_price_per_kg.toFixed(2)} บาท/กก.` : 'ไม่ได้กรอก' },
-                  ].map(({ label, value }) => (
-                    <div key={label} style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>{label}</span>
-                      <span style={{ fontSize: 12, fontWeight: 500 }}>{value}</span>
+                    { label:'พื้นที่ปลูก',     value:`${fmt(c.area_planted_rai, 1)} ไร่` },
+                    { label:'ผลผลิตต่อไร่',    value: yieldPerRai ? `${fmt(yieldPerRai, 0)} กก./ไร่` : '—' },
+                    { label:`ต้นทุน/ไร่${c.cost_source === 'standard' ? ' (มาตรฐาน)' : ''}`,
+                      value: c.cost_per_rai > 0 ? `฿${fmt(c.cost_per_rai)}` : 'ไม่มีข้อมูล',
+                      hint: c.cost_source === 'standard' ? '📋 ใช้ค่ามาตรฐาน admin' : undefined },
+                    { label:`ราคา${c.price_source === 'standard' ? ' (มาตรฐาน)' : ''}`,
+                      value: c.price_per_kg > 0 ? `${c.price_per_kg.toFixed(2)} บาท/กก.` : 'ไม่มีข้อมูล',
+                      hint: c.price_source === 'standard' ? '📋 ใช้ค่ามาตรฐาน admin' : undefined },
+                  ].map(({ label, value, hint }) => (
+                    <div key={label} style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+                      <div>
+                        <span style={{ fontSize:12, color:'var(--color-text-secondary)' }}>{label}</span>
+                        {hint && <p style={{ margin:'1px 0 0', fontSize:10, color:'#9ca3af' }}>{hint}</p>}
+                      </div>
+                      <span style={{ fontSize:12, fontWeight:500 }}>{value}</span>
                     </div>
                   ))}
                 </div>
