@@ -9,7 +9,6 @@ import { ErrorState } from '@/shared/components/error-state';
 type IntakeRow = {
   id: string;
   scheduled_date: string;
-  planned_delivery_date: string | null;
   status: string;
   estimated_yield_kg: number | null;
   quality_moisture: number | null;
@@ -28,7 +27,7 @@ type DailyIntakeSummary = {
 };
 
 function toDateKey(row: IntakeRow): string {
-  return (row.planned_delivery_date ?? row.scheduled_date).slice(0, 10);
+  return row.scheduled_date.slice(0, 10);
 }
 
 function summarize(rows: IntakeRow[], days: string[]): DailyIntakeSummary[] {
@@ -70,7 +69,7 @@ export function HarvestIntakeCalendar() {
       const s = createSupabaseBrowserClient();
       const { data, error: err } = await s
         .from('harvest_bookings_full')
-        .select('id,scheduled_date,planned_delivery_date,status,estimated_yield_kg,quality_moisture')
+        .select('id,scheduled_date,status,estimated_yield_kg,quality_moisture')
         .in('status', ['pending', 'confirmed', 'completed'])
         .limit(1000);
       if (err) setError(err.message);
