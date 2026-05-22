@@ -12,7 +12,9 @@ import { AdminMoistureDeductions }     from '@/features/admin-appointments/admin
 import { AdminPromoList }              from '@/features/admin-appointments/admin-promo-list';
 import { AdminProductsList }           from '@/features/admin-products/admin-products-list';
 
-type Tab = 'quota' | 'price' | 'deductions' | 'promos' | 'products' | 'movements' | 'pickup' | 'varieties' | 'suppliers';
+import { AdminPickupLocations }        from '@/features/admin-seed-lots/admin-pickup-locations';
+
+type Tab = 'quota' | 'price' | 'deductions' | 'promos' | 'products' | 'movements' | 'pickup' | 'locations' | 'varieties' | 'suppliers';
 const TABS: { key: Tab; icon: string; label: string }[] = [
   { key: 'quota',      icon: '⚖️', label: 'โควต้ารับซื้อ' },
   { key: 'price',      icon: '💹', label: 'ราคารับซื้อ'   },
@@ -21,6 +23,7 @@ const TABS: { key: Tab; icon: string; label: string }[] = [
   { key: 'products',   icon: '🛍️', label: 'สินค้า'        },
   { key: 'movements',  icon: '📊', label: 'เคลื่อนไหว'    },
   { key: 'pickup',     icon: '📅', label: 'รอบรับสินค้า'   },
+  { key: 'locations',  icon: '📍', label: 'จุดรับ'         },
   { key: 'varieties',  icon: '🌾', label: 'พันธุ์'         },
   { key: 'suppliers',  icon: '🏪', label: 'Supplier'       },
 ];
@@ -46,6 +49,7 @@ export default function AdminSeedsPage() {
       {tab === 'products'   && <AdminProductsList />}
       {tab === 'movements'  && <StockMovementPanel />}
       {tab === 'pickup'     && <AdminPickupSlots />}
+      {tab === 'locations'  && <AdminPickupLocations />}
       {tab === 'varieties'  && <AdminSeedVarieties />}
       {tab === 'suppliers'  && <AdminSeedSuppliers />}
     </AdminWebShell>
