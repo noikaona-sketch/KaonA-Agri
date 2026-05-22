@@ -9,22 +9,16 @@ type Price = {
   effective_date: string; note: string | null; is_active: boolean;
 };
 
-const MOISTURE_OPTIONS = [
-  { value: '', label: 'ไม่ระบุ' },
-  { value: '30.0', label: 'ความชื้น 30% (สด)' },
-  { value: '14.5', label: 'ความชื้น 14.5% (แห้ง)' },
-];
-
 export function AdminMarketPrice() {
-  const [prices,     setPrices]     = useState<Price[]>([]);
-  const [loading,    setLoading]    = useState(true);
-  const [cropType,   setCropType]   = useState('ข้าวโพด');
-  const [price,      setPrice]      = useState('');
-  const [moisturePct,setMoisturePct]= useState('');
-  const [priceType,  setPriceType]  = useState('market');
-  const [note,       setNote]       = useState('');
-  const [saving,     setSaving]     = useState(false);
-  const [notice,     setNotice]     = useState<string | null>(null);
+  const [prices,   setPrices]   = useState<Price[]>([]);
+  const [loading,  setLoading]  = useState(true);
+  const [cropType, setCropType] = useState('ข้าวโพด');
+  const [price,    setPrice]    = useState('');
+  const [moisture, setMoisture] = useState('');
+  const [priceType,setPriceType]= useState('market');
+  const [note,     setNote]     = useState('');
+  const [saving,   setSaving]   = useState(false);
+  const [notice,   setNotice]   = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -36,122 +30,95 @@ export function AdminMarketPrice() {
   useEffect(() => { void load(); }, []);
 
   async function save() {
-    if (!price) { setNotice('❌ กรุณากรอกราคา'); return; }
+    if (!price || !moisture) { setNotice('❌ กรุณากรอกราคาและความชื้น'); return; }
+    const m = Number(moisture);
+    if (m < 1 || m > 50) { setNotice('❌ ความชื้นต้องอยู่ระหว่าง 1–50%'); return; }
     setSaving(true);
     const res = await fetch('/api/admin/market-price', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        crop_type:    cropType,
-        price_per_kg: Number(price),
-        moisture_pct: moisturePct ? Number(moisturePct) : null,
-        price_type:   priceType,
-        note:         note || null,
-      }),
+      body: JSON.stringify({ crop_type: cropType, price_per_kg: Number(price), moisture_pct: m, price_type: priceType, note: note || null }),
     });
     const d = (await res.json()) as { ok?: boolean; error?: string };
     setSaving(false);
     if (!res.ok) { setNotice(`❌ ${d.error}`); return; }
-    const moistureLabel = moisturePct ? ` ความชื้น ${moisturePct}%` : '';
-    const typeLabel = priceType === 'member' ? ' (ราคาสมาชิก)' : ' (ราคาประกาศ)';
-    setNotice(`✅ อัปเดตราคา ${cropType}${moistureLabel}${typeLabel} = ${price} บาท/กก.`);
-    setPrice(''); setNote(''); await load();
+    setNotice(`✅ บันทึกราคา ${cropType} ความชื้น ${moisture}% = ${price} บาท/กก.`);
+    setPrice(''); setMoisture(''); setNote('');
+    await load();
   }
 
-  const active = prices.filter((p) => p.is_active);
-  // จัดกลุ่มตาม crop_type
-  const grouped = active.reduce<Record<string, Price[]>>((acc, p) => {
-    if (!acc[p.crop_type]) acc[p.crop_type] = [];
-    acc[p.crop_type].push(p);
-    return acc;
-  }, {});
+  // เรียงราคา active ตาม moisture สูง → ต่ำ
+  const table = prices
+    .filter((p) => p.is_active && p.crop_type === cropType && p.moisture_pct !== null)
+    .sort((a, b) => (b.moisture_pct ?? 0) - (a.moisture_pct ?? 0));
 
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {notice && (
-        <div style={{ background: notice.startsWith('✅') ? '#e8f5e9' : '#ffebee', border: `1px solid ${notice.startsWith('✅') ? '#a5d6a7' : '#ef9a9a'}`, borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontWeight: 600, color: notice.startsWith('✅') ? '#1b5e20' : '#c62828' }}>
-          {notice}
+        <div style={{ background: notice.startsWith('✅') ? '#e8f5e9' : '#ffebee', border: `1px solid ${notice.startsWith('✅') ? '#a5d6a7' : '#ef9a9a'}`, borderRadius: 10, padding: '10px 14px', fontWeight: 600, color: notice.startsWith('✅') ? '#1b5e20' : '#c62828', display: 'flex', justifyContent: 'space-between' }}>
+          <span>{notice}</span>
+          <button onClick={() => setNotice(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: 16 }}>✕</button>
         </div>
       )}
 
-      {/* ราคาปัจจุบัน */}
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
-        {Object.entries(grouped).map(([crop, rows]) => (
-          <div key={crop} style={{ background: '#e8f5e9', border: '1.5px solid #a5d6a7', borderRadius: 14, padding: '14px 16px', minWidth: 180 }}>
-            <p style={{ margin: '0 0 8px', fontSize: 13, color: '#4a6741', fontWeight: 700 }}>{crop}</p>
-            {rows.map((r) => (
-              <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
-                <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>
-                  {r.moisture_pct !== null ? `${r.moisture_pct}%` : 'ทั่วไป'}
-                  {r.price_type === 'member' && <span style={{ marginLeft: 4, fontSize: 10, background: '#fff', color: '#1b5e20', borderRadius: 4, padding: '0 4px' }}>สมาชิก</span>}
-                </p>
-                <p style={{ margin: 0, fontSize: 20, fontWeight: 900, color: '#1b5e20' }}>{Number(r.price_per_kg).toFixed(2)}<span style={{ fontSize: 11, fontWeight: 400, color: '#9ca3af', marginLeft: 2 }}>บ./กก.</span></p>
-              </div>
-            ))}
-            <p style={{ margin: '6px 0 0', fontSize: 11, color: '#9ca3af' }}>
-              {new Date(rows[0].effective_date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}
-            </p>
-          </div>
-        ))}
+      {/* ตารางราคาตามความชื้น */}
+      <div className="kaona-card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <p style={{ margin: 0, fontWeight: 700 }}>📋 ตารางราคาตามความชื้น</p>
+          <select className="admin-select" value={cropType} onChange={(e) => setCropType(e.target.value)} style={{ width: 'auto', fontSize: 13 }}>
+            <option>ข้าวโพด</option><option>ข้าว</option><option>มันสำปะหลัง</option>
+          </select>
+        </div>
+        {loading ? <LoadingState label="กำลังโหลด…" /> : table.length === 0 ? (
+          <p style={{ margin: 0, color: '#9ca3af', fontSize: 13, textAlign: 'center', padding: '16px 0' }}>ยังไม่มีราคาในตาราง — กรอกด้านล่างเพื่อเพิ่ม</p>
+        ) : (
+          <table className="admin-table">
+            <thead>
+              <tr><th>ความชื้น (%)</th><th>ราคา (บาท/กก.)</th><th>ประเภท</th><th>วันที่ตั้ง</th><th>หมายเหตุ</th></tr>
+            </thead>
+            <tbody>
+              {table.map((r) => (
+                <tr key={r.id}>
+                  <td><span style={{ fontWeight: 700, fontSize: 16, color: '#1b5e20' }}>{r.moisture_pct}%</span></td>
+                  <td><span style={{ fontWeight: 900, fontSize: 18, color: '#111' }}>{Number(r.price_per_kg).toFixed(2)}</span><span style={{ fontSize: 11, color: '#9ca3af', marginLeft: 4 }}>บ./กก.</span></td>
+                  <td><span style={{ fontSize: 12, color: '#6b7280' }}>{r.price_type === 'member' ? '🏅 สมาชิก' : '📢 ประกาศ'}</span></td>
+                  <td style={{ fontSize: 12, color: '#9ca3af' }}>{new Date(r.effective_date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}</td>
+                  <td style={{ fontSize: 12, color: '#9ca3af' }}>{r.note ?? '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
 
-      {/* form */}
+      {/* Form เพิ่ม/อัปเดตราคา */}
       <div className="kaona-card">
-        <p style={{ margin: '0 0 14px', fontWeight: 700 }}>💰 อัปเดตราคารับซื้อ</p>
+        <p style={{ margin: '0 0 14px', fontWeight: 700 }}>💰 เพิ่ม / อัปเดตราคา</p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <label className="reg-label">ประเภทพืช
-            <select className="reg-input" value={cropType} onChange={(e) => setCropType(e.target.value)}>
-              <option>ข้าวโพด</option><option>ข้าว</option><option>มันสำปะหลัง</option><option>อื่นๆ</option>
-            </select>
+          <label className="reg-label">ความชื้น (%) <span className="reg-required">*</span>
+            <input className="reg-input" type="number" step="0.1" min="1" max="50"
+              value={moisture} onChange={(e) => setMoisture(e.target.value)} placeholder="เช่น 28, 22, 14" />
+            <span className="reg-hint">กรอกตัวเลขความชื้นได้อิสระ</span>
           </label>
           <label className="reg-label">ราคา (บาท/กก.) <span className="reg-required">*</span>
-            <input className="reg-input" type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="8.50" />
-          </label>
-          <label className="reg-label">ความชื้น
-            <select className="reg-input" value={moisturePct} onChange={(e) => setMoisturePct(e.target.value)}>
-              {MOISTURE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </select>
+            <input className="reg-input" type="number" step="0.01" min="0"
+              value={price} onChange={(e) => setPrice(e.target.value)} placeholder="เช่น 4.50" />
           </label>
           <label className="reg-label">ประเภทราคา
             <select className="reg-input" value={priceType} onChange={(e) => setPriceType(e.target.value)}>
-              <option value="market">ราคาประกาศ (ตลาด)</option>
-              <option value="member">ราคาสมาชิก KaonA</option>
+              <option value="market">📢 ราคาประกาศ (ตลาด)</option>
+              <option value="member">🏅 ราคาสมาชิก KaonA</option>
             </select>
           </label>
-          <label className="reg-label" style={{ gridColumn: '1/-1' }}>หมายเหตุ
-            <input className="reg-input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="ราคา spot วันนี้ / ตลาดกลาง..." />
+          <label className="reg-label">หมายเหตุ
+            <input className="reg-input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="เช่น ราคา spot วันนี้" />
           </label>
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
           <button className="admin-btn admin-btn--primary" onClick={save} disabled={saving}>
-            {saving ? 'กำลังบันทึก…' : '💰 อัปเดตราคา'}
+            {saving ? 'กำลังบันทึก…' : '💰 บันทึกราคา'}
           </button>
         </div>
       </div>
-
-      {/* ประวัติราคา */}
-      {!loading && (
-        <div style={{ marginTop: 20 }}>
-          <p style={{ margin: '0 0 10px', fontWeight: 700, fontSize: 14 }}>ประวัติราคา</p>
-          <div className="admin-table-wrap">
-            <table className="admin-table">
-              <thead><tr><th>ประเภท</th><th>ความชื้น</th><th>ราคา</th><th>ประเภทราคา</th><th>วันที่</th><th>หมายเหตุ</th><th>สถานะ</th></tr></thead>
-              <tbody>
-                {prices.slice(0, 30).map((p) => (
-                  <tr key={p.id}>
-                    <td style={{ fontWeight: 700 }}>{p.crop_type}</td>
-                    <td style={{ color: '#6b7280' }}>{p.moisture_pct !== null ? `${p.moisture_pct}%` : '—'}</td>
-                    <td style={{ fontWeight: 800, color: '#1b5e20' }}>{Number(p.price_per_kg).toFixed(2)} บาท/กก.</td>
-                    <td style={{ fontSize: 13 }}>{p.price_type === 'member' ? '🏅 สมาชิก' : '📢 ประกาศ'}</td>
-                    <td>{new Date(p.effective_date).toLocaleDateString('th-TH')}</td>
-                    <td style={{ fontSize: 13, color: '#6b7280' }}>{p.note ?? '—'}</td>
-                    <td>{p.is_active ? <span style={{ color: '#2e7d32', fontWeight: 700 }}>✅ ใช้อยู่</span> : <span style={{ color: '#9ca3af' }}>เก่า</span>}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
