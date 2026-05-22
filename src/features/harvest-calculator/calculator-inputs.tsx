@@ -8,33 +8,24 @@ export type RawInputs = {
   weight_kg        : string
   price_current    : string
   price_target     : string
-  drying_cost      : string
 };
 
 export const EMPTY_INPUTS: RawInputs = {
   moisture_current : '',
-  moisture_target  : '14',
+  moisture_target  : '',
   weight_kg        : '',
   price_current    : '',
   price_target     : '',
-  drying_cost      : '0',
 };
 
-type FieldConfig = {
-  key      : keyof RawInputs
-  label    : string
-  hint     : string
-  required : boolean
-  step     : string
-};
+type FieldDef = { key: keyof RawInputs; label: string; labelCompact: string; hint: string; step: string };
 
-const FIELDS: FieldConfig[] = [
-  { key: 'moisture_current', label: 'ความชื้นปัจจุบัน (%)',            hint: 'เช่น 28 — วัดจากเครื่องวัดความชื้น', required: true,  step: '0.1' },
-  { key: 'moisture_target',  label: 'ความชื้นเป้าหมาย (%)',            hint: 'ค่ามาตรฐานโรงงาน เช่น 14',           required: true,  step: '0.1' },
-  { key: 'weight_kg',        label: 'น้ำหนักโดยประมาณ (กก.)',          hint: 'เช่น 5,000',                          required: true,  step: '1'   },
-  { key: 'price_current',    label: 'ราคา ณ ความชื้นปัจจุบัน (บาท/กก.)', hint: 'ราคาที่คาดว่าจะได้ตอนนี้',         required: true,  step: '0.01' },
-  { key: 'price_target',     label: 'ราคา ณ ความชื้นเป้าหมาย (บาท/กก.)', hint: 'ราคาที่คาดว่าจะได้หลังแห้ง',       required: true,  step: '0.01' },
-  { key: 'drying_cost',      label: 'ค่าอบหรือหักลดโดยประมาณ (บาท)',   hint: 'ใส่ 0 ถ้าไม่มีค่าใช้จ่ายเพิ่ม',      required: false, step: '1'   },
+const FIELDS: FieldDef[] = [
+  { key: 'moisture_current', label: 'ความชื้นปัจจุบัน (%)',           labelCompact: 'ความชื้นตอนนี้ (%)',      hint: 'เช่น 28',  step: '0.1'  },
+  { key: 'moisture_target',  label: 'ความชื้นที่จะเปรียบเทียบ (%)',   labelCompact: 'ความชื้นที่จะเทียบ (%)', hint: 'เช่น 22',  step: '0.1'  },
+  { key: 'weight_kg',        label: 'น้ำหนักปัจจุบัน (กก.)',           labelCompact: 'น้ำหนัก (กก.)',           hint: 'เช่น 5,000', step: '1'  },
+  { key: 'price_current',    label: 'ราคา ณ ความชื้นปัจจุบัน (บาท/กก.)', labelCompact: 'ราคาตอนนี้ (฿/กก.)',  hint: 'เช่น 4.20', step: '0.01' },
+  { key: 'price_target',     label: 'ราคา ณ ความชื้นที่จะเปรียบเทียบ (บาท/กก.)', labelCompact: 'ราคาเทียบ (฿/กก.)', hint: 'เช่น 4.60', step: '0.01' },
 ];
 
 type Props = {
@@ -45,28 +36,17 @@ type Props = {
 }
 
 export function CalculatorInputs({ values, onChange, errors, compact = false }: Props) {
-  const gridStyle = compact
-    ? { display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '10px 16px' }
-    : { display: 'flex', flexDirection: 'column' as const, gap: 12 };
-
   return (
-    <div style={gridStyle}>
-      {FIELDS.map(({ key, label, hint, required, step }) => {
+    <div style={compact
+      ? { display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '10px 16px' }
+      : { display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {FIELDS.map(({ key, label, labelCompact, hint, step }) => {
         const err = errors[key];
-        const labelText = compact
-          ? label.replace('ความชื้นปัจจุบัน','Current M₁').replace('ความชื้นเป้าหมาย','Target M₂')
-            .replace('น้ำหนักโดยประมาณ','Weight (kg)').replace('ราคา ณ ความชื้นปัจจุบัน','Price now (฿/kg)')
-            .replace('ราคา ณ ความชื้นเป้าหมาย','Price after (฿/kg)').replace('ค่าอบหรือหักลดโดยประมาณ','Drying cost (฿)')
-          : label;
-
         return (
           <label key={key} className="reg-label">
-            <span>
-              {labelText}
-              {required && <span className="reg-required"> ✱</span>}
-            </span>
+            <span>{compact ? labelCompact : label}<span className="reg-required"> ✱</span></span>
             <input
-              className={`reg-input${err ? ' reg-input--error' : ''}`}
+              className="reg-input"
               type="number"
               inputMode="decimal"
               step={step}
@@ -78,8 +58,7 @@ export function CalculatorInputs({ values, onChange, errors, compact = false }: 
             />
             {err
               ? <span style={{ fontSize: 12, color: '#c62828' }}>{err}</span>
-              : <span className="reg-hint">{hint}</span>
-            }
+              : <span className="reg-hint">{hint}</span>}
           </label>
         );
       })}
