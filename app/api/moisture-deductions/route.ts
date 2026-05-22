@@ -55,10 +55,27 @@ export async function GET(request: Request) {
       } catch { /* weather เป็น optional — fail silently */ }
     }
 
+    // ── โบนัสสมาชิก (campaign ที่ active อยู่และมี member_bonus_per_kg) ──────
+    const { data: bonus } = await s
+      .from('campaign_announcements')
+      .select('id,title,member_bonus_per_kg,end_date')
+      .eq('is_active', true)
+      .not('member_bonus_per_kg', 'is', null)
+      .lte('start_date', new Date().toISOString().slice(0, 10))
+      .gte('end_date',   new Date().toISOString().slice(0, 10))
+      .order('member_bonus_per_kg', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
     return NextResponse.json({
-      deductions:     rows ?? [],
-      base_price_per_kg: basePrice?.price_per_kg ?? null,
+      deductions:           rows ?? [],
+      base_price_per_kg:    basePrice?.price_per_kg ?? null,
       weather,
+      member_bonus: bonus ? {
+        bonus_per_kg : Number(bonus.member_bonus_per_kg),
+        title        : bonus.title,
+        end_date     : bonus.end_date,
+      } : null,
     });
   } catch (e) { return NextResponse.json({ error: String(e) }, { status: 500 }); }
 }
