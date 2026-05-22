@@ -1,13 +1,12 @@
 'use client';
 
-import { useEffect, useRef, useState }                                   from 'react';
-import { calcRevenue, estimateMoistureAfterDays, nearestDeduction }      from './moisture-calculator';
-import type { Deduction, CalcResult }                                    from './moisture-calculator';
-import { HarvestTimingPanel }                                            from './harvest-timing-panel';
+import { useEffect, useRef, useState }                              from 'react';
+import { calcRevenue, estimateMoistureAfterDays, nearestDeduction } from './moisture-calculator';
+import type { Deduction, Promo, CalcResult }                        from './moisture-calculator';
+import { HarvestTimingPanel }                                        from './harvest-timing-panel';
 
-type WeatherDay  = { date: string; rain_prob: number; rain_mm: number };
-type MemberBonus = { bonus_per_kg: number; title: string; end_date: string };
-type ApiData     = { deductions: Deduction[]; base_price_per_kg: number | null; weather: WeatherDay[]; member_bonus: MemberBonus | null };
+type WeatherDay = { date: string; rain_prob: number; rain_mm: number };
+type ApiData    = { deductions: Deduction[]; base_price_per_kg: number | null; promos: Promo[]; weather: WeatherDay[] };
 
 const fmt = (n: number) => n.toLocaleString('th-TH', { maximumFractionDigits: 0 });
 
@@ -27,40 +26,43 @@ export function MoistureCalculatorForm({ memberId, compact = false }: Props) {
       if (memberId) {
         const r = await fetch(`/api/member/plots?member_id=${memberId}`);
         const d = (await r.json()) as { plots?: { lat: number | null; lng: number | null }[] };
-        lat = d.plots?.[0]?.lat ?? null;
-        lng = d.plots?.[0]?.lng ?? null;
+        lat = d.plots?.[0]?.lat ?? null; lng = d.plots?.[0]?.lng ?? null;
       }
-      const q   = lat && lng ? `&lat=${lat}&lng=${lng}&days=7` : '';
-      const res = await fetch(`/api/moisture-deductions?crop_type=ข้าวโพด${q}`);
-      setData((await res.json()) as ApiData);
+      const q = lat && lng ? `&lat=${lat}&lng=${lng}&days=7` : '';
+      setData((await (await fetch(`/api/moisture-deductions?crop_type=ข้าวโพด${q}`)).json()) as ApiData);
     })();
   }, [memberId]);
 
   function calculate() {
     if (!data || !moisture || !weight) return;
-    const bonus = data.member_bonus?.bonus_per_kg ?? 0;
-    setResult(calcRevenue(Number(moisture), Number(weight), data.base_price_per_kg ?? 0, data.deductions, bonus));
+    setResult(calcRevenue(Number(moisture), Number(weight), data.base_price_per_kg ?? 0, data.deductions, data.promos));
     setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 80);
   }
 
-  const bonus          = data?.member_bonus?.bonus_per_kg ?? 0;
-  const futureMoisture = moisture && data ? estimateMoistureAfterDays(Number(moisture), waitDays, data.deductions) : null;
-  const futureDeduction= futureMoisture && data ? nearestDeduction(futureMoisture, data.deductions) : null;
-  const futureResult   = futureMoisture && weight && data
-    ? calcRevenue(futureDeduction?.moisture_pct ?? futureMoisture, Number(weight), data.base_price_per_kg ?? 0, data.deductions, bonus)
+  const futureMoisture  = moisture && data ? estimateMoistureAfterDays(Number(moisture), waitDays, data.deductions) : null;
+  const futureDeduction = futureMoisture && data ? nearestDeduction(futureMoisture, data.deductions) : null;
+  const futureResult    = futureMoisture && weight && data
+    ? calcRevenue(futureDeduction?.moisture_pct ?? futureMoisture, Number(weight), data.base_price_per_kg ?? 0, data.deductions, data.promos)
     : null;
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-      {/* โบนัสโปรโมชั่น */}
-      {data?.member_bonus && (
-        <div style={{ background:'#fefce8', border:'1px solid #fde68a', borderRadius:10, padding:'8px 12px' }}>
-          <p style={{ margin:0, fontSize:12, color:'#92400e', fontWeight:600 }}>
-            🎁 {data.member_bonus.title} — สมาชิก KaonA ได้รับโบนัส +{data.member_bonus.bonus_per_kg.toFixed(2)} บาท/กก.
-            <span style={{ fontWeight:400, marginLeft:6 }}>
-              ถึง {new Date(data.member_bonus.end_date).toLocaleDateString('th-TH', { day:'numeric', month:'short', year:'numeric' })}
-            </span>
-          </p>
+
+      {/* โปรโมชั่นที่ active */}
+      {(data?.promos ?? []).length > 0 && (
+        <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+          {data!.promos.map((p) => (
+            <div key={p.id} style={{ background:'#fefce8', border:'1px solid #fde68a', borderRadius:10, padding:'8px 12px' }}>
+              <p style={{ margin:0, fontSize:12, color:'#92400e', fontWeight:600 }}>
+                🎁 {p.title} — +{p.promo_bonus_per_kg.toFixed(2)} บาท/กก.
+                {p.promo_type === 'moisture_below' && p.moisture_threshold &&
+                  <span style={{ fontWeight:400 }}> (ความชื้น &lt; {p.moisture_threshold}%)</span>}
+                <span style={{ fontWeight:400, marginLeft:8, fontSize:11, color:'#9ca3af' }}>
+                  ถึง {new Date(p.end_date).toLocaleDateString('th-TH', { day:'numeric', month:'short', year:'numeric' })}
+                </span>
+              </p>
+            </div>
+          ))}
         </div>
       )}
 
@@ -86,8 +88,7 @@ export function MoistureCalculatorForm({ memberId, compact = false }: Props) {
           </label>
           <label className="reg-label">น้ำหนักคาดการณ์ (กก.) <span className="reg-required">✱</span>
             <input className="reg-input" type="number" inputMode="decimal" step="1" min="0"
-              placeholder="เช่น 5,000" value={weight}
-              onChange={(e) => { setWeight(e.target.value); setResult(null); }} />
+              placeholder="เช่น 5,000" value={weight} onChange={(e) => { setWeight(e.target.value); setResult(null); }} />
           </label>
         </div>
       </div>
@@ -104,12 +105,14 @@ export function MoistureCalculatorForm({ memberId, compact = false }: Props) {
           <div className="kaona-card" style={{ display:'flex', flexDirection:'column', gap:8 }}>
             <p style={{ margin:0, fontSize:13, fontWeight:500, color:'#6b7280' }}>── รายได้ที่คาดว่าจะได้ ──</p>
             {[
-              { label:'น้ำหนักที่กรอก',               value:`${fmt(result.weight_input_kg)} กก.` },
-              { label:`หัก ${result.weight_deduct_pct}% น้ำหนัก`, value:`−${fmt(result.weight_loss_kg)} กก.`, red:true },
-              { label:'น้ำหนักที่โรงงานชั่ง',          value:`${result.weight_deducted_kg.toFixed(1)} กก.`, bold:true },
-              { label:'ราคาฐาน (เปียก 30%)',          value:`${result.base_price_per_kg.toFixed(2)} บาท/กก.` },
-              { label:`+บวกตามความชื้น ${result.moisture_pct}%`, value:`+${result.price_adjust_per_kg.toFixed(2)} บาท/กก.`, green:true },
-              ...(result.member_bonus_per_kg > 0 ? [{ label:'🎁 โบนัสสมาชิก', value:`+${result.member_bonus_per_kg.toFixed(2)} บาท/กก.`, green:true, bold:false, red:false }] : []),
+              { label:'น้ำหนักที่กรอก',              value:`${fmt(result.weight_input_kg)} กก.` },
+              { label:`หัก ${result.weight_deduct_pct}% น้ำหนัก`, value:`−${result.weight_loss_kg.toFixed(1)} กก.`, red:true },
+              { label:'น้ำหนักที่โรงงานชั่ง',         value:`${result.weight_deducted_kg.toFixed(1)} กก.`, bold:true },
+              { label:'ราคาฐาน (เปียก 30%)',         value:`${result.base_price_per_kg.toFixed(2)} บาท/กก.` },
+              { label:`+ตามความชื้น ${result.moisture_pct}%`, value:`+${result.price_adjust_per_kg.toFixed(2)} บาท/กก.`, green:true },
+              ...result.applied_promos.filter((p) => p.applied).map((p) => ({
+                label: `🎁 ${p.title}`, value: `+${p.promo_bonus_per_kg.toFixed(2)} บาท/กก.`, green:true, bold:false, red:false,
+              })),
               { label:'ราคาสุดท้าย', value:`${result.final_price_per_kg.toFixed(2)} บาท/กก.`, bold:true },
             ].map(({ label, value, red, green, bold }) => (
               <div key={label} style={{ display:'flex', justifyContent:'space-between', padding:'5px 0', borderBottom:'1px solid #f0f4f0' }}>
@@ -125,14 +128,11 @@ export function MoistureCalculatorForm({ memberId, compact = false }: Props) {
         )}
       </div>
 
-      {/* Timing + weather */}
       {moisture && weight && data && (
-        <HarvestTimingPanel
-          waitDays={waitDays} onSetWaitDays={setWaitDays}
+        <HarvestTimingPanel waitDays={waitDays} onSetWaitDays={setWaitDays}
           futureMoisture={futureMoisture} futureResult={futureResult}
           currentRevenue={result?.revenue_baht ?? null}
-          weather={data.weather} deductions={data.deductions}
-        />
+          weather={data.weather} deductions={data.deductions} />
       )}
     </div>
   );
