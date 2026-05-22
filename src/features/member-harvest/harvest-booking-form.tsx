@@ -123,6 +123,29 @@ export function MemberHarvestBookingForm({ cycleId, cropName, plotId, onSuccess 
         </div>
       )}
 
+      {/* คิวอบ 7 วันข้างหน้า */}
+      {queueSnapshot?.dryerQuota && queueSnapshot.dryerQuota.length > 0 && (
+        <div style={{ marginBottom: 14 }}>
+          <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 500, color: '#6b7280' }}>⚙️ คิวอบ 7 วันข้างหน้า</p>
+          <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+            {queueSnapshot.dryerQuota.map((d) => {
+              const color = d.level === 'full' ? '#991b1b' : d.level === 'busy' ? '#854d0e' : '#166534';
+              const bg    = d.level === 'full' ? '#fef2f2' : d.level === 'busy' ? '#fefce8' : '#f0fdf4';
+              const label = d.level === 'full' ? '🔴 เต็ม' : d.level === 'busy' ? '🟡 เริ่มเต็ม' : '✅ ว่าง';
+              return (
+                <div key={d.date} style={{ flex: 1, minWidth: 52, textAlign: 'center', background: bg, borderRadius: 8, padding: '6px 4px', border: `1px solid ${color}33` }}>
+                  <p style={{ margin: '0 0 1px', fontSize: 10, color: '#6b7280' }}>
+                    {new Date(d.date).toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric' })}
+                  </p>
+                  <p style={{ margin: '0 0 1px', fontSize: 11, fontWeight: 700, color }}>{label.split(' ')[0]}</p>
+                  {d.util_pct != null && <p style={{ margin: 0, fontSize: 10, color: '#9ca3af' }}>{d.util_pct}%</p>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <label className="reg-label">วันที่เริ่มต้น <span style={{ color: '#e53e3e' }}>*</span>
           <input className="reg-input" type="date" value={expectedDateFrom} min={today} disabled={submitting}

@@ -77,15 +77,19 @@ export function calcRevenue(
   };
 }
 
-// ── คาดการณ์ความชื้นหลัง N วัน ───────────────────────────────────────────────
+// ── คาดการณ์ความชื้นหลัง N วัน (ปรับตามฝน) ─────────────────────────────────
 export function estimateMoistureAfterDays(
   current_moisture : number, days: number, deductions: Deduction[],
+  rain_prob_max    : number = 0,  // % โอกาสฝนสูงสุด — ฝนหนักแห้งช้าลง
 ): number {
   const sorted = [...deductions].sort((a, b) =>
     Math.abs(a.moisture_pct - current_moisture) - Math.abs(b.moisture_pct - current_moisture)
   );
-  const rate = sorted[0]?.drying_days_per_pct ?? 1;
-  return Math.max(14.5, current_moisture - days / rate);
+  const baseRate     = sorted[0]?.drying_days_per_pct ?? 1;
+  const adjustedRate = rain_prob_max >= 60 ? baseRate * 2
+                     : rain_prob_max >= 30 ? baseRate * 1.5
+                     : baseRate;
+  return Math.max(14.5, current_moisture - days / adjustedRate);
 }
 
 export function nearestDeduction(moisture: number, deductions: Deduction[]): Deduction | null {

@@ -18,6 +18,7 @@ type UseMemberHarvestBookingResult = {
     nearTermCount: number;
     dryerRequiredCount: number;
     moistureSensitiveCount: number;
+    dryerQuota: { date: string; capacity_kg: number | null; booked_kg: number; remaining_kg: number | null; util_pct: number | null; level: string }[];
   } | null;
   loading:      boolean;
   submit:       (payload: Record<string, unknown>) => Promise<string | null>;
@@ -62,13 +63,37 @@ export function useMemberHarvestBooking(
         .gte('expected_date_from', toIso(today))
         .lte('expected_date_from', toIso(in7Days));
 
+      // Dryer quota จาก pickup_slots — แสดงให้ farmer เห็นก่อนจอง
+      const { data: slotRows } = await sb
+        .from('pickup_slots')
+        .select('pickup_date,capacity_kg_dryer,booked_kg_dryer,status')
+        .eq('status', 'open')
+        .gte('pickup_date', toIso(today))
+        .lte('pickup_date', toIso(in7Days))
+        .order('pickup_date');
+
+      const dryerQuota = (slotRows ?? []).map((s) => {
+        const cap      = s.capacity_kg_dryer ? Number(s.capacity_kg_dryer) : null;
+        const booked   = Number(s.booked_kg_dryer ?? 0);
+        const utilPct  = cap ? Math.round((booked / cap) * 100) : null;
+        return {
+          date:         s.pickup_date as string,
+          capacity_kg:  cap,
+          booked_kg:    booked,
+          remaining_kg: cap != null ? Math.max(0, cap - booked) : null,
+          util_pct:     utilPct,
+          level:        utilPct == null ? 'unknown' : utilPct >= 90 ? 'full' : utilPct >= 60 ? 'busy' : 'available',
+        };
+      });
+
       if (queueRows) {
         const nearTermCount = queueRows.length;
         setQueueSnapshot({
-          pendingCount: queueRows.filter((r) => r.status === 'planned').length,
+          pendingCount:          queueRows.filter((r) => r.status === 'planned').length,
           nearTermCount,
-          dryerRequiredCount: queueRows.filter((r) => r.requires_dryer).length,
-          moistureSensitiveCount: queueRows.filter((r) => Number(r.estimated_moisture ?? 0) >= 28).length,
+          dryerRequiredCount:    queueRows.filter((r) => r.requires_dryer).length,
+          moistureSensitiveCount:queueRows.filter((r) => Number(r.estimated_moisture ?? 0) >= 28).length,
+          dryerQuota,
         });
       }
 

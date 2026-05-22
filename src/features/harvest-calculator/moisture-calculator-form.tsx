@@ -39,7 +39,7 @@ export function MoistureCalculatorForm({ memberId, compact = false }: Props) {
     setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 80);
   }
 
-  const futureMoisture  = moisture && data ? estimateMoistureAfterDays(Number(moisture), waitDays, data.deductions) : null;
+  const futureMoisture  = moisture && data ? estimateMoistureAfterDays(Number(moisture), waitDays, data.deductions, Math.max(0, ...data.weather.slice(0, waitDays).map((w) => w.rain_prob))) : null;
   const futureDeduction = futureMoisture && data ? nearestDeduction(futureMoisture, data.deductions) : null;
   const futureResult    = futureMoisture && weight && data
     ? calcRevenue(futureDeduction?.moisture_pct ?? futureMoisture, Number(weight), data.base_price_per_kg ?? 0, data.deductions, data.promos)

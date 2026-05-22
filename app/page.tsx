@@ -191,6 +191,7 @@ function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: stri
     { href: '/no-burn',             icon: '🌿',  label: 'โครงการไม่เผา',     desc: 'สมัครโครงการ' },
     { href: '/planting-cycles',     icon: '📊',  label: 'ประวัติรอบปลูก',     desc: 'ประวัติและยอดขาย' },
     { href: '/harvest/calculator',  icon: '💧',  label: 'คำนวณ ชื้น/บาท',    desc: 'ขายเลย vs รอให้แห้ง' },
+    { href: '/harvest/book',        icon: '🚜',  label: 'แจ้งวันเกี่ยว',      desc: 'จองคิวรับซื้อ/เข้าอบ' },
   ];
 
   return (
