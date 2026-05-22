@@ -5,21 +5,21 @@
 export type Deduction = {
   moisture_pct        : number
   weight_deduct_pct   : number   // % หักน้ำหนัก เช่น 5 = หัก 5%
-  price_deduct_per_kg : number   // บาท/กก. ที่หักออก
-  drying_days_per_pct : number   // วันที่ใช้ลดความชื้น 1%
+  price_adjust_per_kg : number   // บวกเพิ่มจากราคาฐาน บาท/กก. (ความชื้นต่ำ = บวกมาก)
+  drying_days_per_pct : number
   note                : string | null
 };
 
 export type CalcResult = {
   moisture_pct        : number
-  weight_input_kg     : number   // น้ำหนักที่กรอก
-  weight_deducted_kg  : number   // น้ำหนักหลังหัก %
-  weight_loss_kg      : number   // น้ำหนักที่หักออก
-  base_price_per_kg   : number   // ราคาฐาน (เปียก 30%)
-  price_after_deduct  : number   // ราคา/กก. หลังหักบาท
-  revenue_baht        : number   // รายได้จริง
+  weight_input_kg     : number
+  weight_deducted_kg  : number
+  weight_loss_kg      : number
+  base_price_per_kg   : number
+  price_after_adjust  : number   // ราคาฐาน + price_adjust_per_kg
+  revenue_baht        : number
   weight_deduct_pct   : number
-  price_deduct_per_kg : number
+  price_adjust_per_kg : number
 };
 
 export type TimingResult = {
@@ -39,15 +39,15 @@ export function calcRevenue(
   deductions    : Deduction[],
 ): CalcResult {
   const d = deductions.find((r) => r.moisture_pct === moisture_pct) ?? {
-    moisture_pct, weight_deduct_pct: 0, price_deduct_per_kg: 0, drying_days_per_pct: 1, note: null,
+    moisture_pct, weight_deduct_pct: 0, price_adjust_per_kg: 0, drying_days_per_pct: 1, note: null,
   };
   const weight_deducted_kg = weight_kg * (1 - d.weight_deduct_pct / 100);
   const weight_loss_kg     = weight_kg - weight_deducted_kg;
-  const price_after_deduct = Math.max(0, base_price - d.price_deduct_per_kg);
-  const revenue_baht       = weight_deducted_kg * price_after_deduct;
+  const price_after_adjust = base_price + d.price_adjust_per_kg;   // ← บวก ไม่ใช่หัก
+  const revenue_baht       = weight_deducted_kg * price_after_adjust;
   return { moisture_pct, weight_input_kg: weight_kg, weight_deducted_kg, weight_loss_kg,
-           base_price_per_kg: base_price, price_after_deduct, revenue_baht,
-           weight_deduct_pct: d.weight_deduct_pct, price_deduct_per_kg: d.price_deduct_per_kg };
+           base_price_per_kg: base_price, price_after_adjust, revenue_baht,
+           weight_deduct_pct: d.weight_deduct_pct, price_adjust_per_kg: d.price_adjust_per_kg };
 }
 
 // ── คาดการณ์ความชื้นหลัง N วัน ───────────────────────────────────────────────

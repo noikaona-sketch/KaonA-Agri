@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 
 type Row = {
   id: string; moisture_pct: number;
-  weight_deduct_pct: number; price_deduct_per_kg: number;
+  weight_deduct_pct: number; price_adjust_per_kg: number;
   drying_days_per_pct: number; note: string | null; is_active: boolean;
 };
 
@@ -37,7 +37,7 @@ export function AdminMoistureDeductions() {
       body: JSON.stringify({
         moisture_pct:        Number(form.moisture_pct),
         weight_deduct_pct:   Number(form.weight_deduct_pct),
-        price_deduct_per_kg: Number(form.price_deduct_per_kg),
+        price_adjust_per_kg: Number(form.price_deduct_per_kg),
         drying_days_per_pct: Number(form.drying_days_per_pct),
         note:                form.note || null,
       }),
@@ -75,7 +75,7 @@ export function AdminMoistureDeductions() {
                 <tr>
                   <th>ความชื้น (%)</th>
                   <th>หัก % น้ำหนัก</th>
-                  <th>หัก บาท/กก.</th>
+                  <th>บวกราคา บาท/กก.</th>
                   <th>วันลด 1%</th>
                   <th>หมายเหตุ</th>
                   <th></th>
@@ -86,7 +86,7 @@ export function AdminMoistureDeductions() {
                   <tr key={r.id}>
                     <td><span style={{ fontWeight: 700, fontSize: 16, color: '#1b5e20' }}>{r.moisture_pct}%</span></td>
                     <td style={{ color: '#c62828', fontWeight: 600 }}>{r.weight_deduct_pct > 0 ? `-${r.weight_deduct_pct}%` : '—'}</td>
-                    <td style={{ color: '#c62828', fontWeight: 600 }}>{r.price_deduct_per_kg > 0 ? `-${Number(r.price_deduct_per_kg).toFixed(2)} ฿` : '—'}</td>
+                    <td style={{ color: '#2e7d32', fontWeight: 600 }}>{r.price_adjust_per_kg > 0 ? `+${Number(r.price_adjust_per_kg).toFixed(2)} ฿` : '—'}</td>
                     <td style={{ color: '#6b7280' }}>{r.drying_days_per_pct} วัน/1%</td>
                     <td style={{ fontSize: 12, color: '#9ca3af' }}>{r.note ?? '—'}</td>
                     <td>
@@ -112,9 +112,9 @@ export function AdminMoistureDeductions() {
             <input className="reg-input" type="number" step="0.1" min="0" placeholder="เช่น 5" value={form.weight_deduct_pct} onChange={field('weight_deduct_pct')} />
             <span className="reg-hint">หักออกจากน้ำหนักที่ชั่ง</span>
           </label>
-          <label className="reg-label">หัก บาท/กก.
-            <input className="reg-input" type="number" step="0.01" min="0" placeholder="เช่น 0.20" value={form.price_deduct_per_kg} onChange={field('price_deduct_per_kg')} />
-            <span className="reg-hint">หักออกจากราคาต่อกิโล</span>
+          <label className="reg-label">บวกราคา บาท/กก. (ยิ่งแห้งยิ่งบวกมาก)
+            <input className="reg-input" type="number" step="0.01" min="0" placeholder="เช่น 0.30" value={form.price_deduct_per_kg} onChange={field('price_deduct_per_kg')} />
+            <span className="reg-hint">บวกเพิ่มจากราคาฐานเปียก 30%</span>
           </label>
           <label className="reg-label">วันที่ใช้ลดความชื้น 1%
             <input className="reg-input" type="number" step="0.1" min="0.5" placeholder="เช่น 1" value={form.drying_days_per_pct} onChange={field('drying_days_per_pct')} />

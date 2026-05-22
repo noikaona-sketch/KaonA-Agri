@@ -18,7 +18,7 @@ export async function GET(request: Request) {
     // ── ตารางส่วนลด ────────────────────────────────────────────────────
     const { data: rows, error } = await s
       .from('moisture_deductions')
-      .select('moisture_pct,weight_deduct_pct,price_deduct_per_kg,drying_days_per_pct,note')
+      .select('moisture_pct,weight_deduct_pct,price_adjust_per_kg,drying_days_per_pct,note')
       .eq('crop_type', cropType)
       .eq('is_active', true)
       .order('moisture_pct', { ascending: false });

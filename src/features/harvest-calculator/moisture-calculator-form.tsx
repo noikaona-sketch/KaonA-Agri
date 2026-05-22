@@ -104,16 +104,16 @@ export function MoistureCalculatorForm({ memberId, compact = false }: Props) {
           <div className="kaona-card" style={{ display:'flex', flexDirection:'column', gap:10 }}>
             <p style={{ margin:0, fontSize:13, fontWeight:500, color:'#6b7280' }}>── รายได้ที่คาดว่าจะได้ ──</p>
             {[
-              { label:'น้ำหนักที่กรอก',      value:`${fmt(result.weight_input_kg)} กก.` },
+              { label:'น้ำหนักที่กรอก',        value:`${fmt(result.weight_input_kg)} กก.` },
               { label:`หัก ${result.weight_deduct_pct}% น้ำหนัก`, value:`−${fmt(result.weight_loss_kg,1)} กก.`, red:true },
-              { label:'น้ำหนักที่โรงงานชั่ง', value:`${fmt(result.weight_deducted_kg,1)} กก.`, bold:true },
-              { label:'ราคาฐาน',             value:`${result.base_price_per_kg.toFixed(2)} บาท/กก.` },
-              { label:`หักราคา ${result.price_deduct_per_kg.toFixed(2)} บาท/กก.`, value:`−${result.price_deduct_per_kg.toFixed(2)} บาท/กก.`, red:true },
-              { label:'ราคาจริง',            value:`${result.price_after_deduct.toFixed(2)} บาท/กก.`, bold:true },
-            ].map(({ label, value, red, bold }) => (
+              { label:'น้ำหนักที่โรงงานชั่ง',   value:`${fmt(result.weight_deducted_kg,1)} กก.`, bold:true },
+              { label:'ราคาฐาน (เปียก 30%)',   value:`${result.base_price_per_kg.toFixed(2)} บาท/กก.` },
+              { label:`บวกราคา +${result.price_adjust_per_kg.toFixed(2)} บาท/กก.`, value:`+${result.price_adjust_per_kg.toFixed(2)} บาท/กก.`, green:true },
+              { label:'ราคาจริง',               value:`${result.price_after_adjust.toFixed(2)} บาท/กก.`, bold:true },
+            ].map(({ label, value, red, green, bold }) => (
               <div key={label} style={{ display:'flex', justifyContent:'space-between', padding:'6px 0', borderBottom:'1px solid #f0f4f0' }}>
                 <span style={{ fontSize:13, color:'#6b7280' }}>{label}</span>
-                <span style={{ fontSize:14, fontWeight: bold ? 700 : 500, color: red ? '#c62828' : '#111' }}>{value}</span>
+                <span style={{ fontSize:14, fontWeight: bold ? 700 : 500, color: red ? '#c62828' : green ? '#2e7d32' : '#111' }}>{value}</span>
               </div>
             ))}
             <div style={{ background:'#EAF3DE', borderRadius:10, padding:'12px 14px', textAlign:'center', marginTop:4 }}>

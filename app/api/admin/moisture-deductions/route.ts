@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     if (isForbidden(_ar)) return _ar.forbidden;
     const body = (await request.json()) as {
       crop_type?: string; moisture_pct: number;
-      weight_deduct_pct: number; price_deduct_per_kg: number;
+      weight_deduct_pct: number; price_adjust_per_kg: number;
       drying_days_per_pct?: number; note?: string;
     };
     if (body.moisture_pct == null) return NextResponse.json({ error: 'moisture_pct จำเป็น' }, { status: 400 });
@@ -30,7 +30,7 @@ export async function POST(request: Request) {
       crop_type:            body.crop_type ?? 'ข้าวโพด',
       moisture_pct:         body.moisture_pct,
       weight_deduct_pct:    body.weight_deduct_pct ?? 0,
-      price_deduct_per_kg:  body.price_deduct_per_kg ?? 0,
+      price_adjust_per_kg:  body.price_adjust_per_kg ?? 0,
       drying_days_per_pct:  body.drying_days_per_pct ?? 1,
       note:                 body.note ?? null,
       is_active:            true,
