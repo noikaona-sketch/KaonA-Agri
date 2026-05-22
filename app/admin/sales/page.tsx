@@ -8,15 +8,17 @@ import { AdminProductsList } from '@/features/admin-products/admin-products-list
 import { AdminStockList } from '@/features/admin-stock/admin-stock-list';
 import { AppointmentsList } from '@/features/admin-appointments/appointments-list';
 import { AdminSeedReservations } from '@/features/admin-seed-reservations/admin-seed-reservations';
-import { AdminMarketPrice } from '@/features/admin-appointments/admin-market-price';
+import { AdminMarketPrice }        from '@/features/admin-appointments/admin-market-price';
+import { AdminMoistureDeductions } from '@/features/admin-appointments/admin-moisture-deductions';
 
-type Tab = 'pos' | 'reservations' | 'orders' | 'appointments' | 'price' | 'products' | 'stock';
+type Tab = 'pos' | 'reservations' | 'orders' | 'appointments' | 'price' | 'deductions' | 'products' | 'stock';
 const TABS: { key: Tab; icon: string; label: string }[] = [
   { key: 'pos',          icon: '💰', label: 'POS ขาย' },
   { key: 'reservations', icon: '📋', label: 'คิวจองเมล็ด' },
   { key: 'orders',       icon: '📋', label: 'คำสั่งซื้อ' },
   { key: 'appointments', icon: '📅', label: 'นัดขาย' },
   { key: 'price',        icon: '💹', label: 'ราคารับซื้อ' },
+  { key: 'deductions',   icon: '📉', label: 'ตารางส่วนลด' },
   { key: 'products',     icon: '🛍️', label: 'สินค้า' },
   { key: 'stock',        icon: '📦', label: 'สต๊อก' },
 ];
@@ -40,6 +42,7 @@ export default function AdminSalesPage() {
       {tab === 'orders'       && <AdminOrdersList />}
       {tab === 'appointments' && <AppointmentsList />}
       {tab === 'price'        && <AdminMarketPrice />}
+      {tab === 'deductions'   && <AdminMoistureDeductions />}
       {tab === 'products'     && <AdminProductsList />}
       {tab === 'stock'        && <AdminStockList />}
     </AdminWebShell>
