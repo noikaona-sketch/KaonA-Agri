@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { useRouter }           from 'next/navigation';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useCurrentMember } from '@/providers/auth-provider';
 import { MobileAppShell } from '@/shared/components/mobile-app-shell';
@@ -9,6 +10,7 @@ import { LoadingState } from '@/shared/components/loading-state';
 import { ErrorState } from '@/shared/components/error-state';
 import { UIButton }                from '@/shared/components/ui-button';
 import { NoBurnObservationForm }   from '@/features/no-burn-community/no-burn-observation-form';
+import { InspectorResultForm }     from '@/features/inspection-tasks/inspector-result-form';
 
 type Task = {
   id: string; result_status: string; result_note: string | null;
@@ -21,7 +23,8 @@ type Task = {
 type Props = { params: { id: string } };
 
 export default function InspectionTaskDetailPage({ params }: Props) {
-  const member = useCurrentMember();
+  const member  = useCurrentMember();
+  const router  = useRouter();
   const [task, setTask]       = useState<Task | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState<string | null>(null);
@@ -152,30 +155,14 @@ export default function InspectionTaskDetailPage({ params }: Props) {
               <UIButton fullWidth onClick={() => setShowForm(true)}>📝 บันทึกผลการตรวจ</UIButton>
             ) : (
               <div className="kaona-card">
-                <p style={{ margin: '0 0 12px', fontWeight: 700, fontSize: 15 }}>📝 บันทึกผลการตรวจ</p>
-                <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-                  {([
-                    { value: 'passed',       label: '✅ ผ่าน',           bg: '#e8f5e9', border: '#2e7d32', color: '#1b5e20' },
-                    { value: 'needs_update', label: '📋 ต้องแก้ไข',     bg: '#fff8e1', border: '#e65100', color: '#e65100' },
-                    { value: 'failed',       label: '❌ ไม่ผ่าน',        bg: '#ffebee', border: '#c62828', color: '#c62828' },
-                  ] as const).map((opt) => (
-                    <button key={opt.value} onClick={() => setResult(opt.value)}
-                      style={{ flex: 1, minWidth: 80, padding: '10px 8px', borderRadius: 12,
-                        border: `2px solid ${result === opt.value ? opt.border : 'var(--border)'}`,
-                        background: result === opt.value ? opt.bg : '#fff',
-                        cursor: 'pointer', fontWeight: 800, fontSize: 13,
-                        color: result === opt.value ? opt.color : 'var(--text-secondary)' }}>
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-                <label className="reg-label" style={{ fontSize: 13 }}>หมายเหตุ / รายละเอียด
-                  <textarea className="reg-input reg-textarea" rows={3} value={note} onChange={(e) => setNote(e.target.value)} placeholder="สภาพแปลง สิ่งที่พบ…" />
-                </label>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
-                  <UIButton variant="ghost" onClick={() => setShowForm(false)}>ยกเลิก</UIButton>
-                  <UIButton onClick={saveResult} loading={saving}>💾 บันทึก</UIButton>
-                </div>
+                <InspectorResultForm
+                  inspectionId={task.id}
+                  plotName={(task.plots as { name: string }[] | null)?.[0]?.name}
+                  farmerName={(task.members as { full_name: string }[] | null)?.[0]?.full_name}
+                  onSuccess={() => { setShowForm(false); router.refresh(); }}
+                />
+                <button className="admin-btn admin-btn--ghost" onClick={() => setShowForm(false)}
+                  style={{ width:'100%', marginTop:8, fontSize:13 }}>ยกเลิก</button>
               </div>
             )}
           </>

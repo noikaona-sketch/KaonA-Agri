@@ -231,8 +231,39 @@ function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: stri
 // ─────────────────────────────────────────────────────────────────────
 // STAFF / LEADER / INSPECTOR HOME
 // ─────────────────────────────────────────────────────────────────────
+type GroupSummary = { total: number; approved: number; pending: number };
+
+function useLeaderGroup(memberId: string, isLeader: boolean) {
+  const [summary, setSummary] = useState<GroupSummary | null>(null);
+  const [groupName, setGroupName] = useState('');
+  useEffect(() => {
+    if (!isLeader) return;
+    const s = createSupabaseBrowserClient();
+    void (async () => {
+      const { data: mg } = await s.from('member_group_members')
+        .select('group_id, member_groups(name)').eq('member_id', memberId).maybeSingle();
+      if (!mg) return;
+      setGroupName((mg.member_groups as unknown as { name: string } | null)?.name ?? '');
+      const { data: members } = await s.from('member_group_members')
+        .select('member_id, members!member_group_members_member_id_fkey(status)')
+        .eq('group_id', mg.group_id);
+      const rows = (members ?? []) as unknown as { members: { status: string } | null }[];
+      setSummary({
+        total:    rows.length,
+        approved: rows.filter(r => (r.members as { status: string } | null)?.status === 'approved').length,
+        pending:  rows.filter(r => (r.members as { status: string } | null)?.status === 'pending').length,
+      });
+    })();
+  }, [memberId, isLeader]);
+  return { summary, groupName };
+}
+
 function StaffHome({ name, memberId, primaryRole, allRoles }: { name: string; memberId: string; primaryRole: AppRole; allRoles: AppRole[] }) {
   const [plots, setPlots] = useState(0);
+  const isLeader   = primaryRole === 'leader' || allRoles.includes('leader');
+  const isInspector = primaryRole === 'inspector' || allRoles.includes('inspector');
+  const { summary: leaderSummary, groupName } = useLeaderGroup(memberId, isLeader);
+
   useEffect(() => {
     const s = createSupabaseBrowserClient();
     void s.from('plots').select('id', { count: 'exact', head: true })
@@ -243,7 +274,7 @@ function StaffHome({ name, memberId, primaryRole, allRoles }: { name: string; me
   const STAFF_MENU = [
     { href: '/harvest/intake',    icon: '⚖️', label: 'บันทึกรับซื้อ',  desc: 'กรอกน้ำหนัก/ความชื้น', accent: true },
     { href: '/field#reservation', icon: '🌽', label: 'จองเมล็ด',       desc: 'จองให้สมาชิก' },
-    { href: '/inspection/tasks',  icon: '🔍', label: 'งานตรวจ',        desc: 'รายการงาน' },
+    { href: '/inspection/tasks',  icon: '🔍', label: 'งานตรวจ',        desc: isInspector ? 'งานของคุณ' : 'รายการงาน' },
     { href: '/field',             icon: '🗺️', label: 'แผนที่',         desc: 'สมาชิกในพื้นที่' },
     { href: '/admin/sales',       icon: '📋', label: 'คิวจอง',         desc: 'อนุมัติการจอง' },
   ];
@@ -252,6 +283,33 @@ function StaffHome({ name, memberId, primaryRole, allRoles }: { name: string; me
     <MobileAppShell title="" subtitle="">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <HeroCard name={name} memberId={memberId} primaryRole={primaryRole} allRoles={allRoles} plots={plots} price={null} />
+
+        {/* Leader: สรุปกลุ่มสมาชิก */}
+        {isLeader && leaderSummary && (
+          <div className="kaona-card" style={{ background:'#EAF3DE', border:'1px solid #b7e4c7' }}>
+            <p style={{ margin:'0 0 8px', fontWeight:700, fontSize:13, color:'#1b5e20' }}>
+              👥 กลุ่ม{groupName ? `: ${groupName}` : ''}
+            </p>
+            <div style={{ display:'flex', gap:12 }}>
+              {[
+                { label:'สมาชิกทั้งหมด', value:leaderSummary.total,    color:'#1b5e20' },
+                { label:'อนุมัติแล้ว',   value:leaderSummary.approved, color:'#059669' },
+                { label:'รอดำเนินการ',   value:leaderSummary.pending,  color: leaderSummary.pending > 0 ? '#d97706' : '#9ca3af' },
+              ].map(({ label, value, color }) => (
+                <div key={label} style={{ flex:1, textAlign:'center' }}>
+                  <p style={{ margin:'0 0 2px', fontSize:20, fontWeight:700, color }}>{value}</p>
+                  <p style={{ margin:0, fontSize:10, color:'#6b7280' }}>{label}</p>
+                </div>
+              ))}
+            </div>
+            {leaderSummary.pending > 0 && (
+              <p style={{ margin:'8px 0 0', fontSize:11, color:'#d97706', fontWeight:500 }}>
+                ⏳ มีสมาชิก {leaderSummary.pending} คน รอการอนุมัติ
+              </p>
+            )}
+          </div>
+        )}
+
         <div>
           <p style={{ margin: '0 0 10px', fontWeight: 500, fontSize: 14, color: 'var(--color-text-secondary,#666)' }}>เมนูหลัก</p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8 }}>
