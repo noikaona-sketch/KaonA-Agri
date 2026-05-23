@@ -241,7 +241,8 @@ function StaffHome({ name, memberId, primaryRole, allRoles }: { name: string; me
   }, [memberId]);
 
   const STAFF_MENU = [
-    { href: '/field#reservation', icon: '🌽', label: 'จองเมล็ด',       desc: 'จองให้สมาชิก', accent: true },
+    { href: '/harvest/intake',    icon: '⚖️', label: 'บันทึกรับซื้อ',  desc: 'กรอกน้ำหนัก/ความชื้น', accent: true },
+    { href: '/field#reservation', icon: '🌽', label: 'จองเมล็ด',       desc: 'จองให้สมาชิก' },
     { href: '/inspection/tasks',  icon: '🔍', label: 'งานตรวจ',        desc: 'รายการงาน' },
     { href: '/field',             icon: '🗺️', label: 'แผนที่',         desc: 'สมาชิกในพื้นที่' },
     { href: '/admin/sales',       icon: '📋', label: 'คิวจอง',         desc: 'อนุมัติการจอง' },
