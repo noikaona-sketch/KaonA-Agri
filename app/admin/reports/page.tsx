@@ -5,12 +5,14 @@ import { AdminWebShell }               from '@/shared/components/admin-web-shell
 import { SalesByProductReport }        from '@/features/admin-reports/sales-by-product-report';
 import { StockSummaryReport }          from '@/features/admin-reports/stock-summary-report';
 import { ByAreaReport }                from '@/features/admin-reports/by-area-report';
+import { ExpectedVsActualReport }      from '@/features/admin-reports/expected-vs-actual-report';
 
-type Tab = 'sales' | 'stock' | 'area';
+type Tab = 'sales' | 'stock' | 'area' | 'accuracy';
 const TABS: { key: Tab; icon: string; label: string }[] = [
-  { key: 'sales', icon: '💰', label: 'ยอดขายตามสินค้า' },
-  { key: 'stock', icon: '📦', label: 'สต็อกสินค้า'     },
-  { key: 'area',  icon: '📍', label: 'ตามพื้นที่'       },
+  { key: 'sales',    icon: '💰', label: 'ยอดขายตามสินค้า'   },
+  { key: 'stock',    icon: '📦', label: 'สต็อกสินค้า'        },
+  { key: 'area',     icon: '📍', label: 'ตามพื้นที่'          },
+  { key: 'accuracy', icon: '🎯', label: 'คาด vs จริง'        },
 ];
 
 export default function AdminReportsPage() {
@@ -27,9 +29,10 @@ export default function AdminReportsPage() {
           </button>
         ))}
       </div>
-      {tab === 'sales' && <SalesByProductReport />}
-      {tab === 'stock' && <StockSummaryReport />}
-      {tab === 'area'  && <ByAreaReport />}
+      {tab === 'sales'    && <SalesByProductReport />}
+      {tab === 'stock'    && <StockSummaryReport />}
+      {tab === 'area'     && <ByAreaReport />}
+      {tab === 'accuracy' && <ExpectedVsActualReport />}
     </AdminWebShell>
   );
 }
