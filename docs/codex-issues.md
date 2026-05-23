@@ -1,888 +1,406 @@
-# KaonA-Agri — GitHub Issues for Codex
+# KaonA-Agri — Codex Issues (Updated)
 
 > **Stack:** Next.js 14 · Supabase · TypeScript · LINE LIFF
 > **Repo:** noikaona-sketch/KaonA-Agri
-> **Rules:** page ≤150 lines · component ≤200 · API route ≤80 · `tsc --noEmit` + `next build` must pass before every commit
-> **Ref:** `docs/master-plan.md` for full spec · `docs/intake-data-layer-spec.md` for Zone 3
+> **Rules:** page ≤150 / component ≤200 / API route ≤80 lines
+> `npx tsc --noEmit` + `npx next build` must pass before every commit
+> Commit format: `feat(ZX-Y): description`
 
 ---
 
-## 🔴 MILESTONE 1 — Pilot Blockers (Zone 0)
+## สถานะ (อัปเดต พ.ค. 2569)
 
-> ทำก่อนทุกอย่าง — ไม่ code แต่ต้อง verify
-
----
-
-### Issue Z0-2 · Run all migrations on Supabase production
-
-**Labels:** `infra` `pilot-blocker`
-
-**Context:**
-82 migration files exist under `supabase/migrations/`. None confirmed applied to production.
-
-**Steps:**
-1. Run `supabase db push` against production URL
-2. Verify each table exists: `members`, `plots`, `planting_cycles`, `harvest_bookings`, `pickup_slots`, `pickup_locations`, `moisture_deductions`, `market_prices`, `campaign_announcements`, `intake_quota_templates`, `no_burn_requests`, `inspections`, `products`, `product_stock`, `stock_movements`
-3. Confirm RLS is enabled on all tables
-4. Document any migration failures in `docs/migration-log.md`
-
-**Done when:** `supabase db diff` returns no changes
-
----
-
-### Issue Z0-3 · Set LINE Channel Access Token in Vercel
-
-**Labels:** `infra` `pilot-blocker`
-
-**Context:**
-`src/lib/line/push-message.ts` exists but `LINE_CHANNEL_ACCESS_TOKEN` env var is not set.
-All LINE push notifications silently fail.
-
-**Steps:**
-1. Add `LINE_CHANNEL_ACCESS_TOKEN` to Vercel environment variables (Production + Preview)
-2. Test by calling `POST /api/admin/seed-reservations` confirm → should send LINE push to farmer
-3. Verify `pushLineMessage()` in `src/lib/line/push-message.ts` returns 200
-
-**Done when:** farmer receives LINE message after admin action
+| Zone | Issue | Claude ทำแล้ว | Codex ทำ |
+|---|---|---|---|
+| Z1 Member | Z1-1 LINE approve/reject | ❌ | ✅ ทำ |
+| Z1 Member | Z1-2 UAT script | ❌ | ✅ ทำ |
+| Z1 Member | Z1-3 RLS verify | ✅ doc แล้ว | — |
+| Z1 Member | Z1-4 Admin manual | ❌ | ✅ ทำ |
+| Z2 Booking | Z2-1 Staff actual weight | ✅ Z3-5 แล้ว | — |
+| Z2 Booking | Z2-2 Admin complete booking | ❌ | ✅ ทำ |
+| Z2 Booking | Z2-3 Expected vs actual | ✅ แล้ว | — |
+| Z2 Booking | Z2-4 UAT booking | ❌ | ✅ ทำ |
+| Z3 Intake | Z3-1 ถึง Z3-5, Z3-7 ถึง Z3-10 | ✅ แล้ว | — |
+| Z3 Intake | Z3-6 CSV import | ❌ | ✅ ทำ |
+| Z4 Staff | Z4-3 ถึง Z4-6 | ✅ แล้ว | — |
+| Z5 No-burn | Z5-1, Z5-3 | ✅ แล้ว | — |
+| Z7 Comms | Z7-2, Z7-3 | ✅ แล้ว | — |
+| Z8 Reports | Z8-1,2,4,5 | ✅ แล้ว | — |
+| Z9 UAT | Z9-1,2,3,6 | ❌ | ✅ ทำ |
 
 ---
 
-### Issue Z0-4 · Verify RLS with real users (3 roles)
-
-**Labels:** `security` `pilot-blocker`
-
-**Context:**
-RLS policies exist in migrations but have never been tested with real LINE-authenticated users.
-
-**Steps:**
-1. Create 3 test accounts: farmer A, farmer B, admin
-2. Login as farmer A → confirm can only see own: plots, planting_cycles, harvest_bookings, no_burn_requests
-3. Login as farmer B → confirm cannot see farmer A's data
-4. Login as admin → confirm can see all
-5. Document results in `docs/rls-verification.md`
-
-**Files to check:**
-- `app/api/auth/line/` — session creation
-- All `select` queries in `app/api/member/` — should be scoped to member_id
-
-**Done when:** farmer A cannot access farmer B's data in any API call
+## 🔴 PRIORITY 1 — Pilot Blockers
 
 ---
 
-### Issue Z0-5 · Write Backup & Rollback SOP
-
-**Labels:** `docs` `pilot-blocker`
-
-**Output file:** `docs/backup-rollback-sop.md`
-
-**Must cover:**
-- How to take Supabase snapshot before deploy
-- How to rollback Vercel deployment (use Vercel dashboard instant rollback)
-- How to reverse a bad migration (`supabase migration repair`)
-- Who to contact if LINE channel breaks
-- Emergency: how to put site in maintenance mode
-
----
-
-## 🟡 MILESTONE 2 — Member System (Zone 1)
-
----
-
-### Issue Z1-1 · LINE push on member approve/reject
+### Issue Z1-1 · LINE push เมื่อ admin approve/reject สมาชิก
 
 **Labels:** `feature` `line` `pilot-blocker`
-**Difficulty:** Easy
-**Files to modify:**
-- `app/api/admin/members/approve/route.ts` (or wherever approval is handled)
-- Uses existing: `src/lib/line/push-message.ts`
+**Difficulty:** Easy — pattern มีอยู่แล้ว
 
-**Acceptance criteria:**
-- Admin approves member → farmer receives LINE: "ยินดีด้วย! บัญชีของคุณได้รับการอนุมัติแล้ว เปิดแอปได้เลย 🌽"
-- Admin rejects member → farmer receives LINE: "ขออภัย บัญชีของคุณยังไม่ได้รับการอนุมัติ กรุณาติดต่อเจ้าหน้าที่"
-- If LINE push fails → approval still succeeds (fail silently, log error)
-- `tsc --noEmit` passes · `next build` passes
+**File to modify:** `app/api/admin/members/approvals/route.ts`
 
-**Implementation hint:**
+**Context:**
+ไฟล์มี approval flow อยู่แล้ว หลังจาก `s.from('members').update(updatePayload)` สำเร็จ
+ให้เพิ่ม LINE push ก่อน `return NextResponse.json({ ok: true })`
+
+Templates พร้อมใช้ที่: `src/lib/line/push-message.ts`
+- `memberApprovedMessage(memberName)`
+- `memberRejectedMessage(memberName, reason?)`
+
+**Implementation:**
 ```typescript
-// After updating member status to 'approved':
-await pushLineMessage(member.line_uid, {
-  type: 'text',
-  text: 'ยินดีด้วย! บัญชีของคุณได้รับการอนุมัติแล้ว เปิดแอปได้เลย 🌽'
-}).catch(console.error) // fail silently
+// หลัง member update สำเร็จ — ดึง line_uid + ส่ง push
+const { data: memberData } = await s
+  .from('members')
+  .select('full_name, line_uid')
+  .eq('id', body.memberId)
+  .maybeSingle();
+
+if (memberData?.line_uid) {
+  const msg = body.decision === 'approved'
+    ? memberApprovedMessage(memberData.full_name ?? 'คุณ')
+    : body.decision === 'rejected'
+    ? memberRejectedMessage(memberData.full_name ?? 'คุณ', body.reason)
+    : null;
+  if (msg) void sendLineMessage(memberData.line_uid, [msg]);
+}
 ```
 
----
-
-### Issue Z1-2 · UAT test script: member registration flow
-
-**Labels:** `testing` `docs`
-**Output file:** `docs/uat-member-flow.md`
-
-**Script must cover (step by step with expected result):**
-1. Open LINE → tap KaonA mini app → land on registration page
-2. Fill all required fields → submit
-3. Admin sees pending member in admin panel
-4. Admin clicks approve
-5. Farmer receives LINE notification
-6. Farmer opens app → sees approved home screen with onboarding checklist
-7. Farmer registers plot → cycle → completes checklist
-8. Admin sees member in approved list with correct data
-
-**Each step:** action | expected result | pass/fail checkbox
-
----
-
-### Issue Z1-3 · RLS verification: member sees only own data
-
-**Labels:** `security`
-**Difficulty:** Medium
-
-**Files to check and fix if needed:**
-- `app/api/member/my-report/route.ts` — must filter by `member_id`
-- `app/api/member/plots/route.ts` — must filter by `member_id`
-- `app/api/member/harvest-bookings/route.ts` — must filter by `member_id`
-- `app/api/member/harvest-booking/dryer-status/route.ts` — public data ok
-
-**Pattern to verify (every member API):**
+**Import เพิ่ม:**
 ```typescript
-// MUST have this — never return all rows
-.eq('member_id', resolvedMemberId)
+import { sendLineMessage, memberApprovedMessage, memberRejectedMessage } from '@/lib/line/push-message';
 ```
 
-**Done when:** verified all member APIs scope to authenticated user only
-
----
-
-### Issue Z1-4 · Admin manual (1 page)
-
-**Labels:** `docs`
-**Output file:** `docs/admin-manual.md`
-
-**Sections:**
-1. วิธี approve / reject สมาชิก
-2. วิธี import CSV สมาชิก + review errors
-3. วิธีตั้งราคารับซื้อ + ส่วนลดตามความชื้น
-4. วิธีดู harvest queue + ตั้ง quota รายวัน
-5. วิธีดูรายงาน
-6. วิธีสร้าง pickup slot จาก template
-
----
-
-## 🟡 MILESTONE 3 — Harvest Booking (Zone 2)
-
----
-
-### Issue Z2-1 · Staff UI: record actual weight and moisture at intake
-
-**Labels:** `feature` `staff` `pilot-blocker`
-**Difficulty:** Medium
-
-**New file:** `src/features/staff-intake/intake-form.tsx` (≤200 lines)
-**New page:** `app/harvest/intake/page.tsx` (≤60 lines)
-**New API:** `app/api/admin/harvest-bookings/complete/route.ts` (≤80 lines)
-
-**Form fields:**
-- Booking ID or member phone (lookup)
-- Gross weight kg (number, required)
-- Actual moisture % (number, required)
-- Quality grade (select: A / B / C / reject)
-- Scale ticket number (text)
-- Notes (optional)
-
-**API flow:**
-1. Find booking by ID or member+date+location
-2. Update `harvest_bookings` set:
-   - `actual_received_kg = gross_weight`
-   - `actual_moisture_pct = moisture`
-   - `status = 'completed'`
-   - `actual_completed_at = now()`
-3. Return updated booking
-
 **Acceptance criteria:**
-- Staff can search booking by member phone
-- Staff can submit actual weight → booking status changes to `completed`
-- `tsc --noEmit` passes · `next build` passes
-- Component ≤200 lines · page ≤60 lines · API ≤80 lines
+- Admin approve → farmer ได้รับ LINE ✅
+- Admin reject → farmer ได้รับ LINE ❌ พร้อมเหตุผล
+- LINE fail → approval ยังสำเร็จ (fail silently)
+- `tsc --noEmit` pass · `next build` pass
 
 ---
 
-### Issue Z2-2 · Admin: complete harvest booking with actual data
+### Issue Z2-2 · Admin complete harvest booking + บันทึก actual data
 
-**Labels:** `feature` `admin`
+**Labels:** `feature` `admin` `pilot-blocker`
 **Difficulty:** Medium
 
 **File to modify:** `src/features/admin-harvest/harvest-complete-form.tsx`
 
-**Add fields to existing complete form:**
-- actual_received_kg
-- actual_moisture_pct
-- quality_grade (A/B/C/reject)
-- scale_ticket_no
+**Context:**
+ไฟล์นี้มีอยู่แล้ว แต่ยังไม่มี fields: actual_received_kg, actual_moisture_pct, quality_grade, scale_ticket_no
 
-**Connect to:** `PATCH /api/admin/harvest-bookings/[id]` — add these fields to the update payload
+Migration ที่เพิ่ม columns เหล่านี้: `202605230001_harvest_intake_economics.sql` (ทำแล้ว)
 
-**Done when:** admin can mark booking complete with actual measurements visible in queue list
-
----
-
-### Issue Z2-3 · Expected vs Actual report
-
-**Labels:** `feature` `report`
-**Difficulty:** Medium
-
-**New file:** `src/features/admin-reports/expected-vs-actual-report.tsx` (≤200 lines)
-**New API:** `app/api/admin/reports/expected-vs-actual/route.ts` (≤80 lines)
-**Add tab to:** `app/admin/reports/page.tsx`
-
-**API query:** `harvest_bookings` where `status = 'completed'`, select:
-- `estimated_tonnage` vs `actual_received_kg`
-- `estimated_moisture` vs `actual_moisture_pct`
-- `member_id` → member name
-- `scheduled_date`
-- `pickup_location_id` → location name
-
-**Report shows:**
-- Table: member | วันที่ | น้ำหนักคาด | น้ำหนักจริง | ต่าง | ความชื้นคาด | ความชื้นจริง
-- Summary: % accuracy น้ำหนัก, % accuracy ความชื้น
-- Filter: date range, location
-
-**Done when:** tab `📊 คาด vs จริง` shows in `/admin/reports` with real data
-
----
-
-### Issue Z2-4 · UAT test script: harvest booking flow
-
-**Labels:** `testing` `docs`
-**Output file:** `docs/uat-booking-flow.md`
-
-**Script covers:**
-1. Farmer books harvest date from `/harvest/book`
-2. Farmer sees dryer queue 7 days
-3. Admin sees booking in queue
-4. Admin sees peak-day alert if quota exceeded
-5. Staff records actual weight
-6. Farmer sees completed booking
-7. Farmer edits booking (change date)
-8. Farmer cancels booking
-
----
-
-## 🟣 MILESTONE 4 — Intake Data Layer (Zone 3)
-
-> This is the most critical missing piece. Read `docs/intake-data-layer-spec.md` fully before starting.
-
----
-
-### Issue Z3-1 · Migration: harvest_bookings economics fields + factory_api_keys + intake_logs
-
-**Labels:** `database` `pilot-blocker`
-**Difficulty:** Easy
-
-**New file:** `supabase/migrations/202605230001_harvest_intake_economics.sql`
-
-**Must add to `harvest_bookings`:**
-```sql
-intake_source       text not null default 'manual'  -- 'manual'|'factory_api'|'csv_import'
-intake_source_ref   text          -- transaction ref from factory system
-intake_by           uuid references members(id)
-intake_location_id  uuid references pickup_locations(id)
-gross_weight_kg     numeric(12,2)
-deduct_pct          numeric(5,2)
-net_weight_kg       numeric(12,2)
-scale_ticket_no     text          -- idempotency key per location
-price_per_kg        numeric(8,4)
-bonus_per_kg        numeric(8,4) default 0
-gross_amount        numeric(14,2)
-deduct_amount       numeric(14,2) default 0
-net_amount          numeric(14,2)
-payment_method      text  -- 'transfer'|'cash'|'credit'|'debit_account'
-payment_ref         text
-quality_grade       text  -- 'A'|'B'|'C'|'reject'
-rejection_reason    text
-```
-
-**New tables:**
-```sql
-public.factory_api_keys (id, name, key_hash, location_id, is_active, last_used_at, created_at)
-public.intake_logs (id, booking_id, source, raw_payload jsonb, processed_at, processed_by, status, error_message)
-```
-
-**Done when:** `supabase db push` succeeds, all columns visible in Supabase dashboard
-
----
-
-### Issue Z3-2 · Shared calculation engine: calculateIntake()
-
-**Labels:** `feature` `core`
-**Difficulty:** Medium
-
-**New file:** `src/lib/intake/calculate-intake.ts` (≤100 lines)
-
-**Function signature:**
+**Fields to add to existing form:**
 ```typescript
-export type IntakeInput = {
-  gross_weight_kg : number
-  moisture_pct    : number
-  member_id       : string
-  location_id     : string
-  weigh_at        : Date
-}
-
-export type IntakeResult = {
-  net_weight_kg    : number
-  deduct_pct       : number
-  deduct_kg        : number
-  base_price       : number
-  price_adjust     : number
-  bonus_per_kg     : number
-  final_price      : number
-  gross_amount     : number
-  bonus_amount     : number
-  net_amount       : number
-  applied_promos   : { id: string; title: string; bonus_per_kg: number }[]
-}
-
-export async function calculateIntake(
-  input: IntakeInput,
-  supabase: SupabaseClient
-): Promise<IntakeResult>
+// เพิ่มใน form state
+actual_received_kg : ''  // number input
+actual_moisture_pct: ''  // number input  
+quality_grade      : 'B' // select: A|B|C|reject
+scale_ticket_no    : ''  // text input (optional)
 ```
 
-**Logic (in order):**
-1. Query `moisture_deductions` → find nearest `moisture_pct` row → get `weight_deduct_pct`, `price_adjust_per_kg`
-2. `net_weight_kg = gross_weight_kg * (1 - weight_deduct_pct/100)`
-3. Query `market_prices` → latest active price for location/crop
-4. Query `campaign_announcements` → active promos (`promo_type` not null, date in range)
-5. Apply `isPromoApplicable()` from `src/features/harvest-calculator/moisture-calculator.ts`
-6. Sum all applicable bonuses
-7. `final_price = base_price + price_adjust + total_bonus`
-8. `net_amount = net_weight_kg * final_price`
-
-**Must write unit tests** in `/home/claude/test_calculate_intake.ts` before implementing
-
-**Done when:** function returns correct values for known inputs (verify manually)
-
----
-
-### Issue Z3-3 · Helper libraries for intake
-
-**Labels:** `feature`
-**Difficulty:** Medium
-
-**New files (each ≤60 lines):**
-
-`src/lib/intake/find-booking.ts`
-```typescript
-// Find existing booking for member+date+location, or return null
-export async function findBookingForIntake(
-  memberId: string, locationId: string, weighAt: Date, supabase: SupabaseClient
-): Promise<HarvestBooking | null>
-```
-
-`src/lib/intake/verify-factory-key.ts`
-```typescript
-// Verify Bearer token against factory_api_keys table (bcrypt compare)
-// Returns { location_id } or throws 401
-export async function verifyFactoryKey(
-  authHeader: string | null, supabase: SupabaseClient
-): Promise<{ location_id: string }>
-```
-
-`src/lib/intake/send-intake-receipt.ts`
-```typescript
-// Send LINE push with intake result to farmer
-// Fail silently — never block intake on LINE failure
-export async function sendIntakeReceipt(
-  lineUid: string, result: IntakeResult, bookingId: string
-): Promise<void>
-```
-
----
-
-### Issue Z3-4 · Factory API endpoint
-
-**Labels:** `feature` `api`
-**Difficulty:** Medium
-
-**New file:** `app/api/intake/factory/route.ts` (≤80 lines)
-
-**Auth:** `Authorization: Bearer {factory_api_key}` — use `verifyFactoryKey()`
-
-**POST body:**
+**API call — เพิ่มใน PATCH payload:**
 ```typescript
 {
-  scale_ticket_no  : string   // idempotency key — reject duplicate
-  member_id        : string   // uuid or phone
-  weigh_at         : string   // ISO datetime
-  gross_weight_kg  : number
-  moisture_pct     : number
-  quality_grade?   : 'A'|'B'|'C'|'reject'
+  status:              'completed',
+  actual_completed_at: new Date().toISOString(),
+  actual_received_kg:  Number(form.actual_received_kg),
+  actual_moisture_pct: Number(form.actual_moisture_pct),
+  quality_grade:       form.quality_grade,
+  scale_ticket_no:     form.scale_ticket_no || undefined,
 }
 ```
 
-**Flow:**
-1. `verifyFactoryKey()` → get location_id
-2. Check `intake_logs` for duplicate `scale_ticket_no` → if exists return existing result (idempotent)
-3. Resolve member from uuid or phone
-4. `findBookingForIntake()` → if null create walk-in booking
-5. If `quality_grade === 'reject'` → update booking status = 'rejected' → return early
-6. `calculateIntake()`
-7. Update `harvest_bookings` with all actual fields
-8. Insert `intake_logs` row
-9. `sendIntakeReceipt()` (async, don't await)
-10. Return receipt
-
-**Done when:** `POST /api/intake/factory` with valid key returns `{ ok: true, net_amount, net_weight_kg }`
-
----
-
-### Issue Z3-5 · Manual intake entry: API + Staff UI
-
-**Labels:** `feature` `staff`
-**Difficulty:** Medium
-
-**New files:**
-- `app/api/intake/manual/route.ts` (≤80 lines)
-- `src/features/staff-intake/intake-form.tsx` (≤200 lines) — replaces Z2-1
-
-**API:** Same as factory but uses staff session auth instead of API key
-- Extra field: `booking_id?` (if known)
-- Extra field: `member_phone?` (for walk-in lookup)
-- Extra field: `intake_note?`
-
-**UI form fields:**
-- Member phone / booking ID search
-- Date + location picker
-- Gross weight (kg)
-- Moisture %
-- Quality grade dropdown
-- Scale ticket number
-- Notes
-- **Preview section:** shows calculated net_weight + net_amount before submit
-- Submit button → shows success receipt inline
-
-**Done when:** staff submits form → booking updated → farmer gets LINE → admin sees in reports
+**Acceptance criteria:**
+- Admin กรอก actual_received_kg + moisture → booking status = completed
+- ข้อมูลแสดงใน report 🎯 คาด vs จริง (`/admin/reports` tab accuracy)
+- Component ≤200 lines
 
 ---
 
 ### Issue Z3-6 · CSV import: batch intake from remote locations
 
-**Labels:** `feature` `admin`
+**Labels:** `feature` `admin` `pilot-blocker`
 **Difficulty:** Hard
 
 **New files:**
 - `app/api/intake/csv-import/route.ts` (≤80 lines)
 - `src/features/staff-intake/intake-csv-preview.tsx` (≤200 lines)
-- Add tab to `app/admin/harvest/page.tsx`
+- Add tab to `app/harvest/intake/page.tsx`
 
-**CSV expected format:**
+**CSV format (เหมือนใน docs/intake-data-layer-spec.md):**
 ```
 scale_ticket_no,member_phone,gross_weight_kg,moisture_pct,weigh_at,location_name,quality_grade
 TK-001,0812345678,5200,28.5,2026-05-23 10:30,จุดรับที่ 2,B
+TK-002,0898765432,3800,25.0,2026-05-23 11:00,จุดรับที่ 2,A
 ```
 
 **Two-step flow:**
-1. `POST /api/intake/csv-import` with `action=preview` → returns `{ valid: Row[], errors: ErrorRow[] }`
-2. Admin reviews preview table → clicks confirm → `POST /api/intake/csv-import` with `action=commit`
-3. Commit: process all valid rows in single DB transaction, fail entire batch if any row throws
+```
+POST /api/intake/csv-import?action=preview
+  → parse CSV → validate → return { valid: Row[], errors: ErrorRow[] }
+
+POST /api/intake/csv-import?action=commit
+  → process valid rows → calculateIntake() → บันทึก → LINE push batch
+```
+
+**Shared functions ใช้ได้เลย:**
+- `calculateIntake()` — `src/lib/intake/calculate-intake.ts`
+- `resolveMemberId()` — `src/lib/intake/find-booking.ts`
+- `findOrCreateBooking()` — `src/lib/intake/find-booking.ts`
+- `sendIntakeReceipt()` — `src/lib/intake/send-intake-receipt.ts`
 
 **Preview UI shows:**
-- Green rows: valid
-- Red rows: error with reason (member not found, duplicate ticket, invalid moisture)
+- ✅ Valid rows: จำนวน + ตัวอย่าง
+- ❌ Error rows: เหตุผล (member not found, duplicate ticket, invalid moisture)
 - Summary: X valid, Y errors
-- Confirm button (only if valid rows > 0)
+- Confirm button → commit
 
-**Done when:** admin uploads CSV → previews → confirms → all bookings updated → LINE batch sent
-
----
-
-### Issue Z3-7 · Intake receipt page
-
-**Labels:** `feature`
-**Difficulty:** Easy
-
-**New files:**
-- `app/api/intake/receipt/[id]/route.ts` (≤60 lines)
-- `app/intake/receipt/[id]/page.tsx` (≤80 lines)
-
-**Access:** farmer, staff, admin (check booking.member_id matches session OR session is staff/admin)
-
-**Shows:**
-- Member name + เลขสมาชิก
-- วันที่ + จุดรับ + เลขใบชั่ง
-- น้ำหนักรวม → หัก % → น้ำหนักสุทธิ
-- ราคาฐาน → +ตามความชื้น → +โบนัส → ราคาจริง
-- รายชื่อโปรโมชั่นที่ได้รับ
-- **ยอดเงินสุทธิ** (large, bold, green)
-- Print button (use `window.print()`)
-
----
-
-### Issue Z3-8 · Staff real-time queue board for intake day
-
-**Labels:** `feature` `staff`
-**Difficulty:** Medium
-
-**New file:** `src/features/staff-intake/intake-queue-board.tsx` (≤200 lines)
-**Add to:** `app/harvest/intake/page.tsx`
-
-**Shows for today at current location:**
-- List of confirmed bookings sorted by time
-- Each row: farmer name · estimated tonnage · moisture · drying_preference · status badge
-- Dryer quota bar: booked/capacity_kg_dryer (color: green→yellow→red)
-- Dry quota bar: booked/capacity_kg_dry
-- ⚠️ badge when quota > 80%
-- "กรอกผล" button → opens intake-form pre-filled with booking data
-
-**Refresh:** poll every 60 seconds OR use Supabase realtime subscription on `harvest_bookings`
-
----
-
-### Issue Z3-9 · End-of-day reconciliation
-
-**Labels:** `feature` `admin`
-**Difficulty:** Hard
-
-**New page:** `app/admin/harvest/reconcile/page.tsx` (≤150 lines)
-**New API:** `app/api/admin/harvest/reconcile/route.ts` (≤80 lines)
-
-**Flow:**
-1. Admin selects date + location → sees all bookings for that day
-2. Table: planned | completed | no-show
-3. Admin clicks "ปิดรับวันนี้" → API:
-   - Flag all `status='planned'` for that date+location as `status='no_show'`
-   - Lock: set `locked_at = now()` on all completed bookings (prevent edit)
-   - Generate daily summary
-4. Export button → CSV of the day's intake
-
-**Done when:** admin can close day, no-shows are flagged, summary exportable
-
----
-
-### Issue Z3-10 · Admin: manage factory API keys
-
-**Labels:** `feature` `admin`
-**Difficulty:** Easy
-
-**New page:** `app/admin/harvest/api-keys/page.tsx` (≤100 lines)
-**New API:** `app/api/admin/factory-api-keys/route.ts` (≤80 lines)
-
-**Features:**
-- List all API keys with: name, location, is_active, last_used_at
-- Create new key: name + location → system generates key → show **once** (never again)
-- Deactivate key (soft delete: is_active = false)
-
-**Security:** Store only `key_hash = bcrypt(key)` in DB. Return plain key once at creation only.
-
----
-
-## 🟢 MILESTONE 5 — Staff System (Zone 4)
-
----
-
-### Issue Z4-3 · Leader home: view group members + booking status
-
-**Labels:** `feature` `staff`
-**Difficulty:** Easy
-
-**File to modify:** `app/page.tsx` — `LeaderHome` or `StaffHome` function (currently returns same as staff)
-
-**Add to leader view:**
-- List of members in their group (`member_group_members` where `group_id = leader's group`)
-- Each member row: name · status (approved/pending) · last booking date · no-burn status
-- Count: total members · approved · pending
-
-**Data from:**
+**Error types to validate:**
 ```typescript
-// Get leader's group
-supabase.from('member_group_members').select('group_id').eq('member_id', leaderId)
-// Get group members
-supabase.from('member_group_members').select('member:members(...)').eq('group_id', groupId)
-```
-
----
-
-### Issue Z4-4 · Inspector: complete task list with result entry
-
-**Labels:** `feature` `inspector`
-**Difficulty:** Medium
-
-**Context:** Inspector task list UI exists but has incomplete result form.
-
-**File to fix:** `src/features/inspection-tasks/` (check existing files)
-
-**Must work end-to-end:**
-1. Inspector opens app → sees assigned inspections list
-2. Taps inspection → sees plot details + assignment info
-3. Fills result: observation text · GPS (auto-fill from device) · photos (upload) · verdict (pass/fail/needs-review)
-4. Submits → `PATCH /api/field/inspections/[id]` → status = 'completed'
-
----
-
-### Issue Z4-5 · Admin: assign inspection to inspector
-
-**Labels:** `feature` `admin`
-**Difficulty:** Medium
-
-**New page:** `app/admin/inspections/assign/page.tsx` (≤120 lines)
-**New API:** `app/api/admin/inspections/assign/route.ts` (≤60 lines)
-
-**Flow:**
-1. Admin sees list of pending inspections (no assignee)
-2. Selects inspector from dropdown (members with role='inspector')
-3. Clicks assign → API updates `inspections.assigned_to = inspector_id`
-4. Send LINE push to inspector: "คุณมีงานตรวจแปลงใหม่ แตะเพื่อดูรายละเอียด"
-
----
-
-### Issue Z4-6 · LINE push: notify inspector on new assignment
-
-**Labels:** `feature` `line`
-**Difficulty:** Easy
-
-**Modify:** `app/api/admin/inspections/assign/route.ts` (from Z4-5)
-
-**After updating assigned_to:**
-```typescript
-await pushLineMessage(inspector.line_uid, {
-  type: 'text',
-  text: `📋 คุณมีงานตรวจแปลงใหม่\nแปลง: ${plot.name}\nเกษตรกร: ${farmer.full_name}\nแตะเพื่อดูรายละเอียด`
-}).catch(console.error)
-```
-
----
-
-## 🟠 MILESTONE 6 — No-Burn System (Zone 5)
-
----
-
-### Issue Z5-1 · LINE push on no-burn approve/reject
-
-**Labels:** `feature` `line`
-**Difficulty:** Easy
-
-**File to modify:** `app/api/admin/no-burn/[id]/route.ts` (or wherever approve happens)
-
-**On approve:**
-```
-🌿 ยินดีด้วย! คำขอโครงการไม่เผาของคุณได้รับการอนุมัติแล้ว
-โบนัส +{bonus} บาท/กก. จะถูกคำนวณเมื่อขายผลผลิต
-```
-
-**On reject:**
-```
-❌ ขออภัย คำขอโครงการไม่เผาของคุณยังไม่ผ่านการอนุมัติ
-เหตุผล: {rejection_reason}
-กรุณาติดต่อเจ้าหน้าที่เพื่อข้อมูลเพิ่มเติม
-```
-
----
-
-### Issue Z5-3 · Link no-burn approval to field inspection trigger
-
-**Labels:** `feature`
-**Difficulty:** Hard
-
-**When admin reviews no-burn request and clicks "ส่งตรวจแปลง":**
-1. Create new inspection record linked to the no-burn request
-2. Set `inspections.related_no_burn_id = no_burn_request_id` (add column if needed)
-3. Admin can then assign to inspector via Z4-5
-4. When inspection completes as 'pass' → auto-approve no-burn request
-
-**New migration if needed:** add `related_no_burn_id uuid references no_burn_requests(id)` to `inspections`
-
----
-
-## 🔵 MILESTONE 7 — Communications (Zone 7)
-
----
-
-### Issue Z7-2 · Broadcast message by group or area
-
-**Labels:** `feature` `admin`
-**Difficulty:** Medium
-
-**File to modify:** `app/admin/campaigns/page.tsx` or wherever campaigns are managed
-
-**Add to campaign creation form:**
-- Target: `all` | `by_group` | `by_district`
-- If `by_group`: multi-select from `member_groups`
-- If `by_district`: text input for district name (matches `members.district`)
-
-**New API:** `POST /api/admin/campaigns/broadcast`
-```
-1. Get target member_ids based on filter
-2. For each member: get line_uid from members table
-3. Batch push (max 1 req/sec to avoid LINE rate limit)
-4. Log success/fail per member in notification table
-```
-
----
-
-### Issue Z7-3 · LINE push message templates
-
-**Labels:** `feature`
-**Difficulty:** Easy
-
-**New file:** `src/lib/line/message-templates.ts`
-
-**Templates needed:**
-```typescript
-memberApproved(memberName: string): LineMessage
-memberRejected(memberName: string, reason?: string): LineMessage
-seedReservationConfirmed(product: string, qty: number, pickupDate: string): LineMessage
-seedReservationCancelled(product: string): LineMessage
-intakeReceipt(netKg: number, netAmount: number, bonusAmount: number): LineMessage
-quotaAlmostFull(location: string, remaining: number): LineMessage
-noBurnApproved(bonus: number): LineMessage
-noBurnRejected(reason: string): LineMessage
-inspectionAssigned(plotName: string, farmerName: string): LineMessage
-```
-
----
-
-## 📊 MILESTONE 8 — Reports (Zone 8)
-
----
-
-### Issue Z8-1 · Member summary report
-
-**Labels:** `feature` `report`
-**Difficulty:** Easy
-
-**New file:** `src/features/admin-reports/member-summary-report.tsx` (≤150 lines)
-**New API:** `app/api/admin/reports/member-summary/route.ts` (≤60 lines)
-**Add tab to:** `app/admin/reports/page.tsx`
-
-**Shows:**
-- KPI: total · approved · pending · rejected · suspended
-- Table: members by registration date (last 30 days)
-- Chart: new members per week (use recharts BarChart)
-- By district: which areas have most members
-
----
-
-### Issue Z8-2 · Booking summary report
-
-**Labels:** `feature` `report`
-**Difficulty:** Easy
-
-**New file:** `src/features/admin-reports/booking-report.tsx` (≤150 lines)
-**New API:** `app/api/admin/reports/bookings/route.ts` (≤60 lines)
-**Add tab to:** `app/admin/reports/page.tsx`
-
-**Shows:**
-- KPI: total bookings · completed · no-show · cancelled
-- Table: daily bookings with tonnage (expected vs actual if available)
-- Filter: date range, location
-
----
-
-### Issue Z8-4 · By-vehicle quality report
-
-**Labels:** `feature` `report`
-**Difficulty:** Medium
-
-**New file:** `src/features/admin-reports/by-vehicle-report.tsx` (≤180 lines)
-**New API:** `app/api/admin/reports/by-vehicle/route.ts` (≤70 lines)
-**Add tab to:** `app/admin/reports/page.tsx`
-
-**Data from:** `harvest_bookings` joined with `member_vehicles` via member_id
-
-**Shows per vehicle/driver:**
-- จำนวนเที่ยว
-- น้ำหนักรวม
-- ความชื้นเฉลี่ย
-- quality grade distribution (A/B/C/reject count)
-- Sorted by tonnage desc
-
----
-
-### Issue Z8-5 · Export CSV for reports
-
-**Labels:** `feature` `report`
-**Difficulty:** Medium
-
-**Add to each report component:** `<ExportCSV data={rows} filename="report-name.csv" />`
-
-**New shared component:** `src/shared/components/export-csv.tsx` (≤40 lines)
-
-```typescript
-// Simple: convert array of objects to CSV and trigger download
-function ExportCSV({ data, filename }: { data: object[], filename: string }) {
-  function download() {
-    const keys = Object.keys(data[0])
-    const csv  = [keys.join(','), ...data.map(r => keys.map(k => r[k]).join(','))].join('\n')
-    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }) // BOM for Thai
-    const url  = URL.createObjectURL(blob)
-    const a    = document.createElement('a'); a.href = url; a.download = filename; a.click()
-  }
-  return <button className="admin-btn admin-btn--secondary" onClick={download}>📥 Export CSV</button>
+type ErrorRow = {
+  row: number
+  scale_ticket_no: string
+  reason: 'member_not_found' | 'duplicate_ticket' | 'invalid_moisture' | 'missing_field' | 'location_not_found'
+  detail: string
 }
 ```
 
+**Acceptance criteria:**
+- Upload CSV → preview → admin ยืนยัน → batch บันทึก
+- Duplicate `scale_ticket_no` ถูก detect ก่อน commit
+- LINE push ทุก farmer หลัง commit (async, fail silently)
+- `tsc --noEmit` pass · `next build` pass
+
 ---
 
-## ✅ MILESTONE 9 — UAT & Go-Live (Zone 9)
+## 🟡 PRIORITY 2 — Quality & Testing
+
+---
+
+### Issue Z2-4 · UAT test script: harvest booking flow
+
+**Labels:** `docs` `testing`
+**Output file:** `docs/uat-booking-flow.md`
+
+**Script format (step-by-step):**
+```markdown
+## การทดสอบ: farmer จอง → แก้ไข → cancel → staff กรอก actual
+
+### Setup
+- Farmer A: สมาชิก approved พร้อม planting_cycle
+- Admin: account ที่มีสิทธิ์ service.write
+- Staff: account ที่มีสิทธิ์ service.write
+
+### Test T1: Farmer จองวันเกี่ยว
+| Step | Action | Expected | Pass? |
+|---|---|---|---|
+| 1.1 | Farmer เปิด /harvest/book | เห็น form จองพร้อมคิวอบ | ⬜ |
+| 1.2 | เลือก cycle + วันที่ | dryer queue แสดง utilization | ⬜ |
+| 1.3 | กด แจ้งวันเก็บเกี่ยว | success message | ⬜ |
+| 1.4 | Admin เปิด harvest queue | เห็น booking ใหม่ | ⬜ |
+
+### Test T2: Farmer แก้ไข booking
+...
+
+### Test T3: Staff กรอก actual weight
+...
+```
+
+**ต้องครอบคลุม:**
+1. Farmer จองวันเกี่ยว
+2. Admin เห็น queue + peak-day alert
+3. Farmer แก้ไข booking (วันที่)
+4. Farmer cancel booking
+5. Staff กรอก actual weight ที่ `/harvest/intake`
+6. Farmer ได้รับ LINE receipt
+7. รายงาน 🎯 คาด vs จริง แสดงข้อมูล
+
+---
+
+### Issue Z1-2 · UAT test script: member registration flow
+
+**Labels:** `docs` `testing`
+**Output file:** `docs/uat-member-flow.md`
+
+**ครอบคลุม:**
+1. Farmer เปิด LINE → แตะ KaonA mini app
+2. กรอกข้อมูลสมัครสมาชิก
+3. Admin เห็น pending member
+4. Admin approve → Farmer ได้รับ LINE ✅
+5. Admin reject → Farmer ได้รับ LINE ❌
+6. Farmer ผ่าน onboarding checklist (4 ขั้น)
+7. CSV import: upload CSV → review → approve batch
+
+---
+
+### Issue Z1-4 · Admin manual
+
+**Labels:** `docs`
+**Output file:** `docs/admin-manual.md`
+
+**Sections ที่ต้องมี:**
+
+```markdown
+# คู่มือ Admin KaonA-Agri
+
+## 1. การจัดการสมาชิก
+### approve/reject สมาชิก
+### import CSV สมาชิก
+
+## 2. ตั้งราคารับซื้อ
+### ตั้งราคาฐาน (market_prices)
+### ตั้งตารางส่วนลดตามความชื้น (moisture_deductions)
+### สร้างโปรโมชั่น (campaign_announcements)
+
+## 3. จัดการโควต้าและคิวรับซื้อ
+### ตั้ง template รายวัน (intake_quota_templates)
+### สร้าง pickup slot จาก template
+### ดู utilization realtime
+
+## 4. Factory API Keys
+### สร้าง API key สำหรับเครื่องชั่ง
+### ปิดใช้งาน key
+
+## 5. ปิดรับวัน (Reconciliation)
+### ขั้นตอนปิดรับ
+### export CSV วันนั้น
+
+## 6. รายงาน
+### รายงานสมาชิก
+### รายงานการจองขาย
+### คาด vs จริง
+### ตามรถ / ตามพื้นที่
+```
+
+---
+
+## 🟢 PRIORITY 3 — UAT & Go-Live
 
 ---
 
 ### Issue Z9-1 · UAT script: farmer full flow
 
-**Labels:** `testing` `docs`
-**Output:** `docs/uat-farmer-flow.md`
+**Labels:** `docs` `testing`
+**Output file:** `docs/uat-farmer-flow.md`
 
-**Full scenario:** สมัคร → onboarding → จองขาย → ดู calculator → แจ้งวันเกี่ยว → รับใบเสร็จ
+**Scenario:** farmer ใช้ระบบครบวงจรตั้งแต่สมัครจนถึงได้ใบเสร็จ
+
+**ครอบคลุม:**
+1. สมัครสมาชิก → รอ approve → ได้รับ LINE
+2. กรอก onboarding (profile, plot, cycle)
+3. ดู moisture calculator + practical suggestion
+4. แจ้งวันเกี่ยว → เห็นคิวอบ
+5. รับ LINE receipt หลังรับซื้อ
+6. ดูรายงานส่วนตัว (กำไร/ต้นทุน/ไม่เผา)
+7. ยื่นคำขอไม่เผา → รับ LINE แจ้งผล
 
 ---
 
 ### Issue Z9-2 · UAT script: staff intake flow
 
-**Labels:** `testing` `docs`
-**Output:** `docs/uat-staff-flow.md`
+**Labels:** `docs` `testing`
+**Output file:** `docs/uat-staff-flow.md`
 
-**Full scenario:** เปิดแอป → เห็นคิวรับ → กรอก actual weight → ดูยอดรายวัน → ปิดรับ
+**Scenario:** staff ทำงานรับซื้อตั้งแต่เปิดวันจนปิดวัน
+
+**ครอบคลุม:**
+1. เปิดแอป → เห็น StaffHome พร้อมเมนู ⚖️ บันทึกรับซื้อ
+2. เปิดหน้า intake → เห็นคิวรับวันนี้ + quota bar
+3. กรอก actual weight + moisture (walk-in ไม่มี booking)
+4. กรอก actual weight + moisture (มี booking)
+5. Preview ก่อนบันทึก → ยืนยัน
+6. Farmer ได้รับ LINE receipt
+7. Admin ปิดรับวัน → export CSV
 
 ---
 
 ### Issue Z9-3 · UAT script: admin management flow
 
-**Labels:** `testing` `docs`
-**Output:** `docs/uat-admin-flow.md`
+**Labels:** `docs` `testing`
+**Output file:** `docs/uat-admin-flow.md`
 
-**Full scenario:** approve member → ตั้งราคา → ดู queue → complete booking → ดูรายงาน
+**Scenario:** admin ทำงานบริหารจัดการระบบทั้งวัน
+
+**ครอบคลุม:**
+1. เปิด admin dashboard
+2. Approve สมาชิก → ตรวจว่า LINE ส่ง
+3. ตั้งราคาฐาน + ส่วนลดความชื้น
+4. สร้าง pickup slot จาก template
+5. ดู harvest queue + peak-day alert
+6. Assign inspector → ตรวจว่า LINE ส่ง
+7. Review no-burn → approve → ตรวจว่า LINE ส่ง
+8. ดูรายงาน 7 tabs ครบ
+9. ปิดรับวัน → export CSV
 
 ---
 
 ### Issue Z9-6 · Complete launch checklist
 
 **Labels:** `docs` `pilot-blocker`
+**File:** `docs/launch-checklist.md`
 
-**File:** `docs/launch-checklist.md` (exists, needs all boxes ticked)
+**ดูไฟล์ที่มีอยู่ อ่านทุก item และเพิ่ม:**
+- status: ✅ done | ❌ not done | ⏳ in progress
+- วันที่ verify
+- ชื่อผู้ verify
 
-**Every item must have:** ✅ done | ❌ not done | ⏳ in progress
+**Critical items ที่ต้องมี:**
+```markdown
+## Pre-Pilot Checklist
+
+### Infrastructure
+- [ ] LINE_CHANNEL_ACCESS_TOKEN ตั้งใน Vercel
+- [ ] Migrations ทั้งหมด run บน production
+- [ ] LIFF ทดสอบบนโทรศัพท์จริง (iOS + Android)
+- [ ] RLS ทดสอบกับ user จริง (ดู docs/rls-verification.md)
+
+### Functional
+- [ ] สมัครสมาชิก → approve → LINE แจ้ง ✅
+- [ ] Farmer จองขาย → staff กรอก actual → LINE receipt ✅
+- [ ] No-burn ยื่น → admin approve → LINE แจ้ง ✅
+- [ ] Admin ดูรายงานครบทุก tab ✅
+
+### Data
+- [ ] ราคาฐานตั้งไว้แล้ว (market_prices)
+- [ ] ตารางส่วนลดตั้งไว้แล้ว (moisture_deductions)
+- [ ] Pickup slots สร้างแล้ว (อย่างน้อย 7 วัน)
+- [ ] Factory API key สร้างแล้ว (ถ้ามีเครื่องชั่ง)
+
+### Safety
+- [ ] Backup ล่าสุด
+- [ ] Rollback SOP อ่านเข้าใจ
+```
 
 ---
 
-## Summary
+## สรุปสำหรับ Codex
 
-| Milestone | Issues | Pilot Blocking |
-|---|---|---|
-| M1 Zone 0 Fix | Z0-2, Z0-3, Z0-4, Z0-5 | ✅ |
-| M2 Zone 1 Member | Z1-1, Z1-2, Z1-3, Z1-4 | ✅ |
-| M3 Zone 2 Booking | Z2-1, Z2-2, Z2-3, Z2-4 | ✅ |
-| M4 Zone 3 Intake | Z3-1 through Z3-10 | ✅ |
-| M5 Zone 4 Staff | Z4-3, Z4-4, Z4-5, Z4-6 | partial |
-| M6 Zone 5 No-burn | Z5-1, Z5-3 | — |
-| M7 Zone 7 Comms | Z7-2, Z7-3 | — |
-| M8 Zone 8 Reports | Z8-1, Z8-2, Z8-4, Z8-5 | — |
-| M9 Zone 9 UAT | Z9-1, Z9-2, Z9-3, Z9-6 | ✅ |
-| **Total** | **35 issues** | |
+| Priority | Issue | ประเภท | ยาก |
+|---|---|---|---|
+| 🔴 | Z1-1 LINE push approve/reject | code | ง่าย |
+| 🔴 | Z2-2 Admin complete booking | code | กลาง |
+| 🔴 | Z3-6 CSV import batch | code | ยาก |
+| 🟡 | Z2-4 UAT booking script | docs | ง่าย |
+| 🟡 | Z1-2 UAT member script | docs | ง่าย |
+| 🟡 | Z1-4 Admin manual | docs | ง่าย |
+| 🟢 | Z9-1 UAT farmer flow | docs | ง่าย |
+| 🟢 | Z9-2 UAT staff flow | docs | ง่าย |
+| 🟢 | Z9-3 UAT admin flow | docs | ง่าย |
+| 🟢 | Z9-6 Launch checklist | docs | ง่าย |
 
-> **Rule for Codex on every issue:**
-> 1. Read relevant existing files before writing
-> 2. Write to `/home/claude/test_output` and verify first
-> 3. Keep line limits: page ≤150 · component ≤200 · API route ≤80
-> 4. Run `npx tsc --noEmit` → must be 0 errors
-> 5. Run `npx next build` → must pass
-> 6. Commit with message format: `feat(ZX-Y): description`
+**Code issues: 3 ตัว · Docs issues: 7 ตัว · รวม 10 issues**
+
+---
+
+## กฎสำหรับ Codex ทุก issue
+
+1. อ่านไฟล์ที่เกี่ยวข้องก่อนเขียน
+2. page ≤150 / component ≤200 / API route ≤80 lines
+3. `npx tsc --noEmit` → 0 errors
+4. `npx next build` → must pass
+5. Commit: `feat(ZX-Y): description`
+6. ห้ามแก้ไขไฟล์ที่ไม่เกี่ยวกับ issue นั้น
