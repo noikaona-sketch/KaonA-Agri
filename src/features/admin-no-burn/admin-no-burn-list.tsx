@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+// NOTE: createSupabaseBrowserClient still used in load()
 import { ErrorState }   from '@/shared/components/error-state';
 import { LoadingState } from '@/shared/components/loading-state';
 import { NoBurnTableRow, type NoBurnRow, ACTIONABLE } from './no-burn-table-row';
@@ -31,21 +32,33 @@ export function AdminNoBurnList() {
 
   useEffect(() => { void load(); }, [statusFilter]);
 
-  async function transition(id: string, newStatus: 'under_review' | 'inspection_required' | 'approved' | 'rejected', note?: string) {
+  async function transition(
+    id: string,
+    newStatus: 'under_review' | 'inspection_required' | 'approved' | 'rejected',
+    note?: string,
+    triggerInspection?: boolean,
+  ) {
     setActing(id);
-    const s = createSupabaseBrowserClient();
-    const { error: e } = await s.from('no_burn_requests')
-      .update({ status: newStatus, review_note: note?.trim() || null }).eq('id', id);
+    const res = await fetch('/api/admin/no-burn/decision', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        request_id:          id,
+        decision:            newStatus,
+        note:                note?.trim() || undefined,
+        trigger_inspection:  triggerInspection,
+      }),
+    });
     setActing(null);
-    if (e) { setNotice(`❌ เกิดข้อผิดพลาด: ${e.message}`); }
-    else {
-      const labels: Record<string, string> = {
-        under_review: 'อยู่ระหว่างตรวจสอบแล้ว', inspection_required: 'ส่งตรวจแปลงแล้ว',
-        approved: 'อนุมัติแล้ว ✅', rejected: 'ปฏิเสธแล้ว ⛔',
-      };
-      setNotice(labels[newStatus] ?? 'อัปเดตสำเร็จ');
-      setNoteMap((prev) => { const n = { ...prev }; delete n[id]; return n; });
-    }
+    const d = (await res.json()) as { ok?: boolean; line_sent?: boolean; inspection_id?: string | null; error?: string };
+    if (!res.ok) { setNotice(`❌ เกิดข้อผิดพลาด: ${d.error}`); return; }
+    const labels: Record<string, string> = {
+      under_review:         'อยู่ระหว่างตรวจสอบแล้ว',
+      inspection_required:  `ส่งตรวจแปลงแล้ว${d.inspection_id ? ' — สร้างงานตรวจแล้ว' : ''}`,
+      approved:             `อนุมัติแล้ว ✅${d.line_sent ? ' — LINE แจ้งแล้ว' : ''}`,
+      rejected:             `ปฏิเสธแล้ว ⛔${d.line_sent ? ' — LINE แจ้งแล้ว' : ''}`,
+    };
+    setNotice(labels[newStatus] ?? 'อัปเดตสำเร็จ');
+    setNoteMap((prev) => { const n = { ...prev }; delete n[id]; return n; });
     await load();
   }
 
@@ -97,7 +110,7 @@ export function AdminNoBurnList() {
                 <NoBurnTableRow key={r.id} r={r} acting={acting}
                   noteDraft={noteMap[r.id] ?? ''}
                   onNoteChange={(v) => setNoteMap((prev) => ({ ...prev, [r.id]: v }))}
-                  onTransition={transition}
+                  onTransition={(id, status, note, triggerInspection) => transition(id, status, note, triggerInspection)}
                   showEvidence={!!evidenceOpen[r.id]}
                   onToggleEvidence={() => toggleEvidence(r.id)} />
               ))}

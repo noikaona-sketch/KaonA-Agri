@@ -32,7 +32,7 @@ type Props = {
   acting:     string | null;
   noteDraft:  string;
   onNoteChange: (v: string) => void;
-  onTransition: (id: string, status: 'under_review' | 'inspection_required' | 'approved' | 'rejected', note?: string) => void;
+  onTransition: (id: string, status: 'under_review' | 'inspection_required' | 'approved' | 'rejected', note?: string, triggerInspection?: boolean) => void;
   showEvidence: boolean;
   onToggleEvidence: () => void;
 };
@@ -81,12 +81,14 @@ export function NoBurnTableRow({ r, acting, noteDraft, onNoteChange, onTransitio
                 )}
                 {(r.status === 'submitted' || r.status === 'under_review') && (
                   <button className="admin-btn" style={{ background: '#6a1b9a', color: '#fff', fontSize: 12 }}
-                    onClick={() => onTransition(r.id, 'inspection_required', noteDraft)} disabled={isActing}>
-                    📋 ส่งตรวจ
+                    onClick={() => onTransition(r.id, 'inspection_required', noteDraft, true)} disabled={isActing}>
+                    📋 ส่งตรวจ + สร้างงาน
                   </button>
                 )}
                 <button className="admin-btn admin-btn--success" style={{ fontSize: 12 }}
                   onClick={() => onTransition(r.id, 'approved', noteDraft)} disabled={isActing}>✅ อนุมัติ</button>
+                <button className="admin-btn" style={{ background:'#059669', color:'#fff', fontSize: 12 }}
+                  onClick={() => onTransition(r.id, 'approved', noteDraft, true)} disabled={isActing}>✅ อนุมัติ + ตรวจแปลง</button>
                 <button className="admin-btn admin-btn--danger" style={{ fontSize: 12 }}
                   onClick={() => onTransition(r.id, 'rejected', noteDraft)} disabled={isActing}>⛔ ปฏิเสธ</button>
               </div>
