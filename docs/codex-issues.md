@@ -17,7 +17,7 @@
 | Z1 Member | Z1-3 RLS verify | ✅ doc แล้ว | — |
 | Z1 Member | Z1-4 Admin manual | ❌ | ✅ ทำ |
 | Z2 Booking | Z2-1 Staff actual weight | ✅ Z3-5 แล้ว | — |
-| Z2 Booking | Z2-2 Admin complete booking | ❌ | ✅ ทำ |
+| Z2 Booking | Z2-2 Admin complete booking | ✅ แล้ว | ✅ ทำ |
 | Z2 Booking | Z2-3 Expected vs actual | ✅ แล้ว | — |
 | Z2 Booking | Z2-4 UAT booking | ✅ doc แล้ว | ✅ ทำ |
 | Z3 Intake | Z3-1 ถึง Z3-5, Z3-7 ถึง Z3-10 | ✅ แล้ว | — |
@@ -197,46 +197,6 @@ type ErrorRow = {
 
 ---
 
-### Issue Z1-4 · Admin manual
-
-**Labels:** `docs`
-**Output file:** `docs/admin-manual.md`
-
-**Sections ที่ต้องมี:**
-
-```markdown
-# คู่มือ Admin KaonA-Agri
-
-## 1. การจัดการสมาชิก
-### approve/reject สมาชิก
-### import CSV สมาชิก
-
-## 2. ตั้งราคารับซื้อ
-### ตั้งราคาฐาน (market_prices)
-### ตั้งตารางส่วนลดตามความชื้น (moisture_deductions)
-### สร้างโปรโมชั่น (campaign_announcements)
-
-## 3. จัดการโควต้าและคิวรับซื้อ
-### ตั้ง template รายวัน (intake_quota_templates)
-### สร้าง pickup slot จาก template
-### ดู utilization realtime
-
-## 4. Factory API Keys
-### สร้าง API key สำหรับเครื่องชั่ง
-### ปิดใช้งาน key
-
-## 5. ปิดรับวัน (Reconciliation)
-### ขั้นตอนปิดรับ
-### export CSV วันนั้น
-
-## 6. รายงาน
-### รายงานสมาชิก
-### รายงานการจองขาย
-### คาด vs จริง
-### ตามรถ / ตามพื้นที่
-```
-
----
 
 ## 🟢 PRIORITY 3 — UAT & Go-Live
 
@@ -345,7 +305,6 @@ type ErrorRow = {
 | 🔴 | Z2-2 Admin complete booking | code | กลาง |
 | 🔴 | Z3-6 CSV import batch | code | ยาก |
 | 🟡 | Z1-2 UAT member script | docs | ง่าย |
-| 🟡 | Z1-4 Admin manual | docs | ง่าย |
 | 🟢 | Z9-1 UAT farmer flow | docs | ง่าย |
 | 🟢 | Z9-2 UAT staff flow | docs | ง่าย |
 | 🟢 | Z9-3 UAT admin flow | docs | ง่าย |

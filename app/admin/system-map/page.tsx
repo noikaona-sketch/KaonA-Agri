@@ -41,16 +41,26 @@ const SYSTEMS: System[] = [
     },
     target:90, pilotBlock:true, color:"#059669", bg:"#ECFDF5",
     roles:["farmer","staff","admin"],
-    done:["สมัครผ่าน LINE LIFF","Admin approve/reject","LINE แจ้งผล ✅","Import CSV + review","Onboarding checklist 4 ขั้น","กลุ่มสมาชิก","RLS API layer verified","UAT script member flow (Codex Z1-2)"],
-    todo:["ทดสอบ RLS กับ user จริง (Pavee)","Admin manual (Codex Z1-4)"],
-    tables:["members","member_roles","member_groups","approvals"],
-    connects:["plot","harvest","noburn","comms","report"],
-    codex:["Z1-4"], pavee:["Z0-4 RLS test"],
-    liveStats: m => [
-      { label:"สมาชิกทั้งหมด", value:`${m.total_members} คน` },
-      { label:"อนุมัติแล้ว",   value:`${m.approved_members} คน` },
-    ],
-  },
+done:[
+  "สมัครผ่าน LINE LIFF",
+  "Admin approve/reject",
+  "LINE แจ้งผล ✅",
+  "Import CSV + review",
+  "Onboarding checklist 4 ขั้น",
+  "กลุ่มสมาชิก",
+  "RLS API layer verified",
+  "UAT script member flow (Codex Z1-2)",
+  "Admin manual ✅"
+],
+todo:["ทดสอบ RLS กับ user จริง (Pavee)"],
+tables:["members","member_roles","member_groups","approvals"],
+connects:["plot","harvest","noburn","comms","report"],
+codex:[],
+pavee:["Z0-4 RLS test"],
+liveStats: m => [
+  { label:"สมาชิกทั้งหมด", value:`${m.total_members} คน` },
+  { label:"อนุมัติแล้ว", value:`${m.approved_members} คน` },
+],  },
   {
     id:"plot", icon:"🗺️", label:"ระบบแปลงและการปลูก",
     pct:(m,a) => {
@@ -82,16 +92,26 @@ const SYSTEMS: System[] = [
       return Math.min(90, s);
     },
     target:90, pilotBlock:true, color:"#D97706", bg:"#FFFBEB",
-    roles:["farmer","staff","admin"],
-    done:["Farmer จองวันเกี่ยว","เลือกจุดรับ 2 จุด","Admin queue + peak-day alert","Dryer quota per location","Farmer เห็นคิวอบ 7 วัน","Moisture calculator + suggestion","UAT script (Codex Z2-4)"],
-    todo:["Admin complete + actual data fields (Codex Z2-2)"],
-    tables:["harvest_bookings","pickup_slots","pickup_locations"],
-    connects:["member","intake","staff","stock","report","calculator"],
-    codex:["Z2-2"], pavee:[],
-    liveStats: m => [
-      { label:"booking ทั้งหมด", value:`${m.total_bookings}` },
-      { label:"slot เปิดอยู่",   value:`${m.open_slots}` },
-    ],
+  roles:["farmer","staff","admin"],
+done:[
+  "Farmer จองวันเกี่ยว",
+  "เลือกจุดรับ 2 จุด",
+  "Admin queue + peak-day alert",
+  "Dryer quota per location",
+  "Farmer เห็นคิวอบ 7 วัน",
+  "Moisture calculator + suggestion",
+  "Admin complete + actual data fields (Codex Z2-2)",
+  "UAT script (Codex Z2-4)"
+],
+todo:[],
+tables:["harvest_bookings","pickup_slots","pickup_locations"],
+connects:["member","intake","staff","stock","report","calculator"],
+codex:[],
+pavee:[],
+liveStats: m => [
+  { label:"booking ทั้งหมด", value:`${m.total_bookings}` },
+  { label:"slot เปิดอยู่", value:`${m.open_slots}` },
+],
   },
   {
     id:"intake", icon:"⚖️", label:"Intake Data Layer",
