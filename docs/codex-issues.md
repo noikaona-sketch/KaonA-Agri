@@ -203,25 +203,6 @@ type ErrorRow = {
 ---
 
 
-### Issue Z9-3 · UAT script: admin management flow
-
-**Labels:** `docs` `testing`
-**Output file:** `docs/uat-admin-flow.md`
-
-**Scenario:** admin ทำงานบริหารจัดการระบบทั้งวัน
-
-**ครอบคลุม:**
-1. เปิด admin dashboard
-2. Approve สมาชิก → ตรวจว่า LINE ส่ง
-3. ตั้งราคาฐาน + ส่วนลดความชื้น
-4. สร้าง pickup slot จาก template
-5. ดู harvest queue + peak-day alert
-6. Assign inspector → ตรวจว่า LINE ส่ง
-7. Review no-burn → approve → ตรวจว่า LINE ส่ง
-8. ดูรายงาน 7 tabs ครบ
-9. ปิดรับวัน → export CSV
-
----
 
 ### Issue Z9-6 · Complete launch checklist
 
@@ -270,7 +251,6 @@ type ErrorRow = {
 | 🔴 | Z2-2 Admin complete booking | code | กลาง |
 | 🔴 | Z3-6 CSV import batch | code | ยาก |
 | 🟡 | Z1-2 UAT member script | docs | ง่าย |
-| 🟢 | Z9-3 UAT admin flow | docs | ง่าย |
 | 🟢 | Z9-6 Launch checklist | docs | ง่าย |
 
 **Code issues: 3 ตัว · Docs issues: 6 ตัว · รวม 9 issues**
