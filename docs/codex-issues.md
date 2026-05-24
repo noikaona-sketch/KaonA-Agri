@@ -17,7 +17,7 @@
 | Z1 Member | Z1-3 RLS verify | ✅ doc แล้ว | — |
 | Z1 Member | Z1-4 Admin manual | ❌ | ✅ ทำ |
 | Z2 Booking | Z2-1 Staff actual weight | ✅ Z3-5 แล้ว | — |
-| Z2 Booking | Z2-2 Admin complete booking | ❌ | ✅ ทำ |
+| Z2 Booking | Z2-2 Admin complete booking | ✅ แล้ว | ✅ ทำ |
 | Z2 Booking | Z2-3 Expected vs actual | ✅ แล้ว | — |
 | Z2 Booking | Z2-4 UAT booking | ❌ | ✅ ทำ |
 | Z3 Intake | Z3-1 ถึง Z3-5, Z3-7 ถึง Z3-10 | ✅ แล้ว | — |
