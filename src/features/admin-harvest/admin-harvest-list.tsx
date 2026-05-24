@@ -43,7 +43,7 @@ export function AdminHarvestList() {
   const [acting, setActing]     = useState<string | null>(null);
   const [notice, setNotice]     = useState<string | null>(null);
   const [completing, setCompleting] = useState<Booking | null>(null);
-  const [completeForm, setCompleteForm] = useState<CompleteFormState>({ receivedKg: '', actualMoisture: '', adminNote: '', learningTags: [] });
+  const [completeForm, setCompleteForm] = useState<CompleteFormState>({ receivedKg: '', actualMoisture: '', actual_received_kg: '', actual_moisture_pct: '', quality_grade: 'B', scale_ticket_no: '', adminNote: '', learningTags: [] });
 
   async function load() {
     setLoading(true);
@@ -85,18 +85,22 @@ export function AdminHarvestList() {
     if (!completing || !isCompleteFormValid(completeForm)) return;
     setActing(completing.id);
     const s = createSupabaseBrowserClient();
+    const actualReceivedKg = completeForm.actual_received_kg || completeForm.receivedKg;
+    const actualMoisturePct = completeForm.actual_moisture_pct || completeForm.actualMoisture;
     const { error: saveErr } = await s.from('harvest_bookings').update({
-      status:              'completed',
-      actual_received_kg:  Number(completeForm.receivedKg),
-      actual_moisture_pct: Number(completeForm.actualMoisture),
+      status: 'completed',
       actual_completed_at: new Date().toISOString(),
-      admin_note:          completeForm.adminNote.trim() || null,
-      post_harvest_tags:   completeForm.learningTags.length ? completeForm.learningTags : null,
+      actual_received_kg: Number(actualReceivedKg),
+      actual_moisture_pct: Number(actualMoisturePct),
+      quality_grade: completeForm.quality_grade ?? 'B',
+      scale_ticket_no: completeForm.scale_ticket_no?.trim() || undefined,
+      admin_note: completeForm.adminNote.trim() || null,
+      post_harvest_tags: completeForm.learningTags.length ? completeForm.learningTags : null,
     }).eq('id', completing.id);
     if (saveErr) { setNotice(`❌ ${saveErr.message}`); setActing(null); return; }
     setActing(null);
     setCompleting(null);
-    setCompleteForm({ receivedKg: '', actualMoisture: '', adminNote: '', learningTags: [] });
+    setCompleteForm({ receivedKg: '', actualMoisture: '', actual_received_kg: '', actual_moisture_pct: '', quality_grade: 'B', scale_ticket_no: '', adminNote: '', learningTags: [] });
     setNotice('🏁 บันทึกการเก็บเกี่ยวแล้ว'); await load();
   }
 
@@ -179,7 +183,7 @@ export function AdminHarvestList() {
                     ) : (
                       <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
                         {b.status === 'pending' && <button className="admin-btn admin-btn--success" onClick={() => confirm(b.id)} disabled={acting !== null} style={{ fontSize: 12, padding: '4px 8px', minHeight: 30 }}>✅</button>}
-                        {b.status === 'confirmed' && <button className="admin-btn admin-btn--primary" onClick={() => { setCompleting(b); setCompleteForm({ receivedKg: '', actualMoisture: '', adminNote: '', learningTags: [] }); }} disabled={acting !== null} style={{ fontSize: 12, padding: '4px 8px', minHeight: 30 }}>🏁 บันทึก</button>}
+                        {b.status === 'confirmed' && <button className="admin-btn admin-btn--primary" onClick={() => { setCompleting(b); setCompleteForm({ receivedKg: '', actualMoisture: '', actual_received_kg: '', actual_moisture_pct: '', quality_grade: 'B', scale_ticket_no: '', adminNote: '', learningTags: [] }); }} disabled={acting !== null} style={{ fontSize: 12, padding: '4px 8px', minHeight: 30 }}>🏁 บันทึก</button>}
                       </div>
                     )}
                   </td>
