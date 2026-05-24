@@ -26,7 +26,7 @@
 | Z5 No-burn | Z5-1, Z5-3 | ✅ แล้ว | — |
 | Z7 Comms | Z7-2, Z7-3 | ✅ แล้ว | — |
 | Z8 Reports | Z8-1,2,4,5 | ✅ แล้ว | — |
-| Z9 UAT | Z9-1,2,3,6 | ❌ | ✅ ทำ |
+| Z9 UAT | Z9-1,3,6 | ❌ | ✅ ทำ |
 
 ---
 
@@ -203,24 +203,6 @@ type ErrorRow = {
 ---
 
 
-### Issue Z9-2 · UAT script: staff intake flow
-
-**Labels:** `docs` `testing`
-**Output file:** `docs/uat-staff-flow.md`
-
-**Scenario:** staff ทำงานรับซื้อตั้งแต่เปิดวันจนปิดวัน
-
-**ครอบคลุม:**
-1. เปิดแอป → เห็น StaffHome พร้อมเมนู ⚖️ บันทึกรับซื้อ
-2. เปิดหน้า intake → เห็นคิวรับวันนี้ + quota bar
-3. กรอก actual weight + moisture (walk-in ไม่มี booking)
-4. กรอก actual weight + moisture (มี booking)
-5. Preview ก่อนบันทึก → ยืนยัน
-6. Farmer ได้รับ LINE receipt
-7. Admin ปิดรับวัน → export CSV
-
----
-
 ### Issue Z9-3 · UAT script: admin management flow
 
 **Labels:** `docs` `testing`
@@ -288,7 +270,6 @@ type ErrorRow = {
 | 🔴 | Z2-2 Admin complete booking | code | กลาง |
 | 🔴 | Z3-6 CSV import batch | code | ยาก |
 | 🟡 | Z1-2 UAT member script | docs | ง่าย |
-| 🟢 | Z9-2 UAT staff flow | docs | ง่าย |
 | 🟢 | Z9-3 UAT admin flow | docs | ง่าย |
 | 🟢 | Z9-6 Launch checklist | docs | ง่าย |
 
