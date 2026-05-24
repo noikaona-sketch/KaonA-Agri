@@ -378,7 +378,7 @@ export default function AdminSystemMapPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/system-metrics');
+      const res = await fetch('/api/admin/system-metrics', { credentials: 'include' });
       if (!res.ok) throw new Error(`metrics API error: ${res.status}`);
       const d = (await res.json()) as ApiData;
       setData(d);
@@ -391,7 +391,7 @@ export default function AdminSystemMapPage() {
 
   const loadUat = useCallback(async () => {
     try {
-      const res = await fetch('/api/admin/uat');
+      const res = await fetch('/api/admin/uat', { credentials: 'include' });
       if (!res.ok) return; // ตาราง uat_results ยังไม่มี → skip gracefully
       const d = (await res.json()) as { results?: { test_id:string; result:string; note:string|null; tested_at:string|null }[] };
       const map: ResultMap = {};
@@ -410,6 +410,7 @@ export default function AdminSystemMapPage() {
     setUatSaving(testId);
     await fetch('/api/admin/uat', {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ test_id: testId, result, note: uatNotes[testId] ?? uatResults[testId]?.note ?? '' }),
     });
     setUatResults(p => ({ ...p, [testId]: { result, note: p[testId]?.note ?? '', tested_at: new Date().toISOString() } }));
@@ -420,6 +421,7 @@ export default function AdminSystemMapPage() {
     const note = uatNotes[testId] ?? '';
     await fetch('/api/admin/uat', {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ test_id: testId, result: uatResults[testId]?.result ?? 'pending', note }),
     });
     setUatResults(p => ({ ...p, [testId]: { ...p[testId], result: p[testId]?.result ?? 'pending', note, tested_at: p[testId]?.tested_at ?? '' } }));
@@ -427,7 +429,7 @@ export default function AdminSystemMapPage() {
 
   async function resetUat() {
     if (!confirm('รีเซ็ตผลทดสอบทั้งหมด?')) return;
-    await fetch('/api/admin/uat', { method: 'DELETE' });
+    await fetch('/api/admin/uat', { method: 'DELETE', credentials: 'include' });
     setUatResults({});
   }
 
