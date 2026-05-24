@@ -26,7 +26,7 @@ export function AdminAlertReadinessList() {
   async function load() {
     setLoading(true);
     setError(null);
-    const res = await fetch('/api/admin/alert-readiness');
+    const res = await fetch('/api/admin/alert-readiness', { credentials: 'include' });
     const json = await res.json();
     if (!res.ok) {
       setError(json?.error ?? 'โหลดข้อมูลไม่สำเร็จ');

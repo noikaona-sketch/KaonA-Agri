@@ -15,7 +15,7 @@ export function SeedVarietySelect({ value, onChange, required }: Props) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    void fetch('/api/admin/seed-varieties?active=true')
+    void fetch('/api/admin/seed-varieties?active=true', { credentials: 'include' })
       .then((r) => r.json())
       .then((d: { varieties?: SeedVariety[] }) => { setList(d.varieties ?? []); setLoading(false); });
   }, []);

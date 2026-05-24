@@ -49,7 +49,7 @@ export function AdminPermissionMatrix() {
 
   async function load() {
     setLoading(true);
-    const res = await fetch('/api/admin/role-permissions');
+    const res = await fetch('/api/admin/role-permissions', { credentials: 'include' });
     if (res.ok) {
       const d = (await res.json()) as { permissions?: PermRow[] };
       setRows(d.permissions ?? []);
@@ -72,7 +72,7 @@ export function AdminPermissionMatrix() {
     const key = `${role}:${perm}`;
     setSaving(key); setNotice(null);
     const res = await fetch('/api/admin/role-permissions', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
       body: JSON.stringify({ admin_role: role, permission: perm, granted: !current }),
     });
     if (res.ok) {

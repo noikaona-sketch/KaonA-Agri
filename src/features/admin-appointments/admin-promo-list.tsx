@@ -29,7 +29,7 @@ export function AdminPromoList() {
 
   async function load() {
     setLoading(true);
-    const res  = await fetch('/api/admin/promos');
+    const res  = await fetch('/api/admin/promos', { credentials: 'include' });
     const data = (await res.json()) as { promos?: Promo[] };
     setPromos(data.promos ?? []);
     setLoading(false);
@@ -46,7 +46,7 @@ export function AdminPromoList() {
     if (form.promo_type === 'moisture_below' && !form.moisture_threshold)
       { setNotice('❌ กรุณากรอกความชื้น threshold'); return; }
     setSaving(true);
-    const res = await fetch('/api/admin/promos', {
+    const res = await fetch('/api/admin/promos', { credentials: 'include', 
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         title:              form.title,
@@ -66,7 +66,7 @@ export function AdminPromoList() {
 
   async function deactivate(id: string) {
     if (!confirm('ปิดโปรโมชั่นนี้?')) return;
-    await fetch('/api/admin/promos', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+    await fetch('/api/admin/promos', { credentials: 'include',  method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
     await load();
   }
 

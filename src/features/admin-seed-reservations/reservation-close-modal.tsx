@@ -30,7 +30,7 @@ export function ReservationCloseModal({ reservation, saleOrderId, qtySold, onClo
         return setError('กรอกจำนวนที่เหลือค้าง (ต้องน้อยกว่าจำนวนจอง)');
     }
     setSaving(true); setError(null);
-    const res = await fetch('/api/admin/seed-reservations', {
+    const res = await fetch('/api/admin/seed-reservations', { credentials: 'include', 
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         action:         choice === 'full' ? 'close_full' : 'close_partial',

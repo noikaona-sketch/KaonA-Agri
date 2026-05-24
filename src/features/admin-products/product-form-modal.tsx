@@ -88,7 +88,7 @@ export function ProductFormModal({ product, onClose, onSaved }: Props) {
       days_to_harvest: isSeed && draft.days_to_harvest ? Number(draft.days_to_harvest) : null,
       bag_weight_kg:   isSeed && draft.bag_weight_kg   ? Number(draft.bag_weight_kg)   : null,
     };
-    const res  = await fetch('/api/admin/products', {
+    const res  = await fetch('/api/admin/products', { credentials: 'include', 
       method:  isEdit ? 'PATCH' : 'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify(isEdit ? { id: String(product?.id ?? ''), ...payload } : payload),

@@ -36,7 +36,7 @@ export function AdminRegisterForm() {
     setError(null);
     setSubmitting(true);
     try {
-      const res = await fetch('/api/admin/register', {
+      const res = await fetch('/api/admin/register', { credentials: 'include', 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: draft.email, password: draft.password, fullName: draft.fullName, department: draft.department }),

@@ -22,7 +22,7 @@ export function AdminMarketPrice() {
 
   async function load() {
     setLoading(true);
-    const res = await fetch('/api/admin/market-price');
+    const res = await fetch('/api/admin/market-price', { credentials: 'include' });
     const d = (await res.json()) as { prices?: Price[] };
     setPrices(d.prices ?? []);
     setLoading(false);
@@ -34,7 +34,7 @@ export function AdminMarketPrice() {
     const m = Number(moisture);
     if (m < 1 || m > 50) { setNotice('❌ ความชื้นต้องอยู่ระหว่าง 1–50%'); return; }
     setSaving(true);
-    const res = await fetch('/api/admin/market-price', {
+    const res = await fetch('/api/admin/market-price', { credentials: 'include', 
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ crop_type: cropType, price_per_kg: Number(price), moisture_pct: m, price_type: priceType, note: note || null }),
     });

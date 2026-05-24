@@ -51,10 +51,10 @@ export function AdminImportReview() {
     </div>
 
     <div style={{ display: 'flex', gap: 8 }}>
-      <button className="admin-btn admin-btn--secondary" onClick={async () => { await fetch('/api/admin/members/import-review', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ids:selected, action:'mark_needs_correction' })}); await load(); }}>mark needs correction</button>
+      <button className="admin-btn admin-btn--secondary" onClick={async () => { await fetch('/api/admin/members/import-review', { credentials: 'include',  method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ids:selected, action:'mark_needs_correction' })}); await load(); }}>mark needs correction</button>
       <button className="admin-btn admin-btn--secondary" onClick={() => window.open(`/api/admin/members/import-review?filter=${filter}&format=csv`, '_blank')}>export incomplete CSV</button>
       <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="bulk status note" />
-      <button className="admin-btn admin-btn--secondary" onClick={async () => { await fetch('/api/admin/members/import-review', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ids:selected, action:'bulk_status_note', note })}); }}>apply note</button>
+      <button className="admin-btn admin-btn--secondary" onClick={async () => { await fetch('/api/admin/members/import-review', { credentials: 'include',  method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ids:selected, action:'bulk_status_note', note })}); }}>apply note</button>
     </div>
 
     <table className="admin-table"><thead><tr><th><input type="checkbox" checked={allSelected} onChange={() => setSelected(allSelected ? [] : rows.map((r) => r.id))}/></th><th>Name</th><th>Phone</th><th>Flags</th><th></th></tr></thead><tbody>

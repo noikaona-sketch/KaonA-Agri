@@ -25,7 +25,7 @@ export function AdminSeedSuppliers() {
 
   async function load() {
     setLoading(true);
-    const res = await fetch('/api/admin/seed-suppliers');
+    const res = await fetch('/api/admin/seed-suppliers', { credentials: 'include' });
     const d = (await res.json()) as { suppliers?: Supplier[]; error?: string };
     if (!res.ok) setError(d.error ?? 'โหลดไม่สำเร็จ'); else setRows(d.suppliers ?? []);
     setLoading(false);
@@ -48,7 +48,7 @@ export function AdminSeedSuppliers() {
     if (!form.supplier_name.trim()) { setNotice('❌ กรุณากรอกชื่อ Supplier'); return; }
     setSaving(true); setNotice(null);
     const payload = { ...(editId ? { id: editId } : {}), supplier_name: form.supplier_name.trim(), contact_name: form.contact_name || null, phone: form.phone || null, address: form.address || null, credit_terms: form.credit_terms || null, active_status: form.active_status };
-    const res = await fetch('/api/admin/seed-suppliers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    const res = await fetch('/api/admin/seed-suppliers', { credentials: 'include',  method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     const d = (await res.json()) as { ok?: boolean; error?: string };
     setSaving(false);
     if (!res.ok) { setNotice(`❌ ${d.error}`); return; }
@@ -57,7 +57,7 @@ export function AdminSeedSuppliers() {
   }
 
   async function toggleStatus(id: string, current: string) {
-    await fetch('/api/admin/seed-suppliers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, active_status: current === 'active' ? 'inactive' : 'active' }) });
+    await fetch('/api/admin/seed-suppliers', { credentials: 'include',  method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, active_status: current === 'active' ? 'inactive' : 'active' }) });
     await load();
   }
 

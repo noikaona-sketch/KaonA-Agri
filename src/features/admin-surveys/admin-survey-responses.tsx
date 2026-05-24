@@ -7,7 +7,7 @@ export function AdminSurveyResponses() {
 
   useEffect(() => {
     void (async () => {
-      const res = await fetch('/api/admin/surveys/responses');
+      const res = await fetch('/api/admin/surveys/responses', { credentials: 'include' });
       const j = await res.json();
       if (!res.ok) {
         setError(j.error ?? 'โหลดไม่สำเร็จ');

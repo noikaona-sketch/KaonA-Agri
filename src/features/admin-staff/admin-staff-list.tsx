@@ -38,7 +38,7 @@ export function AdminStaffList() {
 
   async function load() {
     setLoading(true);
-    const res = await fetch('/api/admin/staff');
+    const res = await fetch('/api/admin/staff', { credentials: 'include' });
     const d = (await res.json()) as { staff?: AdminUserRow[]; error?: string };
     if (!res.ok) { setError(d.error ?? 'โหลดไม่สำเร็จ'); setLoading(false); return; }
     setStaff(d.staff ?? []);
@@ -50,7 +50,7 @@ export function AdminStaffList() {
     if (action === 'delete' && !window.confirm('ลบบัญชีเจ้าหน้าที่นี้?')) return;
     setActing(id); setNotice(null);
     const res = await fetch('/api/admin/staff', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
       body: JSON.stringify({ action, admin_user_id: id }),
     });
     const d = (await res.json()) as { ok?: boolean; error?: string };
@@ -69,7 +69,7 @@ export function AdminStaffList() {
     if (fPass.length < 8) { setNotice('❌ รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร'); return; }
     setSaving(true); setNotice(null);
     const res = await fetch('/api/admin/register', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
       body: JSON.stringify({ email: fEmail, password: fPass, fullName: fName, department: fDept }),
     });
     const d = (await res.json()) as { ok?: boolean; error?: string };

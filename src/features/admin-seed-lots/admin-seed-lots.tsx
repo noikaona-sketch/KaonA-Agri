@@ -46,7 +46,7 @@ export function AdminSeedLots() {
 
   async function load() {
     setLoading(true);
-    const res = await fetch('/api/admin/seed-lots');
+    const res = await fetch('/api/admin/seed-lots', { credentials: 'include' });
     const d = (await res.json()) as { lots?: Lot[]; suppliers?: Supplier[]; varieties?: Variety[]; error?: string };
     if (!res.ok) setError(d.error ?? 'โหลดไม่สำเร็จ');
     else {
@@ -98,7 +98,7 @@ export function AdminSeedLots() {
       price_per_bag:   Number(pricePerBag) || 0,
       note:            formNote || null,
     };
-    const res = await fetch('/api/admin/seed-lots', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(lotPayload) });
+    const res = await fetch('/api/admin/seed-lots', { credentials: 'include',  method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(lotPayload) });
     const d = (await res.json()) as { ok?: boolean; error?: string };
     setSaving(false);
     if (!res.ok) { setNotice(`❌ ${d.error}`); return; }
@@ -111,7 +111,7 @@ export function AdminSeedLots() {
 
   async function toggleInactive(id: string) {
     if (!window.confirm('ยกเลิก LOT นี้? ถ้ามีการขายไปแล้วให้ใช้ "ยกเลิก" แทนการลบ')) return;
-    await fetch('/api/admin/seed-lots', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+    await fetch('/api/admin/seed-lots', { credentials: 'include',  method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
     await load();
   }
 

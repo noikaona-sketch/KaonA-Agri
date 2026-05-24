@@ -21,7 +21,7 @@ export default function AdminCreditPage() {
 
   async function load() {
     setLoading(true);
-    const res = await fetch('/api/admin/credit');
+    const res = await fetch('/api/admin/credit', { credentials: 'include' });
     const d = (await res.json()) as { items?: CreditRow[] };
     setRows(d.items ?? []);
     setLoading(false);
@@ -32,7 +32,7 @@ export default function AdminCreditPage() {
   async function doAction() {
     if (!modal || !amount || Number(amount) <= 0) return;
     setActing(modal.memberId);
-    const res = await fetch('/api/admin/credit', {
+    const res = await fetch('/api/admin/credit', { credentials: 'include', 
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: modal.action, member_id: modal.memberId, amount: Number(amount), note }),

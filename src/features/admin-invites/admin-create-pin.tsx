@@ -37,7 +37,7 @@ export function AdminCreatePin() {
         ? { fullName, phone, role, hours }
         : { memberId, role, hours };
 
-      const res = await fetch('/api/admin/create-pin', {
+      const res = await fetch('/api/admin/create-pin', { credentials: 'include', 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),

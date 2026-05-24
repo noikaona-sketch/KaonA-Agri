@@ -28,7 +28,7 @@ export function AdminPickupLocations({ onSaved }: { onSaved?: () => void }) {
 
   async function load() {
     setLoading(true);
-    const res = await fetch('/api/admin/pickup-slots');
+    const res = await fetch('/api/admin/pickup-slots', { credentials: 'include' });
     const d   = (await res.json()) as { locations?: Location[] };
     setLocations(d.locations ?? []);
     setLoading(false);
@@ -48,7 +48,7 @@ export function AdminPickupLocations({ onSaved }: { onSaved?: () => void }) {
           default_dry_quota_kg: form.accepts_dry && form.default_dry_quota_kg ? Number(form.default_dry_quota_kg) : null,
         };
     setSaving(true);
-    const res = await fetch('/api/admin/pickup-slots', {
+    const res = await fetch('/api/admin/pickup-slots', { credentials: 'include', 
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });

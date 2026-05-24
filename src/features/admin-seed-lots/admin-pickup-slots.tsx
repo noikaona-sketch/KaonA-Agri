@@ -33,7 +33,7 @@ export function AdminPickupSlots() {
 
   async function load() {
     setLoading(true);
-    const res = await fetch('/api/admin/pickup-slots');
+    const res = await fetch('/api/admin/pickup-slots', { credentials: 'include' });
     const d = (await res.json()) as { slots: Slot[]; locations: Location[] };
     setSlots(d.slots ?? []);
     setLocations(d.locations ?? []);
@@ -44,7 +44,7 @@ export function AdminPickupSlots() {
   async function saveSlot() {
     if (!form.location_id || !form.pickup_date) { setNotice('❌ กรุณากรอกข้อมูลให้ครบ'); return; }
     setSaving(true);
-    const res = await fetch('/api/admin/pickup-slots', {
+    const res = await fetch('/api/admin/pickup-slots', { credentials: 'include', 
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ location_id: form.location_id, pickup_date: form.pickup_date, pickup_time: form.pickup_time, capacity_qty: Number(form.capacity_qty), note: form.note || null }),
     });
@@ -60,7 +60,7 @@ export function AdminPickupSlots() {
   async function saveLocation() {
     if (!locForm.name.trim()) { setNotice('❌ กรุณากรอกชื่อจุดรับ'); return; }
     setSaving(true);
-    const res = await fetch('/api/admin/pickup-locations', {
+    const res = await fetch('/api/admin/pickup-locations', { credentials: 'include', 
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: locForm.name.trim(), address: locForm.address || null, map_url: locForm.map_url || null }),
     });
@@ -74,7 +74,7 @@ export function AdminPickupSlots() {
   }
 
   async function toggleStatus(slot: Slot) {
-    await fetch('/api/admin/pickup-slots', {
+    await fetch('/api/admin/pickup-slots', { credentials: 'include', 
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: slot.id, action: slot.status === 'open' ? 'close' : 'open' }),
     });

@@ -24,7 +24,7 @@ export function MemberSummaryReport() {
   const [loading,  setLoading]  = useState(true);
 
   useEffect(() => {
-    void fetch('/api/admin/reports/member-summary').then(r=>r.json())
+    void fetch('/api/admin/reports/member-summary', { credentials: 'include' }).then(r=>r.json())
       .then((d:{summary?:Summary;weekly_new?:WeekRow[];by_district?:DistrictRow[];recent?:RecentRow[]}) => {
         setSummary(d.summary??null);
         setWeekly(d.weekly_new??[]);

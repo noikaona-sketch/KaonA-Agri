@@ -45,8 +45,8 @@ export function AdminIntakeQuota() {
   async function load() {
     setLoading(true);
     const [tRes, sRes] = await Promise.all([
-      fetch('/api/admin/intake-quota').then((r) => r.json()) as Promise<{ templates: Template[]; locations: Location[] }>,
-      fetch('/api/admin/pickup-slots').then((r) => r.json()) as Promise<{ slots: SlotDay[] }>,
+      fetch('/api/admin/intake-quota', { credentials: 'include' }).then((r) => r.json()) as Promise<{ templates: Template[]; locations: Location[] }>,
+      fetch('/api/admin/pickup-slots', { credentials: 'include' }).then((r) => r.json()) as Promise<{ slots: SlotDay[] }>,
     ]);
     setTemplates(tRes.templates ?? []);
     setLocations(tRes.locations ?? []);
@@ -58,7 +58,7 @@ export function AdminIntakeQuota() {
   async function save() {
     if (!editing) return;
     setSaving(true);
-    const res = await fetch('/api/admin/intake-quota', {
+    const res = await fetch('/api/admin/intake-quota', { credentials: 'include', 
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(editing),
     });
@@ -76,7 +76,7 @@ export function AdminIntakeQuota() {
     date.setDate(today.getDate() + daysAhead);
     const dateStr   = date.toISOString().slice(0, 10);
     setSaving(true);
-    await fetch('/api/admin/pickup-slots', {
+    await fetch('/api/admin/pickup-slots', { credentials: 'include', 
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         location_id:         tmpl.location_id,

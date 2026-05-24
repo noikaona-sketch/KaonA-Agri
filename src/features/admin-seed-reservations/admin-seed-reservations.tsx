@@ -39,7 +39,7 @@ export function AdminSeedReservations() {
     if (!window.confirm('ยกเลิกการจองนี้?')) return;
     setActing(id); setNotice(null);
     const item = items.find((r) => r.id === id);
-    const res = await fetch('/api/admin/seed-reservations', {
+    const res = await fetch('/api/admin/seed-reservations', { credentials: 'include', 
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'cancel', reservation_id: id, source: item?._source ?? 'seed_reservation' }),
     });
@@ -54,7 +54,7 @@ export function AdminSeedReservations() {
     if (!confirmId) return;
     setActing(confirmId); setNotice(null);
     const item = items.find((r) => r.id === confirmId);
-    const res = await fetch('/api/admin/seed-reservations', {
+    const res = await fetch('/api/admin/seed-reservations', { credentials: 'include', 
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         action: 'confirm', reservation_id: confirmId,

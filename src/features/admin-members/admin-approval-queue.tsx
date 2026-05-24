@@ -65,7 +65,7 @@ export function AdminApprovalQueue() {
 
   async function loadQueue() {
     setLoading(true); setError(null);
-    const res = await fetch('/api/admin/members/approvals');
+    const res = await fetch('/api/admin/members/approvals', { credentials: 'include' });
     const payload = (await res.json()) as { items?: QueueItem[]; summary?: QueueSummary; error?: string };
     if (!res.ok) { setError(payload.error ?? 'โหลดไม่สำเร็จ'); setLoading(false); return; }
     setItems(payload.items ?? []);
@@ -78,7 +78,7 @@ export function AdminApprovalQueue() {
   async function review(approvalId: string, memberId: string, decision: 'approved' | 'rejected') {
     if (!window.confirm(decision === 'approved' ? 'อนุมัติสมาชิกนี้?' : 'ไม่อนุมัติสมาชิกนี้?')) return;
     setActingId(approvalId); setNotice(null);
-    const res = await fetch('/api/admin/members/approvals', {
+    const res = await fetch('/api/admin/members/approvals', { credentials: 'include', 
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ memberId, approvalId, decision }),

@@ -258,7 +258,7 @@ export function ApprovalsQueueContent() {
 
   useEffect(() => {
     async function loadQueue() {
-      const res = await fetch('/api/admin/provider-requests?status=pending');
+      const res = await fetch('/api/admin/provider-requests?status=pending', { credentials: 'include' });
       const payload = (await res.json()) as { items?: Array<Record<string, unknown>> };
       if (!res.ok) return setItems([]);
       setItems((payload.items ?? []).map((row) => ({
@@ -303,13 +303,13 @@ export function ApprovalsQueueContent() {
             <textarea rows={3} placeholder="เหตุผล (ถ้ามี)" value={reason} onChange={(e) => setReason(e.target.value)} />
             <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
               <UIButton onClick={async () => {
-                await fetch('/api/admin/provider-requests/review', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ requestId: selected.id, decision: 'approved', reason: reason || undefined }) });
+                await fetch('/api/admin/provider-requests/review', { credentials: 'include',  method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ requestId: selected.id, decision: 'approved', reason: reason || undefined }) });
                 setItems((prev) => prev.filter((p) => p.id !== selected.id));
                 setSelectedId('');
                 setReason('');
               }}>อนุมัติ</UIButton>
               <UIButton variant="secondary" onClick={async () => {
-                await fetch('/api/admin/provider-requests/review', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ requestId: selected.id, decision: 'rejected', reason: reason || undefined }) });
+                await fetch('/api/admin/provider-requests/review', { credentials: 'include',  method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ requestId: selected.id, decision: 'rejected', reason: reason || undefined }) });
                 setItems((prev) => prev.filter((p) => p.id !== selected.id));
                 setSelectedId('');
                 setReason('');

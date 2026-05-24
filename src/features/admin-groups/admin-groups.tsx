@@ -45,7 +45,7 @@ export function AdminGroups() {
   /* load all groups */
   async function load() {
     setLoading(true);
-    const res = await fetch('/api/admin/groups');
+    const res = await fetch('/api/admin/groups', { credentials: 'include' });
     const d = (await res.json()) as { groups?: Group[]; error?: string };
     if (!res.ok) { setError(d.error ?? 'โหลดไม่สำเร็จ'); setLoading(false); return; }
     setGroups(d.groups ?? []);
@@ -65,7 +65,7 @@ export function AdminGroups() {
     if (!newName.trim()) return;
     setSaving(true);
     // ใช้ admin placeholder id — API ใช้ service role ไม่ต้องการ real user
-    const res = await fetch('/api/admin/groups', {
+    const res = await fetch('/api/admin/groups', { credentials: 'include', 
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: newName.trim(), description: newDesc || undefined, created_by: '00000000-0000-0000-0000-000000000001' }),
     });

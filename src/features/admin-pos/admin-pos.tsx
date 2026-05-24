@@ -160,9 +160,9 @@ export function AdminPos() {
   useEffect(() => {
     void (async () => {
       const [whRes, sessRes, slotRes] = await Promise.all([
-        fetch('/api/admin/warehouses').then((r) => r.json()),
-        fetch('/api/admin/cashier?status=open').then((r) => r.json()),
-        fetch('/api/admin/pickup-slots-all').then((r) => r.json()),
+        fetch('/api/admin/warehouses', { credentials: 'include' }).then((r) => r.json()),
+        fetch('/api/admin/cashier?status=open', { credentials: 'include' }).then((r) => r.json()),
+        fetch('/api/admin/pickup-slots-all', { credentials: 'include' }).then((r) => r.json()),
       ]);
       const whs: Warehouse[] = (whRes as { warehouses?: Warehouse[] }).warehouses ?? [];
       setWarehouses(whs);
@@ -214,13 +214,13 @@ export function AdminPos() {
     setSubmitting(true); setNotice(null);
 
     for (const item of cart) {
-      await fetch('/api/admin/stock-movements', {
+      await fetch('/api/admin/stock-movements', { credentials: 'include', 
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ movement_type: mode === 'sale' ? 'sale' : 'reservation', warehouse_id: selWH, product_id: item.product_id ?? null, product_name: item.name, unit: item.unit, qty: item.qty, unit_price: item.unit_price, ref_type: mode === 'sale' ? 'pos_sale' : 'pos_reserve', note: `สมาชิก: ${member.full_name}` }),
       });
     }
 
-    const orderRes = await fetch('/api/admin/sale-order', {
+    const orderRes = await fetch('/api/admin/sale-order', { credentials: 'include', 
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ member_id: member.id, order_type: mode, warehouse_id: selWH, pickup_slot_id: mode === 'reservation' ? selSlot || null : null, items: cart.map((c) => ({ product_id: c.product_id ?? null, product_name: c.name, qty: c.qty, unit_price: c.unit_price, unit: c.unit })), payment_method: payMethod, source_type: reservationId ? 'reservation' : 'walk_in', reservation_id: reservationId, paid_amount: payMethod === 'cash' ? Number(cashReceived) : total, discount: discountAmt, note: resNote || null, source_channel: mode === 'reservation' ? resChannel : null }),
     });

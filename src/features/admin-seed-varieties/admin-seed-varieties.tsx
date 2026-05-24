@@ -52,7 +52,7 @@ export function AdminSeedVarieties() {
 
   async function load() {
     setLoading(true);
-    const res = await fetch('/api/admin/seed-varieties');
+    const res = await fetch('/api/admin/seed-varieties', { credentials: 'include' });
     const d = (await res.json()) as { varieties?: Variety[]; suppliers?: Supplier[]; error?: string };
     if (!res.ok) setError(d.error ?? 'โหลดไม่สำเร็จ');
     else { setVarieties(d.varieties ?? []); setSuppliers(d.suppliers ?? []); }
@@ -100,7 +100,7 @@ export function AdminSeedVarieties() {
       show_to_farmer: form.show_to_farmer,
       sort_order: Number(form.sort_order) || 0,
     };
-    const res = await fetch('/api/admin/seed-varieties', {
+    const res = await fetch('/api/admin/seed-varieties', { credentials: 'include', 
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -202,7 +202,7 @@ export function AdminSeedVarieties() {
                           fd.append('file', uploadFile);
                           fd.append('bucket', 'seed-images');
                           fd.append('folder', 'varieties');
-                          const res = await fetch('/api/admin/upload-image', { method: 'POST', body: fd });
+                          const res = await fetch('/api/admin/upload-image', { credentials: 'include',  method: 'POST', body: fd });
                           const d = (await res.json()) as { url?: string; error?: string };
                           if (d.url) setForm((p) => ({ ...p, image_url: d.url! }));
                           else setNotice(`❌ อัปโหลดรูปไม่สำเร็จ: ${d.error}`);

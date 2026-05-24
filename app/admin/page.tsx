@@ -70,7 +70,7 @@ export default function AdminDashboardPage() {
   const [stats, setStats] = useState<Stats | null>(null);
 
   useEffect(() => {
-    void fetch('/api/admin/dashboard-stats')
+    void fetch('/api/admin/dashboard-stats', { credentials: 'include' })
       .then((r) => r.json())
       .then((d) => setStats(d as Stats));
   }, []);

@@ -19,7 +19,7 @@ export function AdminMoistureDeductions() {
 
   async function load() {
     setLoading(true);
-    const d = (await (await fetch('/api/admin/moisture-deductions')).json()) as { rows?: Row[] };
+    const d = (await (await fetch('/api/admin/moisture-deductions', { credentials: 'include' })).json()) as { rows?: Row[] };
     setRows((d.rows ?? []).filter((r) => r.is_active).sort((a, b) => b.moisture_pct - a.moisture_pct));
     setLoading(false);
   }
@@ -32,7 +32,7 @@ export function AdminMoistureDeductions() {
   async function save() {
     if (!form.moisture_pct) { setNotice('❌ กรุณากรอกความชื้น'); return; }
     setSaving(true);
-    const res = await fetch('/api/admin/moisture-deductions', {
+    const res = await fetch('/api/admin/moisture-deductions', { credentials: 'include', 
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         moisture_pct:        Number(form.moisture_pct),
@@ -51,7 +51,7 @@ export function AdminMoistureDeductions() {
 
   async function remove(id: string, pct: number) {
     if (!confirm(`ลบแถวความชื้น ${pct}% ?`)) return;
-    await fetch('/api/admin/moisture-deductions', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+    await fetch('/api/admin/moisture-deductions', { credentials: 'include',  method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
     await load();
   }
 

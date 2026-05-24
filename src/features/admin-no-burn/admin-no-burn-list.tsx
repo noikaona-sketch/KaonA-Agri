@@ -39,7 +39,7 @@ export function AdminNoBurnList() {
     triggerInspection?: boolean,
   ) {
     setActing(id);
-    const res = await fetch('/api/admin/no-burn/decision', {
+    const res = await fetch('/api/admin/no-burn/decision', { credentials: 'include', 
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
         request_id:          id,

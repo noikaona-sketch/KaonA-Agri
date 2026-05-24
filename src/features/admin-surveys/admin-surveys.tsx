@@ -8,11 +8,11 @@ export function AdminSurveys() {
   const [questions,setQuestions]=useState([{question_text:'',question_type:'text' as QType,choices:''}]);
   const [list,setList]=useState<any[]>([]); const [notice,setNotice]=useState('');
 
-  async function load(){ const res=await fetch('/api/admin/surveys'); const j=await res.json(); setList(j.surveys??[]); }
+  async function load(){ const res=await fetch('/api/admin/surveys', { credentials: 'include' }); const j=await res.json(); setList(j.surveys??[]); }
   useEffect(()=>{void load();},[]);
   async function submit(){
     const payload={title,description,questions:questions.map((q)=>({...q,choices:q.question_type==='choice'?q.choices.split(',').map(s=>s.trim()).filter(Boolean):null}))};
-    const res=await fetch('/api/admin/surveys',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const res=await fetch('/api/admin/surveys', { credentials: 'include', method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     if(res.ok){setNotice('สร้างแบบสำรวจแล้ว');setTitle('');setDescription('');setQuestions([{question_text:'',question_type:'text',choices:''}]);void load();}
     else { const j=await res.json(); setNotice(j.error??'error'); }
   }

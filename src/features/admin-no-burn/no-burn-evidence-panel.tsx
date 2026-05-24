@@ -47,7 +47,7 @@ export function NoBurnEvidencePanel({ requestId }: Props) {
 
   async function setStatus(photoId: string, status: 'accepted' | 'rejected' | 'needs_review') {
     setActing(photoId);
-    await fetch('/api/admin/no-burn/photos', {
+    await fetch('/api/admin/no-burn/photos', { credentials: 'include', 
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ photo_id: photoId, evidence_status: status }),
     });

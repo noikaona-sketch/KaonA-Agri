@@ -46,7 +46,7 @@ export default function AdminAssignInspectionPage() {
     const inspectorId = selected[inspectionId];
     if (!inspectorId) { setNotice('❌ กรุณาเลือก inspector ก่อน'); return; }
     setAssigning(inspectionId);
-    const res = await fetch('/api/admin/inspections/assign', {
+    const res = await fetch('/api/admin/inspections/assign', { credentials: 'include', 
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ inspection_id:inspectionId, inspector_member_id:inspectorId }),
     });

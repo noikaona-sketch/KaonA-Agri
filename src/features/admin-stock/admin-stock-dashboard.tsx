@@ -58,10 +58,10 @@ export function AdminStockDashboard() {
   async function load() {
     setLoading(true);
     const [whRes, stockRes, mvRes, prodRes] = await Promise.all([
-      fetch('/api/admin/warehouses').then((r) => r.json()),
+      fetch('/api/admin/warehouses', { credentials: 'include' }).then((r) => r.json()),
       fetch(`/api/admin/stock-movements/summary${selWH ? `?warehouse_id=${selWH}` : ''}`).then((r) => r.json()),
       fetch(`/api/admin/stock-movements?limit=50${selWH ? `&warehouse_id=${selWH}` : ''}`).then((r) => r.json()),
-      fetch('/api/admin/products').then((r) => r.json()),
+      fetch('/api/admin/products', { credentials: 'include' }).then((r) => r.json()),
     ]);
     setWarehouses(whRes.warehouses ?? []);
     setStock(stockRes.stock ?? []);
@@ -78,7 +78,7 @@ export function AdminStockDashboard() {
       setNotice('❌ กรุณากรอกข้อมูลให้ครบ'); return;
     }
     setSaving(true); setNotice(null);
-    const res = await fetch('/api/admin/stock-movements', {
+    const res = await fetch('/api/admin/stock-movements', { credentials: 'include', 
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         movement_type: 'receive', warehouse_id: rf.warehouse_id,
@@ -103,7 +103,7 @@ export function AdminStockDashboard() {
     }
     if (tf.from_wh === tf.to_wh) { setNotice('❌ คลังต้น-ปลายทางต้องต่างกัน'); return; }
     setSaving(true); setNotice(null);
-    const res = await fetch('/api/admin/stock-movements', {
+    const res = await fetch('/api/admin/stock-movements', { credentials: 'include', 
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         movement_type: 'transfer_out', warehouse_id: tf.from_wh,
@@ -127,7 +127,7 @@ export function AdminStockDashboard() {
     const qty = Number(editingReceive.qty);
     if (!qty || qty <= 0) { setNotice('❌ จำนวนต้องมากกว่า 0'); return; }
     setSaving(true); setNotice(null);
-    const res = await fetch('/api/admin/stock-movements', {
+    const res = await fetch('/api/admin/stock-movements', { credentials: 'include', 
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

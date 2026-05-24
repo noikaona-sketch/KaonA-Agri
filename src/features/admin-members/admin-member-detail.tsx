@@ -76,7 +76,7 @@ export function AdminMemberDetail({ memberId }: { memberId: string }) {
 
   async function updateStatus(status: string, reason?: string) {
     setActing(true); setNotice(null); setIncompleteWarning(null);
-    const res = await fetch('/api/admin/members/approvals', {
+    const res = await fetch('/api/admin/members/approvals', { credentials: 'include', 
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ memberId, decision: status, reason }),
     });
@@ -99,7 +99,7 @@ export function AdminMemberDetail({ memberId }: { memberId: string }) {
 
   async function updateBankStatus(bankStatus: string) {
     setActing(true);
-    const res = await fetch('/api/admin/members/approvals', {
+    const res = await fetch('/api/admin/members/approvals', { credentials: 'include', 
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ memberId, decision: 'bank_status', bankStatus }),
     });

@@ -25,8 +25,8 @@ export function AdminApiKeyList() {
   async function load() {
     setLoading(true);
     const [kRes, lRes] = await Promise.all([
-      fetch('/api/admin/factory-api-keys').then(r => r.json()) as Promise<{ keys?: ApiKey[] }>,
-      fetch('/api/admin/pickup-slots').then(r => r.json()) as Promise<{ locations?: Location[] }>,
+      fetch('/api/admin/factory-api-keys', { credentials: 'include' }).then(r => r.json()) as Promise<{ keys?: ApiKey[] }>,
+      fetch('/api/admin/pickup-slots', { credentials: 'include' }).then(r => r.json()) as Promise<{ locations?: Location[] }>,
     ]);
     setKeys(kRes.keys ?? []);
     setLocations(lRes.locations ?? []);
@@ -37,7 +37,7 @@ export function AdminApiKeyList() {
   async function create() {
     if (!form.name || !form.location_id) { setNotice('❌ กรุณากรอกชื่อและจุดรับ'); return; }
     setSaving(true);
-    const res = await fetch('/api/admin/factory-api-keys', {
+    const res = await fetch('/api/admin/factory-api-keys', { credentials: 'include', 
       method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(form),
     });
     setSaving(false);
@@ -50,7 +50,7 @@ export function AdminApiKeyList() {
 
   async function deactivate(id: string) {
     if (!confirm('ปิดใช้งาน API key นี้?')) return;
-    await fetch('/api/admin/factory-api-keys', {
+    await fetch('/api/admin/factory-api-keys', { credentials: 'include', 
       method:'DELETE', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ id }),
     });
     await load();

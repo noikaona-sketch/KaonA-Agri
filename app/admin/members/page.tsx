@@ -55,7 +55,7 @@ export default function AdminMembersPage() {
     form.append('file', file);
 
     try {
-      const res = await fetch('/api/admin/members/import/preview', { method: 'POST', body: form });
+      const res = await fetch('/api/admin/members/import/preview', { credentials: 'include',  method: 'POST', body: form });
       const data = (await res.json()) as PreviewResponse & { error?: string };
       if (!res.ok) {
         setRequestError(data.error ?? data.errors?.[0] ?? 'preview ไม่สำเร็จ');
@@ -81,7 +81,7 @@ export default function AdminMembersPage() {
     form.append('overrideDuplicate', String(overrideDuplicate));
 
     try {
-      const res = await fetch('/api/admin/members/import/confirm', { method: 'POST', body: form });
+      const res = await fetch('/api/admin/members/import/confirm', { credentials: 'include',  method: 'POST', body: form });
       const data = (await res.json()) as { ok: boolean; inserted?: number; message?: string; errors?: string[] };
       if (!res.ok || !data.ok) {
         setRequestError(data.errors?.[0] ?? data.message ?? 'confirm ไม่สำเร็จ');

@@ -38,7 +38,7 @@ export default function ReconcilePage() {
   const [notice,     setNotice]     = useState<string | null>(null);
 
   useEffect(() => {
-    void fetch('/api/admin/pickup-slots').then(r => r.json())
+    void fetch('/api/admin/pickup-slots', { credentials: 'include' }).then(r => r.json())
       .then((d: { locations?: Location[] }) => {
         const locs = d.locations ?? [];
         setLocations(locs);
@@ -61,7 +61,7 @@ export default function ReconcilePage() {
   async function closeDay() {
     if (!confirm(`ปิดรับวัน ${date}?\n- คิวที่ยังไม่มา → no-show\n- บันทึกที่เสร็จแล้ว → lock ไม่ให้แก้ไข`)) return;
     setClosing(true);
-    const res = await fetch('/api/admin/harvest/reconcile', {
+    const res = await fetch('/api/admin/harvest/reconcile', { credentials: 'include', 
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ action:'close', date, location_id:locationId||undefined }),
     });
@@ -73,7 +73,7 @@ export default function ReconcilePage() {
   }
 
   async function exportCsv() {
-    const res = await fetch('/api/admin/harvest/reconcile', {
+    const res = await fetch('/api/admin/harvest/reconcile', { credentials: 'include', 
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ action:'export', date, location_id:locationId||undefined }),
     });

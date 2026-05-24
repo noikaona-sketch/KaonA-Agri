@@ -33,7 +33,7 @@ export function StockSummaryReport() {
 
   async function load() {
     setLoading(true);
-    const res = await fetch('/api/admin/reports/stock-summary');
+    const res = await fetch('/api/admin/reports/stock-summary', { credentials: 'include' });
     const d   = (await res.json()) as { stock?: StockRow[]; total_stock_value?: number };
     setStock(d.stock ?? []);
     setTotalVal(d.total_stock_value ?? 0);
