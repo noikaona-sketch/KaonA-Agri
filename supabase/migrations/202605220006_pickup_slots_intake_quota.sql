@@ -30,6 +30,8 @@ comment on table public.intake_quota_templates is
 
 alter table public.intake_quota_templates enable row level security;
 
+drop policy if exists intake_quota_admin on public.intake_quota_templates;
+drop policy if exists intake_quota_read  on public.intake_quota_templates;
 create policy intake_quota_admin on public.intake_quota_templates for all
   using (public.current_member_has_role('admin') or public.current_member_has_role('staff'));
 create policy intake_quota_read on public.intake_quota_templates for select using (true);

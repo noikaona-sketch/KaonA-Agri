@@ -23,9 +23,12 @@ comment on column public.moisture_deductions.drying_days_per_pct is 'จำน�
 -- RLS
 alter table public.moisture_deductions enable row level security;
 
+drop policy if exists "admin_all_moisture_deductions"   on public.moisture_deductions;
+drop policy if exists "public_read_moisture_deductions" on public.moisture_deductions;
+
 create policy "admin_all_moisture_deductions" on public.moisture_deductions
   for all using (
-    exists (select 1 from public.members where line_uid = auth.uid()::text and role = 'admin')
+    public.current_member_has_role('admin') or public.current_member_has_role('staff')
   );
 
 create policy "public_read_moisture_deductions" on public.moisture_deductions
