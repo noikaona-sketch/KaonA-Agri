@@ -19,7 +19,7 @@
 | Z2 Booking | Z2-1 Staff actual weight | ✅ Z3-5 แล้ว | — |
 | Z2 Booking | Z2-2 Admin complete booking | ❌ | ✅ ทำ |
 | Z2 Booking | Z2-3 Expected vs actual | ✅ แล้ว | — |
-| Z2 Booking | Z2-4 UAT booking | ❌ | ✅ ทำ |
+| Z2 Booking | Z2-4 UAT booking | ✅ doc แล้ว | ✅ ทำ |
 | Z3 Intake | Z3-1 ถึง Z3-5, Z3-7 ถึง Z3-10 | ✅ แล้ว | — |
 | Z3 Intake | Z3-6 CSV import | ❌ | ✅ ทำ |
 | Z4 Staff | Z4-3 ถึง Z4-6 | ✅ แล้ว | — |
@@ -178,46 +178,6 @@ type ErrorRow = {
 ---
 
 ## 🟡 PRIORITY 2 — Quality & Testing
-
----
-
-### Issue Z2-4 · UAT test script: harvest booking flow
-
-**Labels:** `docs` `testing`
-**Output file:** `docs/uat-booking-flow.md`
-
-**Script format (step-by-step):**
-```markdown
-## การทดสอบ: farmer จอง → แก้ไข → cancel → staff กรอก actual
-
-### Setup
-- Farmer A: สมาชิก approved พร้อม planting_cycle
-- Admin: account ที่มีสิทธิ์ service.write
-- Staff: account ที่มีสิทธิ์ service.write
-
-### Test T1: Farmer จองวันเกี่ยว
-| Step | Action | Expected | Pass? |
-|---|---|---|---|
-| 1.1 | Farmer เปิด /harvest/book | เห็น form จองพร้อมคิวอบ | ⬜ |
-| 1.2 | เลือก cycle + วันที่ | dryer queue แสดง utilization | ⬜ |
-| 1.3 | กด แจ้งวันเก็บเกี่ยว | success message | ⬜ |
-| 1.4 | Admin เปิด harvest queue | เห็น booking ใหม่ | ⬜ |
-
-### Test T2: Farmer แก้ไข booking
-...
-
-### Test T3: Staff กรอก actual weight
-...
-```
-
-**ต้องครอบคลุม:**
-1. Farmer จองวันเกี่ยว
-2. Admin เห็น queue + peak-day alert
-3. Farmer แก้ไข booking (วันที่)
-4. Farmer cancel booking
-5. Staff กรอก actual weight ที่ `/harvest/intake`
-6. Farmer ได้รับ LINE receipt
-7. รายงาน 🎯 คาด vs จริง แสดงข้อมูล
 
 ---
 
@@ -384,7 +344,6 @@ type ErrorRow = {
 | 🔴 | Z1-1 LINE push approve/reject | code | ง่าย |
 | 🔴 | Z2-2 Admin complete booking | code | กลาง |
 | 🔴 | Z3-6 CSV import batch | code | ยาก |
-| 🟡 | Z2-4 UAT booking script | docs | ง่าย |
 | 🟡 | Z1-2 UAT member script | docs | ง่าย |
 | 🟡 | Z1-4 Admin manual | docs | ง่าย |
 | 🟢 | Z9-1 UAT farmer flow | docs | ง่าย |
@@ -392,7 +351,7 @@ type ErrorRow = {
 | 🟢 | Z9-3 UAT admin flow | docs | ง่าย |
 | 🟢 | Z9-6 Launch checklist | docs | ง่าย |
 
-**Code issues: 3 ตัว · Docs issues: 7 ตัว · รวม 10 issues**
+**Code issues: 3 ตัว · Docs issues: 6 ตัว · รวม 9 issues**
 
 ---
 
