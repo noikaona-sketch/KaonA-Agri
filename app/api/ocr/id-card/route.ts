@@ -53,7 +53,11 @@ export async function POST(request: Request) {
     );
 
     if (!res.ok) {
-      console.error('[OCR_GEMINI]', await res.text());
+      const errText = await res.text();
+      console.error('[OCR_GEMINI]', res.status, errText);
+      if (res.status === 429) {
+        return NextResponse.json({ error: 'ระบบ OCR ยุ่งอยู่ กรุณารอสักครู่แล้วลองใหม่ หรือกรอกด้วยตนเอง' }, { status: 429 });
+      }
       return NextResponse.json({ error: 'Gemini API error' }, { status: 500 });
     }
 
