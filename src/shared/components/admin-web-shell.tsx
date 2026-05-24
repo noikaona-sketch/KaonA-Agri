@@ -26,6 +26,7 @@ const ALL_NAV: NavItem[] = [
   { label: 'แบบสำรวจ', href: '/admin/surveys', icon: '📝' },
   { label: 'แจ้งเตือน', href: '/admin/alerts', icon: '🚨' },
   { label: 'System Map', href: '/admin/system-map', icon: '🗺️' },
+  { label: 'UAT',        href: '/admin/uat',        icon: '🧪' },
 ];
 
 const DEPT_NAV: Record<string, string[]> = {
