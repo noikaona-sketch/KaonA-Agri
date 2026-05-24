@@ -41,11 +41,26 @@ const SYSTEMS: System[] = [
     },
     target:90, pilotBlock:true, color:"#059669", bg:"#ECFDF5",
     roles:["farmer","staff","admin"],
-    done:["สมัครผ่าน LINE LIFF","Admin approve/reject","LINE แจ้งผล ✅","Import CSV + review","Onboarding checklist 4 ขั้น","กลุ่มสมาชิก","RLS API layer verified","Admin manual ✅"],
-    todo:["ทดสอบ RLS กับ user จริง (Pavee)","UAT script (Codex Z1-2)"],
-    tables:["members","member_roles","member_groups","approvals"],
-    connects:["plot","harvest","noburn","comms","report"],
-    codex:["Z1-2"], pavee:["Z0-4 RLS test"],
+   done:[
+  "สมัครผ่าน LINE LIFF",
+  "Admin approve/reject",
+  "LINE แจ้งผล ✅",
+  "Import CSV + review",
+  "Onboarding checklist 4 ขั้น",
+  "กลุ่มสมาชิก",
+  "RLS API layer verified",
+  "UAT script member flow (Codex Z1-2)",
+  "Admin manual ✅"
+],
+
+todo:[
+  "ทดสอบ RLS กับ user จริง (Pavee)"
+],
+
+codex:[],
+
+pavee:["Z0-4 RLS test"]
+
     liveStats: m => [
       { label:"สมาชิกทั้งหมด", value:`${m.total_members} คน` },
       { label:"อนุมัติแล้ว",   value:`${m.approved_members} คน` },

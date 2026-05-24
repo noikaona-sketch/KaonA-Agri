@@ -13,7 +13,7 @@
 | Zone | Issue | Claude ทำแล้ว | Codex ทำ |
 |---|---|---|---|
 | Z1 Member | Z1-1 LINE approve/reject | ❌ | ✅ ทำ |
-| Z1 Member | Z1-2 UAT script | ❌ | ✅ ทำ |
+| Z1 Member | Z1-2 UAT script | ✅ doc แล้ว | ✅ ทำ |
 | Z1 Member | Z1-3 RLS verify | ✅ doc แล้ว | — |
 | Z1 Member | Z1-4 Admin manual | ❌ | ✅ ทำ |
 | Z2 Booking | Z2-1 Staff actual weight | ✅ Z3-5 แล้ว | — |
