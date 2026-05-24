@@ -237,46 +237,6 @@ type ErrorRow = {
 
 ---
 
-### Issue Z1-4 · Admin manual
-
-**Labels:** `docs`
-**Output file:** `docs/admin-manual.md`
-
-**Sections ที่ต้องมี:**
-
-```markdown
-# คู่มือ Admin KaonA-Agri
-
-## 1. การจัดการสมาชิก
-### approve/reject สมาชิก
-### import CSV สมาชิก
-
-## 2. ตั้งราคารับซื้อ
-### ตั้งราคาฐาน (market_prices)
-### ตั้งตารางส่วนลดตามความชื้น (moisture_deductions)
-### สร้างโปรโมชั่น (campaign_announcements)
-
-## 3. จัดการโควต้าและคิวรับซื้อ
-### ตั้ง template รายวัน (intake_quota_templates)
-### สร้าง pickup slot จาก template
-### ดู utilization realtime
-
-## 4. Factory API Keys
-### สร้าง API key สำหรับเครื่องชั่ง
-### ปิดใช้งาน key
-
-## 5. ปิดรับวัน (Reconciliation)
-### ขั้นตอนปิดรับ
-### export CSV วันนั้น
-
-## 6. รายงาน
-### รายงานสมาชิก
-### รายงานการจองขาย
-### คาด vs จริง
-### ตามรถ / ตามพื้นที่
-```
-
----
 
 ## 🟢 PRIORITY 3 — UAT & Go-Live
 
@@ -386,13 +346,12 @@ type ErrorRow = {
 | 🔴 | Z3-6 CSV import batch | code | ยาก |
 | 🟡 | Z2-4 UAT booking script | docs | ง่าย |
 | 🟡 | Z1-2 UAT member script | docs | ง่าย |
-| 🟡 | Z1-4 Admin manual | docs | ง่าย |
 | 🟢 | Z9-1 UAT farmer flow | docs | ง่าย |
 | 🟢 | Z9-2 UAT staff flow | docs | ง่าย |
 | 🟢 | Z9-3 UAT admin flow | docs | ง่าย |
 | 🟢 | Z9-6 Launch checklist | docs | ง่าย |
 
-**Code issues: 3 ตัว · Docs issues: 7 ตัว · รวม 10 issues**
+**Code issues: 3 ตัว · Docs issues: 6 ตัว · รวม 9 issues**
 
 ---
 

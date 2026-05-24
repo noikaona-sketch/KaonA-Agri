@@ -41,11 +41,11 @@ const SYSTEMS: System[] = [
     },
     target:90, pilotBlock:true, color:"#059669", bg:"#ECFDF5",
     roles:["farmer","staff","admin"],
-    done:["สมัครผ่าน LINE LIFF","Admin approve/reject","LINE แจ้งผล ✅","Import CSV + review","Onboarding checklist 4 ขั้น","กลุ่มสมาชิก","RLS API layer verified"],
-    todo:["ทดสอบ RLS กับ user จริง (Pavee)","UAT script (Codex Z1-2)","Admin manual (Codex Z1-4)"],
+    done:["สมัครผ่าน LINE LIFF","Admin approve/reject","LINE แจ้งผล ✅","Import CSV + review","Onboarding checklist 4 ขั้น","กลุ่มสมาชิก","RLS API layer verified","Admin manual ✅"],
+    todo:["ทดสอบ RLS กับ user จริง (Pavee)","UAT script (Codex Z1-2)"],
     tables:["members","member_roles","member_groups","approvals"],
     connects:["plot","harvest","noburn","comms","report"],
-    codex:["Z1-2","Z1-4"], pavee:["Z0-4 RLS test"],
+    codex:["Z1-2"], pavee:["Z0-4 RLS test"],
     liveStats: m => [
       { label:"สมาชิกทั้งหมด", value:`${m.total_members} คน` },
       { label:"อนุมัติแล้ว",   value:`${m.approved_members} คน` },
@@ -114,7 +114,13 @@ const SYSTEMS: System[] = [
   },
   {
     id:"staff", icon:"👷", label:"ระบบเจ้าหน้าที่",
-    pct:(_m,_a) => 75,
+    pct:(m,a) => {
+      let s = 60;
+      if (a.intake_active) s += 5;
+      if (a.booking_active) s += 5;
+      if (m.completed_intakes >= 5) s += 5;
+      return Math.min(85, s);
+    },
     target:80, pilotBlock:true, color:"#6D28D9", bg:"#EDE9FE",
     roles:["staff","inspector","leader","admin"],
     done:["StaffHome + ⚖️บันทึกรับซื้อ ✅","Leader: สรุปกลุ่ม + pending ✅","Inspector: form + GPS ✅","Admin assign + LINE แจ้ง ✅","Queue board auto-refresh ✅"],
