@@ -404,3 +404,213 @@ type ErrorRow = {
 4. `npx next build` → must pass
 5. Commit: `feat(ZX-Y): description`
 6. ห้ามแก้ไขไฟล์ที่ไม่เกี่ยวกับ issue นั้น
+
+---
+
+## 🚛 PHASE 2 — ระบบรถร่วม + GPS Tracking
+
+> ทำหลัง Pilot — ต้องมีรถร่วมอย่างน้อย 3-5 คันก่อน
+
+---
+
+### Issue ZT-1 · Migration: truck_tracking table
+
+**Labels:** `database` `phase2` `truck`
+**Difficulty:** Easy
+
+**New file:** `supabase/migrations/202606010001_truck_tracking.sql`
+
+```sql
+-- บันทึก GPS รถขนส่งระหว่างรับงาน
+create table if not exists public.truck_tracking (
+  id           uuid primary key default gen_random_uuid(),
+  vehicle_id   uuid references public.member_vehicles(id) on delete cascade,
+  booking_id   uuid references public.service_bookings(id),
+  member_id    uuid references public.members(id),
+  lat          numeric(10,6) not null,
+  lng          numeric(10,6) not null,
+  speed_kmh    numeric(5,1),
+  accuracy_m   numeric(6,1),
+  recorded_at  timestamptz not null default now()
+);
+
+-- index สำหรับ query รถแต่ละคัน
+create index idx_truck_tracking_vehicle on public.truck_tracking(vehicle_id, recorded_at desc);
+create index idx_truck_tracking_booking on public.truck_tracking(booking_id, recorded_at desc);
+
+-- เก็บแค่ 30 วัน (ลด storage)
+-- admin ตั้ง pg_cron ลบอัตโนมัติหรือ cleanup manual
+
+-- สถานะงานที่ expanded สำหรับ GPS tracking
+alter table public.service_bookings
+  add column if not exists started_at      timestamptz,
+  add column if not exists arrived_at      timestamptz,
+  add column if not exists completed_at    timestamptz,
+  add column if not exists last_lat        numeric(10,6),
+  add column if not exists last_lng        numeric(10,6),
+  add column if not exists last_seen_at    timestamptz;
+```
+
+**Done when:** table สร้างแล้ว columns ใน service_bookings เพิ่มแล้ว
+
+---
+
+### Issue ZT-2 · Truck driver: GPS ping API + Start/Stop job
+
+**Labels:** `feature` `truck` `phase2`
+**Difficulty:** Medium
+
+**New files:**
+- `app/api/truck/location/route.ts` (≤60 lines)
+- `app/api/truck/job/route.ts` (≤60 lines)
+
+**POST /api/truck/location** — คนขับส่ง GPS ทุก 2 นาที
+```typescript
+// body: { vehicle_id, booking_id?, lat, lng, speed_kmh?, accuracy_m? }
+// 1. verify member เป็น truck_owner หรือมี vehicle_id นั้น
+// 2. insert truck_tracking row
+// 3. update service_bookings.last_lat/lng/last_seen_at
+// 4. ถ้า lat/lng ใกล้โรงงาน < 500m → update arrived_at อัตโนมัติ
+```
+
+**POST /api/truck/job** — เริ่ม/จบงาน
+```typescript
+// body: { booking_id, action: 'start'|'complete' }
+// start   → service_bookings.status='in_progress', started_at=now()
+// complete → service_bookings.status='completed', completed_at=now()
+```
+
+**Geofence check (ใช้ Haversine formula):**
+```typescript
+function distanceKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dLat = (lat2-lat1) * Math.PI/180;
+  const dLng = (lng2-lng1) * Math.PI/180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+// ถ้า distance < 0.5km → arrived
+```
+
+**Done when:** คนขับกด start → GPS ส่งได้ → admin เห็น last_seen_at
+
+---
+
+### Issue ZT-3 · Truck driver app: Job screen + GPS auto-ping
+
+**Labels:** `feature` `truck` `phase2`
+**Difficulty:** Medium
+
+**File to modify:** `app/page.tsx` — `TruckHome` function (มีอยู่แล้ว แต่ยังไม่มี job workflow)
+
+**New component:** `src/features/truck/active-job-card.tsx` (≤150 lines)
+
+**TruckHome เพิ่ม:**
+1. แสดงงานที่ได้รับวันนี้ (service_bookings ที่ assigned + ชื่อ farmer + แปลง)
+2. ปุ่ม "🚛 เริ่มงาน" → POST /api/truck/job { action:'start' }
+3. หลัง start → Auto GPS ping ทุก 2 นาที (`setInterval` + `navigator.geolocation`)
+4. แสดง elapsed time + สถานะ "กำลังขับ..."
+5. ปุ่ม "✅ ส่งสำเร็จ" → POST /api/truck/job { action:'complete' } → stop GPS
+
+**GPS ping loop:**
+```typescript
+useEffect(() => {
+  if (!isActive) return;
+  const interval = setInterval(() => {
+    navigator.geolocation.getCurrentPosition(pos => {
+      void fetch('/api/truck/location', {
+        method:'POST',
+        body: JSON.stringify({ vehicle_id, booking_id, lat:pos.coords.latitude, lng:pos.coords.longitude, accuracy_m:pos.coords.accuracy })
+      });
+    }, null, { enableHighAccuracy:true, timeout:8000 });
+  }, 120_000); // 2 นาที
+  return () => clearInterval(interval);
+}, [isActive, vehicle_id, booking_id]);
+```
+
+---
+
+### Issue ZT-4 · Admin: Live truck map + arrival alert
+
+**Labels:** `feature` `admin` `phase2`
+**Difficulty:** Medium
+
+**New page:** `app/admin/trucks/live/page.tsx` (≤120 lines)
+**New API:** `app/api/admin/trucks/live/route.ts` (≤50 lines)
+
+**GET /api/admin/trucks/live** — รถที่ active วันนี้
+```typescript
+// ดึง service_bookings ที่ status=in_progress วันนี้
+// join last_lat, last_lng, last_seen_at
+// คืน: [{ vehicle_id, driver_name, license_plate, last_lat, last_lng, last_seen_at, booking_id, farmer_name }]
+```
+
+**Admin live map แสดง:**
+- รายการรถที่ active พร้อม last seen time
+- 🟢 เห็นใน 5 นาที | 🟡 5-15 นาที | 🔴 > 15 นาที (อาจหลุด)
+- ✅ arrived badge เมื่อรถมาถึงโรงงานแล้ว
+
+**เพิ่มใน admin nav:** เมนู 🚛 รถร่วม → /admin/trucks/live
+
+---
+
+### Issue ZT-5 · ประโยชน์รถร่วม: คะแนนคุณภาพ + priority queue
+
+**Labels:** `feature` `truck` `phase2`
+**Difficulty:** Easy
+
+**New report:** `src/features/admin-reports/by-vehicle-report.tsx` (มีแล้ว — ต่อยอด)
+
+**เพิ่ม score คุณภาพ:**
+```typescript
+// คำนวณจาก harvest_bookings ที่รถคันนี้ส่ง
+score = (
+  (grade_a_count * 3 + grade_b_count * 2 + grade_c_count * 1) /
+  Math.max(1, total_trips)
+).toFixed(1)
+
+// tier:
+// ≥ 2.5 = 🥇 Gold   — ได้งานก่อน
+// ≥ 2.0 = 🥈 Silver
+// ≥ 1.5 = 🥉 Bronze
+// < 1.5 = ⚠️ ต้องปรับปรุง
+```
+
+**แสดงใน:**
+- by-vehicle report: เพิ่มคอลัมน์ tier badge
+- TruckHome: คนขับเห็น score ตัวเองพร้อมคำแนะนำ
+
+**ประโยชน์ที่รถร่วมได้เห็น:**
+```
+🥇 Gold Driver
+เที่ยวล่าสุด 12 เที่ยว · คุณภาพเฉลี่ย A/B
+ความชื้นเฉลี่ย 24.5% ✅
+→ ได้รับงานก่อนในระบบ priority queue
+```
+
+**Done when:** score แสดงใน report + TruckHome
+
+---
+
+### สรุป GPS Tracking Roadmap
+
+```
+ZT-1 Migration (ง่าย)
+    ↓
+ZT-2 GPS ping API + job start/stop (กลาง)
+    ↓
+ZT-3 Driver app: job screen + auto GPS (กลาง)
+    ↓
+ZT-4 Admin live map (กลาง)
+    ↓
+ZT-5 Quality score + priority queue (ง่าย)
+```
+
+**ประโยชน์รวม:**
+
+| คนขับรถ | โรงงาน |
+|---|---|
+| รับงานผ่านแอป ไม่ต้องรอโทรศัพท์ | รู้ว่ารถอยู่ไหน มาถึงเมื่อไหร่ |
+| ประวัติงานชัดเจน | วางแผน dryer load ได้แม่นขึ้น |
+| score สูง → ได้งานก่อน | ลด no-show เพราะ commit ในระบบ |
+| เส้นทางจาก GPS แปลง | audit trail ครบ — รถ/วัน/น้ำหนัก |
