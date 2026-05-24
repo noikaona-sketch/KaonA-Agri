@@ -18,7 +18,7 @@ function clearCookieResponse(redirectTo: string) {
 
 // GET — เมื่อคลิก link ออกจากระบบ
 export async function GET() {
-  return clearCookieResponse('/admin/login');
+  return clearCookieResponse('/admin-login');
 }
 
 // POST — เมื่อเรียกผ่าน fetch (backward compat)
