@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '../../../auth/line/line-auth-helpers';
 import { evaluateMemberReadiness } from '../readiness-policy';
 import { isForbidden, requireAdminPermission } from '../_admin-auth';
+import { sendLineMessage, memberApprovedMessage, memberRejectedMessage } from '@/lib/line/push-message';
 
 const ALLOWED_DECISIONS = ['approved','rejected','returned','suspended','pending'];
 
@@ -236,6 +237,22 @@ export async function POST(request: Request) {
       reason:     body.reason ?? null,
       acted_by:   admin.email ?? admin.adminUserId,
     });
+
+    const { data: memberData } = await s
+      .from('members')
+      .select('full_name, line_uid, line_user_id')
+      .eq('id', body.memberId)
+      .maybeSingle();
+
+    const memberLineId = memberData?.line_uid ?? memberData?.line_user_id;
+    if (memberLineId) {
+      const msg = body.decision === 'approved'
+        ? memberApprovedMessage(memberData?.full_name ?? 'คุณ')
+        : body.decision === 'rejected'
+          ? memberRejectedMessage(memberData?.full_name ?? 'คุณ', body.reason)
+          : null;
+      if (msg) void sendLineMessage(memberLineId, [msg]);
+    }
 
     return NextResponse.json({ ok: true });
   } catch (e) { return NextResponse.json({ error: String(e) }, { status: 500 }); }
