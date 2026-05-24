@@ -202,23 +202,6 @@ type ErrorRow = {
 
 ---
 
-### Issue Z9-1 · UAT script: farmer full flow
-
-**Labels:** `docs` `testing`
-**Output file:** `docs/uat-farmer-flow.md`
-
-**Scenario:** farmer ใช้ระบบครบวงจรตั้งแต่สมัครจนถึงได้ใบเสร็จ
-
-**ครอบคลุม:**
-1. สมัครสมาชิก → รอ approve → ได้รับ LINE
-2. กรอก onboarding (profile, plot, cycle)
-3. ดู moisture calculator + practical suggestion
-4. แจ้งวันเกี่ยว → เห็นคิวอบ
-5. รับ LINE receipt หลังรับซื้อ
-6. ดูรายงานส่วนตัว (กำไร/ต้นทุน/ไม่เผา)
-7. ยื่นคำขอไม่เผา → รับ LINE แจ้งผล
-
----
 
 ### Issue Z9-2 · UAT script: staff intake flow
 
@@ -305,7 +288,6 @@ type ErrorRow = {
 | 🔴 | Z2-2 Admin complete booking | code | กลาง |
 | 🔴 | Z3-6 CSV import batch | code | ยาก |
 | 🟡 | Z1-2 UAT member script | docs | ง่าย |
-| 🟢 | Z9-1 UAT farmer flow | docs | ง่าย |
 | 🟢 | Z9-2 UAT staff flow | docs | ง่าย |
 | 🟢 | Z9-3 UAT admin flow | docs | ง่าย |
 | 🟢 | Z9-6 Launch checklist | docs | ง่าย |

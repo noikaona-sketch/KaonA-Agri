@@ -101,7 +101,8 @@ done:[
   "Farmer เห็นคิวอบ 7 วัน",
   "Moisture calculator + suggestion",
   "Admin complete + actual data fields (Codex Z2-2)",
-  "UAT script (Codex Z2-4)"
+  "UAT script (Codex Z2-4)",
+  "UAT farmer full flow (Codex Z9-1) ✅"
 ],
 todo:[],
 tables:["harvest_bookings","pickup_slots","pickup_locations"],
