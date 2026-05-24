@@ -329,7 +329,7 @@ liveStats: m => [
     pct:(_m,_a) => 83,
     target:85, pilotBlock:false, color:"#374151", bg:"#F9FAFB",
     roles:["admin","staff"],
-    done:["👥 สมาชิก ✅","📅 การจองขาย ✅","🎯 คาด vs จริง ✅","🚛 ตามรถ ✅","💰 ยอดขาย ✅","📦 สต็อก ✅","📍 ตามพื้นที่ ✅","📥 Export CSV ✅","Farmer self-report ✅","UAT admin flow (Codex Z9-3) ✅"],
+    done:["👥 สมาชิก ✅","📅 การจองขาย ✅","🎯 คาด vs จริง ✅","🚛 ตามรถ ✅","💰 ยอดขาย ✅","📦 สต็อก ✅","📍 ตามพื้นที่ ✅","📥 Export CSV ✅","Farmer self-report ✅","UAT admin flow (Codex Z9-3) ✅","Pilot launch checklist (Codex Z9-6) ✅"],
     todo:[],
     tables:["harvest_bookings","sale_orders","planting_cycles"],
     connects:["member","harvest","plot","seed","noburn"],
