@@ -12,7 +12,8 @@ export async function GET() {
 
   const s = createServerSupabaseClient();
 
-  // ดึงทุก metric พร้อมกัน
+  try {
+    // ดึงทุก metric พร้อมกัน
   const [
     membersRes, approvedRes, plotsRes, cyclesRes,
     bookingsRes, completedRes, noBurnRes, noBurnApprovedRes,
@@ -59,29 +60,36 @@ export async function GET() {
   const hasVehicles = total_vehicles > 0;
   const hasCampaign = active_campaigns > 0;
 
-  return NextResponse.json({
-    as_of: new Date().toISOString(),
-    metrics: {
-      total_members, approved_members,
-      total_plots, total_cycles,
-      total_bookings, completed_intakes,
-      total_noburn, approved_noburn,
-      total_inspect, done_inspect,
-      total_products, open_slots,
-      total_vehicles, active_campaigns,
-    },
-    // activity flags — ใช้แสดงว่าระบบเริ่มใช้งานจริงแล้วไหม
-    activity: {
-      member_active:   approved_members > 0,
-      plot_active:     total_plots > 0,
-      booking_active:  total_bookings > 0,
-      intake_active:   hasIntake,
-      noburn_active:   hasNoburn,
-      inspect_active:  hasInspect,
-      seed_active:     hasProducts,
-      slot_active:     hasSlots,
-      truck_active:    hasVehicles,
-      campaign_active: hasCampaign,
-    },
-  });
+  // activity flags — ใช้แสดงว่าระบบเริ่มใช้งานจริงแล้วไหม
+    return NextResponse.json({
+      as_of: new Date().toISOString(),
+      metrics: {
+        total_members, approved_members,
+        total_plots, total_cycles,
+        total_bookings, completed_intakes,
+        total_noburn, approved_noburn,
+        total_inspect, done_inspect,
+        total_products, open_slots,
+        total_vehicles, active_campaigns,
+      },
+      activity: {
+        member_active:   approved_members > 0,
+        plot_active:     total_plots > 0,
+        booking_active:  total_bookings > 0,
+        intake_active:   hasIntake,
+        noburn_active:   hasNoburn,
+        inspect_active:  hasInspect,
+        seed_active:     hasProducts,
+        slot_active:     hasSlots,
+        truck_active:    hasVehicles,
+        campaign_active: hasCampaign,
+      },
+    });
+  } catch (e) {
+    // ถ้า table ยังไม่มี (migration ยังไม่ run) → คืน zeros แทน crash
+    console.error('[system-metrics] DB error:', e);
+    const zero = { total_members:0, approved_members:0, total_plots:0, total_cycles:0, total_bookings:0, completed_intakes:0, total_noburn:0, approved_noburn:0, total_inspect:0, done_inspect:0, total_products:0, open_slots:0, total_vehicles:0, active_campaigns:0 };
+    const falseActivity = { member_active:false, plot_active:false, booking_active:false, intake_active:false, noburn_active:false, inspect_active:false, seed_active:false, slot_active:false, truck_active:false, campaign_active:false };
+    return NextResponse.json({ as_of: new Date().toISOString(), metrics: zero, activity: falseActivity, error: String(e) });
+  }
 }

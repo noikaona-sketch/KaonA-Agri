@@ -377,21 +377,31 @@ export default function AdminSystemMapPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const res = await fetch('/api/admin/system-metrics');
-    const d   = (await res.json()) as ApiData;
-    setData(d);
-    setLoading(false);
+    try {
+      const res = await fetch('/api/admin/system-metrics');
+      if (!res.ok) throw new Error(`metrics API error: ${res.status}`);
+      const d = (await res.json()) as ApiData;
+      setData(d);
+    } catch (e) {
+      console.error('[SystemMap] load error:', e);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  // โหลด UAT results จาก Supabase
   const loadUat = useCallback(async () => {
-    const res = await fetch('/api/admin/uat');
-    const d   = (await res.json()) as { results?: { test_id:string; result:string; note:string|null; tested_at:string|null }[] };
-    const map: ResultMap = {};
-    (d.results ?? []).forEach(r => {
-      map[r.test_id] = { result: r.result as TestResult, note: r.note ?? '', tested_at: r.tested_at ?? '' };
-    });
-    setUatResults(map);
+    try {
+      const res = await fetch('/api/admin/uat');
+      if (!res.ok) return; // ตาราง uat_results ยังไม่มี → skip gracefully
+      const d = (await res.json()) as { results?: { test_id:string; result:string; note:string|null; tested_at:string|null }[] };
+      const map: ResultMap = {};
+      (d.results ?? []).forEach(r => {
+        map[r.test_id] = { result: r.result as TestResult, note: r.note ?? '', tested_at: r.tested_at ?? '' };
+      });
+      setUatResults(map);
+    } catch (e) {
+      console.error('[SystemMap] loadUat error:', e);
+    }
   }, []);
 
   useEffect(() => { void load(); void loadUat(); }, [load, loadUat]);
@@ -421,9 +431,19 @@ export default function AdminSystemMapPage() {
     setUatResults({});
   }
 
-  if (loading || !data) return (
+  if (loading) return (
     <AdminWebShell title="🗺️ System Map" subtitle="สถานะระบบทั้งหมด">
       <p style={{ color:'#9ca3af', textAlign:'center', padding:40 }}>กำลังโหลด metrics…</p>
+    </AdminWebShell>
+  );
+
+  if (!data) return (
+    <AdminWebShell title="🗺️ System Map" subtitle="สถานะระบบทั้งหมด">
+      <div style={{ textAlign:'center', padding:40 }}>
+        <p style={{ fontSize:16, color:'#dc2626', marginBottom:12 }}>⚠️ ไม่สามารถโหลด metrics ได้</p>
+        <p style={{ fontSize:13, color:'#9ca3af', marginBottom:16 }}>อาจเกิดจาก migration ยังไม่ได้ run หรือ Supabase connection error</p>
+        <button onClick={load} className="admin-btn admin-btn--primary">🔄 ลองใหม่</button>
+      </div>
     </AdminWebShell>
   );
 
