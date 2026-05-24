@@ -6,10 +6,11 @@ import { MobileAppShell }      from '@/shared/components/mobile-app-shell';
 import { ProtectedRoute }      from '@/shared/components/protected-route';
 import { StaffIntakeForm }     from '@/features/staff-intake/intake-form';
 import { IntakeQueueBoard }    from '@/features/staff-intake/intake-queue-board';
+import { IntakeCsvPreview }   from '@/features/staff-intake/intake-csv-preview';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
 type Location = { id: string; name: string };
-type Tab = 'queue' | 'form';
+type Tab = 'queue' | 'form' | 'csv';
 
 function IntakeContent() {
   const router    = useRouter();
@@ -43,7 +44,7 @@ function IntakeContent() {
 
         {/* Tab switcher */}
         <div style={{ display:'flex', gap:6 }}>
-          {([{ k:'queue', l:'📋 คิวรับวันนี้' }, { k:'form', l:'⚖️ บันทึกรับซื้อ' }] as const).map(({ k, l }) => (
+          {([{ k:'queue', l:'📋 คิวรับวันนี้' }, { k:'form', l:'⚖️ บันทึกรับซื้อ' }, { k:'csv', l:'📥 CSV Import' }] as const).map(({ k, l }) => (
             <button key={k} onClick={() => setTab(k)}
               className={`admin-btn ${tab===k ? 'admin-btn--primary' : 'admin-btn--secondary'}`}
               style={{ flex:1, fontSize:13 }}>{l}</button>
@@ -52,6 +53,7 @@ function IntakeContent() {
 
         {tab === 'queue' && locationId && <IntakeQueueBoard locationId={locationId} />}
         {tab === 'form'  && <StaffIntakeForm onSuccess={() => setTab('queue')} />}
+        {tab === 'csv'   && <IntakeCsvPreview />}
       </div>
     </MobileAppShell>
   );
