@@ -26,7 +26,7 @@
 | Z5 No-burn | Z5-1, Z5-3 | ✅ แล้ว | — |
 | Z7 Comms | Z7-2, Z7-3 | ✅ แล้ว | — |
 | Z8 Reports | Z8-1,2,4,5 | ✅ แล้ว | — |
-| Z9 UAT | Z9-1,3,6 | ❌ | ✅ ทำ |
+| Z9 UAT | Z9-1,2,3,6 | ✅ doc แล้ว | ✅ ทำ |
 
 ---
 
@@ -204,45 +204,6 @@ type ErrorRow = {
 
 
 
-### Issue Z9-6 · Complete launch checklist
-
-**Labels:** `docs` `pilot-blocker`
-**File:** `docs/launch-checklist.md`
-
-**ดูไฟล์ที่มีอยู่ อ่านทุก item และเพิ่ม:**
-- status: ✅ done | ❌ not done | ⏳ in progress
-- วันที่ verify
-- ชื่อผู้ verify
-
-**Critical items ที่ต้องมี:**
-```markdown
-## Pre-Pilot Checklist
-
-### Infrastructure
-- [ ] LINE_CHANNEL_ACCESS_TOKEN ตั้งใน Vercel
-- [ ] Migrations ทั้งหมด run บน production
-- [ ] LIFF ทดสอบบนโทรศัพท์จริง (iOS + Android)
-- [ ] RLS ทดสอบกับ user จริง (ดู docs/rls-verification.md)
-
-### Functional
-- [ ] สมัครสมาชิก → approve → LINE แจ้ง ✅
-- [ ] Farmer จองขาย → staff กรอก actual → LINE receipt ✅
-- [ ] No-burn ยื่น → admin approve → LINE แจ้ง ✅
-- [ ] Admin ดูรายงานครบทุก tab ✅
-
-### Data
-- [ ] ราคาฐานตั้งไว้แล้ว (market_prices)
-- [ ] ตารางส่วนลดตั้งไว้แล้ว (moisture_deductions)
-- [ ] Pickup slots สร้างแล้ว (อย่างน้อย 7 วัน)
-- [ ] Factory API key สร้างแล้ว (ถ้ามีเครื่องชั่ง)
-
-### Safety
-- [ ] Backup ล่าสุด
-- [ ] Rollback SOP อ่านเข้าใจ
-```
-
----
-
 ## สรุปสำหรับ Codex
 
 | Priority | Issue | ประเภท | ยาก |
@@ -251,9 +212,8 @@ type ErrorRow = {
 | 🔴 | Z2-2 Admin complete booking | code | กลาง |
 | 🔴 | Z3-6 CSV import batch | code | ยาก |
 | 🟡 | Z1-2 UAT member script | docs | ง่าย |
-| 🟢 | Z9-6 Launch checklist | docs | ง่าย |
 
-**Code issues: 3 ตัว · Docs issues: 6 ตัว · รวม 9 issues**
+**Code issues: 3 ตัว · Docs issues: 5 ตัว · รวม 8 issues**
 
 ---
 
