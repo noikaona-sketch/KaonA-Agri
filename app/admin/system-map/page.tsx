@@ -41,7 +41,7 @@ const SYSTEMS: System[] = [
     },
     target:90, pilotBlock:true, color:"#059669", bg:"#ECFDF5",
     roles:["farmer","staff","admin"],
-   done:[
+done:[
   "สมัครผ่าน LINE LIFF",
   "Admin approve/reject",
   "LINE แจ้งผล ✅",
@@ -52,20 +52,15 @@ const SYSTEMS: System[] = [
   "UAT script member flow (Codex Z1-2)",
   "Admin manual ✅"
 ],
-
-todo:[
-  "ทดสอบ RLS กับ user จริง (Pavee)"
-],
-
+todo:["ทดสอบ RLS กับ user จริง (Pavee)"],
+tables:["members","member_roles","member_groups","approvals"],
+connects:["plot","harvest","noburn","comms","report"],
 codex:[],
-
-pavee:["Z0-4 RLS test"]
-
-    liveStats: m => [
-      { label:"สมาชิกทั้งหมด", value:`${m.total_members} คน` },
-      { label:"อนุมัติแล้ว",   value:`${m.approved_members} คน` },
-    ],
-  },
+pavee:["Z0-4 RLS test"],
+liveStats: m => [
+  { label:"สมาชิกทั้งหมด", value:`${m.total_members} คน` },
+  { label:"อนุมัติแล้ว", value:`${m.approved_members} คน` },
+],  },
   {
     id:"plot", icon:"🗺️", label:"ระบบแปลงและการปลูก",
     pct:(m,a) => {
