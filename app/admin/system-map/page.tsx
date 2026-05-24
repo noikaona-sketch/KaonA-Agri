@@ -114,13 +114,7 @@ const SYSTEMS: System[] = [
   },
   {
     id:"staff", icon:"👷", label:"ระบบเจ้าหน้าที่",
-    pct:(m,a) => {
-      let s = 60;
-      if (a.intake_active) s += 5;
-      if (a.booking_active) s += 5;
-      if (m.completed_intakes >= 5) s += 5;
-      return Math.min(85, s);
-    },
+    pct:(_m,_a) => 75,
     target:80, pilotBlock:true, color:"#6D28D9", bg:"#EDE9FE",
     roles:["staff","inspector","leader","admin"],
     done:["StaffHome + ⚖️บันทึกรับซื้อ ✅","Leader: สรุปกลุ่ม + pending ✅","Inspector: form + GPS ✅","Admin assign + LINE แจ้ง ✅","Queue board auto-refresh ✅"],
