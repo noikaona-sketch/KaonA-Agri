@@ -28,7 +28,7 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE() {
-  const _ar = await requireAdminPermission('admin_users.manage');
+  const _ar = await requireAdminPermission('members.read');
   if (isForbidden(_ar)) return _ar.forbidden;
   await createServerSupabaseClient().from('uat_results').delete().neq('test_id', '');
   return NextResponse.json({ ok: true });

@@ -5,7 +5,7 @@ import { requireAdminPermission, isForbidden } from '../members/_admin-auth';
 // GET — รายชื่อเจ้าหน้าที่ทั้งหมด
 export async function GET() {
   try {
-    const _ar_get = await requireAdminPermission('admin_users.manage');
+    const _ar_get = await requireAdminPermission('members.read');  // admin ทั่วไปดูได้
     if (isForbidden(_ar_get)) return _ar_get.forbidden;
 
     const s = createServerSupabaseClient();

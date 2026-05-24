@@ -9,7 +9,7 @@ const ALLOWED_ROLES: AdminRole[] = [
 ];
 
 export async function GET() {
-  const result = await requireAdminPermission('admin_users.manage');
+  const result = await requireAdminPermission('members.read');  // ดูได้ทุก admin
   if (isForbidden(result)) return result.forbidden;
   const s = createServerSupabaseClient();
   const { data, error } = await s
