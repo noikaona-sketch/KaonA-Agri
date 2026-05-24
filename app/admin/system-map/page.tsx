@@ -92,16 +92,26 @@ liveStats: m => [
       return Math.min(90, s);
     },
     target:90, pilotBlock:true, color:"#D97706", bg:"#FFFBEB",
-    roles:["farmer","staff","admin"],
-    done:["Farmer จองวันเกี่ยว","เลือกจุดรับ 2 จุด","Admin queue + peak-day alert","Dryer quota per location","Farmer เห็นคิวอบ 7 วัน","Moisture calculator + suggestion","Admin complete + actual data fields (Codex Z2-2)"],
-    todo:["UAT script (Codex Z2-4)"],
-    tables:["harvest_bookings","pickup_slots","pickup_locations"],
-    connects:["member","intake","staff","stock","report","calculator"],
-    codex:["Z2-4"], pavee:[],
-    liveStats: m => [
-      { label:"booking ทั้งหมด", value:`${m.total_bookings}` },
-      { label:"slot เปิดอยู่",   value:`${m.open_slots}` },
-    ],
+  roles:["farmer","staff","admin"],
+done:[
+  "Farmer จองวันเกี่ยว",
+  "เลือกจุดรับ 2 จุด",
+  "Admin queue + peak-day alert",
+  "Dryer quota per location",
+  "Farmer เห็นคิวอบ 7 วัน",
+  "Moisture calculator + suggestion",
+  "Admin complete + actual data fields (Codex Z2-2)",
+  "UAT script (Codex Z2-4)"
+],
+todo:[],
+tables:["harvest_bookings","pickup_slots","pickup_locations"],
+connects:["member","intake","staff","stock","report","calculator"],
+codex:[],
+pavee:[],
+liveStats: m => [
+  { label:"booking ทั้งหมด", value:`${m.total_bookings}` },
+  { label:"slot เปิดอยู่", value:`${m.open_slots}` },
+],
   },
   {
     id:"intake", icon:"⚖️", label:"Intake Data Layer",
