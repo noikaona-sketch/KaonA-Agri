@@ -15,7 +15,7 @@ const REFRESH_OPTS = (secure: boolean) => ({
   secure,
   sameSite: 'lax' as const,
   path: '/',
-  maxAge: 60 * 60 * 24, // 24 ชั่วโมง
+  maxAge: 60 * 60 * 24 * 7, // 7 วัน
 });
 
 export function middleware(request: NextRequest) {
