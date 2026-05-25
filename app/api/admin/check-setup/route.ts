@@ -46,7 +46,7 @@ export async function GET() {
         aud:'https://oauth2.googleapis.com/token', exp:now+3600, iat:now,
       }));
       const crypto = await import('crypto');
-      const sig    = crypto.createSign('RSA-SHA256').update(`${header}.${claim}`)
+      const sig    = crypto.createSign('SHA256').update(`${header}.${claim}`)
         .sign(privateKey,'base64').replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
       const jwt    = `${header}.${claim}.${sig}`;
       const tokenRes  = await fetch('https://oauth2.googleapis.com/token', {

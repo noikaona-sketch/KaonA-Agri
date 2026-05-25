@@ -23,7 +23,7 @@ async function createAccessToken(): Promise<string> {
   }));
   const data      = `${header}.${claim}`;
   const crypto    = await import('crypto');
-  const signature = crypto.createSign('RSA-SHA256').update(data).sign(privateKey, 'base64')
+  const signature = crypto.createSign('SHA256').update(data).sign(privateKey, 'base64')
     .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
   const jwt = `${data}.${signature}`;
 
