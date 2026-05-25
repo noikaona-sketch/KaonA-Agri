@@ -29,7 +29,11 @@ export async function GET() {
   // ── Document AI JWT test ──────────────────────────────────────────────────
   try {
     const clientEmail = process.env.GOOGLE_DOCUMENTAI_CLIENT_EMAIL;
-    const privateKey  = process.env.GOOGLE_DOCUMENTAI_PRIVATE_KEY?.replace(/\\n/g, '\n');
+    const privateKey  = (process.env.GOOGLE_DOCUMENTAI_PRIVATE_KEY ?? '')
+      .replace(/\\n/g, '\n')
+      .replace(/\\\\n/g, '\n')
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n');
     const projectId   = process.env.GOOGLE_CLOUD_PROJECT_ID;
     const processorId = process.env.GOOGLE_DOCUMENTAI_PROCESSOR_ID;
     const location    = process.env.GOOGLE_DOCUMENTAI_LOCATION ?? 'us';
@@ -47,7 +51,7 @@ export async function GET() {
       }));
       const crypto = await import('crypto');
       const sig    = crypto.createSign('SHA256').update(`${header}.${claim}`)
-        .sign(privateKey,'base64').replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
+        .sign({ key: privateKey, format: 'pem', type: 'pkcs8' }, 'base64').replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
       const jwt    = `${header}.${claim}.${sig}`;
       const tokenRes  = await fetch('https://oauth2.googleapis.com/token', {
         method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},

@@ -9,7 +9,11 @@ function base64UrlEncode(input: string): string {
 
 async function createAccessToken(): Promise<string> {
   const clientEmail = process.env.GOOGLE_DOCUMENTAI_CLIENT_EMAIL;
-  const privateKey  = process.env.GOOGLE_DOCUMENTAI_PRIVATE_KEY?.replace(/\\n/g, '\n');
+  const privateKey  = process.env.GOOGLE_DOCUMENTAI_PRIVATE_KEY
+    ?.replace(/\\n/g, '\n')      // literal \n → newline
+    .replace(/\\\\n/g, '\n')     // double-escaped \\n → newline
+    .replace(/\r\n/g, '\n')      // Windows CRLF
+    .replace(/\r/g, '\n');       // old Mac CR
   if (!clientEmail || !privateKey)
     throw new Error('Missing GOOGLE_DOCUMENTAI_CLIENT_EMAIL or GOOGLE_DOCUMENTAI_PRIVATE_KEY');
 
@@ -23,7 +27,7 @@ async function createAccessToken(): Promise<string> {
   }));
   const data      = `${header}.${claim}`;
   const crypto    = await import('crypto');
-  const signature = crypto.createSign('SHA256').update(data).sign(privateKey, 'base64')
+  const signature = crypto.createSign('SHA256').update(data).sign({ key: privateKey, format: 'pem', type: 'pkcs8' }, 'base64')
     .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
   const jwt = `${data}.${signature}`;
 
