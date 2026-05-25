@@ -102,8 +102,14 @@ export async function DELETE(_req: Request, { params }: Params) {
     if (!admin) return NextResponse.json({ error: 'ไม่มีสิทธิ์เข้าถึง' }, { status: 401 });
     const { id } = await params;
     const s = createServerSupabaseClient();
+    // ลบ related data ทั้งหมดก่อน
     await s.from('member_roles').delete().eq('member_id', id);
     await s.from('plots').delete().eq('member_id', id);
+    await s.from('approvals').delete().eq('member_id', id);
+    await s.from('member_approval_logs').delete().eq('member_id', id);
+    await s.from('no_burn_requests').delete().eq('member_id', id);
+    await s.from('harvest_bookings').delete().eq('member_id', id);
+    // ลบ member
     const { error } = await s.from('members').delete().eq('id', id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ ok: true });
