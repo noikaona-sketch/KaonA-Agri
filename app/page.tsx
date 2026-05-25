@@ -422,7 +422,7 @@ export default function HomePage() {
               : 'ติดต่อเจ้าหน้าที่ผ่าน LINE OA ของ KaonA'}
           </p>
           {isCancelled && (
-            <a href="/onboarding"
+            <a href="/register"
               style={{ display:'inline-block', background:'#2D6A4F', color:'#fff', padding:'12px 32px', borderRadius:12, fontSize:16, fontWeight:700, textDecoration:'none' }}>
               🌽 สมัครสมาชิกใหม่
             </a>
