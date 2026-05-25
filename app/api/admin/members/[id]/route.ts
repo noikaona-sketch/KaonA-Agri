@@ -95,3 +95,19 @@ export async function PATCH(req: Request, { params }: Params) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }
 }
+
+export async function DELETE(_req: Request, { params }: Params) {
+  try {
+    const admin = await requireAdmin();
+    if (!admin) return NextResponse.json({ error: 'ไม่มีสิทธิ์เข้าถึง' }, { status: 401 });
+    const { id } = await params;
+    const s = createServerSupabaseClient();
+    await s.from('member_roles').delete().eq('member_id', id);
+    await s.from('plots').delete().eq('member_id', id);
+    const { error } = await s.from('members').delete().eq('id', id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  } catch (e) {
+    return NextResponse.json({ error: String(e) }, { status: 500 });
+  }
+}

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { ErrorState }   from '@/shared/components/error-state';
 import { LoadingState } from '@/shared/components/loading-state';
 import { MemberRoleManager } from './member-role-manager';
@@ -35,6 +36,7 @@ const STATUS_TH: Record<string, { label: string; color: string; bg: string }> = 
 };
 
 export function AdminMemberDetail({ memberId }: { memberId: string }) {
+  const router = useRouter();
   const [member,   setMember]   = useState<MemberDetail | null>(null);
   const [plots,    setPlots]    = useState<PlotRow[]>([]);
   const [vehicles, setVehicles] = useState<VehicleRow[]>([]);
@@ -44,6 +46,19 @@ export function AdminMemberDetail({ memberId }: { memberId: string }) {
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState<string | null>(null);
   const [acting,   setActing]   = useState(false);
+
+  async function deleteMember() {
+    if (!member) return;
+    if (!confirm(`ลบสมาชิก "${member.full_name}" ออกจากระบบ?\nไม่สามารถกู้คืนได้ — สมาชิกสามารถสมัครใหม่ได้`)) return;
+    setActing(true);
+    const res = await fetch(`/api/admin/members/${member.id}`, {
+      method: 'DELETE', credentials: 'include',
+    });
+    setActing(false);
+    const d = (await res.json()) as { ok?: boolean; error?: string };
+    if (!res.ok) { alert(`❌ ลบไม่สำเร็จ: ${d.error}`); return; }
+    router.push('/admin/members');
+  }
   const [notice,   setNotice]   = useState<string | null>(null);
   const [modal,    setModal]    = useState<'return' | 'reject' | null>(null);
   const [incompleteWarning, setIncompleteWarning] = useState<string | null>(null);
@@ -173,6 +188,12 @@ export function AdminMemberDetail({ memberId }: { memberId: string }) {
           {member.status === 'approved'  && <button className="admin-btn admin-btn--secondary" onClick={() => void updateStatus('suspended')} disabled={acting}>⛔ ระงับบัญชี</button>}
           {member.status === 'rejected'  && <button className="admin-btn admin-btn--success"   onClick={() => void updateStatus('pending')}   disabled={acting}>↩️ ให้สมัครใหม่</button>}
           {member.status === 'suspended' && <button className="admin-btn admin-btn--success"   onClick={() => void updateStatus('approved')}  disabled={acting}>✅ คืนสิทธิ์</button>}
+          <button className="admin-btn admin-btn--danger"
+            onClick={() => void deleteMember()}
+            disabled={acting}
+            style={{ marginLeft: 'auto', opacity: 0.7 }}>
+            🗑️ ลบสมาชิก
+          </button>
         </div>
       </div>
 
