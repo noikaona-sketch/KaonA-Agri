@@ -1,14 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 
 export default function AdminLoginPage() {
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
   const [error, setError]       = useState<string | null>(null);
   const [loading, setLoading]   = useState(false);
-  const router = useRouter();
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -29,7 +27,8 @@ export default function AdminLoginPage() {
 
       const next = new URL(window.location.href).searchParams.get('next');
       const dest = (next && next.startsWith('/admin')) ? next : '/admin';
-      router.push(dest);
+      // ใช้ replace แทน router.push — force full reload เพื่อให้ browser ส่ง cookie ใหม่
+      window.location.replace(dest);
     } finally {
       setLoading(false);
     }

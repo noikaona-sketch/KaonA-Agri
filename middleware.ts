@@ -24,6 +24,17 @@ export function middleware(request: NextRequest) {
       loginUrl.searchParams.set('next', request.nextUrl.pathname);
       return NextResponse.redirect(loginUrl);
     }
+
+    // ต่ออายุ cookie ทุกครั้งที่ navigate — ป้องกัน session หาย
+    const response = NextResponse.next();
+    response.cookies.set(ADMIN_COOKIE_NAME, cookieVal, {
+      httpOnly: true,
+      secure:   process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path:     '/',
+      maxAge:   60 * 60 * 24,  // 24 ชั่วโมง
+    });
+    return response;
   }
 
   return NextResponse.next();

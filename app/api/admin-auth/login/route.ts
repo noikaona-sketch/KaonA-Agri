@@ -12,7 +12,7 @@ function cookieOpts(secure: boolean) {
     secure,
     sameSite: 'lax' as const,
     path: '/',
-    maxAge: 60 * 60 * 8,
+    maxAge: 60 * 60 * 24,  // 24 ชั่วโมง (เดิม 8)
   };
 }
 
