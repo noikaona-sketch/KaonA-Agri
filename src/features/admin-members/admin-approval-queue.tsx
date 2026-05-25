@@ -76,12 +76,20 @@ export function AdminApprovalQueue() {
   useEffect(() => { void loadQueue(); }, []);
 
   async function review(approvalId: string, memberId: string, decision: 'approved' | 'rejected') {
-    if (!window.confirm(decision === 'approved' ? 'อนุมัติสมาชิกนี้?' : 'ไม่อนุมัติสมาชิกนี้?')) return;
-    setActingId(approvalId); setNotice(null);
-    const res = await fetch('/api/admin/members/approvals', { credentials: 'include', 
+    let reason = '';
+    if (decision === 'rejected') {
+      const input = window.prompt('ระบุเหตุผลที่ไม่อนุมัติ (จำเป็น):');
+      if (input === null) return; // กด cancel
+      if (!input.trim()) { setError('กรุณาระบุเหตุผล'); return; }
+      reason = input.trim();
+    } else {
+      if (!window.confirm('อนุมัติสมาชิกนี้?')) return;
+    }
+    setActingId(approvalId); setNotice(null); setError(null);
+    const res = await fetch('/api/admin/members/approvals', { credentials: 'include',
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ memberId, approvalId, decision }),
+      body: JSON.stringify({ memberId, approvalId, decision, reason }),
     });
     const payload = (await res.json()) as { ok?: boolean; error?: string };
     setActingId(null);
@@ -110,28 +118,33 @@ export function AdminApprovalQueue() {
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
-        <label>
-          Queue filter{' '}
-          <select value={activeFilter} onChange={(event) => setActiveFilter(event.target.value as QueueFilter)}>
-            <option value="all">all</option>
-            <option value="ready_to_approve">ready to approve</option>
-            <option value="missing_documents">missing documents</option>
-            <option value="bank_not_verified">bank not verified</option>
-            <option value="returned_correction_needed">returned / correction needed</option>
+      <div style={{ display:'flex', gap:10, flexWrap:'wrap', marginBottom:16, alignItems:'center', background:'#f8fafc', padding:'12px 14px', borderRadius:10, border:'1px solid #e2e8f0' }}>
+        <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
+          <span style={{ fontSize:11, fontWeight:600, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.05em' }}>กรองตามสถานะ</span>
+          <select value={activeFilter} onChange={(e) => setActiveFilter(e.target.value as QueueFilter)}
+            style={{ padding:'7px 32px 7px 10px', borderRadius:8, border:'1px solid #cbd5e1', background:'#fff', fontSize:13, color:'#1e293b', fontWeight:500, cursor:'pointer', appearance:'none', backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat:'no-repeat', backgroundPosition:'right 10px center', minWidth:200 }}>
+            <option value="all">📋 ทั้งหมด</option>
+            <option value="ready_to_approve">✅ พร้อมอนุมัติ</option>
+            <option value="missing_documents">📄 ขาดเอกสาร</option>
+            <option value="bank_not_verified">🏦 ยังไม่ verify ธนาคาร</option>
+            <option value="returned_correction_needed">↩️ ตีกลับ / รอแก้ไข</option>
           </select>
-        </label>
-        {roleOptions.length > 1 ? (
-          <label>
-            Role{' '}
-            <select value={activeRole} onChange={(event) => setActiveRole(event.target.value)}>
-              <option value="all_roles">all roles</option>
-              {roleOptions.filter((role) => role !== 'all_roles').map((role) => (
+        </div>
+        {roleOptions.length > 1 && (
+          <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
+            <span style={{ fontSize:11, fontWeight:600, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.05em' }}>กรองตาม Role</span>
+            <select value={activeRole} onChange={(e) => setActiveRole(e.target.value)}
+              style={{ padding:'7px 32px 7px 10px', borderRadius:8, border:'1px solid #cbd5e1', background:'#fff', fontSize:13, color:'#1e293b', fontWeight:500, cursor:'pointer', appearance:'none', backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat:'no-repeat', backgroundPosition:'right 10px center', minWidth:160 }}>
+              <option value="all_roles">👥 ทุก Role</option>
+              {roleOptions.filter(r => r !== 'all_roles').map(role => (
                 <option key={role} value={role}>{role}</option>
               ))}
             </select>
-          </label>
-        ) : null}
+          </div>
+        )}
+        <div style={{ marginLeft:'auto', fontSize:12, color:'#64748b', alignSelf:'flex-end', paddingBottom:2 }}>
+          แสดง {filteredItems?.length ?? 0} รายการ
+        </div>
       </div>
 
       {filteredItems.length === 0 ? (
@@ -199,19 +212,22 @@ export function AdminApprovalQueue() {
                     {new Date(item.created_at).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                   </td>
                   <td>
-                    <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
-                      <button className="admin-btn admin-btn--success"
+                    <div style={{ display:'flex', gap:6, justifyContent:'flex-end', flexWrap:'wrap' }}>
+                      <button
                         onClick={() => review(item.id, item.member_id, 'approved')}
-                        disabled={actingId !== null} style={{ fontSize: 13 }}>
-                        ✅ อนุมัติ
+                        disabled={actingId !== null}
+                        style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 14px', borderRadius:8, border:'none', background:'#16a34a', color:'#fff', fontSize:12, fontWeight:600, cursor:'pointer', opacity:actingId?0.6:1, whiteSpace:'nowrap' }}>
+                        {actingId===item.id ? '⏳' : '✅'} อนุมัติ
                       </button>
-                      <button className="admin-btn admin-btn--danger"
+                      <button
                         onClick={() => review(item.id, item.member_id, 'rejected')}
-                        disabled={actingId !== null} style={{ fontSize: 13 }}>
+                        disabled={actingId !== null}
+                        style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 14px', borderRadius:8, border:'none', background:'#dc2626', color:'#fff', fontSize:12, fontWeight:600, cursor:'pointer', opacity:actingId?0.6:1, whiteSpace:'nowrap' }}>
                         ❌ ไม่อนุมัติ
                       </button>
-                      <Link href={`/admin/members/${item.member_id}`} className="admin-btn admin-btn--ghost" style={{ fontSize: 13 }}>
-                        ดูข้อมูล
+                      <Link href={`/admin/members/${item.member_id}`}
+                        style={{ display:'flex', alignItems:'center', gap:4, padding:'6px 12px', borderRadius:8, border:'1px solid #d1d5db', background:'#fff', color:'#374151', fontSize:12, fontWeight:500, textDecoration:'none', whiteSpace:'nowrap' }}>
+                        🔍 ดูข้อมูล
                       </Link>
                     </div>
                   </td>
