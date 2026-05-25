@@ -30,7 +30,8 @@ export async function GET() {
         id, member_id, status, created_at,
         member:members!approvals_member_id_fkey (
           id, full_name, phone, citizen_id_masked, status,
-          registration_type, address, created_at, bank_verified_status
+          registration_type, address, created_at, bank_verified_status,
+          rejection_reason
         )
       `)
       .eq('resource_type', 'member').eq('status', 'pending')

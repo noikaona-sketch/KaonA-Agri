@@ -18,6 +18,7 @@ type QueueItem = {
     address: string | null; created_at: string;
     status?: string | null;
     bank_verified_status?: string | null;
+    rejection_reason?: string | null;
   } | null;
   missingDocuments?: string[];
 };
@@ -212,22 +213,22 @@ export function AdminApprovalQueue() {
                     {new Date(item.created_at).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                   </td>
                   <td>
-                    <div style={{ display:'flex', gap:6, justifyContent:'flex-end', flexWrap:'wrap' }}>
+                    <div style={{ display:'flex', gap:6, justifyContent:'flex-end', flexWrap:'wrap', alignItems:'center' }}>
+                      {/* badge สมัครใหม่ */}
+                      {item.member?.rejection_reason === 'cancelled_by_admin' && (
+                        <span style={{ fontSize:11, padding:'3px 8px', borderRadius:6, background:'#EEF2FF', color:'#4F46E5', fontWeight:600, whiteSpace:'nowrap' }}>
+                          🔄 สมัครใหม่
+                        </span>
+                      )}
                       <button
                         onClick={() => review(item.id, item.member_id, 'approved')}
                         disabled={actingId !== null}
                         style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 14px', borderRadius:8, border:'none', background:'#16a34a', color:'#fff', fontSize:12, fontWeight:600, cursor:'pointer', opacity:actingId?0.6:1, whiteSpace:'nowrap' }}>
                         {actingId===item.id ? '⏳' : '✅'} อนุมัติ
                       </button>
-                      <button
-                        onClick={() => review(item.id, item.member_id, 'rejected')}
-                        disabled={actingId !== null}
-                        style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 14px', borderRadius:8, border:'none', background:'#dc2626', color:'#fff', fontSize:12, fontWeight:600, cursor:'pointer', opacity:actingId?0.6:1, whiteSpace:'nowrap' }}>
-                        ❌ ไม่อนุมัติ
-                      </button>
                       <Link href={`/admin/members/${item.member_id}`}
-                        style={{ display:'flex', alignItems:'center', gap:4, padding:'6px 12px', borderRadius:8, border:'1px solid #d1d5db', background:'#fff', color:'#374151', fontSize:12, fontWeight:500, textDecoration:'none', whiteSpace:'nowrap' }}>
-                        🔍 ดูข้อมูล
+                        style={{ display:'flex', alignItems:'center', gap:4, padding:'6px 14px', borderRadius:8, border:'1px solid #d1d5db', background:'#fff', color:'#374151', fontSize:12, fontWeight:600, textDecoration:'none', whiteSpace:'nowrap' }}>
+                        🔍 ดูข้อมูล / ปฏิเสธ
                       </Link>
                     </div>
                   </td>
