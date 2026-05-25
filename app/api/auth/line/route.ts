@@ -220,7 +220,7 @@ export async function POST(request: Request) {
     // ── 2. Load or create member ──────────────────────────────────────────────
     const existing = await supabase
       .from('members')
-      .select('id, auth_user_id, line_user_id, status, full_name')
+      .select('id, auth_user_id, line_user_id, status, full_name, rejection_reason')
       .eq('line_user_id', verifyData.sub)
       .maybeSingle();
 

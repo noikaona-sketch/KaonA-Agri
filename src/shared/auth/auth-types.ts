@@ -22,6 +22,7 @@ export type AuthBootstrapResult = {
   is_approved: boolean;
   effective_role: AppRole | null;
   roles: AppRole[];
+  rejection_reason: string | null;
 };
 
 export type SupabaseSession = {

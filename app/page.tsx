@@ -407,15 +407,30 @@ export default function HomePage() {
   if (['unauthenticated','no_member','access_denied','error'].includes(status)) return <LoadingState label="กำลังนำทาง…" />;
   if (['pending_approval','pending'].includes(status)) return <PendingScreen />;
 
-  if (status === 'rejected') return (
-    <MobileAppShell title="" subtitle="">
-      <div style={{ textAlign: 'center', padding: '48px 0' }}>
-        <div style={{ fontSize: 56 }}>❌</div>
-        <h2 style={{ margin: '12px 0 4px', fontSize: 20, fontWeight: 500 }}>ไม่ผ่านการอนุมัติ</h2>
-        <p style={{ fontSize: 14, color: 'var(--color-text-secondary,#666)' }}>ติดต่อเจ้าหน้าที่ผ่าน LINE OA ของ KaonA</p>
-      </div>
-    </MobileAppShell>
-  );
+  if (status === 'rejected') {
+    const isCancelled = member?.rejection_reason === 'cancelled_by_admin';
+    return (
+      <MobileAppShell title="" subtitle="">
+        <div style={{ textAlign:'center', padding:'48px 24px' }}>
+          <div style={{ fontSize:56 }}>{isCancelled ? '🔄' : '❌'}</div>
+          <h2 style={{ margin:'12px 0 4px', fontSize:20, fontWeight:700 }}>
+            {isCancelled ? 'ยกเลิกการสมัครแล้ว' : 'ไม่ผ่านการอนุมัติ'}
+          </h2>
+          <p style={{ fontSize:14, color:'var(--color-text-secondary,#666)', marginBottom:24 }}>
+            {isCancelled
+              ? 'บัญชีของคุณถูกยกเลิก กรุณาสมัครสมาชิกใหม่อีกครั้ง'
+              : 'ติดต่อเจ้าหน้าที่ผ่าน LINE OA ของ KaonA'}
+          </p>
+          {isCancelled && (
+            <a href="/onboarding"
+              style={{ display:'inline-block', background:'#2D6A4F', color:'#fff', padding:'12px 32px', borderRadius:12, fontSize:16, fontWeight:700, textDecoration:'none' }}>
+              🌽 สมัครสมาชิกใหม่
+            </a>
+          )}
+        </div>
+      </MobileAppShell>
+    );
+  }
 
   if (status === 'suspended') return (
     <MobileAppShell title="" subtitle="">

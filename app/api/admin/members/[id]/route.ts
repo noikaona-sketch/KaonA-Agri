@@ -102,32 +102,15 @@ export async function DELETE(_req: Request, { params }: Params) {
     if (!admin) return NextResponse.json({ error: 'ไม่มีสิทธิ์เข้าถึง' }, { status: 401 });
     const { id } = await params;
     const s = createServerSupabaseClient();
-
-    // Nullify non-cascade FK columns ก่อน
-    await s.from('approvals').update({ reviewed_by: null }).eq('reviewed_by', id);
-    await s.from('no_burn_requests').update({ reviewed_by: null }).eq('reviewed_by', id);
-    await s.from('inspections').update({ inspector_member_id: null }).eq('inspector_member_id', id);
-    await s.from('intake_logs').update({ processed_by: null }).eq('processed_by', id);
-    await s.from('harvest_bookings').update({ intake_by: null }).eq('intake_by', id);
-
-    // ลบ rows ที่ member_id = id (non-cascade tables)
-    await s.from('seed_reservations').delete().eq('member_id', id);
-    await s.from('sale_appointments').delete().eq('member_id', id);
-    await s.from('planting_cycles').delete().eq('member_id', id);
-    await s.from('harvest_bookings').delete().eq('member_id', id);
-    await s.from('service_bookings').delete().eq('member_id', id);
-    await s.from('provider_requests').delete().eq('member_id', id);
-    await s.from('credit_transactions').delete().eq('member_id', id);
-    await s.from('approvals').delete().eq('member_id', id);
-    await s.from('member_approval_logs').delete().eq('member_id', id);
-    await s.from('member_roles').delete().eq('member_id', id);
-    await s.from('member_vehicles').delete().eq('member_id', id);
-    await s.from('plots').delete().eq('member_id', id);
-    await s.from('no_burn_requests').delete().eq('member_id', id);
-    await s.from('inspections').delete().eq('member_id', id);
-
-    // ลบ member สุดท้าย
-    const { error } = await s.from('members').delete().eq('id', id);
+    // Soft cancel — set status = rejected + reason พิเศษ
+    // farmer จะเห็นหน้า "กรุณาสมัครใหม่" แทน "รออนุมัติ"
+    const { error } = await s.from('members')
+      .update({
+        status:           'rejected',
+        rejection_reason: 'cancelled_by_admin',
+        updated_at:       new Date().toISOString(),
+      })
+      .eq('id', id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ ok: true });
   } catch (e) {
