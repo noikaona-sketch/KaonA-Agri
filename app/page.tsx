@@ -421,11 +421,19 @@ export default function HomePage() {
               ? 'บัญชีของคุณถูกยกเลิก กรุณาสมัครสมาชิกใหม่อีกครั้ง'
               : 'ติดต่อเจ้าหน้าที่ผ่าน LINE OA ของ KaonA'}
           </p>
-          {isCancelled && (
-            <a href="/register"
-              style={{ display:'inline-block', background:'#2D6A4F', color:'#fff', padding:'12px 32px', borderRadius:12, fontSize:16, fontWeight:700, textDecoration:'none' }}>
+          {isCancelled && member?.member_id && (
+            <button
+              onClick={async () => {
+                await fetch('/api/member/reset-registration', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ member_id: member.member_id }),
+                });
+                window.location.reload();
+              }}
+              style={{ background:'#2D6A4F', color:'#fff', padding:'14px 32px', borderRadius:12, fontSize:16, fontWeight:700, border:'none', cursor:'pointer' }}>
               🌽 สมัครสมาชิกใหม่
-            </a>
+            </button>
           )}
         </div>
       </MobileAppShell>
