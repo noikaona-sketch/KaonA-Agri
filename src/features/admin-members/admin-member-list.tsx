@@ -19,6 +19,7 @@ const ROLE_ICONS: Record<string, string> = {
 
 const STATUS_TABS = [
   { key: '',           label: 'ทั้งหมด' },
+  { key: 'pending_approval', label: '🕒 Pending Approval' },
   { key: 'pending',    label: '⏳ รออนุมัติ' },
   { key: 'returned',   label: '↩️ ตีกลับ' },
   { key: 'approved',   label: '✅ อนุมัติแล้ว' },
@@ -28,6 +29,7 @@ const STATUS_TABS = [
 
 const STATUS_BADGE: Record<string, { label: string; color: string; bg: string }> = {
   approved:  { label: '✅ อนุมัติ',    color: '#1b5e20', bg: '#e8f5e9' },
+  pending_approval: { label: '🕒 Pending Approval', color: '#e65100', bg: '#fff8e1' },
   pending:   { label: '⏳ รออนุมัติ',  color: '#e65100', bg: '#fff8e1' },
   returned:  { label: '↩️ ตีกลับ',    color: '#1565c0', bg: '#e3f2fd' },
   rejected:  { label: '❌ ไม่อนุมัติ', color: '#c62828', bg: '#ffebee' },

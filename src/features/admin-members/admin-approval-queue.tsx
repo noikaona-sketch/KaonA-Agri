@@ -24,6 +24,20 @@ type QueueItem = {
 };
 
 type QueueFilter = 'all' | 'ready_to_approve' | 'missing_documents' | 'bank_not_verified' | 'returned_correction_needed';
+const REGISTRATION_TYPE_LABEL: Record<string, string> = {
+  self: '🌾 สมัครเอง',
+  admin_created: '⚙️ Admin สร้าง',
+  admin_import: '📥 Admin Import',
+};
+
+const MEMBER_STATUS_LABEL: Record<string, { label: string; bg: string; color: string }> = {
+  pending: { label: '⏳ pending', bg: '#fff8e1', color: '#e65100' },
+  pending_approval: { label: '🕒 pending_approval', bg: '#fff8e1', color: '#e65100' },
+  returned: { label: '↩️ returned', bg: '#e3f2fd', color: '#1565c0' },
+  rejected: { label: '❌ rejected', bg: '#ffebee', color: '#c62828' },
+  approved: { label: '✅ approved', bg: '#e8f5e9', color: '#2e7d32' },
+  suspended: { label: '⛔ suspended', bg: '#f5f5f5', color: '#616161' },
+};
 
 type QueueSummary = {
   pendingApprovals: number;
@@ -183,14 +197,21 @@ export function AdminApprovalQueue() {
                   </td>
                   <td>
                     <span className="role-pill">
-                      {item.member?.registration_type === 'self' ? '🌾 สมัครเอง' :
-                       item.member?.registration_type === 'admin_created' ? '⚙️ admin สร้าง' : '—'}
+                      {item.member?.registration_type ? (REGISTRATION_TYPE_LABEL[item.member.registration_type] ?? `🧩 ${item.member.registration_type}`) : '—'}
                     </span>
                     {(item.roles?.length ?? 0) > 0 ? (
                       <div style={{ marginTop: 4, fontSize: 11, color: '#6b7280' }}>
                         Role: {(item.roles ?? []).join(', ')}
                       </div>
                     ) : null}
+                    {item.member?.status && (
+                      <div style={{ marginTop: 4 }}>
+                        {(() => {
+                          const st = MEMBER_STATUS_LABEL[item.member.status] ?? { label: item.member.status, bg: '#f3f4f6', color: '#374151' };
+                          return <span style={{ fontSize: 11, fontWeight: 700, color: st.color, background: st.bg, borderRadius: 999, padding: '2px 8px' }}>{st.label}</span>;
+                        })()}
+                      </div>
+                    )}
                   </td>
                   <td style={{ fontSize: 12, color: '#6b7280', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {item.member?.address ?? '—'}
