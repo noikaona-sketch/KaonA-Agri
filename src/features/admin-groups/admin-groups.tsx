@@ -205,11 +205,16 @@ export function AdminGroups() {
                   👥 {memberCount(g)} คน · {new Date(g.created_at).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}
                 </p>
               </div>
-              <button className="admin-btn admin-btn--danger"
-                onClick={(e) => { e.stopPropagation(); void deleteGroup(g.id, g.name); }}
-                style={{ fontSize: 12, minHeight: 30, padding: '4px 8px', flexShrink: 0 }}>
-                ลบ
-              </button>
+              <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:6, flexShrink:0 }}>
+                <button className="admin-btn admin-btn--danger"
+                  onClick={(e) => { e.stopPropagation(); void deleteGroup(g.id, g.name); }}
+                  style={{ fontSize: 12, minHeight: 30, padding: '4px 8px' }}>
+                  ลบ
+                </button>
+                <span style={{ fontSize:10, color: selected?.id===g.id ? '#16a34a' : '#9ca3af', fontWeight:600 }}>
+                  {selected?.id===g.id ? '✅ เปิดอยู่' : '👆 กดเพื่อจัดการ'}
+                </span>
+              </div>
             </div>
           ))}
         </div>
