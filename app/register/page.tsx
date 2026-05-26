@@ -8,6 +8,7 @@ import { RegisterTabs } from '@/features/member-register-tabs/register-tabs';
 import { RegisterStatus } from '@/features/member-register-tabs/register-status';
 import { RegisterContactAdmin } from '@/features/member-register-tabs/register-contact-admin';
 import { RegisterEditInfo } from '@/features/member-register-tabs/register-edit-info';
+import { useAuth } from '@/providers/auth-provider';
 
 function RegisterPageContent() {
   const params = useSearchParams();
@@ -65,8 +66,19 @@ function RegisterPageContent() {
 }
 
 function PendingContent() {
+  const { status, member } = useAuth();
   const params = useSearchParams();
   const tab = params.get('tab');
+  const reapply = params.get('reapply') === '1';
+  const forceRegisterLanding = reapply && status === 'rejected' && member?.rejection_reason === 'cancelled_by_admin';
+
+  if (forceRegisterLanding) {
+    return (
+      <MobileAppShell title="สมัครเข้าร่วม KaonA" subtitle="เลือกประเภทการสมัครของคุณ">
+        <RegisterTabs />
+      </MobileAppShell>
+    );
+  }
 
   if (tab === 'contact') {
     return (
