@@ -8,6 +8,7 @@ import { LoadingState } from '@/shared/components/loading-state';
 type MemberRow = {
   member_id: string; full_name: string; phone: string | null;
   status: string; roles: string[]; effective_role: string | null; created_at: string;
+  rejection_reason?: string | null;
   bank_verified_status: string;
   has_plots: boolean; has_bank: boolean;
   readyToApprove: boolean; missingFields: string[]; readinessReason: string[];
@@ -19,21 +20,22 @@ const ROLE_ICONS: Record<string, string> = {
 
 const STATUS_TABS = [
   { key: '',           label: 'ทั้งหมด' },
-  { key: 'pending_approval', label: '🕒 Pending Approval' },
+  { key: 'pending_approval', label: '🕒 รอตรวจสอบ' },
   { key: 'pending',    label: '⏳ รออนุมัติ' },
   { key: 'returned',   label: '↩️ ตีกลับ' },
   { key: 'approved',   label: '✅ อนุมัติแล้ว' },
   { key: 'rejected',   label: '❌ ไม่อนุมัติ' },
   { key: 'suspended',  label: '⛔ ระงับ' },
+  { key: 'cancelled_waiting_reapply', label: '🔄 ยกเลิกแล้ว / รอสมัครใหม่' },
 ] as const;
 
 const STATUS_BADGE: Record<string, { label: string; color: string; bg: string }> = {
-  approved:  { label: '✅ อนุมัติ',    color: '#1b5e20', bg: '#e8f5e9' },
-  pending_approval: { label: '🕒 Pending Approval', color: '#e65100', bg: '#fff8e1' },
+  approved:  { label: '✅ อนุมัติแล้ว',    color: '#1b5e20', bg: '#e8f5e9' },
+  pending_approval: { label: '🕒 รอตรวจสอบ', color: '#e65100', bg: '#fff8e1' },
   pending:   { label: '⏳ รออนุมัติ',  color: '#e65100', bg: '#fff8e1' },
-  returned:  { label: '↩️ ตีกลับ',    color: '#1565c0', bg: '#e3f2fd' },
+  returned:  { label: '↩️ ตีกลับแก้ไข',    color: '#1565c0', bg: '#e3f2fd' },
   rejected:  { label: '❌ ไม่อนุมัติ', color: '#c62828', bg: '#ffebee' },
-  suspended: { label: '⛔ ระงับ',       color: '#616161', bg: '#f5f5f5' },
+  suspended: { label: '⛔ ระงับใช้งาน',       color: '#616161', bg: '#f5f5f5' },
 };
 
 function readinessIndicator(m: MemberRow) {
@@ -51,7 +53,8 @@ export function AdminMemberList() {
   useEffect(() => {
     void (async () => {
       setLoading(true);
-      const res  = await fetch(`/api/admin/members/list?status=${statusFilter}`);
+      const statusQuery = statusFilter === 'cancelled_waiting_reapply' ? 'rejected' : statusFilter;
+      const res  = await fetch(`/api/admin/members/list?status=${statusQuery}`);
       const data = (await res.json()) as { members?: MemberRow[]; error?: string };
       if (!res.ok) { setError(data.error ?? 'โหลดไม่สำเร็จ'); setLoading(false); return; }
       setMembers(data.members ?? []);
@@ -59,11 +62,14 @@ export function AdminMemberList() {
     })();
   }, [statusFilter]);
 
-  const filtered = members.filter((m) =>
-    !search ||
-    m.full_name.toLowerCase().includes(search.toLowerCase()) ||
-    (m.phone ?? '').includes(search)
-  );
+  const filtered = members.filter((m) => {
+    const passSearch = !search || m.full_name.toLowerCase().includes(search.toLowerCase()) || (m.phone ?? '').includes(search);
+    if (!passSearch) return false;
+    if (statusFilter === 'cancelled_waiting_reapply') {
+      return m.status === 'rejected' && m.rejection_reason === 'cancelled_by_admin';
+    }
+    return true;
+  });
 
   return (
     <div>
@@ -107,7 +113,9 @@ export function AdminMemberList() {
                 <tr><td colSpan={7} style={{ textAlign: 'center', color: '#9ca3af', padding: '32px' }}>ไม่พบสมาชิก</td></tr>
               )}
               {filtered.map((m) => {
-                const sb = STATUS_BADGE[m.status] ?? { label: m.status, color: '#333', bg: '#f5f5f5' };
+                const sb = m.status === 'rejected' && m.rejection_reason === 'cancelled_by_admin'
+                  ? { label: '🔄 ยกเลิกแล้ว / รอสมัครใหม่', color: '#4338ca', bg: '#eef2ff' }
+                  : (STATUS_BADGE[m.status] ?? { label: 'ไม่ระบุสถานะ', color: '#333', bg: '#f5f5f5' });
                 return (
                   <tr key={m.member_id}>
                     <td style={{ fontWeight: 600 }}>{m.full_name}</td>

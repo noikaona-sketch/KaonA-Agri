@@ -25,8 +25,10 @@ export function RegisterStatus() {
   const { status, member } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const cfg = STATUS_CFG[status] ?? STATUS_CFG.pending_approval;
   const canReapply = status === 'rejected' && member?.rejection_reason === 'cancelled_by_admin';
+  const cfg = canReapply
+    ? { icon: '🔄', title: 'ยกเลิกแล้ว / รอสมัครใหม่', desc: 'ข้อมูลสมัครเดิมถูกยกเลิกโดยผู้ดูแล กรุณาสมัครใหม่อีกครั้ง', color: '#4338ca', bg: '#eef2ff' }
+    : (STATUS_CFG[status] ?? STATUS_CFG.pending_approval);
 
   async function handleReapply() {
     if (!member?.member_id) return;
@@ -80,14 +82,14 @@ export function RegisterStatus() {
         <div className="kaona-card" style={{ borderColor: '#c7d2fe', background: '#eef2ff' }}>
           <p style={{ margin: '0 0 6px', fontWeight: 800, fontSize: 14, color: '#3730a3' }}>🔄 สมัครใหม่ได้แล้ว</p>
           <p style={{ margin: '0 0 10px', fontSize: 13, color: '#4b5563', lineHeight: 1.7 }}>
-            บัญชีนี้ถูกยกเลิกโดยเจ้าหน้าที่ สามารถรีเซ็ตสถานะและเริ่มสมัครใหม่บนมือถือได้ทันที
+            ข้อมูลสมัครเดิมถูกยกเลิกโดยผู้ดูแล กรุณาสมัครใหม่อีกครั้ง
           </p>
           <button
             onClick={() => { void handleReapply(); }}
             disabled={submitting}
             style={{ width: '100%', border: 'none', borderRadius: 12, padding: '12px 14px', background: '#4f46e5', color: '#fff', fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.7 : 1 }}
           >
-            {submitting ? 'กำลังเตรียมการสมัครใหม่…' : 'เริ่มสมัครใหม่'}
+            {submitting ? 'กำลังเตรียมการสมัครใหม่…' : 'กลับไปสมัครใหม่'}
           </button>
           {error && <p style={{ margin: '8px 0 0', fontSize: 12, color: '#c62828' }}>{error}</p>}
         </div>

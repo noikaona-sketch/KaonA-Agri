@@ -23,7 +23,7 @@ type QueueItem = {
   missingDocuments?: string[];
 };
 
-type QueueFilter = 'all' | 'ready_to_approve' | 'missing_documents' | 'bank_not_verified' | 'returned_correction_needed';
+type QueueFilter = 'all' | 'ready_to_approve' | 'missing_documents' | 'bank_not_verified' | 'returned_correction_needed' | 'cancelled_waiting_reapply';
 const REGISTRATION_TYPE_LABEL: Record<string, string> = {
   self: '🌾 สมัครเอง',
   admin_created: '⚙️ Admin สร้าง',
@@ -31,12 +31,12 @@ const REGISTRATION_TYPE_LABEL: Record<string, string> = {
 };
 
 const MEMBER_STATUS_LABEL: Record<string, { label: string; bg: string; color: string }> = {
-  pending: { label: '⏳ pending', bg: '#fff8e1', color: '#e65100' },
-  pending_approval: { label: '🕒 pending_approval', bg: '#fff8e1', color: '#e65100' },
-  returned: { label: '↩️ returned', bg: '#e3f2fd', color: '#1565c0' },
-  rejected: { label: '❌ rejected', bg: '#ffebee', color: '#c62828' },
-  approved: { label: '✅ approved', bg: '#e8f5e9', color: '#2e7d32' },
-  suspended: { label: '⛔ suspended', bg: '#f5f5f5', color: '#616161' },
+  pending: { label: '⏳ รออนุมัติ', bg: '#fff8e1', color: '#e65100' },
+  pending_approval: { label: '🕒 รอตรวจสอบ', bg: '#fff8e1', color: '#e65100' },
+  returned: { label: '↩️ ตีกลับแก้ไข', bg: '#e3f2fd', color: '#1565c0' },
+  rejected: { label: '❌ ไม่อนุมัติ', bg: '#ffebee', color: '#c62828' },
+  approved: { label: '✅ อนุมัติแล้ว', bg: '#e8f5e9', color: '#2e7d32' },
+  suspended: { label: '⛔ ระงับใช้งาน', bg: '#f5f5f5', color: '#616161' },
 };
 
 type QueueSummary = {
@@ -71,6 +71,7 @@ export function AdminApprovalQueue() {
       if (activeFilter === 'ready_to_approve') return missingCount === 0 && !bankNotVerified;
       if (activeFilter === 'missing_documents') return missingCount > 0;
       if (activeFilter === 'bank_not_verified') return bankNotVerified;
+      if (activeFilter === 'cancelled_waiting_reapply') return item.member?.status === 'rejected' && item.member?.rejection_reason === 'cancelled_by_admin';
       return item.status === 'returned' || item.status === 'needs_update' || item.member?.status === 'returned';
     });
 
@@ -143,6 +144,7 @@ export function AdminApprovalQueue() {
             <option value="missing_documents">📄 ขาดเอกสาร</option>
             <option value="bank_not_verified">🏦 ยังไม่ verify ธนาคาร</option>
             <option value="returned_correction_needed">↩️ ตีกลับ / รอแก้ไข</option>
+            <option value="cancelled_waiting_reapply">🔄 ยกเลิกแล้ว / รอสมัครใหม่</option>
           </select>
         </div>
         {roleOptions.length > 1 && (
@@ -207,7 +209,9 @@ export function AdminApprovalQueue() {
                     {item.member?.status && (
                       <div style={{ marginTop: 4 }}>
                         {(() => {
-                          const st = MEMBER_STATUS_LABEL[item.member.status] ?? { label: item.member.status, bg: '#f3f4f6', color: '#374151' };
+                          const st = item.member?.status === 'rejected' && item.member?.rejection_reason === 'cancelled_by_admin'
+                            ? { label: '🔄 ยกเลิกแล้ว / รอสมัครใหม่', bg: '#eef2ff', color: '#4338ca' }
+                            : (MEMBER_STATUS_LABEL[item.member.status] ?? { label: 'ไม่ระบุสถานะ', bg: '#f3f4f6', color: '#374151' });
                           return <span style={{ fontSize: 11, fontWeight: 700, color: st.color, background: st.bg, borderRadius: 999, padding: '2px 8px' }}>{st.label}</span>;
                         })()}
                       </div>

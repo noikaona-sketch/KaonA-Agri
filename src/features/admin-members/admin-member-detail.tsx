@@ -204,6 +204,10 @@ export function AdminMemberDetail({ memberId }: { memberId: string }) {
       {/* ข้อมูลส่วนตัว */}
       <section>
         <h2 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 700, color: '#0d3d1f' }}>👤 ข้อมูลส่วนตัว</h2>
+        <div style={{ marginBottom: 10, padding: '10px 12px', borderRadius: 10, background: '#fff8e1', border: '1px solid #ffe082', color: '#8a4b08', fontSize: 13, lineHeight: 1.6 }}>
+          <strong>หมายเหตุเรื่องประเภทสมัคร:</strong> ตอนนี้ระบบยังไม่รองรับการแก้ <code>registration_type</code> โดยตรงในหน้านี้
+          (เช่น แก้จากเกษตรกรเป็นทีมรถ). กรุณาติดตามงานต่อเนื่อง: <strong>Issue follow-up: รองรับ safe edit member type/category พร้อม audit log</strong>.
+        </div>
         <div className="admin-table-wrap"><table className="admin-table"><tbody>
           {[
             ['ชื่อ-นามสกุล', member.full_name],
