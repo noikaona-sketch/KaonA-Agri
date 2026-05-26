@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from 'react';
 
-import { EmptyState } from '@/shared/components/empty-state';
 import { ErrorState } from '@/shared/components/error-state';
 import { FormSheet } from '@/shared/components/form-sheet';
 import { LoadingState } from '@/shared/components/loading-state';
@@ -11,12 +10,10 @@ import { ensureLiffIdToken } from '@/lib/liff/init-liff';
 import { PendingApprovalPanel } from '@/shared/pending-approval/pending-approval-panel';
 
 type MemberRegistrationMVPProps = {
-  lineUserId: string;
   onSubmitted: () => Promise<void>;
 };
 
 type ScreenKey = 'register' | 'ocr' | 'review' | 'consent' | 'pending';
-type DemoState = 'default' | 'empty' | 'loading' | 'error';
 
 type DraftData = {
   fullName: string;
@@ -51,9 +48,8 @@ function maskCitizenId(value: string) {
   return `${'*'.repeat(Math.max(0, digits.length - 4))}${visible}`;
 }
 
-export function MemberRegistrationMVP({ lineUserId, onSubmitted }: MemberRegistrationMVPProps) {
+export function MemberRegistrationMVP({ onSubmitted }: MemberRegistrationMVPProps) {
   const [screen, setScreen] = useState<ScreenKey>('register');
-  const [demoState, setDemoState] = useState<DemoState>('default');
   const [draft, setDraft] = useState<DraftData>(initialDraft);
   const [ocrStatus, setOcrStatus] = useState<'idle' | 'processing' | 'failed' | 'success'>('idle');
   const [ocrError, setOcrError] = useState<string | null>(null);
@@ -197,22 +193,7 @@ export function MemberRegistrationMVP({ lineUserId, onSubmitted }: MemberRegistr
         </div>
       }
     >
-      <p style={{ marginTop: 0 }}>LINE UID: {lineUserId.slice(0, 8)}...</p>
       <p style={{ marginTop: 0 }}>ฟลว์นี้ครอบคลุมการส่งคำขอลงทะเบียนสมาชิก และส่งเข้าคิวรออนุมัติ</p>
-
-      <label>
-        โหมดแสดงผล UI
-        <select value={demoState} onChange={(event) => setDemoState(event.target.value as DemoState)}>
-          <option value="default">ปกติ</option>
-          <option value="empty">empty state</option>
-          <option value="loading">loading state</option>
-          <option value="error">error state</option>
-        </select>
-      </label>
-
-      {demoState === 'empty' ? <EmptyState title="ยังไม่มีข้อมูลลงทะเบียน" detail="กรอกข้อมูลผู้สมัครเพื่อเริ่มต้นกระบวนการ" /> : null}
-      {demoState === 'loading' ? <LoadingState label="กำลังโหลดหน้าลงทะเบียน..." /> : null}
-      {demoState === 'error' ? <ErrorState title="เกิดข้อผิดพลาดชั่วคราว" detail="ไม่สามารถโหลดข้อมูลตัวอย่างได้ กรุณาลองใหม่" /> : null}
       {submitError ? <ErrorState title="ส่งคำขอไม่สำเร็จ" detail={submitError} /> : null}
 
       {screen === 'register' ? (

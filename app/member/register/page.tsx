@@ -16,7 +16,6 @@ function RegisterScreen() {
 
   return (
     <MemberRegistrationMVP
-      lineUserId={lineUserId}
       onSubmitted={async () => {
         window.location.reload();
       }}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useAuth } from '@/providers/auth-provider';
 
 const STATUS_CFG: Record<string, { icon: string; title: string; desc: string; color: string; bg: string }> = {
@@ -25,28 +25,34 @@ export function RegisterStatus() {
   const { status, member } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const inFlightRef = useRef(false);
   const canReapply = status === 'rejected' && member?.rejection_reason === 'cancelled_by_admin';
   const cfg = canReapply
     ? { icon: '🔄', title: 'ยกเลิกแล้ว / รอสมัครใหม่', desc: 'ข้อมูลสมัครเดิมถูกยกเลิกโดยผู้ดูแล กรุณาสมัครใหม่อีกครั้ง', color: '#4338ca', bg: '#eef2ff' }
     : (STATUS_CFG[status] ?? STATUS_CFG.pending_approval);
 
   async function handleReapply() {
-    if (!member?.member_id) return;
+    if (!member?.member_id || submitting || inFlightRef.current) return;
+    inFlightRef.current = true;
     setSubmitting(true);
     setError(null);
-    const res = await fetch('/api/member/reset-registration', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ member_id: member.member_id }),
-    });
-    const payload = (await res.json()) as { ok?: boolean; error?: string };
-    setSubmitting(false);
-    if (!res.ok || !payload.ok) {
-      setError(payload.error ?? 'รีเซ็ตการสมัครไม่สำเร็จ');
-      return;
+    try {
+      const res = await fetch('/api/member/reset-registration', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ member_id: member.member_id }),
+      });
+      const payload = (await res.json()) as { ok?: boolean; error?: string };
+      if (!res.ok || !payload.ok) {
+        setError(payload.error ?? 'รีเซ็ตการสมัครไม่สำเร็จ');
+        return;
+      }
+      window.location.replace('/register?reapply=1');
+    } finally {
+      setSubmitting(false);
+      inFlightRef.current = false;
     }
-    window.location.replace('/register');
   }
 
   return (
