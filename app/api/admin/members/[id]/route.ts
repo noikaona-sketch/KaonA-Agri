@@ -102,8 +102,8 @@ export async function DELETE(_req: Request, { params }: Params) {
     if (!admin) return NextResponse.json({ error: 'ไม่มีสิทธิ์เข้าถึง' }, { status: 401 });
     const { id } = await params;
     const s = createServerSupabaseClient();
-    // Soft cancel — set status = rejected + reason พิเศษ
-    // farmer จะเห็นหน้า "กรุณาสมัครใหม่" แทน "รออนุมัติ"
+    // Soft cancel only (not hard delete):
+    // set status = rejected + reason พิเศษ เพื่อให้สมาชิกเห็น flow สมัครใหม่
     const { error } = await s.from('members')
       .update({
         status:           'rejected',
@@ -112,6 +112,14 @@ export async function DELETE(_req: Request, { params }: Params) {
       })
       .eq('id', id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    // เคลียร์ approval ที่ pending อยู่ เพื่อไม่ให้คิวอนุมัติค้าง/ปนสถานะ rejected
+    await s.from('approvals')
+      .delete()
+      .eq('member_id', id)
+      .eq('resource_type', 'member')
+      .eq('status', 'pending');
+
     return NextResponse.json({ ok: true });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });

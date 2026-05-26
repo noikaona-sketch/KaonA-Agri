@@ -29,10 +29,12 @@ export async function POST(request: Request) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-    // ปิด approval ที่ค้างอยู่เดิม (ถ้ามี)
+    // ลบ approval ที่ค้างอยู่เดิม (ถ้ามี)
+    // หลีกเลี่ยงการปนกับสถานะ rejected จริง
     await s.from('approvals')
-      .update({ status: 'rejected', updated_at: new Date().toISOString() })
+      .delete()
       .eq('member_id', member_id)
+      .eq('resource_type', 'member')
       .eq('status', 'pending');
 
     return NextResponse.json({ ok: true });
