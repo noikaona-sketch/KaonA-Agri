@@ -129,7 +129,7 @@ function HeroCard({
 const SECONDARY_ROLE_CARDS: Partial<Record<AppRole, { icon: string; label: string; desc: string; href: string }>> = {
   staff:      { icon: '👷', label: 'ทีมภาคสนาม',    desc: 'จองให้สมาชิก · งานตรวจ',         href: '/field#reservation' },
   inspector:  { icon: '🔍', label: 'งานตรวจสอบ',    desc: 'รายการงานตรวจ · บันทึกผล',        href: '/inspection/tasks' },
-  leader:     { icon: '👥', label: 'หัวหน้าทีม',     desc: 'ลูกทีม · สรุปพื้นที่ · ติดตาม',   href: '/team' },
+  leader:     { icon: '👥', label: 'หัวหน้าทีม',     desc: 'ลูกทีม · สรุปพื้นที่ · ติดตาม',   href: '/leader/team' },
   truck_owner:{ icon: '🚛', label: 'ทีมบริการรถ',   desc: 'งานรถ · ตารางว่าง',               href: '/truck' },
   admin:      { icon: '⚙️', label: 'แผงแอดมิน',     desc: 'จัดการระบบ',                      href: '/admin/sales' },
 };
