@@ -7,6 +7,7 @@ import { LoadingState } from '@/shared/components/loading-state';
 
 type MemberRow = {
   member_id: string; full_name: string; phone: string | null;
+  line_display_name?: string | null;
   status: string; roles: string[]; effective_role: string | null; created_at: string;
   rejection_reason?: string | null;
   bank_verified_status: string;
@@ -118,7 +119,14 @@ export function AdminMemberList() {
                   : (STATUS_BADGE[m.status] ?? { label: 'ไม่ระบุสถานะ', color: '#333', bg: '#f5f5f5' });
                 return (
                   <tr key={m.member_id}>
-                    <td style={{ fontWeight: 600 }}>{m.full_name}</td>
+                    <td style={{ fontWeight: 600 }}>
+                      <div style={{ display: 'grid', gap: 2 }}>
+                        <span>{m.full_name?.trim() ? m.full_name : 'ยังไม่ได้กรอกชื่อ'}</span>
+                        {m.line_display_name && m.line_display_name !== m.full_name && (
+                          <span style={{ fontWeight: 400, fontSize: 12, color: '#6b7280' }}>LINE: {m.line_display_name}</span>
+                        )}
+                      </div>
+                    </td>
                     <td style={{ color: '#6b7280' }}>{m.phone ?? '—'}</td>
                     <td>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>

@@ -13,7 +13,7 @@ export async function GET(request: Request) {
     const s = createServerSupabaseClient();
 
     let q = s.from('members').select(`
-      id, full_name, phone, status, rejection_reason, created_at,
+      id, full_name, line_display_name, phone, status, rejection_reason, created_at,
       bank_name, bank_account_number, bank_verified_status,
       member_roles!inner(role, is_primary),
       plots!plots_member_id_fkey(id)
@@ -39,6 +39,7 @@ export async function GET(request: Request) {
       return {
         member_id:            m.id,
         full_name:            m.full_name,
+        line_display_name:    m.line_display_name ?? null,
         phone:                m.phone,
         status:               m.status,
         rejection_reason:     m.rejection_reason ?? null,

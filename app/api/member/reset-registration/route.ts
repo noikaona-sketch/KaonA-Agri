@@ -3,7 +3,7 @@ import { createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
 
 export const dynamic = 'force-dynamic';
 
-// POST — reset สมาชิกที่ถูกยกเลิก กลับเป็น pending เพื่อสมัครใหม่
+// POST — เตรียมสมาชิกที่ถูกยกเลิกให้กลับไปกรอกฟอร์มสมัครใหม่
 export async function POST(request: Request) {
   try {
     const { member_id } = (await request.json()) as { member_id: string };
@@ -21,21 +21,19 @@ export async function POST(request: Request) {
     if (member.rejection_reason !== 'cancelled_by_admin')
       return NextResponse.json({ error: 'ไม่สามารถรีเซ็ตได้' }, { status: 403 });
 
-    // รีเซ็ตกลับเป็น pending
+    // ไม่เปลี่ยนเป็น pending ณ จุดนี้
+    // เพื่อไม่ให้สมาชิกติดหน้า "รออนุมัติ" ก่อนส่งฟอร์มใหม่จริง
     const { error } = await s.from('members').update({
-      status:           'pending',
-      rejection_reason: null,
-      updated_at:       new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     }).eq('id', member_id);
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-    // สร้าง approval ใหม่
-    await s.from('approvals').insert({
-      member_id,
-      resource_type: 'member',
-      status:        'pending',
-    });
+    // ปิด approval ที่ค้างอยู่เดิม (ถ้ามี)
+    await s.from('approvals')
+      .update({ status: 'rejected', updated_at: new Date().toISOString() })
+      .eq('member_id', member_id)
+      .eq('status', 'pending');
 
     return NextResponse.json({ ok: true });
   } catch (e) {
