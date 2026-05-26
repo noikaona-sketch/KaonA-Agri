@@ -25,7 +25,7 @@ export function useOcrIdCard() {
   const [error, setError] = useState<string | null>(null);
 
   function isThaiFullName(name: string) {
-    return /^[ก-๙]+(?:\s+[ก-๙]+)+$/.test(name.trim());
+    return /^(?:นาย|นางสาว|นาง|ด\.ช\.|ด\.ญ\.|น\.ส\.)?\s*[ก-๙]+(?:\s+[ก-๙]+)+$/.test(name.trim());
   }
 
   async function scan(file: File) {

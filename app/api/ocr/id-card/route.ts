@@ -43,7 +43,12 @@ async function createAccessToken(): Promise<string> {
 
 function cleanSpaces(s: string) { return s.replace(/\s+/g, ' ').trim(); }
 function isThaiFullName(name: string) {
-  return /^[ก-๙]+(?:\s+[ก-๙]+)+$/.test(cleanSpaces(name));
+  return /^(?:นาย|นางสาว|นาง|ด\.ช\.|ด\.ญ\.|น\.ส\.)?\s*[ก-๙]+(?:\s+[ก-๙]+)+$/.test(cleanSpaces(name));
+}
+
+function confidenceOrBlank(value: string, confidence: number, threshold = 0.7): string {
+  if (!value) return '';
+  return confidence >= threshold ? value : '';
 }
 
 function cutBeforeMarkers(text: string, markers: string[]) {
@@ -81,21 +86,55 @@ function extractAddress(compact: string): string {
   }
   if (start < 0) return '';
   let address = compact.slice(start).replace(/^ที่อยู่\s*/i, '').replace(/^Address\s*/i, '').trim();
-  address = cutBeforeMarkers(address, ['วันออกบัตร','Date of Issue','วันบัตรหมดอายุ','Date of Expiry','เจ้าพนักงานออกบัตร','กระทรวงมหาดไทย']);
+  address = cutBeforeMarkers(address, [
+    'ศาสนา',
+    'วันออกบัตร',
+    'Date of Issue',
+    'วันบัตรหมดอายุ',
+    'วันหมดอายุ',
+    'Date of Expiry',
+    'เจ้าพนักงานออกบัตร',
+    'กระทรวงมหาดไทย',
+  ]);
   return stripDatesFromAddress(address);
 }
 
-function parseText(text: string) {
+function normalizeThaiNameCandidate(line: string): string {
+  return cleanSpaces(line)
+    .replace(/^ชื่อและชื่อสกุล\s*[:：]?\s*/i, '')
+    .replace(/^ชื่อ\s*[:：]?\s*/i, '')
+    .trim();
+}
+
+function extractThaiName(lines: string[]): string {
+  const prefixes = ['นาย', 'นางสาว', 'นาง', 'ด.ช.', 'ด.ญ.', 'น.ส.'];
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const current = cleanSpaces(lines[i] ?? '');
+    if (!/^ชื่อและชื่อสกุล\b/i.test(current) && !/^ชื่อ\b/i.test(current)) continue;
+
+    const normalizedCurrent = normalizeThaiNameCandidate(current);
+    if (prefixes.some((p) => normalizedCurrent.startsWith(p)) && isThaiFullName(normalizedCurrent)) return normalizedCurrent;
+
+    const next = normalizeThaiNameCandidate(lines[i + 1] ?? '');
+    if (prefixes.some((p) => next.startsWith(p)) && isThaiFullName(next)) return next;
+  }
+
+  for (const line of lines) {
+    const normalized = normalizeThaiNameCandidate(line);
+    if (!prefixes.some((p) => normalized.includes(p))) continue;
+    if (/เลข|บัตร|identification|address|date|เกิด|ออกบัตร|หมดอายุ|ศาสนา/i.test(normalized)) continue;
+    if (isThaiFullName(normalized)) return normalized;
+  }
+  return '';
+}
+
+function parseText(text: string, confidence = 0.85) {
   const compact      = cleanSpaces(text);
   const idMatch      = compact.match(/\b\d[\d\s-]{11,20}\d\b/);
   const citizenId    = idMatch ? idMatch[0].replace(/\D/g, '').slice(0, 13) : '';
   const lines        = text.split(/\r?\n/).map(x => x.trim()).filter(Boolean);
-  const thaiNameLine = lines.find((l) => {
-    if (!/นาย|นางสาว|นาง/.test(l)) return false;
-    if (/เลข|บัตร|identification|address|date|เกิด|ออกบัตร|หมดอายุ/i.test(l)) return false;
-    const normalized = cleanSpaces(l).replace(/^(ชื่อ|Thai Name)\s*[:：]?\s*/i, '').trim();
-    return isThaiFullName(normalized);
-  }) ?? '';
+  const thaiNameLine = extractThaiName(lines);
   const englishNameLine = lines.find((l) =>
     /Mr\.?|Mrs\.?|Miss/i.test(l) &&
     !/เลข|บัตร|identification|address|date|เกิด|ออกบัตร|หมดอายุ/i.test(l)
@@ -104,14 +143,21 @@ function parseText(text: string) {
   const province     = (address.match(/(?:จังหวัด|จ\.)\s*([^\s]+)/))?.[1] ?? '';
   const district     = (address.match(/(?:อำเภอ|อ\.|เขต)\s*([^\s]+)/))?.[1] ?? '';
   const subdistrict  = (address.match(/(?:ตำบล|ต\.|แขวง)\s*([^\s]+)/))?.[1] ?? '';
-  const thaiFullName = cleanSpaces(thaiNameLine.replace(/^(ชื่อ|Thai Name)\s*[:：]?\s*/i, '').trim());
+  const thaiFullName = normalizeThaiNameCandidate(thaiNameLine);
+  const houseNo      = (address.match(/\b\d{1,4}\/?\d{0,4}\b/)?.[0] ?? '').trim();
+  const moo          = (address.match(/(?:หมู่ที่|หมู่|ม\.)\s*(\d{1,3})/)?.[1] ?? '').trim();
   const englishFullName = cleanSpaces(englishNameLine.replace(/^(Name|English Name)\s*[:：]?\s*/i, '').trim());
   return {
-    fullName:    isThaiFullName(thaiFullName) ? thaiFullName : '',
+    fullName:    confidenceOrBlank(isThaiFullName(thaiFullName) ? thaiFullName : '', confidence),
     fullNameEn:  englishFullName,
-    bankAccountName: isThaiFullName(thaiFullName) ? thaiFullName : '',
-    citizenId,
-    address, province, district, subdistrict,
+    bankAccountName: confidenceOrBlank(isThaiFullName(thaiFullName) ? thaiFullName : '', confidence),
+    citizenId: confidenceOrBlank(citizenId, confidence),
+    address: confidenceOrBlank(address, confidence),
+    houseNo: confidenceOrBlank(houseNo, confidence),
+    moo: confidenceOrBlank(moo, confidence),
+    province: confidenceOrBlank(province, confidence),
+    district: confidenceOrBlank(district, confidence),
+    subdistrict: confidenceOrBlank(subdistrict, confidence),
     dateOfBirth: '',
     expiryDate:  extractDateAfter(compact, ['วันบัตรหมดอายุ', 'Date of Expiry']),
     issueDate:   extractDateAfter(compact, ['วันออกบัตร', 'Date of Issue']),
@@ -152,11 +198,16 @@ export async function POST(request: Request) {
     const rawText = String(docJson.document?.text ?? '');
     if (!rawText) return NextResponse.json({ error: 'อ่านบัตรไม่สำเร็จ กรุณากรอกด้วยตนเอง' }, { status: 422 });
 
-    const extracted = parseText(rawText);
+    const confidence = 0.85;
+    const extracted = parseText(rawText, confidence);
+    if (process.env.NODE_ENV !== 'production') {
+      console.info('[OCR_ID_CARD_DEBUG] rawText:', rawText);
+      console.info('[OCR_ID_CARD_DEBUG] parsed:', extracted);
+    }
     if (!extracted.citizenId && !extracted.fullName)
       return NextResponse.json({ error: 'ไม่พบข้อมูลบัตร กรุณากรอกด้วยตนเอง' }, { status: 422 });
 
-    return NextResponse.json({ extracted, confidence: 85 });
+    return NextResponse.json({ extracted, confidence: Math.round(confidence * 100) });
   } catch (e) {
     console.error('[OCR_ID_CARD]', e);
     return NextResponse.json({ error: 'ระบบอ่านบัตรอัตโนมัติยังไม่พร้อมใช้งาน กรุณากรอกข้อมูลด้วยตนเอง' }, { status: 500 });
