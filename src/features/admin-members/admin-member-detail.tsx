@@ -47,16 +47,16 @@ export function AdminMemberDetail({ memberId }: { memberId: string }) {
   const [error,    setError]    = useState<string | null>(null);
   const [acting,   setActing]   = useState(false);
 
-  async function deleteMember() {
+  async function cancelAndAllowReapply() {
     if (!member) return;
-    if (!confirm(`ลบสมาชิก "${member.full_name}" ออกจากระบบ?\nไม่สามารถกู้คืนได้ — สมาชิกสามารถสมัครใหม่ได้`)) return;
+    if (!confirm(`ยกเลิกใบสมัครปัจจุบันของ "${member.full_name}" และเปิดให้สมัครใหม่?\nสมาชิกจะเห็นข้อความให้กลับไปสมัครใหม่ และต้องส่งใบสมัครใหม่อีกครั้ง`)) return;
     setActing(true);
     const res = await fetch(`/api/admin/members/${member.id}`, {
       method: 'DELETE', credentials: 'include',
     });
     setActing(false);
     const d = (await res.json()) as { ok?: boolean; error?: string };
-    if (!res.ok) { alert(`❌ ลบไม่สำเร็จ: ${d.error}`); return; }
+    if (!res.ok) { alert(`❌ ดำเนินการไม่สำเร็จ: ${d.error}`); return; }
     router.push('/admin/members');
   }
   const [notice,   setNotice]   = useState<string | null>(null);
@@ -186,13 +186,13 @@ export function AdminMemberDetail({ memberId }: { memberId: string }) {
             <button className="admin-btn admin-btn--danger"    onClick={() => setModal('reject')} disabled={acting}>❌ ปฏิเสธ</button>
           </>}
           {member.status === 'approved'  && <button className="admin-btn admin-btn--secondary" onClick={() => void updateStatus('suspended')} disabled={acting}>⛔ ระงับบัญชี</button>}
-          {member.status === 'rejected'  && <button className="admin-btn admin-btn--success"   onClick={() => void updateStatus('pending')}   disabled={acting}>↩️ เปิดให้ลงทะเบียนใหม่</button>}
+          {member.status === 'rejected'  && <button className="admin-btn admin-btn--success"   onClick={() => void updateStatus('pending')}   disabled={acting}>↩️ เปิดให้สมัครใหม่</button>}
           {member.status === 'suspended' && <button className="admin-btn admin-btn--success"   onClick={() => void updateStatus('approved')}  disabled={acting}>✅ คืนสิทธิ์</button>}
-          <button className="admin-btn admin-btn--danger"
-            onClick={() => void deleteMember()}
+          <button className="admin-btn admin-btn--secondary"
+            onClick={() => void cancelAndAllowReapply()}
             disabled={acting}
             style={{ marginLeft: 'auto', opacity: 0.7 }}>
-            🗑️ ลบสมาชิก
+            🔄 ยกเลิก / ให้สมัครใหม่
           </button>
         </div>
       </div>

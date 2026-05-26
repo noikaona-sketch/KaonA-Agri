@@ -424,15 +424,19 @@ export default function HomePage() {
           {isCancelled && member?.member_id && (
             <button
               onClick={async () => {
-                await fetch('/api/member/reset-registration', {
+                const res = await fetch('/api/member/reset-registration', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ member_id: member.member_id }),
                 });
-                window.location.reload();
+                if (!res.ok) {
+                  alert('ไม่สามารถเปิดให้สมัครใหม่ได้ กรุณาลองอีกครั้ง');
+                  return;
+                }
+                router.replace('/member/register?reapply=1');
               }}
               style={{ background:'#2D6A4F', color:'#fff', padding:'14px 32px', borderRadius:12, fontSize:16, fontWeight:700, border:'none', cursor:'pointer' }}>
-              🌽 สมัครสมาชิกใหม่
+              🌽 กลับไปสมัครใหม่
             </button>
           )}
         </div>
