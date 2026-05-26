@@ -1,20 +1,10 @@
 import { NextResponse } from 'next/server';
 
 import { createServerSupabaseClient, createAnonSupabaseClient } from '../../auth/line/line-auth-helpers';
+import { getAdminCookieOptions, setAdminCookie } from '../admin-auth-cookie';
 
-const ADMIN_COOKIE   = 'kaona_admin_web';
 const DEPT_COOKIE    = 'kaona_admin_dept';
 const ENV_ADMIN_ID   = 'env-super-admin';
-
-function cookieOpts(secure: boolean) {
-  return {
-    httpOnly: true,
-    secure,
-    sameSite: 'lax' as const,
-    path: '/',
-    maxAge: 60 * 60 * 24 * 7,  // 7 วัน
-  };
-}
 
 export async function POST(request: Request) {
   try {
@@ -25,7 +15,7 @@ export async function POST(request: Request) {
     }
 
     const isProd  = process.env.NODE_ENV === 'production';
-    const secure  = cookieOpts(isProd);
+    const secure  = getAdminCookieOptions(isProd);
     const insecure = { ...secure, httpOnly: false };
 
     // ── ENV fallback (bootstrap / ก่อน run migrations) ────────────────
@@ -35,7 +25,7 @@ export async function POST(request: Request) {
 
     if (envEmail && envPass && body.email === envEmail && body.password === envPass) {
       const response = NextResponse.json({ ok: true, department: 'super_admin', fullName: 'Super Admin (ENV)' });
-      response.cookies.set(ADMIN_COOKIE, ENV_ADMIN_ID, secure);
+      setAdminCookie(response, ENV_ADMIN_ID, isProd);
       response.cookies.set(DEPT_COOKIE,  'super_admin', insecure);
       return response;
     }
@@ -79,7 +69,7 @@ export async function POST(request: Request) {
       fullName: adminUser.full_name,
     });
 
-    response.cookies.set(ADMIN_COOKIE, adminUser.id, secure);
+    setAdminCookie(response, adminUser.id, isProd);
     response.cookies.set(DEPT_COOKIE,  adminUser.department, insecure);
 
     return response;

@@ -1,18 +1,7 @@
 import { NextResponse } from 'next/server';
 
 import { requireAdmin } from '../../admin/members/_admin-auth';
-
-const ADMIN_COOKIE = 'kaona_admin_web';
-
-function cookieOpts(secure: boolean) {
-  return {
-    httpOnly: true,
-    secure,
-    sameSite: 'lax' as const,
-    path: '/',
-    maxAge: 60 * 60 * 24 * 7,
-  };
-}
+import { setAdminCookie } from '../admin-auth-cookie';
 
 export async function GET() {
   const admin = await requireAdmin();
@@ -24,7 +13,7 @@ export async function GET() {
   }
 
   const isProd = process.env.NODE_ENV === 'production';
-  const response = NextResponse.json({ ok: true, adminRole: admin.adminRole });
-  response.cookies.set(ADMIN_COOKIE, admin.adminUserId, cookieOpts(isProd));
+  const response = NextResponse.json({ ok: true });
+  setAdminCookie(response, admin.adminUserId, isProd);
   return response;
 }
