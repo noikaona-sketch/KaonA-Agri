@@ -19,7 +19,7 @@ type GroupDetail = {
   created_by_member: { full_name: string }[] | null;
   member_group_members: {
     id: string; created_at: string; is_leader?: boolean;
-    members: { id: string; full_name: string; phone: string | null; status: string }[] | null;
+    member: { id: string; full_name: string; phone: string | null; status: string } | null;
   }[];
 };
 type SearchMember = { id: string; full_name: string; phone: string | null };
@@ -238,7 +238,7 @@ export function AdminGroups() {
             {searchRes.length > 0 && (
               <div style={{ marginTop: 6, display: 'grid', gap: 4 }}>
                 {searchRes.map((m) => {
-                  const alreadyIn = selected.member_group_members.some((x) => x.members?.[0]?.id === m.id);
+                  const alreadyIn = selected.member_group_members.some((x) => x.member?.id === m.id);
                   return (
                     <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', background: '#fff', borderRadius: 10, border: '1px solid #e8ede8' }}>
                       <div style={{ flex: 1 }}>
@@ -273,24 +273,24 @@ export function AdminGroups() {
               {selected.member_group_members.map((gm) => (
                 <div key={gm.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: gm.is_leader ? '#FFFBEB' : '#fff', borderRadius: 10, border: `1px solid ${gm.is_leader ? '#FCD34D' : '#e8ede8'}` }}>
                   <div style={{ width: 36, height: 36, borderRadius: '50%', background: gm.is_leader ? '#FEF3C7' : '#e8f5e9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 800, flexShrink: 0, color: gm.is_leader ? '#92400E' : '#2e7d32' }}>
-                    {gm.is_leader ? '👑' : (gm.members?.[0]?.full_name?.[0] ?? '?')}
+                    {gm.is_leader ? '👑' : (gm.member?.full_name?.[0] ?? '?')}
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                      <p style={{ margin: 0, fontWeight: 600, fontSize: 14 }}>{gm.members?.[0]?.full_name ?? '—'}</p>
+                      <p style={{ margin: 0, fontWeight: 600, fontSize: 14 }}>{gm.member?.full_name ?? '—'}</p>
                       {gm.is_leader && <span style={{ fontSize:10, padding:'1px 6px', borderRadius:4, background:'#FCD34D', color:'#92400E', fontWeight:700 }}>หัวหน้ากลุ่ม</span>}
                     </div>
-                    <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>{gm.members?.[0]?.phone ?? '—'}</p>
+                    <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>{gm.member?.phone ?? '—'}</p>
                   </div>
                   <button
-                    onClick={() => gm.members?.[0] && setLeader(gm.members[0].id, !gm.is_leader)}
+                    onClick={() => gm.member && setLeader(gm.member.id, !gm.is_leader)}
                     disabled={addingId !== null}
                     title={gm.is_leader ? 'ยกเลิกหัวหน้า' : 'ตั้งเป็นหัวหน้ากลุ่ม'}
                     style={{ fontSize: 14, background:'none', border:'1px solid #E5E7EB', borderRadius:6, padding:'4px 8px', cursor:'pointer', opacity: addingId?0.5:1 }}>
                     {gm.is_leader ? '👤' : '👑'}
                   </button>
                   <button className="admin-btn admin-btn--danger"
-                    onClick={() => gm.members?.[0] && removeMember(gm.members[0].id)}
+                    onClick={() => gm.member && removeMember(gm.member.id)}
                     disabled={addingId !== null}
                     style={{ fontSize: 12, minHeight: 30, padding: '4px 8px', flexShrink: 0 }}>
                     ×

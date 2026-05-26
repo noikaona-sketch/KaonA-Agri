@@ -15,8 +15,8 @@ export async function GET(_req: Request, { params }: Params) {
       .select(`
         id, name, description, created_at,
         member_group_members(
-          id, created_at,
-          members(id, full_name, phone, status)
+          id, created_at, is_leader,
+          member:member_id(id, full_name, phone, status)
         )
       `)
       .eq('id', params.id)
