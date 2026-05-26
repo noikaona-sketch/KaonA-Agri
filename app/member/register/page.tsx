@@ -1,34 +1,15 @@
 'use client';
 
-import { MemberRegistrationMVP } from '@/features/member-registration-mvp';
-import { useAuth } from '@/providers/auth-provider';
-import { LiffRequiredGuard } from '@/shared/components/liff-required-guard';
-import { ProtectedRoute } from '@/shared/components/protected-route';
-
-function RegisterScreen() {
-  const { member } = useAuth();
-  const lineUserId = member?.line_user_id;
-
-  // line_user_id ไม่มี = เปิดนอก LIFF context
-  if (!lineUserId) {
-    return <LiffRequiredGuard>{null}</LiffRequiredGuard>;
-  }
-
-  return (
-    <MemberRegistrationMVP
-      onSubmitted={async () => {
-        window.location.reload();
-      }}
-    />
-  );
-}
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function MemberRegisterPage() {
-  return (
-    <LiffRequiredGuard>
-      <ProtectedRoute fallbackPendingApproval={<RegisterScreen />} fallbackRejected={<RegisterScreen />} fallbackAccessDenied={<RegisterScreen />}>
-        <RegisterScreen />
-      </ProtectedRoute>
-    </LiffRequiredGuard>
-  );
+  const router = useRouter();
+
+  useEffect(() => {
+    const query = typeof window !== 'undefined' ? window.location.search : '';
+    router.replace(`/register${query}`);
+  }, [router]);
+
+  return null;
 }
