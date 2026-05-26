@@ -42,6 +42,9 @@ async function createAccessToken(): Promise<string> {
 }
 
 function cleanSpaces(s: string) { return s.replace(/\s+/g, ' ').trim(); }
+function isThaiFullName(name: string) {
+  return /^[ก-๙]+(?:\s+[ก-๙]+)+$/.test(cleanSpaces(name));
+}
 
 function cutBeforeMarkers(text: string, markers: string[]) {
   let end = text.length;
@@ -87,16 +90,26 @@ function parseText(text: string) {
   const idMatch      = compact.match(/\b\d[\d\s-]{11,20}\d\b/);
   const citizenId    = idMatch ? idMatch[0].replace(/\D/g, '').slice(0, 13) : '';
   const lines        = text.split(/\r?\n/).map(x => x.trim()).filter(Boolean);
-  const nameLine     = lines.find(l =>
-    /นาย|นางสาว|นาง|Mr\.?|Mrs\.?|Miss/i.test(l) &&
+  const thaiNameLine = lines.find((l) => {
+    if (!/นาย|นางสาว|นาง/.test(l)) return false;
+    if (/เลข|บัตร|identification|address|date|เกิด|ออกบัตร|หมดอายุ/i.test(l)) return false;
+    const normalized = cleanSpaces(l).replace(/^(ชื่อ|Thai Name)\s*[:：]?\s*/i, '').trim();
+    return isThaiFullName(normalized);
+  }) ?? '';
+  const englishNameLine = lines.find((l) =>
+    /Mr\.?|Mrs\.?|Miss/i.test(l) &&
     !/เลข|บัตร|identification|address|date|เกิด|ออกบัตร|หมดอายุ/i.test(l)
   ) ?? '';
   const address      = extractAddress(compact);
-  const province     = (address.match(/(?:จังหวัด|จ\.)\s*([^\s]+)/) ?? compact.match(/(?:จังหวัด|จ\.)\s*([^\s]+)/))?.[1] ?? '';
-  const district     = (address.match(/(?:อำเภอ|อ\.|เขต)\s*([^\s]+)/) ?? compact.match(/(?:อำเภอ|อ\.|เขต)\s*([^\s]+)/))?.[1] ?? '';
-  const subdistrict  = (address.match(/(?:ตำบล|ต\.|แขวง)\s*([^\s]+)/) ?? compact.match(/(?:ตำบล|ต\.|แขวง)\s*([^\s]+)/))?.[1] ?? '';
+  const province     = (address.match(/(?:จังหวัด|จ\.)\s*([^\s]+)/))?.[1] ?? '';
+  const district     = (address.match(/(?:อำเภอ|อ\.|เขต)\s*([^\s]+)/))?.[1] ?? '';
+  const subdistrict  = (address.match(/(?:ตำบล|ต\.|แขวง)\s*([^\s]+)/))?.[1] ?? '';
+  const thaiFullName = cleanSpaces(thaiNameLine.replace(/^(ชื่อ|Thai Name)\s*[:：]?\s*/i, '').trim());
+  const englishFullName = cleanSpaces(englishNameLine.replace(/^(Name|English Name)\s*[:：]?\s*/i, '').trim());
   return {
-    fullName:    nameLine.replace(/^(ชื่อ|Name|Thai Name)\s*[:：]?\s*/i, '').trim(),
+    fullName:    isThaiFullName(thaiFullName) ? thaiFullName : '',
+    fullNameEn:  englishFullName,
+    bankAccountName: isThaiFullName(thaiFullName) ? thaiFullName : '',
     citizenId,
     address, province, district, subdistrict,
     dateOfBirth: '',
@@ -112,7 +125,7 @@ export async function POST(request: Request) {
     const processorId = process.env.GOOGLE_DOCUMENTAI_PROCESSOR_ID;
 
     if (!projectId || !processorId)
-      return NextResponse.json({ error: 'Missing Document AI config' }, { status: 503 });
+      return NextResponse.json({ error: 'ระบบอ่านบัตรอัตโนมัติยังไม่พร้อมใช้งาน กรุณากรอกข้อมูลด้วยตนเอง' }, { status: 503 });
 
     const form = await request.formData();
     const file = form.get('idImage');
@@ -133,7 +146,7 @@ export async function POST(request: Request) {
     const docJson = (await docRes.json()) as { document?: { text?: string }; error?: { message?: string } };
     if (!docRes.ok) {
       console.error('[OCR_DOCUMENTAI]', docRes.status, docJson);
-      return NextResponse.json({ error: docJson.error?.message ?? 'Document AI OCR failed' }, { status: 500 });
+      return NextResponse.json({ error: 'ระบบอ่านบัตรอัตโนมัติยังไม่พร้อมใช้งาน กรุณากรอกข้อมูลด้วยตนเอง' }, { status: 500 });
     }
 
     const rawText = String(docJson.document?.text ?? '');
@@ -146,6 +159,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ extracted, confidence: 85 });
   } catch (e) {
     console.error('[OCR_ID_CARD]', e);
-    return NextResponse.json({ error: String(e) }, { status: 500 });
+    return NextResponse.json({ error: 'ระบบอ่านบัตรอัตโนมัติยังไม่พร้อมใช้งาน กรุณากรอกข้อมูลด้วยตนเอง' }, { status: 500 });
   }
 }
