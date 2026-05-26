@@ -239,10 +239,10 @@ export function AdminApprovalQueue() {
                   </td>
                   <td>
                     <div style={{ display:'flex', gap:6, justifyContent:'flex-end', flexWrap:'wrap', alignItems:'center' }}>
-                      {/* badge สมัครใหม่ */}
+                      {/* badge ยกเลิกแล้ว / รอสมัครใหม่ */}
                       {item.member?.rejection_reason === 'cancelled_by_admin' && (
                         <span style={{ fontSize:11, padding:'3px 8px', borderRadius:6, background:'#EEF2FF', color:'#4F46E5', fontWeight:600, whiteSpace:'nowrap' }}>
-                          🔄 สมัครใหม่
+                          🔄 ยกเลิกแล้ว / รอสมัครใหม่
                         </span>
                       )}
                       <button
