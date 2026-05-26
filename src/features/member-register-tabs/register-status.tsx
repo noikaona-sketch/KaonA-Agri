@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useAuth } from '@/providers/auth-provider';
 
 const STATUS_CFG: Record<string, { icon: string; title: string; desc: string; color: string; bg: string }> = {
@@ -22,7 +23,31 @@ const STATUS_CFG: Record<string, { icon: string; title: string; desc: string; co
 
 export function RegisterStatus() {
   const { status, member } = useAuth();
-  const cfg = STATUS_CFG[status] ?? STATUS_CFG.pending_approval;
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const canReapply = status === 'rejected' && member?.rejection_reason === 'cancelled_by_admin';
+  const cfg = canReapply
+    ? { icon: '🔄', title: 'ยกเลิกแล้ว / รอสมัครใหม่', desc: 'ข้อมูลสมัครเดิมถูกยกเลิกโดยผู้ดูแล กรุณาสมัครใหม่อีกครั้ง', color: '#4338ca', bg: '#eef2ff' }
+    : (STATUS_CFG[status] ?? STATUS_CFG.pending_approval);
+
+  async function handleReapply() {
+    if (!member?.member_id) return;
+    setSubmitting(true);
+    setError(null);
+    const res = await fetch('/api/member/reset-registration', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ member_id: member.member_id }),
+    });
+    const payload = (await res.json()) as { ok?: boolean; error?: string };
+    setSubmitting(false);
+    if (!res.ok || !payload.ok) {
+      setError(payload.error ?? 'รีเซ็ตการสมัครไม่สำเร็จ');
+      return;
+    }
+    window.location.replace('/register');
+  }
 
   return (
     <div className="mobile-stack">
@@ -52,6 +77,23 @@ export function RegisterStatus() {
           ติดต่อ admin ผ่านเมนู "ติดต่อ admin" ด้านล่าง หรือโทร/LINE หา KaonA โดยตรง
         </p>
       </div>
+
+      {canReapply && (
+        <div className="kaona-card" style={{ borderColor: '#c7d2fe', background: '#eef2ff' }}>
+          <p style={{ margin: '0 0 6px', fontWeight: 800, fontSize: 14, color: '#3730a3' }}>🔄 สมัครใหม่ได้แล้ว</p>
+          <p style={{ margin: '0 0 10px', fontSize: 13, color: '#4b5563', lineHeight: 1.7 }}>
+            ข้อมูลสมัครเดิมถูกยกเลิกโดยผู้ดูแล กรุณาสมัครใหม่อีกครั้ง
+          </p>
+          <button
+            onClick={() => { void handleReapply(); }}
+            disabled={submitting}
+            style={{ width: '100%', border: 'none', borderRadius: 12, padding: '12px 14px', background: '#4f46e5', color: '#fff', fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.7 : 1 }}
+          >
+            {submitting ? 'กำลังเตรียมการสมัครใหม่…' : 'กลับไปสมัครใหม่'}
+          </button>
+          {error && <p style={{ margin: '8px 0 0', fontSize: 12, color: '#c62828' }}>{error}</p>}
+        </div>
+      )}
     </div>
   );
 }
