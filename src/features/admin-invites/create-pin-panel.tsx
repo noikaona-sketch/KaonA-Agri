@@ -43,17 +43,33 @@ export function CreatePinPanel() {
   async function create() {
     if (!selected.size) { setError('กรุณาเลือกสมาชิกอย่างน้อย 1 คน'); return; }
     setSaving(true); setError(null); setResults([]);
-    const res = await fetch('/api/admin/create-pin', {
-      method:'POST', credentials:'include',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ member_ids:[...selected], role, ttl_hours:ttl }),
-    });
+
+    const newResults: PinResult[] = [];
+    for (const memberId of selected) {
+      const member = members.find(m => m.id === memberId);
+      const res = await fetch('/api/admin/create-pin', {
+        method:'POST', credentials:'include',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          memberId,
+          role,
+          hours: ttl,
+        }),
+      });
+      const d = (await res.json()) as { pin?: string; error?: string };
+      if (res.ok && d.pin) {
+        newResults.push({ member_id: memberId, name: member?.full_name ?? memberId, pin: d.pin });
+      } else {
+        setError(`${member?.full_name ?? memberId}: ${d.error ?? 'สร้างไม่สำเร็จ'}`);
+      }
+    }
+
     setSaving(false);
-    const d = (await res.json()) as { results?: PinResult[]; error?: string };
-    if (!res.ok) { setError(d.error ?? 'สร้าง PIN ไม่สำเร็จ'); return; }
-    setResults(d.results ?? []);
-    setSelected(new Set());
-    setSearch('');
+    if (newResults.length > 0) {
+      setResults(newResults);
+      setSelected(new Set());
+      setSearch('');
+    }
   }
 
   return (
