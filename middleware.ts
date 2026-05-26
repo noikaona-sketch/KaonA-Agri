@@ -28,7 +28,9 @@ export function middleware(request: NextRequest) {
   if (isAdminProtectedPath(pathname)) {
     if (!isLoggedIn) {
       const loginUrl = new URL('/admin-login', request.url);
-      loginUrl.searchParams.set('next', pathname);
+      const nextPath = `${pathname}${request.nextUrl.search}`;
+      loginUrl.searchParams.set('next', nextPath);
+      loginUrl.searchParams.set('reason', 'session_expired');
       return NextResponse.redirect(loginUrl);
     }
     // ต่ออายุ cookie ทุกครั้ง navigate
