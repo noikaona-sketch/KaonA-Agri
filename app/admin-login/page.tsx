@@ -1,12 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export default function AdminLoginPage() {
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
   const [error, setError]       = useState<string | null>(null);
   const [loading, setLoading]   = useState(false);
+
+  useEffect(() => {
+    const reason = new URL(window.location.href).searchParams.get('reason');
+    if (reason === 'session_expired') {
+      setError('เซสชันหมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง');
+    }
+  }, []);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();

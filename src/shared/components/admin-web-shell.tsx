@@ -54,6 +54,7 @@ export function AdminWebShell({ title, subtitle, roleBadge, children }: AdminWeb
   const [dept, setDept] = useState('admin');
 
   const [adminRole, setAdminRole] = useState<string | null>(null);
+  const [sessionExpired, setSessionExpired] = useState(false);
 
   useEffect(() => {
     // Read department + admin_role from cookies (non-httpOnly, set at login)
@@ -62,6 +63,44 @@ export function AdminWebShell({ title, subtitle, roleBadge, children }: AdminWeb
     if (deptVal) setDept(deptVal.split('=')[1]?.trim() ?? 'admin');
     const roleVal = cookies.find((c) => c.startsWith('kaona_admin_role='));
     if (roleVal) setAdminRole(roleVal.split('=')[1]?.trim() ?? null);
+  }, []);
+
+  useEffect(() => {
+    let disposed = false;
+
+    const checkSession = async () => {
+      try {
+        const res = await fetch('/api/admin-auth/session', {
+          method: 'GET',
+          credentials: 'include',
+          cache: 'no-store',
+        });
+
+        if (disposed) return;
+
+        if (res.status === 401 || res.status === 403) {
+          setSessionExpired(true);
+          return;
+        }
+
+        if (res.ok) setSessionExpired(false);
+      } catch {
+        // ignore transient network errors; do not force logout
+      }
+    };
+
+    void checkSession();
+    const intervalId = window.setInterval(checkSession, 5 * 60 * 1000);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void checkSession();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+
+    return () => {
+      disposed = true;
+      window.clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, []);
 
   // visibleMenus = allMenus.filter(canAccess)
@@ -133,6 +172,15 @@ export function AdminWebShell({ title, subtitle, roleBadge, children }: AdminWeb
           </span>
         </header>
         <div className="admin-web-shell__content">{children}</div>
+        {sessionExpired && (
+          <div style={{ marginTop: 12, background: '#fff7ed', color: '#9a3412', border: '1px solid #fdba74', borderRadius: 10, padding: '10px 12px', fontSize: 13 }}>
+            เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่เพื่อใช้งานต่อ
+            {' '}
+            <a href="/admin-login?reason=session_expired" style={{ color: '#9a3412', fontWeight: 700, textDecoration: 'underline' }}>
+              ไปหน้าเข้าสู่ระบบ
+            </a>
+          </div>
+        )}
       </section>
     </main>
   );
