@@ -44,7 +44,7 @@ function readinessIndicator(m: MemberRow) {
   return <span style={{ fontSize: 12, color: '#e65100' }} title={`ขาด: ${(m.missingFields ?? []).join(', ')}`}>⚠️ ยังไม่ครบ</span>;
 }
 
-export function AdminMemberList() {
+export function AdminMemberList({ roleFilter }: { roleFilter?: string | null }) {
   const [members,      setMembers]      = useState<MemberRow[]>([]);
   const [loading,      setLoading]      = useState(true);
   const [error,        setError]        = useState<string | null>(null);
