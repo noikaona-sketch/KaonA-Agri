@@ -99,14 +99,29 @@ function extractAddress(compact: string): string {
   return stripDatesFromAddress(address);
 }
 
-function extractThaiName(lines: string[], compact: string): string {
+function normalizeThaiNameCandidate(line: string): string {
+  return cleanSpaces(line)
+    .replace(/^ชื่อและชื่อสกุล\s*[:：]?\s*/i, '')
+    .replace(/^ชื่อ\s*[:：]?\s*/i, '')
+    .trim();
+}
+
+function extractThaiName(lines: string[]): string {
   const prefixes = ['นาย', 'นางสาว', 'นาง', 'ด.ช.', 'ด.ญ.', 'น.ส.'];
-  const afterLabel = compact.match(/ชื่อและชื่อสกุล\s*[:：]?\s*([^\n\r]+)/i)?.[1] ?? '';
-  const fromLabel = cleanSpaces(afterLabel);
-  if (prefixes.some((p) => fromLabel.startsWith(p)) && isThaiFullName(fromLabel)) return fromLabel;
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const current = cleanSpaces(lines[i] ?? '');
+    if (!/^ชื่อและชื่อสกุล\b/i.test(current) && !/^ชื่อ\b/i.test(current)) continue;
+
+    const normalizedCurrent = normalizeThaiNameCandidate(current);
+    if (prefixes.some((p) => normalizedCurrent.startsWith(p)) && isThaiFullName(normalizedCurrent)) return normalizedCurrent;
+
+    const next = normalizeThaiNameCandidate(lines[i + 1] ?? '');
+    if (prefixes.some((p) => next.startsWith(p)) && isThaiFullName(next)) return next;
+  }
 
   for (const line of lines) {
-    const normalized = cleanSpaces(line);
+    const normalized = normalizeThaiNameCandidate(line);
     if (!prefixes.some((p) => normalized.includes(p))) continue;
     if (/เลข|บัตร|identification|address|date|เกิด|ออกบัตร|หมดอายุ|ศาสนา/i.test(normalized)) continue;
     if (isThaiFullName(normalized)) return normalized;
@@ -119,7 +134,7 @@ function parseText(text: string, confidence = 0.85) {
   const idMatch      = compact.match(/\b\d[\d\s-]{11,20}\d\b/);
   const citizenId    = idMatch ? idMatch[0].replace(/\D/g, '').slice(0, 13) : '';
   const lines        = text.split(/\r?\n/).map(x => x.trim()).filter(Boolean);
-  const thaiNameLine = extractThaiName(lines, compact);
+  const thaiNameLine = extractThaiName(lines);
   const englishNameLine = lines.find((l) =>
     /Mr\.?|Mrs\.?|Miss/i.test(l) &&
     !/เลข|บัตร|identification|address|date|เกิด|ออกบัตร|หมดอายุ/i.test(l)
@@ -128,7 +143,7 @@ function parseText(text: string, confidence = 0.85) {
   const province     = (address.match(/(?:จังหวัด|จ\.)\s*([^\s]+)/))?.[1] ?? '';
   const district     = (address.match(/(?:อำเภอ|อ\.|เขต)\s*([^\s]+)/))?.[1] ?? '';
   const subdistrict  = (address.match(/(?:ตำบล|ต\.|แขวง)\s*([^\s]+)/))?.[1] ?? '';
-  const thaiFullName = cleanSpaces(thaiNameLine.replace(/^(ชื่อ|ชื่อและชื่อสกุล|Thai Name)\s*[:：]?\s*/i, '').trim());
+  const thaiFullName = normalizeThaiNameCandidate(thaiNameLine);
   const houseNo      = (address.match(/\b\d{1,4}\/?\d{0,4}\b/)?.[0] ?? '').trim();
   const moo          = (address.match(/(?:หมู่ที่|หมู่|ม\.)\s*(\d{1,3})/)?.[1] ?? '').trim();
   const englishFullName = cleanSpaces(englishNameLine.replace(/^(Name|English Name)\s*[:：]?\s*/i, '').trim());
