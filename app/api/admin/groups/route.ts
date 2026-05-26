@@ -31,12 +31,12 @@ export async function POST(request: Request) {
     if (isForbidden(_ar_post)) return _ar_post.forbidden;
 
     const body = (await request.json()) as { name?: string; description?: string; created_by?: string };
-    if (!body.name?.trim() || !body.created_by) {
-      return NextResponse.json({ error: 'ต้องการชื่อกลุ่มและ created_by' }, { status: 400 });
+    if (!body.name?.trim()) {
+      return NextResponse.json({ error: 'ต้องการชื่อกลุ่ม' }, { status: 400 });
     }
     const s = createServerSupabaseClient();
     const { data, error } = await s.from('member_groups')
-      .insert({ name: body.name.trim(), description: body.description ?? null, created_by: body.created_by })
+      .insert({ name: body.name.trim(), description: body.description ?? null })
       .select('id, name').single();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ ok: true, group: data });

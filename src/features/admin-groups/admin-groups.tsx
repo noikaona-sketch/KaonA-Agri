@@ -18,9 +18,9 @@ type GroupDetail = {
   id: string; name: string; description: string | null; created_at: string;
   created_by_member: { full_name: string }[] | null;
   member_group_members: {
-    id: string; created_at: string;
+    id: string; created_at: string; is_leader?: boolean;
     members: { id: string; full_name: string; phone: string | null; status: string }[] | null;
-  }[];                                                  // members = array — nested relation
+  }[];
 };
 type SearchMember = { id: string; full_name: string; phone: string | null };
 
@@ -94,8 +94,9 @@ export function AdminGroups() {
     if (!selected) return;
     setAddingId(memberId);
     const res = await fetch(`/api/admin/groups/${selected.id}/members`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ member_id: memberId, added_by: '00000000-0000-0000-0000-000000000001' }),
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ member_id: memberId }),
     });
     const d = (await res.json()) as { ok?: boolean; error?: string };
     setAddingId(null);
@@ -103,6 +104,18 @@ export function AdminGroups() {
     setSearch(''); setSearchRes([]);
     await openGroup(selected.id);
     await load();
+  }
+
+  /* set leader */
+  async function setLeader(memberId: string, isLeader: boolean) {
+    if (!selected) return;
+    await fetch(`/api/admin/groups/${selected.id}/members`, {
+      method: 'PATCH', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ member_id: memberId, is_leader: isLeader }),
+    });
+    await openGroup(selected.id);
+    setNotice(isLeader ? '👑 ตั้งเป็นหัวหน้ากลุ่มแล้ว' : '✅ ยกเลิกหัวหน้าแล้ว');
   }
 
   /* remove member */
@@ -253,14 +266,24 @@ export function AdminGroups() {
             )}
             <div style={{ display: 'grid', gap: 6 }}>
               {selected.member_group_members.map((gm) => (
-                <div key={gm.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: '#fff', borderRadius: 10, border: '1px solid #e8ede8' }}>
-                  <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#e8f5e9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 800, flexShrink: 0, color: '#2e7d32' }}>
-                    {gm.members?.[0]?.full_name?.[0] ?? '?'}
+                <div key={gm.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: gm.is_leader ? '#FFFBEB' : '#fff', borderRadius: 10, border: `1px solid ${gm.is_leader ? '#FCD34D' : '#e8ede8'}` }}>
+                  <div style={{ width: 36, height: 36, borderRadius: '50%', background: gm.is_leader ? '#FEF3C7' : '#e8f5e9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 800, flexShrink: 0, color: gm.is_leader ? '#92400E' : '#2e7d32' }}>
+                    {gm.is_leader ? '👑' : (gm.members?.[0]?.full_name?.[0] ?? '?')}
                   </div>
                   <div style={{ flex: 1 }}>
-                    <p style={{ margin: 0, fontWeight: 600, fontSize: 14 }}>{gm.members?.[0]?.full_name ?? '—'}</p>
+                    <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                      <p style={{ margin: 0, fontWeight: 600, fontSize: 14 }}>{gm.members?.[0]?.full_name ?? '—'}</p>
+                      {gm.is_leader && <span style={{ fontSize:10, padding:'1px 6px', borderRadius:4, background:'#FCD34D', color:'#92400E', fontWeight:700 }}>หัวหน้ากลุ่ม</span>}
+                    </div>
                     <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>{gm.members?.[0]?.phone ?? '—'}</p>
                   </div>
+                  <button
+                    onClick={() => gm.members?.[0] && setLeader(gm.members[0].id, !gm.is_leader)}
+                    disabled={addingId !== null}
+                    title={gm.is_leader ? 'ยกเลิกหัวหน้า' : 'ตั้งเป็นหัวหน้ากลุ่ม'}
+                    style={{ fontSize: 14, background:'none', border:'1px solid #E5E7EB', borderRadius:6, padding:'4px 8px', cursor:'pointer', opacity: addingId?0.5:1 }}>
+                    {gm.is_leader ? '👤' : '👑'}
+                  </button>
                   <button className="admin-btn admin-btn--danger"
                     onClick={() => gm.members?.[0] && removeMember(gm.members[0].id)}
                     disabled={addingId !== null}
