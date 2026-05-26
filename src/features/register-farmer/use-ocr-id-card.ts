@@ -5,6 +5,7 @@ import { useState } from 'react';
 export type OcrResult = {
   fullName: string;
   fullNameEn: string;
+  bankAccountName: string;
   citizenId: string;
   dateOfBirth: string;
   address: string;
@@ -22,6 +23,10 @@ export function useOcrIdCard() {
   const [status, setStatus] = useState<OcrStatus>('idle');
   const [result, setResult] = useState<OcrResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  function isThaiFullName(name: string) {
+    return /^[ก-๙]+(?:\s+[ก-๙]+)+$/.test(name.trim());
+  }
 
   async function scan(file: File) {
     setStatus('scanning');
@@ -41,12 +46,13 @@ export function useOcrIdCard() {
 
       if (!res.ok || !payload.extracted) {
         setStatus('failed');
-        setError(payload.error ?? 'อ่านบัตรไม่สำเร็จ กรุณากรอกเอง');
+        setError('ระบบอ่านบัตรอัตโนมัติยังไม่พร้อมใช้งาน กรุณากรอกข้อมูลด้วยตนเอง');
         return null;
       }
 
       const ocr: OcrResult = {
         ...payload.extracted,
+        fullName: isThaiFullName(payload.extracted.fullName ?? '') ? String(payload.extracted.fullName).trim() : '',
         confidence: payload.confidence ?? 0,
       };
       setResult(ocr);
@@ -54,7 +60,7 @@ export function useOcrIdCard() {
       return ocr;
     } catch {
       setStatus('failed');
-      setError('การเชื่อมต่อขัดข้อง กรุณากรอกเอง');
+      setError('ระบบอ่านบัตรอัตโนมัติยังไม่พร้อมใช้งาน กรุณากรอกข้อมูลด้วยตนเอง');
       return null;
     }
   }

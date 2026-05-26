@@ -30,6 +30,9 @@ export async function POST(request: Request) {
     const phone = form.get('phone') as string;
     const citizenIdMasked = form.get('citizenIdMasked') as string;
     const address = (form.get('address') as string) || null;
+    const bankName = (form.get('bankName') as string) || null;
+    const bankAccountNumber = (form.get('bankAccountNumber') as string) || null;
+    const bankAccountName = (form.get('bankAccountName') as string) || null;
     const plotsJson = (form.get('plots') as string) || '[]';
 
     if (!idToken || !fullName || !citizenIdMasked) {
@@ -50,6 +53,9 @@ export async function POST(request: Request) {
     // อัปเดตข้อมูลสมาชิก
     const { error: updateErr } = await supabase.from('members').update({
       full_name: fullName, phone, citizen_id_masked: citizenIdMasked,
+      bank_name: bankName,
+      bank_account_number: bankAccountNumber,
+      bank_account_name: bankAccountName,
       address, status: 'pending', registration_type: 'self', updated_at: new Date().toISOString(),
     }).eq('id', member.id);
 

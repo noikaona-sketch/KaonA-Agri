@@ -23,6 +23,10 @@ function maskId(v: string) {
   return d.length > 4 ? `${'*'.repeat(d.length - 4)}${d.slice(-4)}` : d;
 }
 
+function isThaiFullName(name: string) {
+  return /^[ก-๙]+(?:\s+[ก-๙]+)+$/.test(name.trim());
+}
+
 export function FarmerWizard({ lineUserId, onSubmitted }: FarmerWizardProps) {
   const ocr = useOcrIdCard();
   const [step, setStep] = useState<Step>('personal');
@@ -35,6 +39,9 @@ export function FarmerWizard({ lineUserId, onSubmitted }: FarmerWizardProps) {
   const [subdistrict, setSubdistrict] = useState('');
   const [district,    setDistrict]    = useState('');
   const [province,    setProvince]    = useState('');
+  const [bankName, setBankName] = useState('');
+  const [bankAccountNumber, setBankAccountNumber] = useState('');
+  const [bankAccountName, setBankAccountName] = useState('');
   const [plots, setPlots] = useState<PlotDraft[]>([newPlotDraft()]);
   const [consent, setConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -44,7 +51,7 @@ export function FarmerWizard({ lineUserId, onSubmitted }: FarmerWizardProps) {
   function handleOcrScan(file: File) {
     void ocr.scan(file).then((res) => {
       if (!res) return;
-      if (res.fullName    && !fullName)    setFullName(res.fullName);
+      if (res.fullName && isThaiFullName(res.fullName) && !fullName) setFullName(res.fullName);
       if (res.citizenId   && !citizenId)   setCitizenId(res.citizenId);
       if (res.address     && !address)     setAddress(res.address);
       if (res.houseNo     && !houseNo)     setHouseNo(res.houseNo);
@@ -52,11 +59,12 @@ export function FarmerWizard({ lineUserId, onSubmitted }: FarmerWizardProps) {
       if (res.subdistrict && !subdistrict) setSubdistrict(res.subdistrict);
       if (res.district    && !district)    setDistrict(res.district);
       if (res.province    && !province)    setProvince(res.province);
+      if (res.bankAccountName && isThaiFullName(res.bankAccountName) && !bankAccountName) setBankAccountName(res.bankAccountName);
     });
   }
 
   const personalValid =
-    fullName.trim() && phone.trim() && citizenId.replace(/\D/g, '').length === 13;
+    isThaiFullName(fullName) && phone.trim() && citizenId.replace(/\D/g, '').length === 13;
 
   const plotsValid = plots.every(
     (p) => p.name.trim() && Number(p.areaRai) > 0 && p.lat !== null
@@ -88,6 +96,9 @@ export function FarmerWizard({ lineUserId, onSubmitted }: FarmerWizardProps) {
       formData.append('subdistrict', subdistrict.trim());
       formData.append('district',    district.trim());
       formData.append('province',    province.trim());
+      formData.append('bankName', bankName.trim());
+      formData.append('bankAccountNumber', bankAccountNumber.trim());
+      formData.append('bankAccountName', bankAccountName.trim());
       formData.append('plots', JSON.stringify(plots.map((p) => ({
         name: p.name, areaRai: Number(p.areaRai),
         lat: p.lat, lng: p.lng, accuracy: p.accuracy,
@@ -128,6 +139,7 @@ export function FarmerWizard({ lineUserId, onSubmitted }: FarmerWizardProps) {
           <OcrIdCardStep status={ocr.status} result={ocr.result} error={ocr.error} onScan={handleOcrScan} onReset={ocr.reset} />
           <label className="reg-label">ชื่อ-นามสกุล <span className="reg-required">*</span>
             <input className="reg-input" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="ชื่อตามบัตรประชาชน" />
+            {fullName.trim() && !isThaiFullName(fullName) && <span className="reg-hint" style={{ color: 'var(--danger)' }}>กรุณากรอกชื่อ-นามสกุลภาษาไทยเท่านั้น</span>}
           </label>
           <label className="reg-label">เบอร์โทรศัพท์ <span className="reg-required">*</span>
             <input className="reg-input" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="0XX-XXX-XXXX" />
@@ -156,6 +168,16 @@ export function FarmerWizard({ lineUserId, onSubmitted }: FarmerWizardProps) {
           </label>
           <label className="reg-label">ที่อยู่เต็ม (จากบัตร)
             <textarea className="reg-input reg-textarea" rows={2} value={address} onChange={(e) => setAddress(e.target.value)} placeholder="บ้านเลขที่ หมู่ ตำบล อำเภอ จังหวัด" />
+          </label>
+          <p className="reg-label" style={{ marginBottom: 4 }}>ข้อมูลบัญชีธนาคาร (ส่วนที่ 2)</p>
+          <label className="reg-label">ธนาคาร
+            <input className="reg-input" value={bankName} onChange={(e) => setBankName(e.target.value)} placeholder="เช่น ธ.ก.ส." />
+          </label>
+          <label className="reg-label">เลขบัญชี
+            <input className="reg-input" inputMode="numeric" value={bankAccountNumber} onChange={(e) => setBankAccountNumber(e.target.value)} placeholder="เลขบัญชี" />
+          </label>
+          <label className="reg-label">ชื่อบัญชี
+            <input className="reg-input" value={bankAccountName} onChange={(e) => setBankAccountName(e.target.value)} placeholder="ชื่อตามหน้าสมุดบัญชี" />
           </label>
           <UIButton fullWidth onClick={() => setStep('plots')} disabled={!personalValid}>ถัดไป: ข้อมูลแปลง →</UIButton>
         </div>
