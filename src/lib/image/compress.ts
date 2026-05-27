@@ -144,6 +144,28 @@ function luminance(r: number, g: number, b: number): number {
   return 0.299 * r + 0.587 * g + 0.114 * b;
 }
 
+function clamp(v: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, v));
+}
+
+function estimateBackgroundLuma(data: Uint8ClampedArray, w: number, h: number): number {
+  const sample: number[] = [];
+  const take = (x: number, y: number) => {
+    const i = (y * w + x) * 4;
+    sample.push(luminance(data[i], data[i + 1], data[i + 2]));
+  };
+  for (let i = 0; i < 32; i += 1) {
+    const x = Math.round((i / 31) * (w - 1));
+    take(x, 0); take(x, h - 1);
+  }
+  for (let i = 0; i < 32; i += 1) {
+    const y = Math.round((i / 31) * (h - 1));
+    take(0, y); take(w - 1, y);
+  }
+  sample.sort((x, y) => x - y);
+  return sample[Math.floor(sample.length / 2)] ?? 240;
+}
+
 export async function preprocessThaiIdCard(file: File | Blob): Promise<IdCardPreprocessResult> {
   const img = new Image();
   const url = URL.createObjectURL(file);
@@ -156,7 +178,7 @@ export async function preprocessThaiIdCard(file: File | Blob): Promise<IdCardPre
 
   const srcW = img.naturalWidth;
   const srcH = img.naturalHeight;
-  const probeW = 640;
+  const probeW = 800;
   const probeH = Math.max(1, Math.round((srcH * probeW) / srcW));
   const probe = document.createElement('canvas');
   probe.width = probeW;
@@ -164,64 +186,90 @@ export async function preprocessThaiIdCard(file: File | Blob): Promise<IdCardPre
   const pctx = probe.getContext('2d');
   if (!pctx) throw new Error('Missing canvas context');
   pctx.drawImage(img, 0, 0, probeW, probeH);
-  const pixels = pctx.getImageData(0, 0, probeW, probeH).data;
+  const px = pctx.getImageData(0, 0, probeW, probeH).data;
 
+  const bgLuma = estimateBackgroundLuma(px, probeW, probeH);
   const luma: number[] = new Array(probeW * probeH);
+  const edge: number[] = new Array(probeW * probeH).fill(0);
   for (let i = 0; i < luma.length; i += 1) {
     const j = i * 4;
-    luma[i] = luminance(pixels[j], pixels[j + 1], pixels[j + 2]);
+    luma[i] = luminance(px[j], px[j + 1], px[j + 2]);
   }
 
-  let totalEdge = 0;
-  const edgeMap: number[] = new Array(probeW * probeH).fill(0);
+  let edgeSum = 0;
   for (let y = 1; y < probeH - 1; y += 1) {
     for (let x = 1; x < probeW - 1; x += 1) {
       const idx = y * probeW + x;
-      const gx =
-        -luma[idx - probeW - 1] + luma[idx - probeW + 1] - 2 * luma[idx - 1] + 2 * luma[idx + 1] - luma[idx + probeW - 1] + luma[idx + probeW + 1];
-      const gy =
-        -luma[idx - probeW - 1] - 2 * luma[idx - probeW] - luma[idx - probeW + 1] + luma[idx + probeW - 1] + 2 * luma[idx + probeW] + luma[idx + probeW + 1];
+      const gx = -luma[idx - probeW - 1] + luma[idx - probeW + 1] - 2 * luma[idx - 1] + 2 * luma[idx + 1] - luma[idx + probeW - 1] + luma[idx + probeW + 1];
+      const gy = -luma[idx - probeW - 1] - 2 * luma[idx - probeW] - luma[idx - probeW + 1] + luma[idx + probeW - 1] + 2 * luma[idx + probeW] + luma[idx + probeW + 1];
       const mag = Math.sqrt(gx * gx + gy * gy);
-      edgeMap[idx] = mag;
-      totalEdge += mag;
+      edge[idx] = mag;
+      edgeSum += mag;
     }
   }
-  const edgeThreshold = (totalEdge / (probeW * probeH)) * 1.7;
+  const edgeThreshold = (edgeSum / (probeW * probeH)) * 1.8;
 
-  let left = probeW;
-  let right = 0;
-  let top = probeH;
-  let bottom = 0;
-  for (let y = 0; y < probeH; y += 1) {
-    for (let x = 0; x < probeW; x += 1) {
+  let left = probeW; let right = 0; let top = probeH; let bottom = 0;
+  for (let y = 1; y < probeH - 1; y += 1) {
+    for (let x = 1; x < probeW - 1; x += 1) {
       const idx = y * probeW + x;
-      if (edgeMap[idx] > edgeThreshold) {
-        left = Math.min(left, x);
-        right = Math.max(right, x);
-        top = Math.min(top, y);
-        bottom = Math.max(bottom, y);
-      }
+      const distBg = Math.abs(luma[idx] - bgLuma);
+      const isCandidate = edge[idx] > edgeThreshold || distBg > 32;
+      if (!isCandidate) continue;
+      left = Math.min(left, x);
+      right = Math.max(right, x);
+      top = Math.min(top, y);
+      bottom = Math.max(bottom, y);
     }
   }
 
   let cropApplied = false;
   let warning: string | null = null;
   let sx = 0; let sy = 0; let sw = srcW; let sh = srcH;
+  let rotateDeg = 0;
+
   if (right > left && bottom > top) {
-    const pad = 20;
     const scaleX = srcW / probeW;
     const scaleY = srcH / probeH;
-    sx = Math.max(0, Math.round((left - pad) * scaleX));
-    sy = Math.max(0, Math.round((top - pad) * scaleY));
-    sw = Math.min(srcW - sx, Math.round((right - left + pad * 2) * scaleX));
-    sh = Math.min(srcH - sy, Math.round((bottom - top + pad * 2) * scaleY));
+    const bw = right - left + 1;
+    const bh = bottom - top + 1;
+    const padX = Math.round(bw * 0.04);
+    const padY = Math.round(bh * 0.07);
+
+    sx = clamp(Math.round((left - padX) * scaleX), 0, srcW - 1);
+    sy = clamp(Math.round((top - padY) * scaleY), 0, srcH - 1);
+    const ex = clamp(Math.round((right + padX) * scaleX), sx + 1, srcW);
+    const ey = clamp(Math.round((bottom + padY) * scaleY), sy + 1, srcH);
+    sw = ex - sx;
+    sh = ey - sy;
 
     const aspect = sw / Math.max(1, sh);
-    if (sw < srcW * 0.35 || sh < srcH * 0.25 || aspect < 1.3 || aspect > 1.9) {
+    const coverage = (sw * sh) / (srcW * srcH);
+    const aspectOk = aspect > 1.45 && aspect < 1.75;
+    const coverageOk = coverage > 0.20 && coverage < 0.95;
+
+    if (!aspectOk || !coverageOk) {
       warning = 'ใช้รูปเต็มแทน กรุณาตรวจสอบข้อมูลอีกครั้ง';
       sx = 0; sy = 0; sw = srcW; sh = srcH;
     } else {
       cropApplied = true;
+      const centerY = Math.round((top + bottom) / 2);
+      let minXTop = probeW; let maxXTop = 0; let minXBottom = probeW; let maxXBottom = 0;
+      for (let x = left; x <= right; x += 1) {
+        const t = (top * probeW + x);
+        const b = (bottom * probeW + x);
+        if (edge[t] > edgeThreshold * 0.8) { minXTop = Math.min(minXTop, x); maxXTop = Math.max(maxXTop, x); }
+        if (edge[b] > edgeThreshold * 0.8) { minXBottom = Math.min(minXBottom, x); maxXBottom = Math.max(maxXBottom, x); }
+      }
+      if (maxXTop > minXTop && maxXBottom > minXBottom) {
+        const topCenter = (minXTop + maxXTop) / 2;
+        const bottomCenter = (minXBottom + maxXBottom) / 2;
+        const dx = bottomCenter - topCenter;
+        const dy = Math.max(1, bottom - top);
+        rotateDeg = clamp((-Math.atan2(dx, dy) * 180) / Math.PI, -8, 8);
+      } else {
+        void centerY;
+      }
     }
   } else {
     warning = 'ใช้รูปเต็มแทน กรุณาตรวจสอบข้อมูลอีกครั้ง';
@@ -235,13 +283,23 @@ export async function preprocessThaiIdCard(file: File | Blob): Promise<IdCardPre
   out.height = drawH;
   const octx = out.getContext('2d');
   if (!octx) throw new Error('Missing canvas context');
-  octx.filter = 'contrast(1.06) saturate(1.02)';
-  octx.drawImage(img, sx, sy, sw, sh, 0, 0, drawW, drawH);
+  octx.fillStyle = '#ffffff';
+  octx.fillRect(0, 0, drawW, drawH);
+  octx.filter = 'contrast(1.08) saturate(1.03)';
+  if (cropApplied && Math.abs(rotateDeg) > 0.5) {
+    octx.save();
+    octx.translate(drawW / 2, drawH / 2);
+    octx.rotate((rotateDeg * Math.PI) / 180);
+    octx.drawImage(img, sx, sy, sw, sh, -drawW / 2, -drawH / 2, drawW, drawH);
+    octx.restore();
+  } else {
+    octx.drawImage(img, sx, sy, sw, sh, 0, 0, drawW, drawH);
+  }
   octx.filter = 'none';
 
-  let quality = 0.86;
+  let quality = 0.88;
   let blob = await new Promise<Blob>((resolve, reject) => out.toBlob((b) => b ? resolve(b) : reject(new Error('compress failed')), 'image/jpeg', quality));
-  while (blob.size > 500 * 1024 && quality > 0.66) {
+  while (blob.size > 500 * 1024 && quality > 0.62) {
     quality -= 0.05;
     blob = await new Promise<Blob>((resolve, reject) => out.toBlob((b) => b ? resolve(b) : reject(new Error('compress failed')), 'image/jpeg', quality));
   }

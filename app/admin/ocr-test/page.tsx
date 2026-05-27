@@ -37,6 +37,7 @@ export default function AdminOcrTestPage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<OcrResponse | null>(null);
   const [cropApplied, setCropApplied] = useState<boolean | null>(null);
+  const [processedDims, setProcessedDims] = useState<string | null>(null);
 
   const parsed = useMemo(() => ({ ...(result?.extracted ?? {}), confidence: result?.confidence ?? 0 }), [result]);
 
@@ -56,6 +57,7 @@ export default function AdminOcrTestPage() {
       setCropApplied(pre.cropApplied);
       setWarning(pre.warning);
       setProcessedSize(pre.blob.size);
+      setProcessedDims(`${pre.width} × ${pre.height}`);
 
       const nextProcessedUrl = URL.createObjectURL(pre.blob);
       setProcessedUrl((prev) => {
@@ -74,6 +76,7 @@ export default function AdminOcrTestPage() {
       setWarning('ใช้รูปเต็มแทน กรุณาตรวจสอบข้อมูลอีกครั้ง');
       setCropApplied(false);
       setProcessedSize(file.size);
+      setProcessedDims(null);
       setProcessedUrl((prev) => {
         if (prev) URL.revokeObjectURL(prev);
         return nextOriginalUrl;
@@ -94,6 +97,7 @@ export default function AdminOcrTestPage() {
     setOriginalSize(null);
     setProcessedSize(null);
     setCropApplied(null);
+    setProcessedDims(null);
     setOriginalUrl((prev) => {
       if (prev) URL.revokeObjectURL(prev);
       return null;
@@ -160,7 +164,8 @@ export default function AdminOcrTestPage() {
 
         <div className="kaona-card">
           <p style={{ margin: 0, fontWeight: 700 }}>รูปหลัง crop/compress</p>
-          <p style={{ margin: '4px 0 8px', fontSize: 12, color: 'var(--text-secondary)' }}>ขนาดไฟล์: {processedSize ? formatBytes(processedSize) : '-'}</p>
+          <p style={{ margin: '4px 0 6px', fontSize: 12, color: cropApplied ? '#1b5e20' : '#ef6c00' }}>{cropApplied ? '✅ ตัดเฉพาะบัตรแล้ว' : '⚠️ ใช้รูปเต็ม (fallback)'}</p>
+          <p style={{ margin: '4px 0 8px', fontSize: 12, color: 'var(--text-secondary)' }}>ขนาดไฟล์: {processedSize ? formatBytes(processedSize) : '-'}{processedDims ? ` • ${processedDims}px` : ''}</p>
           {processedUrl && <img src={processedUrl} alt="processed" style={{ width: '100%', maxHeight: 220, objectFit: 'contain' }} />}
         </div>
       </div>
