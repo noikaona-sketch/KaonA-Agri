@@ -15,11 +15,19 @@ export async function GET(request: Request) {
     let q = s.from('members').select(`
       id, full_name, line_display_name, phone, status, rejection_reason, created_at,
       bank_name, bank_account_number, bank_verified_status,
+      district, subdistrict, province,
       member_roles!inner(role, is_primary),
       plots!plots_member_id_fkey(id)
     `).order('created_at', { ascending: false }).limit(300);
 
-    if (status) q = q.eq('status', status);
+    const district    = searchParams.get('district')    ?? '';
+    const subdistrict = searchParams.get('subdistrict') ?? '';
+    const province    = searchParams.get('province')    ?? '';
+
+    if (status)      q = q.eq('status', status);
+    if (district)    q = q.ilike('district', `%${district}%`);
+    if (subdistrict) q = q.ilike('subdistrict', `%${subdistrict}%`);
+    if (province)    q = q.ilike('province', `%${province}%`);
 
     const { data, error } = await q;
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });

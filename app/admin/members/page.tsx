@@ -6,7 +6,6 @@ import { AdminApprovalQueue }       from '@/features/admin-members/admin-approva
 import { AdminMemberList }          from '@/features/admin-members/admin-member-list';
 import { AdminGroups }              from '@/features/admin-groups/admin-groups';
 import { AdminImportCsv }           from '@/features/admin-members/admin-import-csv';
-import { MemberStatsCards }         from '@/features/admin-members/member-stats-cards';
 import { MemberSummaryCollapsible } from '@/features/admin-members/member-summary-collapsible';
 import { CreateMemberDrawer }       from '@/features/admin-members/create-member-drawer';
 import { CreatePinPanel }           from '@/features/admin-invites/create-pin-panel';
@@ -100,7 +99,6 @@ export default function AdminMembersPage() {
       {/* Tab: สมาชิก */}
       {tab === 'members' && (
         <>
-          <MemberStatsCards onRoleFilter={setRoleFilter} />
           {summaryData && (
             <MemberSummaryCollapsible
               byRole={summaryData.by_role}
@@ -109,7 +107,7 @@ export default function AdminMembersPage() {
               onGroupClick={g => { setGroupFilter(g); setRoleFilter(null); }}
             />
           )}
-          <AdminMemberList key={memberKey} roleFilter={roleFilter} />
+          <AdminMemberList key={memberKey} roleFilter={roleFilter} groupFilter={groupFilter} />
         </>
       )}
 

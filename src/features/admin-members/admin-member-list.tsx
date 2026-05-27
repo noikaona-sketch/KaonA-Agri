@@ -11,6 +11,7 @@ type MemberRow = {
   rejection_reason?: string | null;
   bank_verified_status: string;
   has_plots: boolean; has_bank: boolean;
+  district: string | null; subdistrict: string | null; province: string | null;
   readyToApprove: boolean; missingFields: string[]; readinessReason: string[];
 };
 
@@ -95,23 +96,29 @@ function Avatar({ name, isLeader }: { name:string; isLeader:boolean }) {
 }
 
 /* ── Main Component ── */
-export function AdminMemberList({ roleFilter }: { roleFilter?: string | null }) {
+export function AdminMemberList({ roleFilter, groupFilter }: { roleFilter?: string | null; groupFilter?: string | null }) {
   const [members,      setMembers]      = useState<MemberRow[]>([]);
   const [loading,      setLoading]      = useState(true);
   const [error,        setError]        = useState<string|null>(null);
   const [search,       setSearch]       = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [roleFilter2,  setRoleFilter2]  = useState('');
+  const [district,     setDistrict]     = useState('');
+  const [subdistrict,  setSubdistrict]  = useState('');
+  const [showLocFilter,setShowLocFilter]= useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     const sq  = statusFilter === 'cancelled_waiting_reapply' ? 'rejected' : statusFilter;
-    const res = await fetch(`/api/admin/members/list?status=${sq}`, { credentials:'include' });
+    const params = new URLSearchParams({ status: sq });
+    if (district)    params.set('district',    district);
+    if (subdistrict) params.set('subdistrict', subdistrict);
+    const res = await fetch(`/api/admin/members/list?${params}`, { credentials:'include' });
     const d   = (await res.json()) as { members?: MemberRow[]; error?: string };
     if (!res.ok) { setError(d.error ?? 'โหลดไม่สำเร็จ'); setLoading(false); return; }
     setMembers(d.members ?? []);
     setLoading(false);
-  }, [statusFilter]);
+  }, [statusFilter, district, subdistrict]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -131,35 +138,55 @@ export function AdminMemberList({ roleFilter }: { roleFilter?: string | null }) 
       {/* ── Filter bar ── */}
       <div style={{ background:'#F8FAFC', border:'1px solid #E2E8F0', borderRadius:10, padding:'12px 16px', marginBottom:16 }}>
         <div style={{ display:'flex', gap:10, flexWrap:'wrap', alignItems:'center' }}>
-          {/* Search */}
           <div style={{ flex:1, minWidth:200, position:'relative' }}>
             <span style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#9CA3AF', fontSize:14, pointerEvents:'none' }}>🔍</span>
-            <input
-              placeholder="ค้นหาชื่อ เบอร์โทร…"
-              value={search} onChange={e => setSearch(e.target.value)}
+            <input placeholder="ค้นหาชื่อ เบอร์โทร…" value={search} onChange={e => setSearch(e.target.value)}
               style={{ width:'100%', padding:'8px 12px 8px 32px', borderRadius:8, border:'1.5px solid #E5E7EB', fontSize:13, color:'#111', background:'#fff', boxSizing:'border-box' }} />
           </div>
-
-          {/* Role filter */}
           <select value={roleFilter2} onChange={e => setRoleFilter2(e.target.value)}
-            style={{ padding:'8px 32px 8px 10px', borderRadius:8, border:'1.5px solid #E5E7EB', fontSize:13, color:'#374151', background:'#fff url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'12\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%236B7280\' stroke-width=\'2\'%3E%3Cpath d=\'m6 9 6 6 6-6\'/%3E%3C/svg%3E") no-repeat right 10px center', appearance:'none', minWidth:140 }}>
+            style={{ padding:'8px 10px', borderRadius:8, border:'1.5px solid #E5E7EB', fontSize:13, color:'#374151', background:'#fff', minWidth:130 }}>
             <option value="">👤 ทุก Role</option>
-            {Object.entries(ROLE_CFG).map(([k,v]) => (
-              <option key={k} value={k}>{v.icon} {k}</option>
-            ))}
+            {Object.entries(ROLE_CFG).map(([k,v]) => <option key={k} value={k}>{v.icon} {k}</option>)}
           </select>
-
-          {/* Result count */}
+          <button onClick={() => setShowLocFilter(p => !p)}
+            style={{ padding:'8px 14px', borderRadius:8, border:`1.5px solid ${showLocFilter||district||subdistrict?'#2D6A4F':'#E5E7EB'}`, background:showLocFilter||district||subdistrict?'#F0FDF4':'#fff', color:showLocFilter||district||subdistrict?'#2D6A4F':'#374151', fontSize:12, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap' }}>
+            📍 พื้นที่{district||subdistrict?' (กรองอยู่)':''}
+          </button>
           <span style={{ fontSize:12, color:'#9CA3AF', marginLeft:'auto', whiteSpace:'nowrap' }}>
             แสดง <strong style={{ color:'#374151' }}>{filtered.length}</strong> จาก {members.length} รายการ
           </span>
         </div>
 
-        {/* Status tabs */}
-        <div style={{ display:'flex', gap:4, marginTop:10, borderBottom:'1.5px solid #E5E7EB', paddingBottom:0, flexWrap:'wrap' }}>
+        {showLocFilter && (
+          <div style={{ display:'flex', gap:10, marginTop:10, flexWrap:'wrap', alignItems:'center', padding:'10px 12px', background:'#fff', borderRadius:8, border:'1px solid #E5E7EB' }}>
+            <span style={{ fontSize:12, fontWeight:600, color:'#374151', flexShrink:0 }}>📍 พื้นที่:</span>
+            <input placeholder="อำเภอ…" value={district} onChange={e => setDistrict(e.target.value)}
+              style={{ flex:1, minWidth:120, padding:'7px 10px', borderRadius:7, border:'1.5px solid #E5E7EB', fontSize:13 }} />
+            <input placeholder="ตำบล…" value={subdistrict} onChange={e => setSubdistrict(e.target.value)}
+              style={{ flex:1, minWidth:120, padding:'7px 10px', borderRadius:7, border:'1.5px solid #E5E7EB', fontSize:13 }} />
+            {(district||subdistrict) && (
+              <button onClick={() => { setDistrict(''); setSubdistrict(''); }}
+                style={{ padding:'6px 12px', borderRadius:7, border:'1px solid #FECACA', background:'#FEF2F2', color:'#DC2626', fontSize:12, fontWeight:600, cursor:'pointer' }}>
+                ✕ ล้าง
+              </button>
+            )}
+          </div>
+        )}
+
+        {(roleFilter||groupFilter||district||subdistrict) && (
+          <div style={{ display:'flex', gap:6, marginTop:8, flexWrap:'wrap', alignItems:'center' }}>
+            <span style={{ fontSize:11, color:'#9CA3AF' }}>กรองโดย:</span>
+            {roleFilter  && <span style={{ fontSize:11, padding:'2px 8px', borderRadius:6, background:'#DBEAFE', color:'#1E40AF', fontWeight:600 }}>Role: {roleFilter}</span>}
+            {groupFilter && <span style={{ fontSize:11, padding:'2px 8px', borderRadius:6, background:'#D1FAE5', color:'#065F46', fontWeight:600 }}>กลุ่ม</span>}
+            {district    && <span style={{ fontSize:11, padding:'2px 8px', borderRadius:6, background:'#FEF3C7', color:'#92400E', fontWeight:600 }}>อ. {district}</span>}
+            {subdistrict && <span style={{ fontSize:11, padding:'2px 8px', borderRadius:6, background:'#FEF3C7', color:'#92400E', fontWeight:600 }}>ต. {subdistrict}</span>}
+          </div>
+        )}
+
+        <div style={{ display:'flex', gap:4, marginTop:10, borderBottom:'1.5px solid #E5E7EB', flexWrap:'wrap' }}>
           {STATUS_TABS.map(t => (
             <button key={t.key} onClick={() => setStatusFilter(t.key)}
-              style={{ padding:'6px 14px', border:'none', background:'none', cursor:'pointer', fontSize:12, fontWeight: statusFilter===t.key ? 700 : 400, color: statusFilter===t.key ? '#2D6A4F' : '#6B7280', borderBottom: statusFilter===t.key ? '2.5px solid #2D6A4F' : '2.5px solid transparent', marginBottom:-1.5, whiteSpace:'nowrap', transition:'all .1s' }}>
+              style={{ padding:'6px 14px', border:'none', background:'none', cursor:'pointer', fontSize:12, fontWeight:statusFilter===t.key?700:400, color:statusFilter===t.key?'#2D6A4F':'#6B7280', borderBottom:statusFilter===t.key?'2.5px solid #2D6A4F':'2.5px solid transparent', marginBottom:-1.5, whiteSpace:'nowrap' }}>
               {t.label}
             </button>
           ))}
