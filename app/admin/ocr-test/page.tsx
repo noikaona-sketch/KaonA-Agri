@@ -36,6 +36,7 @@ export default function AdminOcrTestPage() {
   const [warning, setWarning] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<OcrResponse | null>(null);
+  const [cropApplied, setCropApplied] = useState<boolean | null>(null);
 
   const parsed = useMemo(() => ({ ...(result?.extracted ?? {}), confidence: result?.confidence ?? 0 }), [result]);
 
@@ -52,6 +53,7 @@ export default function AdminOcrTestPage() {
 
     try {
       const pre = await preprocessThaiIdCard(file);
+      setCropApplied(pre.cropApplied);
       setWarning(pre.warning);
       setProcessedSize(pre.blob.size);
 
@@ -65,11 +67,22 @@ export default function AdminOcrTestPage() {
       const form = new FormData();
       form.append('idImage', out);
 
-      const res = await fetch('/api/ocr/id-card?ocrDebug=1', { method: 'POST', body: form });
+      const res = await fetch('/api/admin/ocr/id-card-debug', { method: 'POST', body: form, credentials: 'include' });
       const payload = (await res.json()) as OcrResponse;
       setResult(payload);
     } catch {
       setWarning('ใช้รูปเต็มแทน กรุณาตรวจสอบข้อมูลอีกครั้ง');
+      setCropApplied(false);
+      setProcessedSize(file.size);
+      setProcessedUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return nextOriginalUrl;
+      });
+      const form = new FormData();
+      form.append('idImage', file);
+      const res = await fetch('/api/admin/ocr/id-card-debug', { method: 'POST', body: form, credentials: 'include' });
+      const payload = (await res.json()) as OcrResponse;
+      setResult(payload);
     } finally {
       setLoading(false);
     }
@@ -80,6 +93,7 @@ export default function AdminOcrTestPage() {
     setWarning(null);
     setOriginalSize(null);
     setProcessedSize(null);
+    setCropApplied(null);
     setOriginalUrl((prev) => {
       if (prev) URL.revokeObjectURL(prev);
       return null;
@@ -91,7 +105,16 @@ export default function AdminOcrTestPage() {
   }
 
   async function copyResult() {
-    const text = JSON.stringify({ warning, rawText: result?.debug?.rawText ?? '', parsed }, null, 2);
+    const sizeWarning = (processedSize ?? 0) > 500 * 1024 ? `ไฟล์ยังเกิน 500KB (${formatBytes(processedSize ?? 0)})` : null;
+    const text = JSON.stringify({
+      cropApplied,
+      originalSizeBytes: originalSize ?? 0,
+      processedSizeBytes: processedSize ?? 0,
+      warning,
+      sizeWarning,
+      rawText: result?.debug?.rawText ?? '',
+      parsed,
+    }, null, 2);
     await navigator.clipboard.writeText(text);
   }
 
@@ -119,6 +142,9 @@ export default function AdminOcrTestPage() {
         </div>
 
         {warning && <p style={{ margin: '10px 0 0', color: '#ef6c00', fontSize: 13 }}>⚠️ {warning}</p>}
+        {processedSize !== null && processedSize > 500 * 1024 && (
+          <p style={{ margin: '10px 0 0', color: 'var(--danger)', fontSize: 13 }}>⚠️ ไฟล์ยังเกิน 500KB ({formatBytes(processedSize)})</p>
+        )}
         {loading && <p style={{ margin: '10px 0 0', fontSize: 13 }}>กำลังประมวลผล OCR...</p>}
       </div>
 

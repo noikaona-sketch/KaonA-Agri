@@ -1,3 +1,4 @@
+import { requireAdminPermission, isForbidden } from '../../members/_admin-auth';
 import { NextResponse } from 'next/server';
 
 // ── Document AI OCR (migrate จาก K_farm/api/ocr-documentai.ts) ──────────────
@@ -165,6 +166,8 @@ function parseText(text: string, confidence = 0.85) {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireAdminPermission('members.read');
+  if (isForbidden(auth)) return auth.forbidden;
   try {
     const projectId   = process.env.GOOGLE_CLOUD_PROJECT_ID;
     const location    = process.env.GOOGLE_DOCUMENTAI_LOCATION ?? 'us';
@@ -207,7 +210,7 @@ export async function POST(request: Request) {
     if (!extracted.citizenId && !extracted.fullName)
       return NextResponse.json({ error: 'ไม่พบข้อมูลบัตร กรุณากรอกด้วยตนเอง' }, { status: 422 });
 
-    return NextResponse.json({ extracted, confidence: Math.round(confidence * 100) });
+    return NextResponse.json({ extracted, confidence: Math.round(confidence * 100), debug: { rawText, parsed: extracted } });
   } catch (e) {
     console.error('[OCR_ID_CARD]', e);
     return NextResponse.json({ error: 'ระบบอ่านบัตรอัตโนมัติยังไม่พร้อมใช้งาน กรุณากรอกข้อมูลด้วยตนเอง' }, { status: 500 });

@@ -7,13 +7,11 @@ import { LoadingState } from '@/shared/components/loading-state';
 import { UIButton } from '@/shared/components/ui-button';
 
 import type { OcrResult, OcrStatus } from './use-ocr-id-card';
-import type { OcrDebugInfo } from './use-ocr-id-card';
 
 type OcrIdCardStepProps = {
   status: OcrStatus;
   result: OcrResult | null;
   error: string | null;
-  debug: OcrDebugInfo | null;
   onScan: (file: File) => void;
   onReset: () => void;
 };
@@ -22,13 +20,11 @@ function maskId(id: string) {
   return id.length >= 4 ? `${'*'.repeat(id.length - 4)}${id.slice(-4)}` : id;
 }
 
-export function OcrIdCardStep({ status, result, error, debug, onScan, onReset }: OcrIdCardStepProps) {
+export function OcrIdCardStep({ status, result, error, onScan, onReset }: OcrIdCardStepProps) {
   const inputRef   = useRef<HTMLInputElement>(null);
   const [compressing, setCompressing] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewWarning, setPreviewWarning] = useState<string | null>(null);
-  const [sizeInfo, setSizeInfo] = useState<{ original: number; processed: number } | null>(null);
-  const isDebug = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('ocrDebug') === '1';
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -42,7 +38,6 @@ export function OcrIdCardStep({ status, result, error, debug, onScan, onReset }:
       const preUrl = URL.createObjectURL(pre.blob);
       setPreviewUrl(preUrl);
       const compressed = pre.blob;
-      setSizeInfo({ original: file.size, processed: pre.blob.size });
       const out = new File([compressed], file.name.replace(/\.[^.]+$/, '') + '_id.jpg', { type: 'image/jpeg' });
       console.log(`[ID-OCR] ${formatBytes(file.size)} → ${formatBytes(compressed.size)}`);
       onScan(out);
@@ -94,14 +89,6 @@ export function OcrIdCardStep({ status, result, error, debug, onScan, onReset }:
         </div>
       )}
       {previewWarning && <p style={{ margin: '0 0 8px', fontSize: 12, color: '#ef6c00' }}>⚠️ {previewWarning}</p>}
-      {isDebug && sizeInfo && (
-        <div style={{ marginBottom: 8, fontSize: 12, color: '#374151' }}>
-          <div>Original: {formatBytes(sizeInfo.original)}</div>
-          <div>Cropped/Compressed: {formatBytes(sizeInfo.processed)}</div>
-          {debug?.rawText && <div style={{ whiteSpace: 'pre-wrap', maxHeight: 110, overflow: 'auto', marginTop: 4 }}>raw OCR: {debug.rawText}</div>}
-          {debug?.parsed && <div style={{ marginTop: 4 }}>parsed: {JSON.stringify(debug.parsed)}</div>}
-        </div>
-      )}
 
       {/* hidden inputs */}
       <input ref={inputRef}        type="file" accept="image/*" capture="environment" onChange={handleFile} style={{ display: 'none' }} />
