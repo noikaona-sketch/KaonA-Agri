@@ -101,10 +101,29 @@ function extractAddress(compact: string): string {
 }
 
 function normalizeThaiNameCandidate(line: string): string {
-  return cleanSpaces(line)
-    .replace(/^ชื่อและชื่อสกุล\s*[:：]?\s*/i, '')
-    .replace(/^ชื่อ\s*[:：]?\s*/i, '')
-    .trim();
+  const labels = [
+    'ชื่อตัวและชื่อสกุล',
+    'ตัวและชื่อสกุล',
+    'ชื่อและชื่อสกุล',
+    'ชื่อสกุล',
+    'ชื่อตัว',
+    'ชื่อ',
+  ];
+  const prefixes = ['นาย', 'นางสาว', 'นาง', 'น.ส.', 'ด.ช.', 'ด.ญ.'];
+
+  let normalized = cleanSpaces(line);
+  for (const label of labels) {
+    const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    normalized = normalized.replace(new RegExp(`^${escaped}\\s*[:：]?\\s*`, 'i'), '');
+  }
+
+  const startIndex = prefixes
+    .map((prefix) => normalized.indexOf(prefix))
+    .filter((index) => index >= 0)
+    .sort((a, b) => a - b)[0];
+
+  if (startIndex !== undefined) normalized = normalized.slice(startIndex);
+  return normalized.trim();
 }
 
 function extractThaiName(lines: string[]): string {
@@ -145,7 +164,7 @@ function parseText(text: string, confidence = 0.85) {
   const district     = (address.match(/(?:อำเภอ|อ\.|เขต)\s*([^\s]+)/))?.[1] ?? '';
   const subdistrict  = (address.match(/(?:ตำบล|ต\.|แขวง)\s*([^\s]+)/))?.[1] ?? '';
   const thaiFullName = normalizeThaiNameCandidate(thaiNameLine);
-  const houseNo      = (address.match(/\b\d{1,4}\/?\d{0,4}\b/)?.[0] ?? '').trim();
+  const houseNo      = (address.match(/\b\d{1,4}(?:-\d{1,4}|\/\d{1,4})?\b/)?.[0] ?? '').trim();
   const moo          = (address.match(/(?:หมู่ที่|หมู่|ม\.)\s*(\d{1,3})/)?.[1] ?? '').trim();
   const englishFullName = cleanSpaces(englishNameLine.replace(/^(Name|English Name)\s*[:：]?\s*/i, '').trim());
   return {
