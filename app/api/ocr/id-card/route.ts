@@ -101,14 +101,14 @@ function extractAddress(compact: string): string {
 
 function normalizeThaiNameCandidate(line: string): string {
   return cleanSpaces(line)
-    .replace(/^(?:ชื่อและชื่อสกุล|ชื่อ\s*สกุล|ชื่[อo]?)\s*[:：]?\s*/i, '')
+    .replace(/^(?:ชื่อตัวและชื่อสกุล|ตัวและชื่อสกุล|ชื่อและชื่อสกุล|ชื่อสกุล|ชื่อตัว|ชื่อ)\s*[:：]?\s*/i, '')
     .replace(/^(?:name|full\s*name|name-surname)\s*[:：]?\s*/i, '')
     .replace(/^(?:คำนำหน้า|prefix|title)\s*[:：]?\s*/i, '')
     .trim();
 }
 
 function extractThaiName(lines: string[]): string {
-  const prefixes = ['นางสาว', 'ด.ช.', 'ด.ญ.', 'น.ส.', 'นาย', 'นาง'];
+  const prefixes = ['นางสาว', 'น.ส.', 'ด.ช.', 'ด.ญ.', 'นาย', 'นาง'];
 
   for (let i = 0; i < lines.length; i += 1) {
     const current = cleanSpaces(lines[i] ?? '');
