@@ -26,9 +26,11 @@ export function RegisterStatus() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inFlightRef = useRef(false);
-  const canReapply = status === 'rejected' && member?.rejection_reason === 'cancelled_by_admin';
+  const canReapply =
+    status === 'pending_approval' ||
+    (status === 'rejected' && member?.rejection_reason === 'cancelled_by_admin');
   const cfg = canReapply
-    ? { icon: '🔄', title: 'ยกเลิกแล้ว / รอสมัครใหม่', desc: 'ข้อมูลสมัครเดิมถูกยกเลิกโดยผู้ดูแล กรุณาสมัครใหม่อีกครั้ง', color: '#4338ca', bg: '#eef2ff' }
+    ? { icon: '🔄', title: 'สมัครใหม่ได้', desc: 'หากข้อมูลสมัครค้างอยู่ คุณสามารถยกเลิกใบสมัครเดิมและเริ่มสมัครใหม่ได้ทันที', color: '#4338ca', bg: '#eef2ff' }
     : (STATUS_CFG[status] ?? STATUS_CFG.pending_approval);
 
   async function handleReapply() {
@@ -100,16 +102,20 @@ export function RegisterStatus() {
 
       {canReapply && (
         <div className="kaona-card" style={{ borderColor: '#c7d2fe', background: '#eef2ff' }}>
-          <p style={{ margin: '0 0 6px', fontWeight: 800, fontSize: 14, color: '#3730a3' }}>🔄 สมัครใหม่ได้แล้ว</p>
+          <p style={{ margin: '0 0 6px', fontWeight: 800, fontSize: 14, color: '#3730a3' }}>🔄 แก้ไขข้อมูล / สมัครใหม่</p>
           <p style={{ margin: '0 0 10px', fontSize: 13, color: '#4b5563', lineHeight: 1.7 }}>
-            ข้อมูลสมัครเดิมถูกยกเลิกโดยผู้ดูแล กรุณาสมัครใหม่อีกครั้ง
+            ระบบจะยกเลิกข้อมูลสมัครเดิมและพาไปหน้าเริ่มสมัครใหม่
           </p>
           <button
-            onClick={() => { void handleReapply(); }}
+            onClick={() => {
+              const confirmed = window.confirm('ระบบจะยกเลิกข้อมูลสมัครเดิมและให้กรอกใหม่ ต้องการดำเนินการต่อหรือไม่');
+              if (!confirmed) return;
+              void handleReapply();
+            }}
             disabled={submitting}
             style={{ width: '100%', border: 'none', borderRadius: 12, padding: '12px 14px', background: '#4f46e5', color: '#fff', fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.7 : 1 }}
           >
-            {submitting ? 'กำลังเปิดหน้าสมัครใหม่...' : 'กลับไปสมัครใหม่'}
+            {submitting ? 'กำลังเปิดหน้าสมัครใหม่...' : 'เริ่มสมัครใหม่'}
           </button>
           {error && <p style={{ margin: '8px 0 0', fontSize: 12, color: '#c62828' }}>{error}</p>}
         </div>
