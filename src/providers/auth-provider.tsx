@@ -218,10 +218,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
           } catch { /* sessionStorage full */ }
         }
 
-        // Normalize: both 'pending' and 'pending_approval' DB values
-        // map to the same AuthStatus 'pending_approval'.
-        // 'pending' is inserted by LINE auth; 'pending_approval' by admin import.
-        if (bootstrapResult.status === 'pending' || bootstrapResult.status === 'pending_approval') {
+        // Keep registration semantics distinct:
+        // - pending: registration not completed yet
+        // - pending_approval: submitted and waiting admin approval
+        if (bootstrapResult.status === 'pending') {
+          setStatus('pending');
+          return;
+        }
+
+        if (bootstrapResult.status === 'pending_approval') {
           setStatus('pending_approval');
           return;
         }
