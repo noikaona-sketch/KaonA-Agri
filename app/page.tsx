@@ -396,6 +396,8 @@ export default function HomePage() {
   const member     = useCurrentMember();
   const effectiveRole = useEffectiveRole();
   const router     = useRouter();
+  const [reapplySubmitting, setReapplySubmitting] = useState(false);
+  const [reapplyError, setReapplyError] = useState<string | null>(null);
 
   useEffect(() => {
     if (['unauthenticated','no_member','access_denied','error'].includes(status)) {
@@ -424,20 +426,39 @@ export default function HomePage() {
           {isCancelled && member?.member_id && (
             <button
               onClick={async () => {
-                const res = await fetch('/api/member/reset-registration', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ member_id: member.member_id }),
-                });
-                if (!res.ok) {
-                  alert('ไม่สามารถเปิดให้สมัครใหม่ได้ กรุณาลองอีกครั้ง');
+                if (reapplySubmitting) return;
+                setReapplySubmitting(true);
+                setReapplyError(null);
+                try {
+                  const res = await fetch('/api/member/reset-registration', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ member_id: member.member_id }),
+                  });
+                  if (!res.ok) {
+                    setReapplyError('ไม่สามารถเปิดให้สมัครใหม่ได้ กรุณาลองอีกครั้ง');
+                    setReapplySubmitting(false);
+                    return;
+                  }
+                } catch {
+                  setReapplyError('ไม่สามารถเชื่อมต่อระบบได้ กรุณาลองอีกครั้ง');
+                  setReapplySubmitting(false);
                   return;
                 }
-                router.replace('/member/register?reapply=1');
+                window.location.href = '/member/register?reapply=1';
+                window.setTimeout(() => {
+                  setReapplyError('ไม่สามารถเปิดหน้าสมัครใหม่อัตโนมัติได้ กรุณาลองอีกครั้ง');
+                  setReapplySubmitting(false);
+                }, 4500);
               }}
-              style={{ background:'#2D6A4F', color:'#fff', padding:'14px 32px', borderRadius:12, fontSize:16, fontWeight:700, border:'none', cursor:'pointer' }}>
-              🌽 กลับไปสมัครใหม่
+              disabled={reapplySubmitting}
+              style={{ background:'#2D6A4F', color:'#fff', padding:'14px 32px', borderRadius:12, fontSize:16, fontWeight:700, border:'none', cursor: reapplySubmitting ? 'not-allowed' : 'pointer', opacity: reapplySubmitting ? 0.7 : 1 }}>
+              {reapplySubmitting ? 'กำลังเปิดหน้าสมัครใหม่...' : '🌽 กลับไปสมัครใหม่'}
             </button>
+          )}
+          {reapplyError && (
+            <p style={{ marginTop: 10, color: '#c62828', fontSize: 13 }}>{reapplyError}</p>
           )}
         </div>
       </MobileAppShell>
