@@ -33,9 +33,18 @@ export default function AdminMembersPage() {
   } | null>(null);
 
   const loadSummary = useCallback(async () => {
-    const res = await fetch('/api/admin/members/stats', { credentials:'include' });
-    const d   = await res.json();
-    setSummaryData({ by_role: d.by_role ?? {}, groupSummary: d.groupSummary ?? [] });
+    try {
+      const res = await fetch('/api/admin/members/stats', { credentials:'include' });
+      if (!res.ok) return;
+      const d = await res.json() as {
+        by_role?: Record<string,{ count:number; approved:number; hasBooking:number; hasCycle:number; hasNoburn:number }>;
+        groupSummary?: { id:string; name:string; memberCount:number; leader: { id:string; full_name:string } | null; hasBooking:number; hasCycle:number; hasNoburn:number }[];
+      };
+      setSummaryData({
+        by_role:      d.by_role      ?? {},
+        groupSummary: d.groupSummary ?? [],
+      });
+    } catch(e) { console.error('[summaryData]', e); }
   }, []);
 
   useEffect(() => { void loadSummary(); }, [loadSummary]);

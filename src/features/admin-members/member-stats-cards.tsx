@@ -72,7 +72,8 @@ export function MemberStatsCards({ onRoleFilter }: Props) {
       {/* Role row */}
       <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
         {ROLE_CFG.map(r => {
-          const count = stats.by_role[r.key] ?? 0;
+        const rawVal = stats.by_role[r.key];
+          const count = typeof rawVal === 'number' ? rawVal : (rawVal as { count?: number })?.count ?? 0;
           const isActive = active === r.key;
           return (
             <button key={r.key} onClick={() => toggle(r.key)}
