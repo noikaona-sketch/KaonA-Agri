@@ -70,7 +70,7 @@ function PendingContent() {
   const params = useSearchParams();
   const tab = params.get('tab');
   const reapply = params.get('reapply') === '1';
-  const memberStatus = member?.status;
+  const memberStatus = member?.status ?? status;
   const forceRegisterLanding = reapply && (
     memberStatus === 'pending' ||
     memberStatus === 'pending_approval' ||
