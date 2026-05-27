@@ -109,7 +109,7 @@ function normalizeThaiNameCandidate(line: string): string {
     'ชื่อตัว',
     'ชื่อ',
   ];
-  const prefixes = ['นาย', 'นางสาว', 'นาง', 'น.ส.', 'ด.ช.', 'ด.ญ.'];
+  const prefixes = ['นางสาว', 'น.ส.', 'ด.ช.', 'ด.ญ.', 'นาย', 'นาง'];
 
   let normalized = cleanSpaces(line);
   for (const label of labels) {
