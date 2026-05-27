@@ -127,39 +127,26 @@ export function AdminMemberDetail({ memberId }: { memberId: string }) {
   if (loading) return <LoadingState label="กำลังโหลดข้อมูล…" />;
   if (error || !member) return <ErrorState title="ไม่พบข้อมูลสมาชิก" detail={error ?? ''} />;
 
-  const st = STATUS_TH[member.status] ?? { label: member.status, color: '#333', bg: '#f5f5f5' };
+  const st = STATUS_TH[member.status] ?? { label: member.status, color: '#374151', bg: '#F3F4F6' };
+  const isLeader = roles.some(r => r.role === 'leader');
 
   return (
-    <div style={{ display: 'grid', gap: 28 }}>
+    <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
       {modal && <ReturnRejectModal type={modal} acting={acting} onCancel={() => setModal(null)} onConfirm={(r) => void updateStatus(modal === 'return' ? 'returned' : 'rejected', r)} />}
 
-      {/* LINE Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-        {member.line_picture_url ? (
-          <img src={member.line_picture_url} alt="LINE" width={52} height={52} style={{ borderRadius: '50%', border: '2px solid #a5d6a7', flexShrink: 0 }} />
-        ) : (
-          <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#e8f5e9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0, border: '2px solid #a5d6a7' }}>
-            {member.full_name?.[0] ?? '?'}
-          </div>
-        )}
-        <div>
-          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800 }}>{member.full_name}</h2>
-          {member.line_display_name && member.line_display_name !== member.full_name && (
-            <p style={{ margin: '2px 0 0', fontSize: 13, color: '#6b7280' }}>LINE: {member.line_display_name}</p>
-          )}
+      {/* ── Notice / Warning ── */}
+      {notice && (
+        <div style={{ background:'#D1FAE5', border:'1px solid #6EE7B7', borderRadius:10, padding:'12px 16px', fontWeight:600, color:'#065F46', display:'flex', alignItems:'center', gap:8 }}>
+          ✅ {notice}
         </div>
-      </div>
-
-      {notice && <div style={{ background: '#e8f5e9', border: '1px solid #a5d6a7', borderRadius: 10, padding: '12px 16px', fontWeight: 600, color: '#1b5e20' }}>✅ {notice}</div>}
-
-      {/* Incomplete warning + override */}
+      )}
       {incompleteWarning && (
-        <div style={{ background: '#fff8e1', border: '1.5px solid #ffe082', borderRadius: 10, padding: '14px 16px' }}>
-          <p style={{ margin: '0 0 8px', fontWeight: 700, color: '#e65100' }}>⚠️ ข้อมูลยังไม่ครบ: {incompleteWarning}</p>
-          <p style={{ margin: '0 0 10px', fontSize: 13, color: '#6b7280' }}>กรอกเหตุผลเพื่ออนุมัติข้ามขั้นตอน (override)</p>
-          <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ background:'#FFFBEB', border:'1.5px solid #FCD34D', borderRadius:10, padding:'14px 16px' }}>
+          <p style={{ margin:'0 0 8px', fontWeight:700, color:'#92400E' }}>⚠️ ข้อมูลยังไม่ครบ: {incompleteWarning}</p>
+          <p style={{ margin:'0 0 10px', fontSize:13, color:'#6B7280' }}>กรอกเหตุผลเพื่ออนุมัติข้ามขั้นตอน (override)</p>
+          <div style={{ display:'flex', gap:8 }}>
             <input placeholder="เหตุผล override…" id="override-reason"
-              style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 14 }} />
+              style={{ flex:1, padding:'8px 12px', borderRadius:8, border:'1.5px solid #E5E7EB', fontSize:13 }} />
             <button className="admin-btn admin-btn--success"
               onClick={() => void updateStatus('approved', (document.getElementById('override-reason') as HTMLInputElement)?.value || 'override')}
               disabled={acting}>✅ อนุมัติ (override)</button>
@@ -168,83 +155,203 @@ export function AdminMemberDetail({ memberId }: { memberId: string }) {
         </div>
       )}
 
-      {/* Status + Actions */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', background: st.bg, border: `1.5px solid ${st.color}55`, borderRadius: 14, padding: '16px 20px' }}>
-        <div>
-          <span style={{ fontSize: 16, fontWeight: 800, color: st.color }}>{st.label}</span>
-          {member.status === 'returned' && member.return_reason && (
-            <p style={{ margin: '4px 0 0', fontSize: 13, color: '#1565c0' }}>เหตุผล: {member.return_reason}</p>
-          )}
-          {member.status === 'rejected' && member.rejection_reason && (
-            <p style={{ margin: '4px 0 0', fontSize: 13, color: '#c62828' }}>เหตุผล: {member.rejection_reason}</p>
-          )}
+      {/* ── Hero Header ── */}
+      <div style={{ background:'#fff', border:'1px solid #E5E7EB', borderRadius:14, padding:'20px 24px', boxShadow:'0 1px 4px rgba(0,0,0,.05)' }}>
+        <div style={{ display:'flex', alignItems:'flex-start', gap:16, flexWrap:'wrap' }}>
+          {/* Avatar */}
+          <div style={{ position:'relative', flexShrink:0 }}>
+            {member.line_picture_url ? (
+              <img src={member.line_picture_url} alt="LINE" width={64} height={64}
+                style={{ borderRadius:'50%', border:'2.5px solid #D1FAE5', display:'block' }} />
+            ) : (
+              <div style={{ width:64, height:64, borderRadius:'50%', background: isLeader?'#FEF3C7':'#D1FAE5', display:'flex', alignItems:'center', justifyContent:'center', fontSize:26, fontWeight:800, color: isLeader?'#92400E':'#065F46', border:'2.5px solid #D1FAE5' }}>
+                {isLeader ? '👑' : (member.full_name?.[0] ?? '?')}
+              </div>
+            )}
+          </div>
+
+          {/* Info */}
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap', marginBottom:4 }}>
+              <h2 style={{ margin:0, fontSize:20, fontWeight:800, color:'#111' }}>
+                {member.full_name?.trim() || <span style={{ color:'#9CA3AF', fontStyle:'italic' }}>ยังไม่ได้กรอกชื่อ</span>}
+              </h2>
+              {/* Status chip */}
+              <span style={{ display:'inline-flex', alignItems:'center', gap:5, fontSize:12, padding:'3px 10px', borderRadius:99, background:st.bg, color:st.color, fontWeight:700, border:`1px solid ${st.color}30` }}>
+                <span style={{ width:6, height:6, borderRadius:'50%', background:st.color, display:'inline-block' }}/>
+                {st.label}
+              </span>
+            </div>
+            {member.line_display_name && member.line_display_name !== member.full_name && (
+              <p style={{ margin:'0 0 6px', fontSize:12, color:'#9CA3AF' }}>LINE: {member.line_display_name}</p>
+            )}
+            {/* Meta row */}
+            <div style={{ display:'flex', gap:16, flexWrap:'wrap', fontSize:12, color:'#6B7280' }}>
+              {member.phone && <span>📞 {member.phone}</span>}
+              {member.citizen_id_masked && <span>🪪 {member.citizen_id_masked}</span>}
+              <span>📅 สมัคร {new Date(member.created_at).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'})}</span>
+              {member.registration_type && <span>📋 {member.registration_type}</span>}
+            </div>
+            {/* Roles */}
+            <div style={{ display:'flex', flexWrap:'wrap', gap:4, marginTop:8 }}>
+              {roles.map(r => {
+                const cfg: Record<string,{icon:string;color:string;bg:string}> = {
+                  farmer:     {icon:'🌾',color:'#065F46',bg:'#D1FAE5'},
+                  staff:      {icon:'👷',color:'#92400E',bg:'#FEF3C7'},
+                  inspector:  {icon:'🔍',color:'#1E40AF',bg:'#DBEAFE'},
+                  leader:     {icon:'👑',color:'#92400E',bg:'#FEF3C7'},
+                  truck_owner:{icon:'🚛',color:'#5B21B6',bg:'#EDE9FE'},
+                  admin:      {icon:'⚙️',color:'#374151',bg:'#F3F4F6'},
+                };
+                const c = cfg[r.role] ?? {icon:'👤',color:'#374151',bg:'#F3F4F6'};
+                return (
+                  <span key={r.role} style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:11, padding:'3px 9px', borderRadius:99, background:c.bg, color:c.color, fontWeight:700 }}>
+                    {c.icon} {r.role} {r.is_primary && <span style={{ fontSize:9, opacity:.7 }}>●</span>}
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Action buttons */}
+          <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
+            {(member.status === 'pending' || member.status === 'returned') && <>
+              <button className="admin-btn admin-btn--success" onClick={() => void updateStatus('approved')} disabled={acting} style={{ fontWeight:700 }}>✅ อนุมัติ</button>
+              <button className="admin-btn admin-btn--secondary" onClick={() => setModal('return')} disabled={acting}>↩️ ตีกลับ</button>
+              <button className="admin-btn admin-btn--danger"    onClick={() => setModal('reject')} disabled={acting}>❌ ปฏิเสธ</button>
+            </>}
+            {member.status === 'approved'  && <button className="admin-btn admin-btn--secondary" onClick={() => void updateStatus('suspended')} disabled={acting}>⛔ ระงับ</button>}
+            {member.status === 'rejected'  && <button className="admin-btn admin-btn--success"   onClick={() => void updateStatus('pending')}   disabled={acting}>↩️ เปิดสมัครใหม่</button>}
+            {member.status === 'suspended' && <button className="admin-btn admin-btn--success"   onClick={() => void updateStatus('approved')}  disabled={acting}>✅ คืนสิทธิ์</button>}
+            <button onClick={() => void cancelAndAllowReapply()} disabled={acting}
+              style={{ padding:'6px 12px', borderRadius:8, border:'1px solid #FECDD3', background:'#FFF1F2', color:'#DC2626', fontSize:12, fontWeight:600, cursor:'pointer' }}>
+              🗑️ ยกเลิก
+            </button>
+          </div>
         </div>
-        <div style={{ display: 'flex', gap: 8, marginLeft: 'auto', flexWrap: 'wrap' }}>
-          {(member.status === 'pending' || member.status === 'returned') && <>
-            <button className="admin-btn admin-btn--success"   onClick={() => void updateStatus('approved')} disabled={acting}>✅ อนุมัติ</button>
-            <button className="admin-btn admin-btn--secondary" onClick={() => setModal('return')} disabled={acting}>↩️ ตีกลับ</button>
-            <button className="admin-btn admin-btn--danger"    onClick={() => setModal('reject')} disabled={acting}>❌ ปฏิเสธ</button>
-          </>}
-          {member.status === 'approved'  && <button className="admin-btn admin-btn--secondary" onClick={() => void updateStatus('suspended')} disabled={acting}>⛔ ระงับบัญชี</button>}
-          {member.status === 'rejected'  && <button className="admin-btn admin-btn--success"   onClick={() => void updateStatus('pending')}   disabled={acting}>↩️ เปิดให้สมัครใหม่</button>}
-          {member.status === 'suspended' && <button className="admin-btn admin-btn--success"   onClick={() => void updateStatus('approved')}  disabled={acting}>✅ คืนสิทธิ์</button>}
-          <button className="admin-btn admin-btn--secondary"
-            onClick={() => void cancelAndAllowReapply()}
-            disabled={acting}
-            style={{ marginLeft: 'auto', opacity: 0.7 }}>
-            🔄 ยกเลิก / ให้สมัครใหม่
-          </button>
+
+        {/* Reason banners */}
+        {member.status === 'returned' && member.return_reason && (
+          <div style={{ marginTop:12, padding:'10px 14px', background:'#EFF6FF', borderRadius:8, fontSize:13, color:'#1E40AF' }}>
+            ↩️ <strong>เหตุผลตีกลับ:</strong> {member.return_reason}
+          </div>
+        )}
+        {member.status === 'rejected' && member.rejection_reason && member.rejection_reason !== 'cancelled_by_admin' && (
+          <div style={{ marginTop:12, padding:'10px 14px', background:'#FEF2F2', borderRadius:8, fontSize:13, color:'#DC2626' }}>
+            ❌ <strong>เหตุผลปฏิเสธ:</strong> {member.rejection_reason}
+          </div>
+        )}
+      </div>
+
+      {/* ── 2-Column Grid ── */}
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
+
+        {/* Col 1 — ข้อมูลส่วนตัว */}
+        <div style={{ background:'#fff', border:'1px solid #E5E7EB', borderRadius:12, overflow:'hidden', boxShadow:'0 1px 3px rgba(0,0,0,.04)' }}>
+          <div style={{ padding:'13px 18px', background:'#F9FAFB', borderBottom:'1px solid #E5E7EB', display:'flex', alignItems:'center', gap:8 }}>
+            <span style={{ fontSize:15 }}>👤</span>
+            <span style={{ fontSize:13, fontWeight:700, color:'#374151' }}>ข้อมูลส่วนตัว</span>
+          </div>
+          <div style={{ padding:'4px 0' }}>
+            {[
+              { label:'ชื่อ-นามสกุล', value: member.full_name || '—' },
+              { label:'ชื่อ LINE',     value: member.line_display_name || '—' },
+              { label:'เบอร์โทร',      value: member.phone || '—' },
+              { label:'เลขบัตรฯ',      value: member.citizen_id_masked || '—' },
+              { label:'ที่อยู่',        value: member.address || '—' },
+              { label:'ประเภทสมัคร',   value: member.registration_type || '—' },
+              { label:'LINE UID',       value: member.line_user_id ? member.line_user_id.slice(0,20)+'…' : '—', mono:true },
+            ].map((row, i) => (
+              <div key={row.label} style={{ display:'flex', padding:'10px 18px', borderBottom:'1px solid #F9FAFB', background: i%2===0?'#fff':'#FAFAFA' }}>
+                <span style={{ width:110, fontSize:12, fontWeight:600, color:'#6B7280', flexShrink:0 }}>{row.label}</span>
+                <span style={{ fontSize:12, color:'#111', fontFamily: (row as {mono?:boolean}).mono?'monospace':'inherit' }}>{row.value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Col 2 — ธนาคาร + ความพร้อม */}
+        <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+          <BankAccountPanel
+            bankName={member.bank_name}
+            bankAccountNumber={member.bank_account_number}
+            bankAccountName={member.bank_account_name}
+            bankVerifiedStatus={member.bank_verified_status}
+            acting={acting}
+            onUpdateBank={(s) => void updateBankStatus(s)} />
+          <CompletenessChecklistPanel member={member} plots={plots} vehicles={vehicles} docs={docs} roles={roles} readiness={readiness} />
         </div>
       </div>
 
-      {/* Panels */}
-      <CompletenessChecklistPanel member={member} plots={plots} vehicles={vehicles} docs={docs} roles={roles} readiness={readiness} />
-      <BankAccountPanel bankName={member.bank_name} bankAccountNumber={member.bank_account_number} bankAccountName={member.bank_account_name} bankVerifiedStatus={member.bank_verified_status} acting={acting} onUpdateBank={(s) => void updateBankStatus(s)} />
-
-      {/* ข้อมูลส่วนตัว */}
-      <section>
-        <h2 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 700, color: '#0d3d1f' }}>👤 ข้อมูลส่วนตัว</h2>
-        <div className="admin-table-wrap"><table className="admin-table"><tbody>
-          {[
-            ['ชื่อ-นามสกุล', member.full_name],
-            ['ชื่อ LINE', member.line_display_name ?? '—'],
-            ['เบอร์โทร', member.phone ?? '—'],
-            ['เลขบัตรประชาชน', member.citizen_id_masked],
-            ['ที่อยู่', member.address ?? '—'],
-            ['ประเภทสมัคร', member.registration_type ?? '—'],
-            ['LINE User ID', member.line_user_id ?? '—'],
-            ['วันที่สมัคร', new Date(member.created_at).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' })],
-          ].map(([label, val]) => (
-            <tr key={String(label)}>
-              <td style={{ width: 160, fontWeight: 600, color: '#4a6741', background: '#f7faf7', whiteSpace: 'nowrap' }}>{label}</td>
-              <td style={{ fontSize: label === 'LINE User ID' ? 12 : 14, fontFamily: label === 'LINE User ID' ? 'monospace' : 'inherit', color: label === 'LINE User ID' ? '#6b7280' : 'inherit' }}>{val}</td>
-            </tr>
-          ))}
-        </tbody></table></div>
-      </section>
-
+      {/* ── Role Manager ── */}
       <MemberRoleManager memberId={memberId} memberName={member.full_name} currentRoles={roles} onRolesUpdated={load} />
 
+      {/* ── แปลงเกษตร ── */}
       {plots.length > 0 && (
-        <section>
-          <h2 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 700, color: '#0d3d1f' }}>🌾 แปลงเกษตร ({plots.length} แปลง)</h2>
-          <div className="admin-table-wrap"><table className="admin-table">
-            <thead><tr><th>ชื่อแปลง</th><th>ไร่</th><th>จังหวัด</th><th>เอกสาร</th><th>พิกัด GPS</th></tr></thead>
-            <tbody>{plots.map((p) => (<tr key={p.id}><td style={{ fontWeight: 600 }}>{p.name}</td><td>{p.area_rai}</td><td>{p.province ?? '—'}</td><td>{p.land_doc_type ?? '—'}</td><td style={{ fontSize: 12, color: '#6b7280', fontFamily: 'monospace' }}>{p.lat?.toFixed(4)}, {p.lng?.toFixed(4)}</td></tr>))}</tbody>
-          </table></div>
-        </section>
+        <div style={{ background:'#fff', border:'1px solid #E5E7EB', borderRadius:12, overflow:'hidden', boxShadow:'0 1px 3px rgba(0,0,0,.04)' }}>
+          <div style={{ padding:'13px 18px', background:'#F9FAFB', borderBottom:'1px solid #E5E7EB', display:'flex', alignItems:'center', gap:8 }}>
+            <span style={{ fontSize:15 }}>🌾</span>
+            <span style={{ fontSize:13, fontWeight:700, color:'#374151' }}>แปลงเกษตร</span>
+            <span style={{ fontSize:11, padding:'1px 7px', borderRadius:99, background:'#D1FAE5', color:'#065F46', fontWeight:600 }}>{plots.length} แปลง</span>
+          </div>
+          <div style={{ overflowX:'auto' }}>
+            <table style={{ width:'100%', borderCollapse:'collapse' }}>
+              <thead>
+                <tr style={{ background:'#F9FAFB' }}>
+                  {['ชื่อแปลง','ไร่','จังหวัด','เอกสาร','GPS'].map(h => (
+                    <th key={h} style={{ padding:'9px 16px', textAlign:'left', fontSize:10, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'.05em', borderBottom:'1px solid #E5E7EB' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {plots.map((p, i) => (
+                  <tr key={p.id} style={{ borderBottom: i<plots.length-1?'1px solid #F3F4F6':'none' }}>
+                    <td style={{ padding:'11px 16px', fontWeight:600, fontSize:13 }}>{p.name}</td>
+                    <td style={{ padding:'11px 16px', fontSize:13 }}>{p.area_rai}</td>
+                    <td style={{ padding:'11px 16px', fontSize:12, color:'#6B7280' }}>{p.province ?? '—'}</td>
+                    <td style={{ padding:'11px 16px', fontSize:12, color:'#6B7280' }}>{p.land_doc_type ?? '—'}</td>
+                    <td style={{ padding:'11px 16px', fontSize:11, color:'#9CA3AF', fontFamily:'monospace' }}>{p.lat?.toFixed(4)}, {p.lng?.toFixed(4)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
 
+      {/* ── ยานพาหนะ ── */}
       {vehicles.length > 0 && (
-        <section>
-          <h2 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 700, color: '#0d3d1f' }}>🚛 ยานพาหนะ ({vehicles.length} คัน)</h2>
-          <div className="admin-table-wrap"><table className="admin-table">
-            <thead><tr><th>ทะเบียน</th><th>ประเภท</th><th>ยี่ห้อ / รุ่น</th><th>ปี</th></tr></thead>
-            <tbody>{vehicles.map((v) => (<tr key={v.id}><td style={{ fontWeight: 700, letterSpacing: 1 }}>{v.plate_number}</td><td>{v.vehicle_type}</td><td>{[v.brand, v.model].filter(Boolean).join(' ') || '—'}</td><td>{v.year_be ?? '—'}</td></tr>))}</tbody>
-          </table></div>
-        </section>
+        <div style={{ background:'#fff', border:'1px solid #E5E7EB', borderRadius:12, overflow:'hidden', boxShadow:'0 1px 3px rgba(0,0,0,.04)' }}>
+          <div style={{ padding:'13px 18px', background:'#F9FAFB', borderBottom:'1px solid #E5E7EB', display:'flex', alignItems:'center', gap:8 }}>
+            <span style={{ fontSize:15 }}>🚛</span>
+            <span style={{ fontSize:13, fontWeight:700, color:'#374151' }}>ยานพาหนะ</span>
+            <span style={{ fontSize:11, padding:'1px 7px', borderRadius:99, background:'#EDE9FE', color:'#5B21B6', fontWeight:600 }}>{vehicles.length} คัน</span>
+          </div>
+          <div style={{ overflowX:'auto' }}>
+            <table style={{ width:'100%', borderCollapse:'collapse' }}>
+              <thead>
+                <tr style={{ background:'#F9FAFB' }}>
+                  {['ทะเบียน','ประเภท','ยี่ห้อ/รุ่น','ปี'].map(h => (
+                    <th key={h} style={{ padding:'9px 16px', textAlign:'left', fontSize:10, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'.05em', borderBottom:'1px solid #E5E7EB' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {vehicles.map((v, i) => (
+                  <tr key={v.id} style={{ borderBottom: i<vehicles.length-1?'1px solid #F3F4F6':'none' }}>
+                    <td style={{ padding:'11px 16px', fontWeight:700, fontSize:13, letterSpacing:1 }}>{v.plate_number}</td>
+                    <td style={{ padding:'11px 16px', fontSize:13 }}>{v.vehicle_type}</td>
+                    <td style={{ padding:'11px 16px', fontSize:12, color:'#6B7280' }}>{[v.brand,v.model].filter(Boolean).join(' ')||'—'}</td>
+                    <td style={{ padding:'11px 16px', fontSize:12, color:'#6B7280' }}>{v.year_be ?? '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
 
+      {/* ── ประวัติ ── */}
       <ApprovalHistoryPanel logs={logs} />
     </div>
   );
