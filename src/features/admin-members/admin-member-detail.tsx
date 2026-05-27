@@ -1,9 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { ErrorState }   from '@/shared/components/error-state';
-import { LoadingState } from '@/shared/components/loading-state';
+import { useCallback, useEffect, useState } from 'react';
+import { useRouter }     from 'next/navigation';
+import { ErrorState }    from '@/shared/components/error-state';
+import { LoadingState }  from '@/shared/components/loading-state';
+import { PlotMap, PlotData } from '@/shared/components/plot-map';
+
+function MemberPlotMiniMap({ plots, selectedId, onSelect }: {
+  plots: PlotData[]; selectedId:string|null; onSelect:(id:string)=>void;
+}) {
+  return <PlotMap plots={plots} selectedId={selectedId} onSelect={onSelect} height={280} />;
+}
 import { MemberRoleManager } from './member-role-manager';
 import { CompletenessChecklistPanel } from './panels/completeness-checklist-panel';
 import { BankAccountPanel }           from './panels/bank-account-panel';
@@ -21,7 +28,13 @@ type MemberDetail = {
   return_reason: string | null; returned_at: string | null;
   rejection_reason: string | null;
 };
-type PlotRow    = { id: string; name: string; area_rai: number; lat: number; lng: number; status: string; province: string | null; land_doc_type: string | null };
+type PlotRow = {
+  id:string; name:string; area_rai:number;
+  lat:number|null; lng:number|null; accuracy:number|null;
+  status:string; province:string|null; district:string|null; sub_district:string|null;
+  land_doc_type:string|null; description:string|null;
+  boundary_geojson:object|null; area_rai_calculated:number|null;
+};
 type VehicleRow = { id: string; vehicle_type: string; plate_number: string; brand: string | null; model: string | null; year_be: number | null };
 type RoleRow    = { role: string; is_primary: boolean };
 type DocRow     = { doc_type: string; verified: boolean; file_url: string | null };
@@ -44,6 +57,7 @@ export function AdminMemberDetail({ memberId }: { memberId: string }) {
   const [docs,     setDocs]     = useState<DocRow[]>([]);
   const [logs,     setLogs]     = useState<LogRow[]>([]);
   const [loading,  setLoading]  = useState(true);
+  const [selectedPlotId, setSelectedPlotId] = useState<string|null>(null);
   const [error,    setError]    = useState<string | null>(null);
   const [acting,   setActing]   = useState(false);
 
@@ -293,28 +307,52 @@ export function AdminMemberDetail({ memberId }: { memberId: string }) {
             <span style={{ fontSize:15 }}>🌾</span>
             <span style={{ fontSize:13, fontWeight:700, color:'#374151' }}>แปลงเกษตร</span>
             <span style={{ fontSize:11, padding:'1px 7px', borderRadius:99, background:'#D1FAE5', color:'#065F46', fontWeight:600 }}>{plots.length} แปลง</span>
+            <a href={`/admin/farming?member=${memberId}`}
+              style={{ marginLeft:'auto', fontSize:11, padding:'3px 10px', borderRadius:6, border:'1px solid #D1FAE5', color:'#065F46', textDecoration:'none', fontWeight:600 }}>
+              🗺️ ดูแผนที่เต็ม →
+            </a>
           </div>
-          <div style={{ overflowX:'auto' }}>
-            <table style={{ width:'100%', borderCollapse:'collapse' }}>
-              <thead>
-                <tr style={{ background:'#F9FAFB' }}>
-                  {['ชื่อแปลง','ไร่','จังหวัด','เอกสาร','GPS'].map(h => (
-                    <th key={h} style={{ padding:'9px 16px', textAlign:'left', fontSize:10, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'.05em', borderBottom:'1px solid #E5E7EB' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {plots.map((p, i) => (
-                  <tr key={p.id} style={{ borderBottom: i<plots.length-1?'1px solid #F3F4F6':'none' }}>
-                    <td style={{ padding:'11px 16px', fontWeight:600, fontSize:13 }}>{p.name}</td>
-                    <td style={{ padding:'11px 16px', fontSize:13 }}>{p.area_rai}</td>
-                    <td style={{ padding:'11px 16px', fontSize:12, color:'#6B7280' }}>{p.province ?? '—'}</td>
-                    <td style={{ padding:'11px 16px', fontSize:12, color:'#6B7280' }}>{p.land_doc_type ?? '—'}</td>
-                    <td style={{ padding:'11px 16px', fontSize:11, color:'#9CA3AF', fontFamily:'monospace' }}>{p.lat?.toFixed(4)}, {p.lng?.toFixed(4)}</td>
+
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:0 }}>
+            {/* Table */}
+            <div style={{ borderRight:'1px solid #E5E7EB', overflowX:'auto' }}>
+              <table style={{ width:'100%', borderCollapse:'collapse' }}>
+                <thead>
+                  <tr style={{ background:'#F9FAFB' }}>
+                    {['ชื่อแปลง','ไร่','จังหวัด','GPS','ขอบเขต'].map(h => (
+                      <th key={h} style={{ padding:'9px 14px', textAlign:'left', fontSize:10, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'.04em', borderBottom:'1px solid #E5E7EB', whiteSpace:'nowrap' }}>{h}</th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {plots.map((p, i) => (
+                    <tr key={p.id}
+                      onClick={() => setSelectedPlotId(p.id === selectedPlotId ? null : p.id)}
+                      style={{ borderBottom:i<plots.length-1?'1px solid #F3F4F6':'none', cursor:'pointer', background:selectedPlotId===p.id?'#F0FDF4':'#fff', transition:'background .1s' }}>
+                      <td style={{ padding:'10px 14px', fontWeight:600, fontSize:13 }}>{p.name}</td>
+                      <td style={{ padding:'10px 14px', fontSize:13, color:'#2D6A4F', fontWeight:700 }}>{p.area_rai}</td>
+                      <td style={{ padding:'10px 14px', fontSize:12, color:'#6B7280' }}>{p.province ?? '—'}</td>
+                      <td style={{ padding:'10px 14px', fontSize:11, color: p.lat?'#059669':'#D1D5DB' }}>
+                        {p.lat ? '✓' : '—'}
+                      </td>
+                      <td style={{ padding:'10px 14px', fontSize:11 }}>
+                        {p.boundary_geojson
+                          ? <span style={{ fontSize:10, padding:'1px 6px', borderRadius:4, background:'#EDE9FE', color:'#5B21B6', fontWeight:700 }}>มีขอบเขต</span>
+                          : <span style={{ color:'#D1D5DB', fontSize:11 }}>—</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Map */}
+            <div style={{ padding:12 }}>
+              <MemberPlotMiniMap
+                plots={plots.map(p => ({ ...p, member:null }))}
+                selectedId={selectedPlotId}
+                onSelect={setSelectedPlotId} />
+            </div>
           </div>
         </div>
       )}
