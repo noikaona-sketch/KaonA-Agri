@@ -136,7 +136,7 @@ export function FarmerWizard({ lineUserId, onSubmitted }: FarmerWizardProps) {
       {/* Step 1: ข้อมูลส่วนตัว */}
       {step === 'personal' && (
         <div className="mobile-stack">
-          <OcrIdCardStep status={ocr.status} result={ocr.result} error={ocr.error} onScan={handleOcrScan} onReset={ocr.reset} />
+          <OcrIdCardStep status={ocr.status} result={ocr.result} error={ocr.error} debug={ocr.debug} onScan={handleOcrScan} onReset={ocr.reset} />
           <label className="reg-label">ชื่อ-นามสกุล <span className="reg-required">*</span>
             <input className="reg-input" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="ชื่อตามบัตรประชาชน" />
             {fullName.trim() && !isThaiFullName(fullName) && <span className="reg-hint" style={{ color: 'var(--danger)' }}>กรุณากรอกชื่อ-นามสกุลภาษาไทยเท่านั้น</span>}

@@ -173,6 +173,7 @@ export async function POST(request: Request) {
     if (!projectId || !processorId)
       return NextResponse.json({ error: 'ระบบอ่านบัตรอัตโนมัติยังไม่พร้อมใช้งาน กรุณากรอกข้อมูลด้วยตนเอง' }, { status: 503 });
 
+    const isDebug = new URL(request.url).searchParams.get('ocrDebug') === '1';
     const form = await request.formData();
     const file = form.get('idImage');
     if (!(file instanceof File))
@@ -207,7 +208,11 @@ export async function POST(request: Request) {
     if (!extracted.citizenId && !extracted.fullName)
       return NextResponse.json({ error: 'ไม่พบข้อมูลบัตร กรุณากรอกด้วยตนเอง' }, { status: 422 });
 
-    return NextResponse.json({ extracted, confidence: Math.round(confidence * 100) });
+    return NextResponse.json({
+      extracted,
+      confidence: Math.round(confidence * 100),
+      ...(isDebug ? { debug: { rawText, parsed: extracted } } : {}),
+    });
   } catch (e) {
     console.error('[OCR_ID_CARD]', e);
     return NextResponse.json({ error: 'ระบบอ่านบัตรอัตโนมัติยังไม่พร้อมใช้งาน กรุณากรอกข้อมูลด้วยตนเอง' }, { status: 500 });
