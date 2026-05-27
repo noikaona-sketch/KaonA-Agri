@@ -1,14 +1,15 @@
 'use client';
 
-import { useState } from 'react';
-import { AdminWebShell }         from '@/shared/components/admin-web-shell';
-import { AdminApprovalQueue }    from '@/features/admin-members/admin-approval-queue';
-import { AdminMemberList }       from '@/features/admin-members/admin-member-list';
-import { AdminGroups }           from '@/features/admin-groups/admin-groups';
-import { AdminImportReview }     from '@/features/admin-members/admin-import-review';
-import { MemberStatsCards }      from '@/features/admin-members/member-stats-cards';
-import { CreateMemberDrawer }    from '@/features/admin-members/create-member-drawer';
-import { CreatePinPanel }        from '@/features/admin-invites/create-pin-panel';
+import { useEffect, useState, useCallback } from 'react';
+import { AdminWebShell }            from '@/shared/components/admin-web-shell';
+import { AdminApprovalQueue }       from '@/features/admin-members/admin-approval-queue';
+import { AdminMemberList }          from '@/features/admin-members/admin-member-list';
+import { AdminGroups }              from '@/features/admin-groups/admin-groups';
+import { AdminImportReview }        from '@/features/admin-members/admin-import-review';
+import { MemberStatsCards }         from '@/features/admin-members/member-stats-cards';
+import { MemberSummaryCollapsible } from '@/features/admin-members/member-summary-collapsible';
+import { CreateMemberDrawer }       from '@/features/admin-members/create-member-drawer';
+import { CreatePinPanel }           from '@/features/admin-invites/create-pin-panel';
 
 type Tab = 'queue' | 'members' | 'groups' | 'import';
 
@@ -25,6 +26,19 @@ export default function AdminMembersPage() {
   const [showPin,     setShowPin]     = useState(false);
   const [memberKey,   setMemberKey]   = useState(0);
   const [roleFilter,  setRoleFilter]  = useState<string|null>(null);
+  const [groupFilter, setGroupFilter] = useState<string|null>(null);
+  const [summaryData, setSummaryData] = useState<{
+    by_role: Record<string,{ count:number; approved:number; hasBooking:number; hasCycle:number; hasNoburn:number }>;
+    groupSummary: { id:string; name:string; memberCount:number; leader: { id:string; full_name:string } | null; hasBooking:number; hasCycle:number; hasNoburn:number }[];
+  } | null>(null);
+
+  const loadSummary = useCallback(async () => {
+    const res = await fetch('/api/admin/members/stats', { credentials:'include' });
+    const d   = await res.json();
+    setSummaryData({ by_role: d.by_role ?? {}, groupSummary: d.groupSummary ?? [] });
+  }, []);
+
+  useEffect(() => { void loadSummary(); }, [loadSummary]);
 
   const cur = TABS.find(t => t.key === tab)!;
 
@@ -78,6 +92,14 @@ export default function AdminMembersPage() {
       {tab === 'members' && (
         <>
           <MemberStatsCards onRoleFilter={setRoleFilter} />
+          {summaryData && (
+            <MemberSummaryCollapsible
+              byRole={summaryData.by_role}
+              groupSummary={summaryData.groupSummary}
+              onRoleClick={r => { setRoleFilter(r); setGroupFilter(null); }}
+              onGroupClick={g => { setGroupFilter(g); setRoleFilter(null); }}
+            />
+          )}
           <AdminMemberList key={memberKey} roleFilter={roleFilter} />
         </>
       )}

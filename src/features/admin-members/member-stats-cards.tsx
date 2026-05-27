@@ -5,6 +5,14 @@ import { useEffect, useState } from 'react';
 type Stats = {
   total:number; approved:number; pending:number; rejected:number; suspended:number;
   by_role: Record<string,number>; groups:number;
+  groupSummary?: {
+    id:string; name:string; memberCount:number;
+    leader: { id:string; full_name:string } | null;
+    hasBooking:number; hasCycle:number; hasNoburn:number;
+  }[];
+  by_role_detail?: Record<string,{
+    count:number; approved:number; hasBooking:number; hasCycle:number; hasNoburn:number;
+  }>;
 };
 
 const ROLE_CFG: { key:string; label:string; icon:string; color:string; bg:string }[] = [
