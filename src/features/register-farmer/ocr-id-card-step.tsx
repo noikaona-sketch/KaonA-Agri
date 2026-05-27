@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { compressIdCard, formatBytes } from '@/lib/image/compress';
+import { formatBytes, preprocessThaiIdCard } from '@/lib/image/compress';
 
 import { LoadingState } from '@/shared/components/loading-state';
 import { UIButton } from '@/shared/components/ui-button';
@@ -24,15 +24,20 @@ export function OcrIdCardStep({ status, result, error, onScan, onReset }: OcrIdC
   const inputRef   = useRef<HTMLInputElement>(null);
   const [compressing, setCompressing] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewWarning, setPreviewWarning] = useState<string | null>(null);
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = '';
     setCompressing(true);
+    setPreviewWarning(null);
     try {
-      setPreviewUrl(URL.createObjectURL(file));
-      const compressed = await compressIdCard(file);
+      const pre = await preprocessThaiIdCard(file);
+      setPreviewWarning(pre.warning);
+      const preUrl = URL.createObjectURL(pre.blob);
+      setPreviewUrl(preUrl);
+      const compressed = pre.blob;
       const out = new File([compressed], file.name.replace(/\.[^.]+$/, '') + '_id.jpg', { type: 'image/jpeg' });
       console.log(`[ID-OCR] ${formatBytes(file.size)} → ${formatBytes(compressed.size)}`);
       onScan(out);
@@ -72,6 +77,7 @@ export function OcrIdCardStep({ status, result, error, onScan, onReset }: OcrIdC
       <p style={{ margin: '4px 0 8px', fontSize: 13, color: 'var(--text-secondary)' }}>
         ถ่ายรูปหรืออัปโหลดบัตรประชาชนเพื่อกรอกข้อมูลอัตโนมัติ
       </p>
+      <p style={{ margin: '0 0 8px', fontSize: 12, color: 'var(--text-secondary)' }}>ระบบจะตัดเฉพาะรูปบัตรก่อนอ่านข้อมูล</p>
 
       {error && (
         <p style={{ margin: '0 0 8px', fontSize: 13, color: 'var(--danger)' }}>⚠️ {error}</p>
@@ -79,9 +85,10 @@ export function OcrIdCardStep({ status, result, error, onScan, onReset }: OcrIdC
 
       {previewUrl && (
         <div style={{ marginBottom: 10, borderRadius: 12, overflow: 'hidden', background: '#f8fafc', border: '1px solid var(--border)' }}>
-          <img src={previewUrl} alt="ตัวอย่างบัตร" style={{ width: '100%', maxHeight: 140, objectFit: 'contain', display: 'block' }} />
+          <img src={previewUrl} alt="ตัวอย่างบัตร" style={{ width: '100%', maxHeight: 120, objectFit: 'contain', display: 'block' }} />
         </div>
       )}
+      {previewWarning && <p style={{ margin: '0 0 8px', fontSize: 12, color: '#ef6c00' }}>⚠️ {previewWarning}</p>}
 
       {/* hidden inputs */}
       <input ref={inputRef}        type="file" accept="image/*" capture="environment" onChange={handleFile} style={{ display: 'none' }} />
