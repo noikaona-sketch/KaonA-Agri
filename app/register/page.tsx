@@ -71,6 +71,11 @@ function PendingContent() {
   const tab = params.get('tab');
   const reapply = params.get('reapply') === '1';
   const memberStatus = member?.status ?? status;
+
+  if (memberStatus === 'pending') {
+    return <RegisterPageContent />;
+  }
+
   const forceRegisterLanding = reapply && (
     memberStatus === 'pending' ||
     memberStatus === 'pending_approval' ||
