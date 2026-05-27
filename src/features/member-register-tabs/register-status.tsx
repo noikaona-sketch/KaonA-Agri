@@ -36,6 +36,7 @@ export function RegisterStatus() {
     inFlightRef.current = true;
     setSubmitting(true);
     setError(null);
+    let redirectStarted = false;
     try {
       const res = await fetch('/api/member/reset-registration', {
         method: 'POST',
@@ -48,8 +49,16 @@ export function RegisterStatus() {
         setError(payload.error ?? 'รีเซ็ตการสมัครไม่สำเร็จ');
         return;
       }
-      window.location.replace('/register?reapply=1');
+      redirectStarted = true;
+      window.location.href = '/member/register?reapply=1';
+      window.setTimeout(() => {
+        setError('ไม่สามารถเปิดหน้าสมัครใหม่อัตโนมัติได้ กรุณากดอีกครั้ง');
+        setSubmitting(false);
+        inFlightRef.current = false;
+      }, 4500);
+      return;
     } finally {
+      if (redirectStarted) return;
       setSubmitting(false);
       inFlightRef.current = false;
     }
@@ -95,7 +104,7 @@ export function RegisterStatus() {
             disabled={submitting}
             style={{ width: '100%', border: 'none', borderRadius: 12, padding: '12px 14px', background: '#4f46e5', color: '#fff', fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.7 : 1 }}
           >
-            {submitting ? 'กำลังเตรียมการสมัครใหม่…' : 'กลับไปสมัครใหม่'}
+            {submitting ? 'กำลังเปิดหน้าสมัครใหม่...' : 'กลับไปสมัครใหม่'}
           </button>
           {error && <p style={{ margin: '8px 0 0', fontSize: 12, color: '#c62828' }}>{error}</p>}
         </div>
