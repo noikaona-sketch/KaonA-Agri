@@ -5,7 +5,7 @@ import { AdminWebShell }            from '@/shared/components/admin-web-shell';
 import { AdminApprovalQueue }       from '@/features/admin-members/admin-approval-queue';
 import { AdminMemberList }          from '@/features/admin-members/admin-member-list';
 import { AdminGroups }              from '@/features/admin-groups/admin-groups';
-import { AdminImportReview }        from '@/features/admin-members/admin-import-review';
+import { AdminImportCsv }           from '@/features/admin-members/admin-import-csv';
 import { MemberStatsCards }         from '@/features/admin-members/member-stats-cards';
 import { MemberSummaryCollapsible } from '@/features/admin-members/member-summary-collapsible';
 import { CreateMemberDrawer }       from '@/features/admin-members/create-member-drawer';
@@ -117,7 +117,9 @@ export default function AdminMembersPage() {
       {tab === 'groups' && <AdminGroups />}
 
       {/* Tab: นำเข้า */}
-      {tab === 'import' && <AdminImportReview />}
+      {tab === 'import' && (
+        <AdminImportCsv onDone={() => { setMemberKey(k => k+1); setTab('members'); }} />
+      )}
 
       {/* Drawer สร้างสมาชิก */}
       <CreateMemberDrawer
