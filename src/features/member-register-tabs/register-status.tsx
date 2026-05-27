@@ -26,7 +26,7 @@ export function RegisterStatus() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inFlightRef = useRef(false);
-  const memberStatus = member?.status;
+  const memberStatus = member?.status ?? status;
   const canReapply =
     memberStatus === 'pending' ||
     memberStatus === 'pending_approval' ||
