@@ -135,6 +135,9 @@ export default function AdminOcrTestPage() {
             event.target.value = '';
           }}
         />
+        <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--text-secondary)' }}>
+          โหมด UAT รองรับทั้งกล้องและเลือกรูปจากแกลเลอรีโดยตั้งใจ เพื่อทดสอบเคสภาพจริงหลายรูปแบบ
+        </p>
 
         <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
           <UIButton variant="secondary" onClick={copyResult} disabled={!result}>คัดลอกผล OCR</UIButton>
