@@ -77,7 +77,6 @@ function PendingContent() {
   }
 
   const forceRegisterLanding = reapply && (
-    memberStatus === 'pending' ||
     memberStatus === 'pending_approval' ||
     (memberStatus === 'rejected' && member?.rejection_reason === 'cancelled_by_admin')
   );
