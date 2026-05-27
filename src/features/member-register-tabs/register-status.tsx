@@ -26,9 +26,11 @@ export function RegisterStatus() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inFlightRef = useRef(false);
+  const memberStatus = member?.status;
   const canReapply =
-    status === 'pending_approval' ||
-    (status === 'rejected' && member?.rejection_reason === 'cancelled_by_admin');
+    memberStatus === 'pending' ||
+    memberStatus === 'pending_approval' ||
+    (memberStatus === 'rejected' && member?.rejection_reason === 'cancelled_by_admin');
   const cfg = canReapply
     ? { icon: '🔄', title: 'สมัครใหม่ได้', desc: 'หากข้อมูลสมัครค้างอยู่ คุณสามารถยกเลิกใบสมัครเดิมและเริ่มสมัครใหม่ได้ทันที', color: '#4338ca', bg: '#eef2ff' }
     : (STATUS_CFG[status] ?? STATUS_CFG.pending_approval);

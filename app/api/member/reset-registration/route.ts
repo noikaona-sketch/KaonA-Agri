@@ -11,12 +11,22 @@ export async function POST(request: Request) {
 
     const s = createServerSupabaseClient();
 
+    const token = (request.headers.get('Authorization') ?? '').replace('Bearer ', '').trim();
+    const { data: { user }, error: userError } = token
+      ? await s.auth.getUser(token)
+      : await s.auth.getUser();
+
+    if (userError || !user) {
+      return NextResponse.json({ error: 'กรุณาเข้าสู่ระบบก่อน' }, { status: 401 });
+    }
+
     const { data: member } = await s.from('members')
       .select('id, rejection_reason, status')
       .eq('id', member_id)
+      .eq('auth_user_id', user.id)
       .maybeSingle();
 
-    if (!member) return NextResponse.json({ error: 'ไม่พบสมาชิก' }, { status: 404 });
+    if (!member) return NextResponse.json({ error: 'ไม่สามารถรีเซ็ตสมาชิกนี้ได้' }, { status: 403 });
 
     const isCancelledByAdmin = member.status === 'rejected' && member.rejection_reason === 'cancelled_by_admin';
     const isPending = member.status === 'pending' || member.status === 'pending_approval';
