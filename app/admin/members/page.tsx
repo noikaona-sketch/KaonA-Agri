@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { AdminWebShell }            from '@/shared/components/admin-web-shell';
 import { AdminApprovalQueue }       from '@/features/admin-members/admin-approval-queue';
 import { AdminMemberList }          from '@/features/admin-members/admin-member-list';
-import { AdminGroups }              from '@/features/admin-groups/admin-groups';
+import { AdminGroupsTable }          from '@/features/admin-groups/admin-groups-table';
 import { AdminImportCsv }           from '@/features/admin-members/admin-import-csv';
 import { MemberSummaryCollapsible } from '@/features/admin-members/member-summary-collapsible';
 import { CreateMemberDrawer }       from '@/features/admin-members/create-member-drawer';
@@ -112,7 +112,7 @@ export default function AdminMembersPage() {
       )}
 
       {/* Tab: กลุ่ม */}
-      {tab === 'groups' && <AdminGroups />}
+      {tab === 'groups' && <AdminGroupsTable />}
 
       {/* Tab: นำเข้า */}
       {tab === 'import' && (
