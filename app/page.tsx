@@ -429,14 +429,20 @@ export default function HomePage() {
                 if (reapplySubmitting) return;
                 setReapplySubmitting(true);
                 setReapplyError(null);
-                const res = await fetch('/api/member/reset-registration', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  credentials: 'include',
-                  body: JSON.stringify({ member_id: member.member_id }),
-                });
-                if (!res.ok) {
-                  setReapplyError('ไม่สามารถเปิดให้สมัครใหม่ได้ กรุณาลองอีกครั้ง');
+                try {
+                  const res = await fetch('/api/member/reset-registration', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ member_id: member.member_id }),
+                  });
+                  if (!res.ok) {
+                    setReapplyError('ไม่สามารถเปิดให้สมัครใหม่ได้ กรุณาลองอีกครั้ง');
+                    setReapplySubmitting(false);
+                    return;
+                  }
+                } catch {
+                  setReapplyError('ไม่สามารถเชื่อมต่อระบบได้ กรุณาลองอีกครั้ง');
                   setReapplySubmitting(false);
                   return;
                 }

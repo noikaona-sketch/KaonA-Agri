@@ -38,15 +38,20 @@ export function RegisterStatus() {
     setError(null);
     let redirectStarted = false;
     try {
-      const res = await fetch('/api/member/reset-registration', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ member_id: member.member_id }),
-      });
-      const payload = (await res.json()) as { ok?: boolean; error?: string };
-      if (!res.ok || !payload.ok) {
-        setError(payload.error ?? 'รีเซ็ตการสมัครไม่สำเร็จ');
+      try {
+        const res = await fetch('/api/member/reset-registration', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ member_id: member.member_id }),
+        });
+        const payload = (await res.json()) as { ok?: boolean; error?: string };
+        if (!res.ok || !payload.ok) {
+          setError(payload.error ?? 'รีเซ็ตการสมัครไม่สำเร็จ');
+          return;
+        }
+      } catch {
+        setError('ไม่สามารถเชื่อมต่อระบบได้ กรุณาลองอีกครั้ง');
         return;
       }
       redirectStarted = true;
