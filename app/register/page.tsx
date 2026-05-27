@@ -70,7 +70,12 @@ function PendingContent() {
   const params = useSearchParams();
   const tab = params.get('tab');
   const reapply = params.get('reapply') === '1';
-  const forceRegisterLanding = reapply && status === 'rejected' && member?.rejection_reason === 'cancelled_by_admin';
+  const memberStatus = member?.status;
+  const forceRegisterLanding = reapply && (
+    memberStatus === 'pending' ||
+    memberStatus === 'pending_approval' ||
+    (memberStatus === 'rejected' && member?.rejection_reason === 'cancelled_by_admin')
+  );
 
   if (forceRegisterLanding) {
     return (

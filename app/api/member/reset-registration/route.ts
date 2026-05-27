@@ -3,7 +3,7 @@ import { createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
 
 export const dynamic = 'force-dynamic';
 
-// POST — เตรียมสมาชิกที่ถูกยกเลิกให้กลับไปกรอกฟอร์มสมัครใหม่
+// POST — ให้สมาชิกรีเซ็ตใบสมัครของตัวเองเพื่อสมัครใหม่
 export async function POST(request: Request) {
   try {
     const { member_id } = (await request.json()) as { member_id: string };
@@ -11,18 +11,31 @@ export async function POST(request: Request) {
 
     const s = createServerSupabaseClient();
 
-    // ตรวจว่าเป็น cancelled_by_admin จริง
+    const token = (request.headers.get('Authorization') ?? '').replace('Bearer ', '').trim();
+    const { data: { user }, error: userError } = token
+      ? await s.auth.getUser(token)
+      : await s.auth.getUser();
+
+    if (userError || !user) {
+      return NextResponse.json({ error: 'กรุณาเข้าสู่ระบบก่อน' }, { status: 401 });
+    }
+
     const { data: member } = await s.from('members')
       .select('id, rejection_reason, status')
       .eq('id', member_id)
+      .eq('auth_user_id', user.id)
       .maybeSingle();
 
-    if (!member) return NextResponse.json({ error: 'ไม่พบสมาชิก' }, { status: 404 });
-    if (member.rejection_reason !== 'cancelled_by_admin')
-      return NextResponse.json({ error: 'ไม่สามารถรีเซ็ตได้' }, { status: 403 });
+    if (!member) return NextResponse.json({ error: 'ไม่สามารถรีเซ็ตสมาชิกนี้ได้' }, { status: 403 });
 
-    // ไม่เปลี่ยนเป็น pending ณ จุดนี้
-    // เพื่อไม่ให้สมาชิกติดหน้า "รออนุมัติ" ก่อนส่งฟอร์มใหม่จริง
+    const isCancelledByAdmin = member.status === 'rejected' && member.rejection_reason === 'cancelled_by_admin';
+    const isPending = member.status === 'pending' || member.status === 'pending_approval';
+
+    if (!isCancelledByAdmin && !isPending) {
+      return NextResponse.json({ error: 'สถานะนี้ไม่สามารถเริ่มสมัครใหม่ได้' }, { status: 403 });
+    }
+
+    // ไม่เปลี่ยนสถานะทันที เพื่อไม่ให้ติดหน้า "รออนุมัติ" ก่อนเริ่มกรอกฟอร์มใหม่จริง
     const { error } = await s.from('members').update({
       updated_at: new Date().toISOString(),
     }).eq('id', member_id);
