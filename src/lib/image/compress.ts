@@ -20,6 +20,7 @@ export type IdCardPreprocessResult = {
   warning: string | null;
   width: number;
   height: number;
+  cropConfidence: number;
 };
 
 const ID_CARD_ASPECT = 85.6 / 54;   // มาตรฐานบัตร ISO 7810 ID-1
@@ -227,6 +228,7 @@ export async function preprocessThaiIdCard(file: File | Blob): Promise<IdCardPre
   let warning: string | null = null;
   let sx = 0; let sy = 0; let sw = srcW; let sh = srcH;
   let rotateDeg = 0;
+  let cropConfidence = 0;
 
   if (right > left && bottom > top) {
     const scaleX = srcW / probeW;
@@ -245,10 +247,11 @@ export async function preprocessThaiIdCard(file: File | Blob): Promise<IdCardPre
 
     const aspect = sw / Math.max(1, sh);
     const coverage = (sw * sh) / (srcW * srcH);
-    const aspectOk = aspect > 1.45 && aspect < 1.75;
-    const coverageOk = coverage > 0.20 && coverage < 0.95;
+    const aspectScore = Math.max(0, 1 - Math.abs(aspect - ID_CARD_ASPECT) / 0.22);
+    const coverageScore = coverage < 0.2 ? coverage / 0.2 : (coverage > 0.95 ? Math.max(0, 1 - (coverage - 0.95) / 0.25) : 1);
+    cropConfidence = Math.max(0, Math.min(1, aspectScore * 0.65 + coverageScore * 0.35));
 
-    if (!aspectOk || !coverageOk) {
+    if (cropConfidence < 0.55) {
       warning = 'ใช้รูปเต็มแทน กรุณาตรวจสอบข้อมูลอีกครั้ง';
       sx = 0; sy = 0; sw = srcW; sh = srcH;
     } else {
@@ -304,7 +307,7 @@ export async function preprocessThaiIdCard(file: File | Blob): Promise<IdCardPre
     blob = await new Promise<Blob>((resolve, reject) => out.toBlob((b) => b ? resolve(b) : reject(new Error('compress failed')), 'image/jpeg', quality));
   }
 
-  return { blob, cropApplied, warning, width: drawW, height: drawH };
+  return { blob, cropApplied, warning, width: drawW, height: drawH, cropConfidence };
 }
 
 /**
