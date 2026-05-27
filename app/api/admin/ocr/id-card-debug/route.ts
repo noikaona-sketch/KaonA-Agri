@@ -108,6 +108,17 @@ function normalizeThaiNameCandidate(line: string): string {
     .trim();
 }
 
+function sliceThaiNameFromFirstPrefix(name: string, prefixes: string[]): string {
+  const cleaned = cleanSpaces(name);
+  const startIdx = prefixes
+    .map((prefix) => cleaned.indexOf(prefix))
+    .filter((idx) => idx >= 0)
+    .sort((a, b) => a - b)[0];
+
+  if (startIdx == null) return cleaned;
+  return cleaned.slice(startIdx).trim();
+}
+
 function extractThaiName(lines: string[]): string {
   const prefixes = ['นางสาว', 'น.ส.', 'ด.ช.', 'ด.ญ.', 'นาย', 'นาง'];
 
@@ -115,15 +126,15 @@ function extractThaiName(lines: string[]): string {
     const current = cleanSpaces(lines[i] ?? '');
     if (!/^ชื่อและชื่อสกุล\b/i.test(current) && !/^ชื่อ\b/i.test(current)) continue;
 
-    const normalizedCurrent = normalizeThaiNameCandidate(current);
+    const normalizedCurrent = sliceThaiNameFromFirstPrefix(normalizeThaiNameCandidate(current), prefixes);
     if (prefixes.some((p) => normalizedCurrent.startsWith(p)) && isThaiFullName(normalizedCurrent)) return normalizedCurrent;
 
-    const next = normalizeThaiNameCandidate(lines[i + 1] ?? '');
+    const next = sliceThaiNameFromFirstPrefix(normalizeThaiNameCandidate(lines[i + 1] ?? ''), prefixes);
     if (prefixes.some((p) => next.startsWith(p)) && isThaiFullName(next)) return next;
   }
 
   for (const line of lines) {
-    const normalized = normalizeThaiNameCandidate(line);
+    const normalized = sliceThaiNameFromFirstPrefix(normalizeThaiNameCandidate(line), prefixes);
     if (!prefixes.some((p) => normalized.includes(p))) continue;
     if (/เลข|บัตร|identification|address|date|เกิด|ออกบัตร|หมดอายุ|ศาสนา/i.test(normalized)) continue;
     if (isThaiFullName(normalized)) return normalized;
