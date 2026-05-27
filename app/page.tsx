@@ -400,14 +400,14 @@ export default function HomePage() {
   const [reapplyError, setReapplyError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (['unauthenticated','no_member','access_denied','error'].includes(status)) {
+    if (['unauthenticated','no_member','pending','access_denied','error'].includes(status)) {
       router.replace('/register');
     }
   }, [status, router]);
 
   if (status === 'loading') return <LoadingState label="กำลังโหลด…" />;
-  if (['unauthenticated','no_member','access_denied','error'].includes(status)) return <LoadingState label="กำลังนำทาง…" />;
-  if (['pending_approval','pending'].includes(status)) return <PendingScreen />;
+  if (['unauthenticated','no_member','pending','access_denied','error'].includes(status)) return <LoadingState label="กำลังนำทาง…" />;
+  if (status === 'pending_approval') return <PendingScreen />;
 
   if (status === 'rejected') {
     const isCancelled = member?.rejection_reason === 'cancelled_by_admin';

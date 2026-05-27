@@ -6,6 +6,7 @@ export type AuthStatus =
   | 'loading'
   | 'unauthenticated'
   | 'no_member'
+  | 'pending'
   | 'pending_approval'
   | 'approved'
   | 'rejected'
