@@ -79,6 +79,37 @@ function extractDateAfter(text: string, markers: string[]): string {
   return '';
 }
 
+function extractThaiDate(text: string): string {
+  const compact = cleanSpaces(text);
+  const m = compact.match(/\b(\d{1,2}\s*(?:ม\.ค\.|ก\.พ\.|มี\.ค\.|เม\.ย\.|พ\.ค\.|มิ\.ย\.|ก\.ค\.|ส\.ค\.|ก\.ย\.|ต\.ค\.|พ\.ย\.|ธ\.ค\.)\s*\d{4})\b/u);
+  return cleanSpaces(m?.[1] ?? '');
+}
+
+function extractIssueDate(text: string, lines: string[]): string {
+  const issueMarkers = ['วันออกบัตร', 'วันออกบร', 'วันออกบต', 'Date of Issue'];
+  const direct = extractDateAfter(text, issueMarkers);
+  if (direct && /[ก-๙]/u.test(direct)) return direct;
+
+  const thaiIssueLabel = /วันออก(?:บัตร|บร|บต)/u;
+  for (let i = 0; i < lines.length; i += 1) {
+    if (!thaiIssueLabel.test(lines[i] ?? '')) continue;
+    const prevThaiDate = extractThaiDate(lines[i - 1] ?? '');
+    if (prevThaiDate) return prevThaiDate;
+    const sameLineThaiDate = extractThaiDate(lines[i] ?? '');
+    if (sameLineThaiDate) return sameLineThaiDate;
+    const nextThaiDate = extractThaiDate(lines[i + 1] ?? '');
+    if (nextThaiDate) return nextThaiDate;
+  }
+
+  return '';
+}
+
+function normalizeDistrictInAddress(address: string): string {
+  if (!address) return '';
+  if (/(?:อำเภอ|อ\.)\s*[ก-๙]+/u.test(address)) return address;
+  return address.replace(/(^|\s)\.\s*([ก-๙]+)\s*(?=จ\.)/gu, '$1อ.$2 ');
+}
+
 function extractAddress(compact: string): string {
   let start = -1;
   for (const marker of ['ที่อยู่', 'Address']) {
@@ -97,7 +128,7 @@ function extractAddress(compact: string): string {
     'เจ้าพนักงานออกบัตร',
     'กระทรวงมหาดไทย',
   ]);
-  return stripDatesFromAddress(address);
+  return normalizeDistrictInAddress(stripDatesFromAddress(address));
 }
 
 function normalizeThaiNameCandidate(line: string): string {
@@ -154,7 +185,11 @@ function parseText(text: string, confidence = 0.85) {
   ) ?? '';
   const address      = extractAddress(compact);
   const province     = (address.match(/(?:จังหวัด|จ\.)\s*([^\s]+)/))?.[1] ?? '';
-  const district     = (address.match(/(?:อำเภอ|อ\.|เขต)\s*([^\s]+)/))?.[1] ?? '';
+  let district       = (address.match(/(?:อำเภอ|อ\.|เขต)\s*([^\s]+)/))?.[1] ?? '';
+  if (!district) {
+    const fallbackDistrict = address.match(/(^|\s)\.\s*([ก-๙]+)\s*(?=จ\.)/u)?.[2] ?? '';
+    district = fallbackDistrict;
+  }
   const subdistrict  = (address.match(/(?:ตำบล|ต\.|แขวง)\s*([^\s]+)/))?.[1] ?? '';
   const thaiFullName = normalizeThaiNameCandidate(thaiNameLine);
   const houseNoMatch = address.match(/\b\d{1,4}(?:\s*[-–]\s*\d{1,4})?(?:\/\d{1,4})?\b/);
@@ -174,7 +209,7 @@ function parseText(text: string, confidence = 0.85) {
     subdistrict: confidenceOrBlank(subdistrict, confidence),
     dateOfBirth: '',
     expiryDate:  extractDateAfter(compact, ['วันบัตรหมดอายุ', 'Date of Expiry']),
-    issueDate:   extractDateAfter(compact, ['วันออกบัตร', 'Date of Issue']),
+    issueDate:   extractIssueDate(compact, lines),
   };
 }
 
