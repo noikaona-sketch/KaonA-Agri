@@ -102,27 +102,39 @@ function extractAddress(compact: string): string {
 
 function normalizeThaiNameCandidate(line: string): string {
   return cleanSpaces(line)
-    .replace(/^ชื่อและชื่อสกุล\s*[:：]?\s*/i, '')
-    .replace(/^ชื่อ\s*[:：]?\s*/i, '')
+    .replace(/^(?:ชื่อตัวและชื่อสกุล|ตัวและชื่อสกุล|ชื่อและชื่อสกุล|ชื่อสกุล|ชื่อตัว|ชื่อ)\s*[:：]?\s*/i, '')
+    .replace(/^(?:name|full\s*name|name-surname)\s*[:：]?\s*/i, '')
+    .replace(/^(?:คำนำหน้า|prefix|title)\s*[:：]?\s*/i, '')
     .trim();
 }
 
+function sliceThaiNameFromFirstPrefix(name: string, prefixes: string[]): string {
+  const cleaned = cleanSpaces(name);
+  const startIdx = prefixes
+    .map((prefix) => cleaned.indexOf(prefix))
+    .filter((idx) => idx >= 0)
+    .sort((a, b) => a - b)[0];
+
+  if (startIdx == null) return cleaned;
+  return cleaned.slice(startIdx).trim();
+}
+
 function extractThaiName(lines: string[]): string {
-  const prefixes = ['นาย', 'นางสาว', 'นาง', 'ด.ช.', 'ด.ญ.', 'น.ส.'];
+  const prefixes = ['นางสาว', 'น.ส.', 'ด.ช.', 'ด.ญ.', 'นาย', 'นาง'];
 
   for (let i = 0; i < lines.length; i += 1) {
     const current = cleanSpaces(lines[i] ?? '');
     if (!/^ชื่อและชื่อสกุล\b/i.test(current) && !/^ชื่อ\b/i.test(current)) continue;
 
-    const normalizedCurrent = normalizeThaiNameCandidate(current);
+    const normalizedCurrent = sliceThaiNameFromFirstPrefix(normalizeThaiNameCandidate(current), prefixes);
     if (prefixes.some((p) => normalizedCurrent.startsWith(p)) && isThaiFullName(normalizedCurrent)) return normalizedCurrent;
 
-    const next = normalizeThaiNameCandidate(lines[i + 1] ?? '');
+    const next = sliceThaiNameFromFirstPrefix(normalizeThaiNameCandidate(lines[i + 1] ?? ''), prefixes);
     if (prefixes.some((p) => next.startsWith(p)) && isThaiFullName(next)) return next;
   }
 
   for (const line of lines) {
-    const normalized = normalizeThaiNameCandidate(line);
+    const normalized = sliceThaiNameFromFirstPrefix(normalizeThaiNameCandidate(line), prefixes);
     if (!prefixes.some((p) => normalized.includes(p))) continue;
     if (/เลข|บัตร|identification|address|date|เกิด|ออกบัตร|หมดอายุ|ศาสนา/i.test(normalized)) continue;
     if (isThaiFullName(normalized)) return normalized;
@@ -145,7 +157,8 @@ function parseText(text: string, confidence = 0.85) {
   const district     = (address.match(/(?:อำเภอ|อ\.|เขต)\s*([^\s]+)/))?.[1] ?? '';
   const subdistrict  = (address.match(/(?:ตำบล|ต\.|แขวง)\s*([^\s]+)/))?.[1] ?? '';
   const thaiFullName = normalizeThaiNameCandidate(thaiNameLine);
-  const houseNo      = (address.match(/\b\d{1,4}\/?\d{0,4}\b/)?.[0] ?? '').trim();
+  const houseNoMatch = address.match(/\b\d{1,4}(?:\s*[-–]\s*\d{1,4})?(?:\/\d{1,4})?\b/);
+  const houseNo      = (houseNoMatch?.[0] ?? '').replace(/\s+/g, '');
   const moo          = (address.match(/(?:หมู่ที่|หมู่|ม\.)\s*(\d{1,3})/)?.[1] ?? '').trim();
   const englishFullName = cleanSpaces(englishNameLine.replace(/^(Name|English Name)\s*[:：]?\s*/i, '').trim());
   return {
