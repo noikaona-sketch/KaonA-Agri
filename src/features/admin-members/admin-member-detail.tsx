@@ -67,7 +67,7 @@ export function AdminMemberDetail({ memberId }: { memberId: string }) {
   const [plotForm, setPlotForm] = useState({ name:'', area_rai:'', province:'', district:'', sub_district:'', description:'', land_doc_type:'', land_doc_number:'' });
   const [editingMember, setEditingMember] = useState(false);
   const [memberForm, setMemberForm] = useState({
-    full_name:'', phone:'', citizen_id_masked:'', address:'', house_no:'', moo:'', subdistrict:'', district:'', province:'',
+    full_name:'', phone:'', citizen_id:'', address:'', house_no:'', moo:'', subdistrict:'', district:'', province:'',
     bank_name:'', bank_account_number:'', bank_account_name:'',
   });
 
@@ -112,7 +112,7 @@ export function AdminMemberDetail({ memberId }: { memberId: string }) {
     setMemberForm({
       full_name: payload.member?.full_name ?? '',
       phone: payload.member?.phone ?? '',
-      citizen_id_masked: payload.member?.citizen_id_masked ?? '',
+      citizen_id: '',
       address: payload.member?.address ?? '',
       house_no: payload.member?.house_no ?? '',
       moo: payload.member?.moo ?? '',
@@ -183,10 +183,17 @@ export function AdminMemberDetail({ memberId }: { memberId: string }) {
     await load();
   }
   async function saveMemberProfile() {
+    const citizenDigits = memberForm.citizen_id.trim();
+    if (citizenDigits.length > 0 && citizenDigits.length !== 13) {
+      setError('เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก');
+      return;
+    }
+    const { citizen_id, ...rest } = memberForm;
+    const memberPayload = citizenDigits.length > 0 ? { ...rest, citizen_id: citizenDigits } : rest;
     setActing(true);
     const res = await fetch(`/api/admin/members/${memberId}`, {
       method: 'PATCH', credentials: 'include', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ member: memberForm }),
+      body: JSON.stringify({ member: memberPayload }),
     });
     const payload = (await res.json()) as { ok?: boolean; error?: string };
     setActing(false);
@@ -364,10 +371,10 @@ export function AdminMemberDetail({ memberId }: { memberId: string }) {
             {editingMember && (
               <div style={{ padding:'12px 18px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, borderBottom:'1px solid #F3F4F6', background:'#FAFAFA' }}>
                 {Object.entries({
-                  full_name:'ชื่อ-นามสกุล', phone:'เบอร์โทร', citizen_id_masked:'เลขบัตรฯ (masked)', address:'ที่อยู่ตามทะเบียน', house_no:'บ้านเลขที่', moo:'หมู่', subdistrict:'ตำบล', district:'อำเภอ', province:'จังหวัด',
+                  full_name:'ชื่อ-นามสกุล', phone:'เบอร์โทร', citizen_id:'เลขบัตรประชาชน (13 หลัก)', address:'ที่อยู่ตามทะเบียน', house_no:'บ้านเลขที่', moo:'หมู่', subdistrict:'ตำบล', district:'อำเภอ', province:'จังหวัด',
                   bank_name:'ธนาคาร', bank_account_number:'เลขบัญชี', bank_account_name:'ชื่อบัญชี',
                 }).map(([key, label]) => (
-                  <input key={key} value={memberForm[key as keyof typeof memberForm]} onChange={(e) => setMemberForm((p) => ({ ...p, [key]: e.target.value }))} placeholder={label} style={{ padding:'8px 10px', border:'1px solid #D1D5DB', borderRadius:8 }} />
+                  <input key={key} value={memberForm[key as keyof typeof memberForm]} onChange={(e) => setMemberForm((p) => ({ ...p, [key]: key === 'citizen_id' ? e.target.value.replace(/\D/g, '').slice(0, 13) : e.target.value }))} placeholder={label} inputMode={key === 'citizen_id' ? 'numeric' : undefined} style={{ padding:'8px 10px', border:'1px solid #D1D5DB', borderRadius:8 }} />
                 ))}
               </div>
             )}

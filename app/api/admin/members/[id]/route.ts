@@ -94,7 +94,7 @@ export async function PATCH(req: Request, { params }: Params) {
     const body = (await req.json()) as {
       status?: string; role?: string;
       member?: {
-        full_name?: string | null; phone?: string | null; citizen_id?: string | null; citizen_id_masked?: string | null;
+        full_name?: string | null; phone?: string | null; citizen_id?: string | null;
         address?: string | null; house_no?: string | null; moo?: string | null; subdistrict?: string | null; district?: string | null; province?: string | null;
         bank_name?: string | null; bank_account_number?: string | null; bank_account_name?: string | null;
       };
@@ -137,8 +137,13 @@ export async function PATCH(req: Request, { params }: Params) {
       if (body.member.bank_name !== undefined) patch.bank_name = trimOrNull(body.member.bank_name);
       if (body.member.bank_account_number !== undefined) patch.bank_account_number = trimOrNull(body.member.bank_account_number);
       if (body.member.bank_account_name !== undefined) patch.bank_account_name = trimOrNull(body.member.bank_account_name);
-      if (body.member.citizen_id_masked !== undefined) patch.citizen_id_masked = trimOrNull(body.member.citizen_id_masked);
-      if (body.member.citizen_id !== undefined) patch.citizen_id_masked = body.member.citizen_id ? toMaskedCitizen(body.member.citizen_id) : null;
+      if (body.member.citizen_id !== undefined) {
+        const raw = (body.member.citizen_id ?? '').trim();
+        if (raw.length > 0) {
+          if (!/^\d{13}$/.test(raw)) return NextResponse.json({ error: 'citizen_id must be exactly 13 digits' }, { status: 400 });
+          patch.citizen_id_masked = toMaskedCitizen(raw);
+        }
+      }
       const { error } = await s.from('members').update(patch).eq('id', id);
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     }
