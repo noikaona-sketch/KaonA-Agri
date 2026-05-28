@@ -13,6 +13,8 @@ type Movement = {
   id: string; movement_no: string; movement_type: string; product_name: string;
   unit: string; qty: number; unit_cost: number | null; unit_price: number | null;
   total_amount: number | null; ref_no: string | null; note: string | null; created_at: string;
+  ref_type: string | null; ref_id: string | null;
+  buyer_name: string | null; buyer_phone: string | null; ref_order_number: string | null;
   warehouses: { name: string } | null;
 };
 type ReceiveEdit = { id: string; movement_no: string; qty: string; unit_cost: string; note: string } | null;
@@ -324,9 +326,9 @@ export function AdminStockDashboard() {
       {tab === 'movements' && (
         <div className="admin-table-wrap">
           <table className="admin-table">
-            <thead><tr><th>เลขที่</th><th>ประเภท</th><th>สินค้า</th><th>คลัง</th><th>จำนวน</th><th>ยอดเงิน</th><th>วันที่</th></tr></thead>
+            <thead><tr><th>เลขที่</th><th>ประเภท</th><th>สินค้า</th><th>คลัง</th><th>จำนวน</th><th>👤 ผู้ซื้อ / อ้างอิง</th><th>ยอดเงิน</th><th>วันที่</th></tr></thead>
             <tbody>
-              {movements.length === 0 && <tr><td colSpan={7} style={{ textAlign: 'center', padding: 32, color: '#9ca3af' }}>ยังไม่มีรายการ</td></tr>}
+              {movements.length === 0 && <tr><td colSpan={8} style={{ textAlign: 'center', padding: 32, color: '#9ca3af' }}>ยังไม่มีรายการ</td></tr>}
               {movements.map((mv) => {
                 const cfg = TYPE_CFG[mv.movement_type] ?? { icon: '•', label: mv.movement_type, color: '#666' };
                 const isOut = ['sale','transfer_out','adjust_sub','reservation'].includes(mv.movement_type);
@@ -338,6 +340,20 @@ export function AdminStockDashboard() {
                     <td style={{ fontSize: 12 }}>{mv.warehouses?.name ?? '—'}</td>
                     <td style={{ fontWeight: 800, color: isOut ? '#c62828' : '#2e7d32' }}>
                       {isOut ? '−' : '+'}{mv.qty.toLocaleString()} {mv.unit}
+                    </td>
+                    <td style={{ fontSize: 12 }}>
+                      {mv.buyer_name ? (
+                        <div>
+                          <span style={{ fontWeight: 600 }}>👤 {mv.buyer_name}</span>
+                          {(mv.ref_order_number || mv.buyer_phone) && (
+                            <div style={{ color: '#9CA3AF', fontSize: 11 }}>
+                              {mv.buyer_phone}{mv.ref_order_number ? ` · ${mv.ref_order_number}` : ''}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span style={{ color: '#9CA3AF' }}>{mv.ref_order_number ?? mv.note ?? '—'}</span>
+                      )}
                     </td>
                     <td>{mv.total_amount ? mv.total_amount.toLocaleString('th-TH', { minimumFractionDigits: 2 }) : '—'}</td>
                     <td style={{ fontSize: 12 }}>{new Date(mv.created_at).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</td>

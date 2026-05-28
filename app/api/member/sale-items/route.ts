@@ -21,7 +21,7 @@ export async function GET(request: Request) {
         )
       `)
       .eq('member_id', caller.memberId)
-      .in('status', ['confirmed','completed','received','pending'])
+      .in('status', ['received','completed'])
       .order('created_at', { ascending: false })
       .limit(30);
 
