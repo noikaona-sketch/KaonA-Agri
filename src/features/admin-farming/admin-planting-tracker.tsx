@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { Drawer } from '@/shared/components/drawer';
+import { isCornSeedProduct } from '@/lib/products/corn-seed';
 
 /* ── Types ── */
 type BillRow = {
@@ -17,54 +18,76 @@ type MemberRow = {
   has_cycle:boolean; cycles:CycleRow[];
 };
 type Plot = { id:string; name:string; area_rai:number };
+type CropConfig = { crop_type:string; yield_per_rai:number; quota_per_seed_kg:number };
+
+const CROP_ICONS: Record<string,string> = {
+  'ข้าวโพด':'🌽', 'ข้าว':'🌾', 'มันสำปะหลัง':'🥔',
+  'อ้อย':'🎋', 'ถั่วเหลือง':'🫘', 'ข้าวโพดหวาน':'🌽',
+};
+
+function isCornCrop(cropName:string) {
+  return isCornSeedProduct({ category:'seed', product_type:'seed', crop_type:cropName, name:cropName });
+}
 
 /* ── Create Cycle Drawer ── */
 function CreateCycleDrawer({ member, bills, onClose, onCreated }: {
   member:MemberRow; bills:BillRow[]; onClose:()=>void; onCreated:()=>void;
 }) {
   const [plots,       setPlots]       = useState<Plot[]>([]);
-  const [selBillIds,  setSelBillIds]  = useState<Set<string>>(new Set(bills.map(b=>b.bill_id)));
+  const [cropConfigs, setCropConfigs] = useState<CropConfig[]>([]);
+  const [cropName,    setCropName]    = useState('');
+  const [selBillIds,  setSelBillIds]  = useState<Set<string>>(new Set());
   const [plotId,      setPlotId]      = useState('');
   const [plantedDate, setPlantedDate] = useState(new Date().toISOString().slice(0,10));
+  const [harvestManual, setHarvestManual] = useState('');
   const [areaRai,     setAreaRai]     = useState('');
   const [saving,      setSaving]      = useState(false);
   const [error,       setError]       = useState<string|null>(null);
 
   useEffect(() => {
-    void fetch(`/api/member/plots?member_id=${member.member_id}`, { credentials:'include' })
-      .then(r=>r.json()).then((d:{plots?:Plot[]}) => setPlots(d.plots ?? []));
+    void Promise.all([
+      fetch(`/api/member/plots?member_id=${member.member_id}`, { credentials:'include' }).then(r=>r.json()) as Promise<{plots?:Plot[]}>,
+      fetch('/api/member/crop-types', { credentials:'include' }).then(r=>r.json()) as Promise<{crops?:CropConfig[]}>,
+    ]).then(([plotRes, cropRes]) => {
+      setPlots(plotRes.plots ?? []);
+      setCropConfigs([...(cropRes.crops ?? []), { crop_type:'อื่นๆ', yield_per_rai:0, quota_per_seed_kg:0 }]);
+    });
   }, [member.member_id]);
 
-  const selBills = bills.filter(b => selBillIds.has(b.bill_id));
-  const totalQuota = selBills.reduce((s,b) => s+b.quota_kg, 0);
-  const minDays = selBills.length ? Math.min(...selBills.map(b=>b.days_to_harvest??999).filter(d=>d<999)) : null;
+  const usesBillFlow = isCornCrop(cropName);
+  const selBills = usesBillFlow ? bills.filter(b => selBillIds.has(b.bill_id)) : [];
+  const totalQuota = usesBillFlow ? selBills.reduce((s,b) => s+b.quota_kg, 0) : null;
+  const harvestDays = selBills.map(b=>b.days_to_harvest??999).filter(d=>d<999);
+  const minDays = usesBillFlow && harvestDays.length ? Math.min(...harvestDays) : null;
   const harvestDate = minDays && plantedDate
     ? (() => { const d=new Date(plantedDate); d.setDate(d.getDate()+minDays); return d.toISOString().slice(0,10); })()
-    : null;
+    : (harvestManual || null);
   const seasonYear = harvestDate ? new Date(harvestDate).getFullYear()+543 : new Date().getFullYear()+543;
-  const primaryProductId = selBills[0]?.product_id ?? null;
+  const primaryProductId = usesBillFlow ? (selBills[0]?.product_id ?? null) : null;
 
   function toggleBill(id:string) {
     setSelBillIds(p => { const n=new Set(p); n.has(id)?n.delete(id):n.add(id); return n; });
   }
 
   async function save() {
+    if (!cropName) { setError('กรุณาเลือกชนิดพืช'); return; }
     if (!plantedDate) { setError('กรุณาระบุวันที่ปลูก'); return; }
-    if (!harvestDate) { setError('ไม่สามารถคำนวณวันเก็บได้ กรุณาเลือกบิลที่มีข้อมูลอายุพันธุ์'); return; }
+    if (usesBillFlow && selBills.length === 0) { setError('กรุณาเลือกบิลเมล็ดข้าวโพดอย่างน้อย 1 บิล'); return; }
+    if (!harvestDate) { setError(usesBillFlow ? 'ไม่สามารถคำนวณวันเก็บได้ กรุณาเลือกบิลที่มีข้อมูลอายุพันธุ์ หรือระบุวันที่คาดว่าจะเก็บเกี่ยว' : 'กรุณาระบุวันที่คาดว่าจะเก็บเกี่ยว'); return; }
     setSaving(true); setError(null);
     const res = await fetch('/api/admin/planting-tracker', {
       method:'POST', credentials:'include',
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
         member_id:           member.member_id,
-        crop_name:           'ข้าวโพด',
+        crop_name:           cropName,
         plot_id:             plotId || null,
         product_id:          primaryProductId,
         planted_at:          plantedDate,
         expected_harvest_at: harvestDate,
         area_planted_rai:    areaRai ? Number(areaRai) : (plotId ? plots.find(p=>p.id===plotId)?.area_rai : null),
         season_year:         seasonYear,
-        quota_kg:            totalQuota,
+        quota_kg:            usesBillFlow ? totalQuota : null,
       }),
     });
     const d = (await res.json()) as { ok?:boolean; error?:string };
@@ -85,8 +108,18 @@ function CreateCycleDrawer({ member, bills, onClose, onCreated }: {
         </p>
       </div>
 
-      {/* เลือกบิล */}
+      {/* เลือกชนิดพืช */}
       <div>
+        <label style={{ display:'block', fontSize:12, fontWeight:600, color:'#374151', marginBottom:4 }}>ชนิดพืช *</label>
+        <select value={cropName} onChange={e=>{ setCropName(e.target.value); setSelBillIds(new Set()); setHarvestManual(''); }}
+          style={{ width:'100%', padding:'9px 12px', borderRadius:8, border:'1.5px solid #E5E7EB', fontSize:13 }}>
+          <option value="">— เลือกชนิดพืช —</option>
+          {cropConfigs.map(c => <option key={c.crop_type} value={c.crop_type}>{CROP_ICONS[c.crop_type] ?? '🌿'} {c.crop_type}</option>)}
+        </select>
+      </div>
+
+      {/* เลือกบิล (เฉพาะข้าวโพด) */}
+      {usesBillFlow && <div>
         <p style={{ margin:'0 0 8px', fontSize:12, fontWeight:700, color:'#374151' }}>เลือกบิล (หลายบิลได้)</p>
         <div style={{ border:'1px solid #E5E7EB', borderRadius:8, overflow:'hidden' }}>
           {bills.map((b,i) => (
@@ -106,11 +139,17 @@ function CreateCycleDrawer({ member, bills, onClose, onCreated }: {
         </div>
         {selBills.length > 0 && (
           <div style={{ marginTop:6, padding:'8px 10px', background:'#EDE9FE', borderRadius:6, fontSize:12, color:'#5B21B6', fontWeight:600 }}>
-            📦 โควต้ารวม: {totalQuota.toLocaleString('th-TH')} กก.
+            📦 โควต้ารวม: {(totalQuota ?? 0).toLocaleString('th-TH')} กก.
             {minDays && minDays < 999 ? ` · อายุน้อยสุด ${minDays} วัน` : ''}
           </div>
         )}
-      </div>
+      </div>}
+
+      {!usesBillFlow && cropName && (
+        <div style={{ padding:'10px 12px', background:'#F8FAFC', border:'1px solid #E2E8F0', borderRadius:8, fontSize:12, color:'#475569' }}>
+          {cropName === 'ข้าว' ? '🌾 รอบปลูกข้าวยังไม่ใช้บิล/โควต้า ให้กรอกวันที่คาดว่าจะเก็บเกี่ยวเอง' : 'ℹ️ พืชชนิดนี้สร้างแบบ manual โดยไม่ผูกบิล/โควต้า'}
+        </div>
+      )}
 
       {/* เลือกแปลง */}
       <div>
@@ -138,13 +177,22 @@ function CreateCycleDrawer({ member, bills, onClose, onCreated }: {
         </div>
       </div>
 
+      {/* วันที่เก็บเกี่ยวเองสำหรับ flow manual หรือกรณีบิลไม่มีอายุพันธุ์ */}
+      {(!usesBillFlow || (usesBillFlow && !minDays)) && (
+        <div>
+          <label style={{ display:'block', fontSize:12, fontWeight:600, color:'#374151', marginBottom:4 }}>วันที่คาดว่าจะเก็บเกี่ยว *</label>
+          <input type="date" value={harvestManual} onChange={e=>setHarvestManual(e.target.value)}
+            style={{ width:'100%', padding:'8px 10px', borderRadius:8, border:'1.5px solid #E5E7EB', fontSize:13, boxSizing:'border-box' as const }} />
+        </div>
+      )}
+
       {/* สรุป */}
       {harvestDate && (
         <div style={{ background:'#F0FDF4', borderRadius:8, padding:'10px 14px' }}>
           <p style={{ margin:'0 0 2px', fontWeight:700, color:'#065F46', fontSize:13 }}>
             🌾 คาดเก็บ: {new Date(harvestDate).toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'})}
           </p>
-          <p style={{ margin:0, fontSize:12, color:'#6B7280' }}>ฤดูกาล พ.ศ. {seasonYear} · โควต้า {totalQuota.toLocaleString('th-TH')} กก.</p>
+          <p style={{ margin:0, fontSize:12, color:'#6B7280' }}>ฤดูกาล พ.ศ. {seasonYear}{usesBillFlow && totalQuota ? ` · โควต้า ${(totalQuota ?? 0).toLocaleString('th-TH')} กก.` : ' · manual'}</p>
         </div>
       )}
 
@@ -153,8 +201,8 @@ function CreateCycleDrawer({ member, bills, onClose, onCreated }: {
           style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid #E5E7EB', background:'#fff', fontWeight:600, fontSize:13, cursor:'pointer' }}>
           ยกเลิก
         </button>
-        <button onClick={save} disabled={saving||selBills.length===0}
-          style={{ flex:2, padding:'10px', borderRadius:8, border:'none', background:selBills.length>0?'#2D6A4F':'#E5E7EB', color:selBills.length>0?'#fff':'#9CA3AF', fontWeight:700, fontSize:13, cursor:'pointer' }}>
+        <button onClick={save} disabled={saving || !cropName || (usesBillFlow && selBills.length===0)}
+          style={{ flex:2, padding:'10px', borderRadius:8, border:'none', background:cropName && (!usesBillFlow || selBills.length>0)?'#2D6A4F':'#E5E7EB', color:cropName && (!usesBillFlow || selBills.length>0)?'#fff':'#9CA3AF', fontWeight:700, fontSize:13, cursor:'pointer' }}>
           {saving?'⏳ กำลังบันทึก…':'🌱 สร้างรอบปลูก'}
         </button>
       </div>

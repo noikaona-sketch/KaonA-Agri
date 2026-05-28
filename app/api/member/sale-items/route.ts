@@ -5,6 +5,35 @@ import { isSeedProductMatchingCrop }  from '@/lib/products/corn-seed';
 
 export const dynamic = 'force-dynamic';
 
+type ProductRow = {
+  id: string;
+  name: string | null;
+  category: string | null;
+  product_type: string | null;
+  bag_weight_kg: number | null;
+  days_to_harvest: number | null;
+  yield_ratio_kg: number | null;
+  crop_type: string | null;
+};
+
+type SaleOrderRow = {
+  id: string;
+  order_number: string | null;
+  created_at: string;
+};
+
+type OrderItemRow = {
+  id: string;
+  order_id: string | null;
+  qty: number;
+  created_at: string;
+  product: ProductRow | ProductRow[] | null;
+};
+
+function singleProduct(product: ProductRow | ProductRow[] | null | undefined) {
+  return Array.isArray(product) ? product[0] ?? null : product ?? null;
+}
+
 export async function GET(request: Request) {
   try {
     const s            = createServerSupabaseClient();
@@ -16,67 +45,62 @@ export async function GET(request: Request) {
 
     if (!cropType) return NextResponse.json({ items: [] });
 
-    // ดึงจาก stock_movements ที่อ้างอิง sale_orders ของ member นี้เท่านั้น
-    const { data: movements } = await s
-      .from('stock_movements')
-      .select(`
-        id, movement_no, qty, unit, ref_type, ref_id, created_at,
-        products:product_id(id, name, category, product_type, bag_weight_kg, days_to_harvest, yield_ratio_kg, crop_type)
-      `)
-      .in('movement_type', ['out','sale'])
-      .in('ref_type', ['sale','sale_order'])
+    const { data: saleRows, error: saleError } = await s
+      .from('sale_orders')
+      .select('id, order_number, created_at')
+      .eq('member_id', caller.memberId)
+      .eq('order_type', 'sale')
+      .eq('status', 'completed')
       .order('created_at', { ascending: false })
-      .limit(50);
+      .limit(100);
 
-    if (!movements?.length) return NextResponse.json({ items: [] });
+    if (saleError) return NextResponse.json({ error: saleError.message }, { status: 500 });
+    const saleOrders = (saleRows as SaleOrderRow[] | null) ?? [];
+    if (!saleOrders.length) return NextResponse.json({ items: [] });
 
-    // หา sale_order refs ของ member นี้เท่านั้น
-    const saleIds = movements.map(m => m.ref_id).filter(Boolean) as string[];
+    const orderMap = new Map(saleOrders.map((order) => [order.id, order]));
+    const orderIds = saleOrders.map((order) => order.id);
 
-    const { data: saleRows } = saleIds.length
-      ? await s.from('sale_orders')
-        .select('id, order_number, member_id')
-        .in('id', saleIds)
-        .eq('member_id', caller.memberId)
-        .eq('order_type', 'sale')
-        .eq('status', 'completed')
-      : { data: [] };
+    const { data: itemRows, error: itemError } = await s
+      .from('order_items')
+      .select(`
+        id, order_id, qty, created_at,
+        product:product_id(id, name, category, product_type, bag_weight_kg, days_to_harvest, yield_ratio_kg, crop_type)
+      `)
+      .in('order_id', orderIds)
+      .order('created_at', { ascending: false });
 
-    type Ref = { id:string; order_number?:string; member_id:string };
-    const refMap = new Map<string, Ref>();
-    (saleRows ?? []).forEach((r: unknown) => {
-      const row = r as Ref;
-      if (row.id) refMap.set(row.id, row);
-    });
+    if (itemError) return NextResponse.json({ error: itemError.message }, { status: 500 });
 
-    // filter เฉพาะ movement ที่เป็นของ member นี้ และเป็นเมล็ดพันธุ์ที่ตรงกับชนิดพืชที่เลือก
-    const items = movements
-      .filter(m => {
-        const p = m.products as unknown as Record<string,unknown>|null;
-        return m.ref_id && refMap.has(m.ref_id) && isSeedProductMatchingCrop({
-          category:     p?.category as string | null | undefined,
-          product_type: p?.product_type as string | null | undefined,
-          crop_type:    p?.crop_type as string | null | undefined,
-          name:         p?.name as string | null | undefined,
-        }, cropType);
+    const items = ((itemRows as OrderItemRow[] | null) ?? [])
+      .filter((item) => {
+        const product = singleProduct(item.product);
+        return Boolean(item.order_id && orderMap.has(item.order_id) && isSeedProductMatchingCrop({
+          category:     product?.category,
+          product_type: product?.product_type,
+          crop_type:    product?.crop_type,
+          name:         product?.name,
+        }, cropType));
       })
-      .map(m => {
-        const ref = refMap.get(m.ref_id!)!;
-        const p   = m.products as unknown as Record<string,unknown>|null;
-        const bagKg = (p?.bag_weight_kg as number) ?? 10;
-        const ratio = (p?.yield_ratio_kg as number) ?? 600;
+      .map((item) => {
+        const order = orderMap.get(item.order_id!)!;
+        const product = singleProduct(item.product);
+        const bagKg = product?.bag_weight_kg ?? 10;
+        const ratio = product?.yield_ratio_kg ?? 600;
         return {
-          id:             m.id,
-          order_number:   ref.order_number ?? m.movement_no,
-          created_at:     m.created_at,
-          product_id:     p?.id as string ?? null,
-          product_name:   p?.name as string ?? '—',
-          qty:            m.qty,
-          bag_weight_kg:  bagKg,
-          days_to_harvest:(p?.days_to_harvest as number) ?? null,
-          yield_ratio_kg: ratio,
-          crop_type:      p?.crop_type as string ?? 'ข้าวโพด',
-          variety_name:   p?.name as string ?? null,
+          id:              item.id,
+          order_number:    order.order_number ?? `SALE-${order.id.slice(0, 8)}`,
+          created_at:      order.created_at || item.created_at,
+          product_id:      product?.id ?? null,
+          product_name:    product?.name ?? '—',
+          qty:             item.qty,
+          bag_weight_kg:   bagKg,
+          days_to_harvest: product?.days_to_harvest ?? null,
+          yield_ratio_kg:  ratio,
+          crop_type:       product?.crop_type ?? null,
+          variety_name:    product?.name ?? null,
+          category:        product?.category ?? null,
+          product_type:    product?.product_type ?? null,
         };
       });
 

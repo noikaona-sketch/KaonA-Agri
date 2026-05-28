@@ -1,6 +1,7 @@
 import { NextResponse }               from 'next/server';
 import { createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
 import { resolveApprovedMember }      from '../_auth';
+import { isCornSeedProduct }          from '@/lib/products/corn-seed';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,6 +23,11 @@ export async function POST(request: Request) {
     if (!body.plot_id) {
       return NextResponse.json({ error: 'กรุณาเลือกแปลงก่อนสร้างรอบปลูก' }, { status: 400 });
     }
+    if (!body.expected_harvest_at) {
+      return NextResponse.json({ error: 'กรุณาระบุวันที่คาดว่าจะเก็บเกี่ยว' }, { status: 400 });
+    }
+
+    const usesBillFlow = isCornSeedProduct({ category:'seed', product_type:'seed', crop_type:body.crop_name, name:body.crop_name });
 
     const { data, error } = await s
       .from('planting_cycles')
@@ -29,12 +35,12 @@ export async function POST(request: Request) {
         member_id:           caller.memberId,
         crop_name:           body.crop_name,
         plot_id:             body.plot_id,
-        product_id:          body.product_id || null,
+        product_id:          usesBillFlow ? (body.product_id || null) : null,
         planted_at:          body.planted_at,
         expected_harvest_at: body.expected_harvest_at || null,
         area_planted_rai:    body.area_planted_rai ?? null,
         season_year:         body.season_year ?? (new Date().getFullYear() + 543),
-        quota_kg:            body.quota_kg ?? null,
+        quota_kg:            usesBillFlow ? (body.quota_kg ?? null) : null,
         status:              body.status ?? 'growing',
         source:              'manual',
         created_by:          caller.memberId,
