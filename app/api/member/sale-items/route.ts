@@ -4,6 +4,34 @@ import { resolveApprovedMember }      from '../_auth';
 
 export const dynamic = 'force-dynamic';
 
+type ProductRow = {
+  id: string;
+  name: string | null;
+  category: string | null;
+  product_type: string | null;
+  bag_weight_kg: number | null;
+  days_to_harvest: number | null;
+  yield_ratio_kg: number | null;
+  crop_type: string | null;
+};
+
+type OrderItemRow = {
+  id: string;
+  qty: number;
+  created_at: string | null;
+  product_name: string | null;
+  product_name_snapshot: string | null;
+  product_id: string | null;
+  product: ProductRow | null;
+};
+
+type SaleOrderRow = {
+  id: string;
+  order_number: string | null;
+  created_at: string;
+  order_items: OrderItemRow[] | null;
+};
+
 export async function GET(request: Request) {
   try {
     const s        = createServerSupabaseClient();
@@ -11,59 +39,50 @@ export async function GET(request: Request) {
     const caller   = await resolveApprovedMember(request, s, memberId);
     if (!caller.ok) return caller.response;
 
-    // ดึงจาก stock_movements ที่เป็นการขายออกให้ member นี้
-    // โดย join ผ่าน sale_orders หรือ seed_reservations
-    const { data: movements } = await s
-      .from('stock_movements')
+    // Source of truth: completed sale_orders(order_type='sale') + order_items for this member.
+    // Do not include stock_movements or reservation refs here because reservations are not actual sales.
+    const { data: saleOrders, error } = await s
+      .from('sale_orders')
       .select(`
-        id, movement_no, qty, unit, ref_type, ref_id, created_at,
-        products:product_id(id, name, bag_weight_kg, days_to_harvest, yield_ratio_kg, crop_type)
+        id, order_number, created_at,
+        order_items(
+          id, qty, created_at, product_name, product_name_snapshot, product_id,
+          product:products(id, name, category, product_type, bag_weight_kg, days_to_harvest, yield_ratio_kg, crop_type)
+        )
       `)
-      .in('movement_type', ['out','sale'])
-      .in('ref_type', ['sale','sale_order','reservation','seed_reservation'])
+      .eq('member_id', caller.memberId)
+      .eq('order_type', 'sale')
+      .eq('status', 'completed')
       .order('created_at', { ascending: false })
       .limit(50);
 
-    if (!movements?.length) return NextResponse.json({ items: [] });
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (!saleOrders?.length) return NextResponse.json({ items: [] });
 
-    // หา ref_ids แยกตาม type
-    const saleIds = movements.filter(m => ['sale','sale_order'].includes(m.ref_type??'')).map(m => m.ref_id).filter(Boolean) as string[];
-    const rsvIds  = movements.filter(m => ['reservation','seed_reservation'].includes(m.ref_type??'')).map(m => m.ref_id).filter(Boolean) as string[];
+    const items = (saleOrders as unknown as SaleOrderRow[]).flatMap((order) => {
+      return (order.order_items ?? [])
+        .filter((item) => item.product?.category === 'seed' || item.product?.product_type === 'seed')
+        .map((item) => {
+          const p = item.product;
+          const bagKg = p?.bag_weight_kg ?? 10;
+          const ratio = p?.yield_ratio_kg ?? 600;
+          const productName = p?.name ?? item.product_name_snapshot ?? item.product_name ?? '—';
 
-    const [saleRes, rsvRes] = await Promise.all([
-      saleIds.length ? s.from('sale_orders').select('id, order_number, member_id').in('id', saleIds).eq('member_id', caller.memberId) : Promise.resolve({ data: [] }),
-      rsvIds.length  ? s.from('seed_reservations').select('id, reservation_no, member_id').in('id', rsvIds).eq('member_id', caller.memberId) : Promise.resolve({ data: [] }),
-    ]);
-
-    type Ref = { id:string; order_number?:string; reservation_no?:string; member_id:string };
-    const refMap = new Map<string, Ref>();
-    [...(saleRes.data??[]), ...(rsvRes.data??[])].forEach((r: unknown) => {
-      const row = r as Ref;
-      if (row.id) refMap.set(row.id, row);
+          return {
+            id:             item.id,
+            order_number:   order.order_number ?? `SALE-${order.id.slice(0, 8)}`,
+            created_at:     order.created_at || item.created_at,
+            product_id:     item.product_id ?? p?.id ?? null,
+            product_name:   productName,
+            qty:            item.qty,
+            bag_weight_kg:  bagKg,
+            days_to_harvest:p?.days_to_harvest ?? null,
+            yield_ratio_kg: ratio,
+            crop_type:      p?.crop_type ?? 'ข้าวโพด',
+            variety_name:   productName,
+          };
+        });
     });
-
-    // filter เฉพาะ movement ที่เป็นของ member นี้
-    const items = movements
-      .filter(m => m.ref_id && refMap.has(m.ref_id))
-      .map(m => {
-        const ref = refMap.get(m.ref_id!)!;
-        const p   = m.products as unknown as Record<string,unknown>|null;
-        const bagKg = (p?.bag_weight_kg as number) ?? 10;
-        const ratio = (p?.yield_ratio_kg as number) ?? 600;
-        return {
-          id:             m.id,
-          order_number:   (ref as Ref & {order_number?:string})?.order_number ?? (ref as Ref & {reservation_no?:string})?.reservation_no ?? m.movement_no,
-          created_at:     m.created_at,
-          product_id:     p?.id as string ?? null,
-          product_name:   p?.name as string ?? '—',
-          qty:            m.qty,
-          bag_weight_kg:  bagKg,
-          days_to_harvest:(p?.days_to_harvest as number) ?? null,
-          yield_ratio_kg: ratio,
-          crop_type:      p?.crop_type as string ?? 'ข้าวโพด',
-          variety_name:   p?.name as string ?? null,
-        };
-      });
 
     return NextResponse.json({ items });
   } catch (e) {
