@@ -7,11 +7,12 @@ import { LoadingState } from '@/shared/components/loading-state';
 import { HarvestRatingForm } from '@/features/service-rating/harvest-rating-form';
 import { UIButton } from '@/shared/components/ui-button';
 import { HarvestBookingForm }        from './harvest-booking-form';
+import { FarmActivityChecklist }     from '@/features/farm-activity/farm-activity-checklist';
 import { MemberHarvestBookingForm }  from '@/features/member-harvest/harvest-booking-form';
 import { SaleAppointmentForm } from './sale-appointment-form';
 import { ErrorState } from '@/shared/components/error-state';
 
-type ProductRef = { name: string; seed_variety: string | null; days_to_harvest: number | null; planting_guide: string | null };
+type ProductRef = { name: string; seed_variety: string | null; days_to_harvest: number | null; planting_guide: string | null; fertilizer_guide: string | null; pest_guide: string | null };
 type PlotRef = { id: string; name: string; province: string | null };
 
 type Cycle = {
@@ -111,7 +112,7 @@ export function PlantingCycleDetail({ cycleId }: { cycleId: string }) {
     const s = createSupabaseBrowserClient();
     const [cRes, pRes, plotsRes] = await Promise.all([
       s.from('planting_cycles')
-        .select('id,crop_name,season_year,status,planted_at,expected_harvest_at,area_planted_rai,estimated_yield_kg,quota_kg,source,confirmed_at,member_note,seed_qty_used,burn_practice,burn_practice_note,expected_yield_per_rai_kg,expected_price_per_kg,expected_cost_per_rai,expected_cost_per_rai_burn,expected_cost_per_rai_no_burn,products(name,seed_variety,days_to_harvest,planting_guide),plots(id,name,province)')
+        .select('id,crop_name,season_year,status,planted_at,expected_harvest_at,area_planted_rai,estimated_yield_kg,quota_kg,source,confirmed_at,member_note,seed_qty_used,burn_practice,burn_practice_note,expected_yield_per_rai_kg,expected_price_per_kg,expected_cost_per_rai,expected_cost_per_rai_burn,expected_cost_per_rai_no_burn,products(name,seed_variety,days_to_harvest,planting_guide,fertilizer_guide,pest_guide),plots(id,name,province)')
         .eq('id', cycleId).maybeSingle(),
       s.from('planting_cycle_progress')
         .select('id,stage,description,recorded_at')
@@ -342,6 +343,19 @@ export function PlantingCycleDetail({ cycleId }: { cycleId: string }) {
           <p style={{ margin: '0 0 6px', fontWeight: 700, fontSize: 14, color: '#2e7d32' }}>🌱 คู่มือการปลูก</p>
           <p style={{ margin: 0, fontSize: 13, lineHeight: 1.8, color: '#33691e' }}>{cycle.products.planting_guide}</p>
         </div>
+      )}
+
+      {/* ── Farm Activity Checklist ── */}
+      {cycle.confirmed_at && !['cancelled'].includes(cycle.status) && (
+        <FarmActivityChecklist
+          cycleId={cycleId}
+          plotId={cycle.plots?.id ?? null}
+          seedHint={cycle.products ? {
+            fertilizer_guide: cycle.products.fertilizer_guide,
+            pest_guide:       cycle.products.pest_guide,
+            planting_guide:   cycle.products.planting_guide,
+          } : null}
+        />
       )}
 
       {cycle.confirmed_at && !['harvested','cancelled'].includes(cycle.status) && (
