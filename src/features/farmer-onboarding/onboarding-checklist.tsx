@@ -2,7 +2,7 @@
 
 import Link       from 'next/link';
 import { useEffect, useState } from 'react';
-import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+
 
 // ─── Types ───────────────────────────────────────────────────────────
 type StepKey = 'plot' | 'cycle' | 'no_burn' | 'seed';
@@ -35,21 +35,15 @@ export function OnboardingChecklist({ memberId }: { memberId: string }) {
 
   useEffect(() => {
     if (!memberId) return;
-    const s = createSupabaseBrowserClient();
-    void (async () => {
-      const [plotRes, cycleRes, burnRes, seedRes] = await Promise.all([
-        s.from('plots').select('id', { count: 'exact', head: true }).eq('member_id', memberId).is('deleted_at', null),
-        s.from('planting_cycles').select('id', { count: 'exact', head: true }).eq('member_id', memberId),
-        s.from('no_burn_requests').select('id', { count: 'exact', head: true }).eq('member_id', memberId),
-        s.from('seed_reservations').select('id', { count: 'exact', head: true }).eq('member_id', memberId),
-      ]);
-      setCounts({
-        plot:    plotRes.count  ?? 0,
-        cycle:   cycleRes.count ?? 0,
-        no_burn: burnRes.count  ?? 0,
-        seed:    seedRes.count  ?? 0,
-      });
-    })();
+    // ใช้ API service role แทน browser client (ข้าม RLS)
+    void fetch(`/api/member/onboarding-status?member_id=${memberId}`)
+      .then(r => r.json())
+      .then((d: Record<string,number>) => setCounts({
+        plot:    d.plot    ?? 0,
+        cycle:   d.cycle   ?? 0,
+        no_burn: d.no_burn ?? 0,
+        seed:    d.seed    ?? 0,
+      }));
   }, [memberId]);
 
   if (!counts) return null;

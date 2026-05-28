@@ -4,91 +4,81 @@ import { resolveApprovedMember }      from '../_auth';
 
 export const dynamic = 'force-dynamic';
 
-// GET /api/member/sale-items?member_id=xxx
-// ดึงรายการบิลขาย/จองเมล็ดพันธุ์ของ member สำหรับเลือกในรอบปลูก
 export async function GET(request: Request) {
   try {
-    const s         = createServerSupabaseClient();
-    const memberId  = new URL(request.url).searchParams.get('member_id') ?? undefined;
-    const caller    = await resolveApprovedMember(request, s, memberId);
+    const s        = createServerSupabaseClient();
+    const memberId = new URL(request.url).searchParams.get('member_id') ?? undefined;
+    const caller   = await resolveApprovedMember(request, s, memberId);
     if (!caller.ok) return caller.response;
 
-    // ดึง order_items ที่เป็น seed ของ member นี้
-    const { data, error } = await s
+    // Source 1: seed_reservations (จองเมล็ด)
+    const { data: seeds } = await s
+      .from('seed_reservations')
+      .select(`
+        id, reservation_no, qty_reserved, variety_name, created_at, status,
+        products:product_id(
+          id, name, bag_weight_kg, days_to_harvest, yield_ratio_kg, crop_type
+        )
+      `)
+      .eq('member_id', caller.memberId)
+      .in('status', ['confirmed','completed','received','pending'])
+      .order('created_at', { ascending: false })
+      .limit(30);
+
+    // Source 2: sale_orders ที่มี seed products (ซื้อโดยตรง)
+    const { data: orders } = await s
       .from('order_items')
       .select(`
-        id,
-        qty,
-        unit_price,
-        product_id,
-        product_name,
-        sale_orders!inner(
-          id, order_number, status, order_type, created_at, member_id
-        ),
-        products(
-          id, name, bag_weight_kg, days_to_harvest,
-          yield_ratio_kg, crop_type, seed_variety,
-          seed_varieties:seed_variety_id(variety_name)
-        )
+        id, qty, unit_price, product_id, product_name,
+        sale_orders!inner(id, order_number, status, created_at, member_id),
+        products(id, name, bag_weight_kg, days_to_harvest, yield_ratio_kg, crop_type, product_type)
       `)
       .eq('sale_orders.member_id', caller.memberId)
       .in('sale_orders.status', ['completed','confirmed','ready'])
-      .eq('sale_orders.order_type', 'seed')
-      .not('products', 'is', null)
+      .eq('products.product_type', 'seed')
       .order('sale_orders.created_at', { ascending: false })
-      .limit(50);
+      .limit(30);
 
-    if (error) {
-      // fallback: ลอง query แบบอื่น ถ้า seed order_type ไม่มี
-      const { data: data2 } = await s
-        .from('seed_reservations')
-        .select(`
-          id, reservation_no, qty_reserved, variety_name, created_at, status,
-          products:product_id(
-            id, name, bag_weight_kg, days_to_harvest, yield_ratio_kg, crop_type
-          )
-        `)
-        .eq('member_id', caller.memberId)
-        .in('status', ['confirmed','completed','received'])
-        .order('created_at', { ascending: false })
-        .limit(50);
+    const items: Record<string,unknown>[] = [];
 
-      const items = (data2 ?? []).map((r: Record<string,unknown>) => ({
+    // map seed_reservations
+    for (const r of seeds ?? []) {
+      const p = r.products as unknown as Record<string,unknown> | null;
+      items.push({
         id:             r.id,
         order_number:   r.reservation_no,
         created_at:     r.created_at,
-        product_id:     (r.products as Record<string,unknown>)?.id ?? null,
-        product_name:   r.variety_name ?? (r.products as Record<string,unknown>)?.name,
+        product_id:     p?.id ?? null,
+        product_name:   r.variety_name ?? p?.name ?? '—',
         qty:            r.qty_reserved,
-        unit_price:     0,
-        bag_weight_kg:  (r.products as Record<string,unknown>)?.bag_weight_kg ?? 10,
-        days_to_harvest:(r.products as Record<string,unknown>)?.days_to_harvest ?? null,
-        yield_ratio_kg: (r.products as Record<string,unknown>)?.yield_ratio_kg ?? 600,
-        crop_type:      (r.products as Record<string,unknown>)?.crop_type ?? 'corn',
+        bag_weight_kg:  p?.bag_weight_kg ?? 10,
+        days_to_harvest:p?.days_to_harvest ?? null,
+        yield_ratio_kg: p?.yield_ratio_kg ?? 600,
+        crop_type:      p?.crop_type ?? 'ข้าวโพด',
         variety_name:   r.variety_name as string|null,
-      }));
-      return NextResponse.json({ items });
+      });
     }
 
-    const items = (data ?? []).map((r: Record<string,unknown>) => {
-      const order    = (r.sale_orders as Record<string,unknown>);
-      const product  = (r.products   as Record<string,unknown>);
-      const variety  = (product?.seed_varieties as Record<string,unknown>);
-      return {
+    // map sale_orders (ไม่ duplicate)
+    const existingIds = new Set(items.map(x => x.product_id));
+    for (const r of orders ?? []) {
+      const p = r.products as unknown as Record<string,unknown> | null;
+      const o = r.sale_orders as unknown as Record<string,unknown>;
+      if (!p || existingIds.has(p.id)) continue; // skip ถ้ามีใน seed_reservations แล้ว
+      items.push({
         id:             r.id,
-        order_number:   order?.order_number,
-        created_at:     order?.created_at,
+        order_number:   o?.order_number,
+        created_at:     o?.created_at,
         product_id:     r.product_id,
-        product_name:   r.product_name ?? product?.name,
+        product_name:   r.product_name ?? p?.name ?? '—',
         qty:            r.qty,
-        unit_price:     r.unit_price,
-        bag_weight_kg:  product?.bag_weight_kg ?? 10,
-        days_to_harvest:product?.days_to_harvest ?? null,
-        yield_ratio_kg: product?.yield_ratio_kg ?? 600,
-        crop_type:      product?.crop_type ?? 'corn',
-        variety_name:   variety?.variety_name ?? product?.seed_variety ?? null,
-      };
-    });
+        bag_weight_kg:  p?.bag_weight_kg ?? 10,
+        days_to_harvest:p?.days_to_harvest ?? null,
+        yield_ratio_kg: p?.yield_ratio_kg ?? 600,
+        crop_type:      p?.crop_type ?? 'ข้าวโพด',
+        variety_name:   p?.name as string|null,
+      });
+    }
 
     return NextResponse.json({ items });
   } catch (e) {
