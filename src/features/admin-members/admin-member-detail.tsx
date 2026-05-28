@@ -19,7 +19,10 @@ import { ApprovalHistoryPanel }        from './panels/approval-history-panel';
 
 type MemberDetail = {
   id: string; full_name: string; phone: string | null;
-  citizen_id_masked: string; address: string | null;
+  citizen_id_masked: string;
+  house_no: string | null; moo: string | null;
+  subdistrict: string | null; district: string | null; province: string | null;
+  address: string | null;
   status: string; registration_type: string | null;
   line_user_id: string | null; line_display_name: string | null; line_picture_url: string | null;
   created_at: string;
@@ -321,7 +324,12 @@ export function AdminMemberDetail({ memberId }: { memberId: string }) {
               { label:'ชื่อ LINE',     value: member.line_display_name || '—' },
               { label:'เบอร์โทร',      value: member.phone || '—' },
               { label:'เลขบัตรฯ',      value: member.citizen_id_masked || '—' },
-              { label:'ที่อยู่',        value: member.address || '—' },
+              { label:'ที่อยู่ตามทะเบียน', value: member.address || '—' },
+              { label:'บ้านเลขที่',     value: member.house_no || '—' },
+              { label:'หมู่',          value: member.moo || '—' },
+              { label:'ตำบล',         value: member.subdistrict || '—' },
+              { label:'อำเภอ',         value: member.district || '—' },
+              { label:'จังหวัด',       value: member.province || '—' },
               { label:'ประเภทสมัคร',   value: member.registration_type || '—' },
               { label:'LINE UID',       value: member.line_user_id ? member.line_user_id.slice(0,20)+'…' : '—', mono:true },
             ].map((row, i) => (
