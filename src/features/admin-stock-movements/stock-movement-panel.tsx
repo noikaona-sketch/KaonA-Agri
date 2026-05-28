@@ -7,6 +7,7 @@ type Movement = {
   qty:number; unit:string; ref_type:string|null; ref_id:string|null;
   ref_order_number:string|null; note:string|null; created_at:string;
   buyer_name:string|null; buyer_phone:string|null; buyer_id:string|null;
+  seller_name:string|null;
   warehouses?:{ name:string }|null;
   product?:{ name:string; bag_weight_kg:number|null }|null;
   creator?:{ id:string; full_name:string }|null;
@@ -110,7 +111,7 @@ export function StockMovementPanel() {
             <table style={{ width:'100%', borderCollapse:'collapse', minWidth:760 }}>
               <thead>
                 <tr style={{ background:'#F9FAFB', borderBottom:'1.5px solid #E5E7EB' }}>
-                  {['เลขที่','ประเภท','สินค้า','คลัง','จำนวน','ผู้ซื้อ / อ้างอิง','วันที่'].map((h,i) => (
+                  {['เลขที่','ประเภท','สินค้า','คลัง','จำนวน','ผู้ขาย / ผู้ซื้อ / อ้างอิง','วันที่'].map((h,i) => (
                     <th key={i} style={{ padding:'10px 14px', textAlign:'left', fontSize:10, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'.05em', whiteSpace:'nowrap' }}>{h}</th>
                   ))}
                 </tr>
@@ -144,7 +145,11 @@ export function StockMovementPanel() {
                         <span style={{ fontSize:11, color:'#9CA3AF', marginLeft:4 }}>{m.unit}</span>
                       </td>
                       <td style={{ padding:'11px 14px' }}>
-                        {m.buyer_name ? (
+                        {['receive', 'in'].includes(m.movement_type) ? (
+                          <span style={{ fontSize:12, color:m.seller_name ? '#374151' : '#9CA3AF' }}>
+                            {m.seller_name ?? '—'}
+                          </span>
+                        ) : m.buyer_name ? (
                           <div>
                             <p style={{ margin:0, fontSize:13, fontWeight:600, color:'#111' }}>👤 {m.buyer_name}</p>
                             <p style={{ margin:0, fontSize:10, color:'#9CA3AF' }}>

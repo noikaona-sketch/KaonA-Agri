@@ -112,7 +112,7 @@ export default function NewPlantingCyclePage() {
       setError(!plotId ? 'กรุณาเลือกแปลงก่อน' : 'กรุณากรอกข้อมูลให้ครบ'); return;
     }
     if (isCorn && selItemIds.size === 0) {
-      setError('กรุณาเลือกบิลขาย/จองเมล็ดอย่างน้อย 1 รายการ'); return;
+      setError('กรุณาเลือกบิลขายเมล็ดพันธุ์อย่างน้อย 1 รายการ'); return;
     }
     if (!harvestDate) {
       setError('กรุณาระบุวันที่คาดว่าจะเก็บเกี่ยว'); return;
@@ -132,7 +132,7 @@ export default function NewPlantingCyclePage() {
         area_planted_rai:    areaRai ? Number(areaRai) : null,
         season_year:         seasonYear,
         quota_kg:            quotaKg ?? null,
-        status:              'planted',
+        status:              'growing',
         source:              'manual',
         member_note:         notes || null,
         confirmed_at:        new Date().toISOString(),
@@ -197,13 +197,13 @@ export default function NewPlantingCyclePage() {
         {isCorn && (
           <div>
             <p className="reg-label" style={{ marginBottom:8 }}>
-              บิลขาย / จองเมล็ดพันธุ์ <span className="reg-required">*</span>
+              บิลขายเมล็ดพันธุ์ <span className="reg-required">*</span>
               <span style={{ fontSize:11, fontWeight:400, color:'#6B7280', marginLeft:6 }}>เลือกได้หลายบิล</span>
             </p>
 
             {saleItems.length === 0 ? (
               <div style={{ padding:'14px 16px', background:'#FEF3C7', borderRadius:10, fontSize:13, color:'#92400E' }}>
-                ⚠️ ยังไม่มีประวัติซื้อ/จองเมล็ดพันธุ์ข้าวโพด
+                ⚠️ ยังไม่มีประวัติซื้อเมล็ดพันธุ์ข้าวโพด
               </div>
             ) : (
               <div style={{ border:'1.5px solid #E5E7EB', borderRadius:10, overflow:'hidden' }}>

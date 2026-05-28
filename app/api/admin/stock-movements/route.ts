@@ -18,7 +18,7 @@ export async function GET(request: Request) {
       *,
       warehouses!warehouse_id(name),
       dest_wh:warehouses!dest_warehouse_id(name),
-      product:product_id(name, bag_weight_kg),
+      product:product_id(name, bag_weight_kg, seed_varieties(seed_suppliers(supplier_name))),
       creator:created_by(id, full_name, phone)
     `)
     .order('created_at', { ascending: false })
@@ -52,6 +52,18 @@ export async function GET(request: Request) {
     if (row.id) refMap.set(row.id, row);
   });
 
+  function firstRow<T>(value: T | T[] | null | undefined): T | null {
+    if (Array.isArray(value)) return value[0] ?? null;
+    return value ?? null;
+  }
+
+  function sellerNameFromProduct(product: unknown): string | null {
+    const p = product as { seed_varieties?: unknown } | null;
+    const variety = firstRow(p?.seed_varieties as { seed_suppliers?: unknown } | { seed_suppliers?: unknown }[] | null | undefined);
+    const supplier = firstRow(variety?.seed_suppliers as { supplier_name?: string | null } | { supplier_name?: string | null }[] | null | undefined);
+    return supplier?.supplier_name ?? null;
+  }
+
   // รวมข้อมูล
   const enriched = (movements ?? []).map(m => {
     const ref = m.ref_id ? refMap.get(m.ref_id) : null;
@@ -62,6 +74,7 @@ export async function GET(request: Request) {
       buyer_name:    member?.full_name ?? null,
       buyer_phone:   member?.phone    ?? null,
       buyer_id:      member?.id       ?? null,
+      seller_name:   ['receive', 'in'].includes(m.movement_type) ? sellerNameFromProduct(m.product) : null,
     };
   });
 

@@ -11,8 +11,7 @@ export async function GET(request: Request) {
     const caller   = await resolveApprovedMember(request, s, memberId);
     if (!caller.ok) return caller.response;
 
-    // ดึงจาก stock_movements ที่เป็นการขายออกให้ member นี้
-    // โดย join ผ่าน sale_orders หรือ seed_reservations
+    // ดึงจาก stock_movements ที่อ้างอิง sale_orders ของ member นี้เท่านั้น
     const { data: movements } = await s
       .from('stock_movements')
       .select(`
@@ -20,24 +19,27 @@ export async function GET(request: Request) {
         products:product_id(id, name, bag_weight_kg, days_to_harvest, yield_ratio_kg, crop_type)
       `)
       .in('movement_type', ['out','sale'])
-      .in('ref_type', ['sale','sale_order','reservation','seed_reservation'])
+      .in('ref_type', ['sale','sale_order'])
       .order('created_at', { ascending: false })
       .limit(50);
 
     if (!movements?.length) return NextResponse.json({ items: [] });
 
-    // หา ref_ids แยกตาม type
-    const saleIds = movements.filter(m => ['sale','sale_order'].includes(m.ref_type??'')).map(m => m.ref_id).filter(Boolean) as string[];
-    const rsvIds  = movements.filter(m => ['reservation','seed_reservation'].includes(m.ref_type??'')).map(m => m.ref_id).filter(Boolean) as string[];
+    // หา sale_order refs ของ member นี้เท่านั้น
+    const saleIds = movements.map(m => m.ref_id).filter(Boolean) as string[];
 
-    const [saleRes, rsvRes] = await Promise.all([
-      saleIds.length ? s.from('sale_orders').select('id, order_number, member_id').in('id', saleIds).eq('member_id', caller.memberId) : Promise.resolve({ data: [] }),
-      rsvIds.length  ? s.from('seed_reservations').select('id, reservation_no, member_id').in('id', rsvIds).eq('member_id', caller.memberId) : Promise.resolve({ data: [] }),
-    ]);
+    const { data: saleRows } = saleIds.length
+      ? await s.from('sale_orders')
+        .select('id, order_number, member_id')
+        .in('id', saleIds)
+        .eq('member_id', caller.memberId)
+        .eq('order_type', 'sale')
+        .eq('status', 'completed')
+      : { data: [] };
 
-    type Ref = { id:string; order_number?:string; reservation_no?:string; member_id:string };
+    type Ref = { id:string; order_number?:string; member_id:string };
     const refMap = new Map<string, Ref>();
-    [...(saleRes.data??[]), ...(rsvRes.data??[])].forEach((r: unknown) => {
+    (saleRows ?? []).forEach((r: unknown) => {
       const row = r as Ref;
       if (row.id) refMap.set(row.id, row);
     });
@@ -52,7 +54,7 @@ export async function GET(request: Request) {
         const ratio = (p?.yield_ratio_kg as number) ?? 600;
         return {
           id:             m.id,
-          order_number:   (ref as Ref & {order_number?:string})?.order_number ?? (ref as Ref & {reservation_no?:string})?.reservation_no ?? m.movement_no,
+          order_number:   ref.order_number ?? m.movement_no,
           created_at:     m.created_at,
           product_id:     p?.id as string ?? null,
           product_name:   p?.name as string ?? '—',

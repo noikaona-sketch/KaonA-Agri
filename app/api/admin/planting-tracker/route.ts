@@ -9,40 +9,38 @@ export async function GET() {
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const s = createServerSupabaseClient();
 
-  // ดึง stock movements ประเภท sale/out เท่านั้น (ขายจริง ไม่ใช่จอง)
-  const { data: movements } = await s
-    .from('stock_movements')
-    .select(`
-      id, movement_no, qty, unit, ref_type, ref_id, created_at,
-      product:product_id(id, name, bag_weight_kg, days_to_harvest, yield_ratio_kg, crop_type)
-    `)
-    .in('movement_type', ['out','sale'])
-    .in('ref_type', ['sale','sale_order','reservation','seed_reservation'])
+  // Source of truth: completed sale_orders(order_type='sale') + order_items
+  const { data: saleOrders } = await s
+    .from('sale_orders')
+    .select('id,order_number,member_id,created_at,members:member_id(id, full_name, phone)')
+    .eq('order_type', 'sale')
+    .eq('status', 'completed')
     .order('created_at', { ascending: false });
 
-  if (!movements?.length) return NextResponse.json({ items: [] });
+  if (!saleOrders?.length) return NextResponse.json({ items: [] });
 
-  // ดึง member จาก ref_id
-  const saleIds = movements.filter(m => ['sale','sale_order'].includes(m.ref_type??'')).map(m => m.ref_id).filter(Boolean) as string[];
-  const rsvIds  = movements.filter(m => ['reservation','seed_reservation'].includes(m.ref_type??'')).map(m => m.ref_id).filter(Boolean) as string[];
+  const saleOrderIds = saleOrders.map((o) => o.id).filter(Boolean);
+  const { data: orderItems } = await s
+    .from('order_items')
+    .select(`
+      id, order_id, qty, product_unit, created_at,
+      product:product_id(id, name, bag_weight_kg, days_to_harvest, yield_ratio_kg, crop_type)
+    `)
+    .in('order_id', saleOrderIds)
+    .order('created_at', { ascending: false });
 
-  const [saleRes, rsvRes] = await Promise.all([
-    saleIds.length ? s.from('sale_orders').select('id, order_number, member_id, members:member_id(id, full_name, phone)').in('id', saleIds) : Promise.resolve({ data: [] }),
-    rsvIds.length  ? s.from('seed_reservations').select('id, reservation_no, member_id, members:member_id(id, full_name, phone)').in('id', rsvIds) : Promise.resolve({ data: [] }),
-  ]);
-
-  type RefRow = { id:string; order_number?:string; reservation_no?:string; member_id:string; members?:{ id:string; full_name:string; phone:string|null }|null };
-  const refMap = new Map<string, RefRow>();
-  [...(saleRes.data??[]), ...(rsvRes.data??[])].forEach((r: unknown) => {
-    const row = r as RefRow;
-    if (row.id) refMap.set(row.id, row);
+  if (!orderItems?.length) return NextResponse.json({ items: [] });
+  type SaleOrderRow = { id:string; order_number:string|null; member_id:string|null; created_at:string; members?:{ id:string; full_name:string; phone:string|null }|null };
+  const orderMap = new Map<string, SaleOrderRow>();
+  (saleOrders as unknown as SaleOrderRow[]).forEach((o) => {
+    orderMap.set(o.id, o);
   });
 
   // รวม member ids
   const memberIds = new Set<string>();
-  movements.forEach(m => {
-    const ref = m.ref_id ? refMap.get(m.ref_id) : null;
-    if (ref?.member_id) memberIds.add(ref.member_id);
+  orderItems.forEach((item) => {
+    const order = item.order_id ? orderMap.get(item.order_id) : null;
+    if (order?.member_id) memberIds.add(order.member_id);
   });
 
   if (!memberIds.size) return NextResponse.json({ items: [] });
@@ -79,25 +77,25 @@ export async function GET() {
     return memberMap.get(mid)!;
   }
 
-  for (const m of movements) {
-    const ref    = m.ref_id ? refMap.get(m.ref_id) : null;
-    if (!ref?.member_id) continue;
-    const member = ref.members as { id:string; full_name:string; phone:string|null }|null|undefined;
+  for (const item of orderItems) {
+    const order  = item.order_id ? orderMap.get(item.order_id) : null;
+    if (!order?.member_id) continue;
+    const member = order.members as { id:string; full_name:string; phone:string|null }|null|undefined;
     if (!member) continue;
-    const row    = getOrCreate(ref.member_id, { full_name:member.full_name, phone:member.phone??null });
-    const p      = m.product as unknown as { id:string; name:string; bag_weight_kg:number|null; days_to_harvest:number|null; yield_ratio_kg:number|null }|null;
+    const row    = getOrCreate(order.member_id, { full_name:member.full_name, phone:member.phone??null });
+    const p      = item.product as unknown as { id:string; name:string; bag_weight_kg:number|null; days_to_harvest:number|null; yield_ratio_kg:number|null }|null;
     const bagKg  = p?.bag_weight_kg ?? 10;
     const ratio  = p?.yield_ratio_kg ?? 600;
     row.bills.push({
-      bill_id:        m.id,
-      bill_no:        (ref as RefRow & {order_number?:string})?.order_number ?? (ref as RefRow & {reservation_no?:string})?.reservation_no ?? m.movement_no,
+      bill_id:        item.id,
+      bill_no:        order.order_number ?? `SALE-${order.id.slice(0, 8)}`,
       variety_name:   p?.name ?? '—',
-      qty:            m.qty,
+      qty:            item.qty,
       bag_weight_kg:  bagKg,
-      quota_kg:       m.qty * bagKg * ratio,
+      quota_kg:       item.qty * bagKg * ratio,
       days_to_harvest:p?.days_to_harvest ?? null,
       product_id:     p?.id ?? null,
-      created_at:     m.created_at,
+      created_at:     order.created_at || item.created_at,
     });
     row.bill_count++;
   }
