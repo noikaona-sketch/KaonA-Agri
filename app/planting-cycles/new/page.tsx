@@ -54,6 +54,7 @@ export default function NewPlantingCyclePage() {
   /* ── Load ── */
   useEffect(() => {
     if (!member?.member_id) return;
+    setLoading(true);
     void (async () => {
       const [pRes, sRes, cRes] = await Promise.all([
         fetch(`/api/member/plots?member_id=${member.member_id}`).then(r=>r.json()) as Promise<{plots?:Plot[]}>,
@@ -143,7 +144,7 @@ export default function NewPlantingCyclePage() {
     router.replace(`/planting-cycles/${d.id}`);
   }
 
-  if (loading) return <LoadingState label="กำลังโหลด…" />;
+  if (loading || !member?.member_id) return <LoadingState label="กำลังโหลด…" />;
 
   /* ── UI ── */
   return (

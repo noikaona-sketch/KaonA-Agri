@@ -22,7 +22,7 @@ export async function GET() {
     .in('sale_orders.status', ['completed','confirmed'])
     .order('sale_orders.created_at', { ascending: false });
 
-  // 2. seed_reservations ที่รับของแล้ว (received/completed — ไม่นับ pending/confirmed ที่ยังไม่รับ)
+  // 2. seed_reservations ที่ซื้อแล้ว (confirmed = รับเงินแล้ว/ยืนยันแล้ว)
   const { data: seedRecs } = await s
     .from('seed_reservations')
     .select(`
@@ -30,7 +30,7 @@ export async function GET() {
       members:member_id(id, full_name, phone, status),
       products:product_id(id, name, bag_weight_kg, days_to_harvest, yield_ratio_kg, crop_type)
     `)
-    .in('status', ['received','completed'])
+    .in('status', ['confirmed','received','completed'])
     .order('created_at', { ascending: false });
 
   // รวม member ids จากทั้งสอง source
