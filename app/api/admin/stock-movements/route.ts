@@ -7,6 +7,7 @@ export async function GET(request: Request) {
   if (isForbidden(_ar_get)) return _ar_get.forbidden;
   const { searchParams } = new URL(request.url);
   const warehouseId = searchParams.get('warehouse_id');
+  const productId   = searchParams.get('product_id');
   const type        = searchParams.get('type');
   const dateFrom    = searchParams.get('date_from');
   const dateTo      = searchParams.get('date_to');
@@ -24,7 +25,12 @@ export async function GET(request: Request) {
     .order('created_at', { ascending: false })
     .limit(limit);
 
+  // Keep the warehouse history focused on real stock moves. Reservation holds and
+  // reservation cancellations are stock calculations, but they should not appear here.
+  q = q.neq('movement_type', 'reservation').neq('movement_type', 'cancel_res');
+
   if (warehouseId) q = q.eq('warehouse_id', warehouseId);
+  if (productId)   q = q.eq('product_id', productId);
   if (type)        q = q.eq('movement_type', type);
   if (dateFrom)    q = q.gte('created_at', dateFrom);
   if (dateTo)      q = q.lte('created_at', dateTo + 'T23:59:59');
