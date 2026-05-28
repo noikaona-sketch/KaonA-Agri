@@ -132,7 +132,7 @@ export default function NewPlantingCyclePage() {
         area_planted_rai:    areaRai ? Number(areaRai) : null,
         season_year:         seasonYear,
         quota_kg:            quotaKg ?? null,
-        status:              'planted',
+        status:              'growing',
         source:              'manual',
         member_note:         notes || null,
         confirmed_at:        new Date().toISOString(),
