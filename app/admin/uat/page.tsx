@@ -27,6 +27,7 @@ const UAT_GROUPS = [
       { id:'m8', label:'Import CSV สมาชิก → review → approve batch', critical:false },
       { id:'m9', label:'Admin สร้างสมาชิกเอง + เพิ่มแปลงอย่างน้อย 1 แปลงใน flow เดียว', critical:true },
       { id:'m10', label:'Admin เปิดสมาชิกเดิมและแก้ไขรายละเอียดแปลงได้', critical:true },
+      { id:'m11', label:'ผู้ไม่มีสิทธิ์ admin/staff อ่านหรือแก้ไข bank/address/plot ผ่าน admin API ไม่ได้ (403)', critical:true },
     ],
   },
   {
