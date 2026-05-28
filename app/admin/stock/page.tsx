@@ -4,7 +4,7 @@ import { AdminStockDashboard } from '@/features/admin-stock/admin-stock-dashboar
 
 export default function StockPage() {
   return (
-    <AdminWebShell title="📦 คลังสินค้า" subtitle="สต๊อก รับเข้า โอน เคลื่อนไหว">
+    <AdminWebShell title="📦 คลังสินค้า" subtitle="สต๊อก รับเข้า โอน เคลื่อนไหว · มีหน้าปิดงวดรายเดือน">
       <AdminStockDashboard />
     </AdminWebShell>
   );
