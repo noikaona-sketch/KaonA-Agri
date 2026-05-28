@@ -1,9 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Drawer } from '@/shared/components/drawer';
+import { useOcrIdCard } from '@/features/register-farmer/use-ocr-id-card';
 
-type Props = { open:boolean; onClose:()=>void; onCreated:(member?: { id: string; full_name: string; phone?: string | null })=>void };
+type Props = {
+  open:boolean;
+  onClose:()=>void;
+  onCreated:(member?: { id: string; full_name: string; phone?: string | null })=>void;
+};
 
 const ROLES = [
   { value:'farmer',     label:'🌾 เกษตรกร' },
@@ -31,6 +36,7 @@ const INPUT_STYLE: React.CSSProperties = {
 };
 
 export function CreateMemberDrawer({ open, onClose, onCreated }: Props) {
+  const { status: ocrStatus, error: ocrError, scan } = useOcrIdCard();
   const [form, setForm] = useState({
     full_name:'', phone:'', citizen_id:'', date_of_birth:'',
     gender:'', address:'', province:'', district:'', subdistrict:'',
@@ -41,11 +47,88 @@ export function CreateMemberDrawer({ open, onClose, onCreated }: Props) {
   const [plots, setPlots] = useState([{ name:'', area_rai:'', province:'', district:'', sub_district:'', description:'' }]);
   const [saving, setSaving] = useState(false);
   const [error,  setError]  = useState<string|null>(null);
+  const [ocrPreview, setOcrPreview] = useState<string | null>(null);
+  const [webcamOpen, setWebcamOpen] = useState(false);
+  const [webcamError, setWebcamError] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   function f(k: keyof typeof form) {
     return (e: React.ChangeEvent<HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement>) =>
       setForm(p => ({ ...p, [k]: e.target.value }));
   }
+
+  function applyOcrToForm(ocr: Awaited<ReturnType<typeof scan>>) {
+    if (!ocr) return;
+    setForm((prev) => ({
+      ...prev,
+      full_name: prev.full_name || ocr.fullName || '',
+      citizen_id: prev.citizen_id || ocr.citizenId || '',
+      address: prev.address || ocr.address || '',
+      house_no: prev.house_no || ocr.houseNo || '',
+      moo: prev.moo || ocr.moo || '',
+      subdistrict: prev.subdistrict || ocr.subdistrict || '',
+      district: prev.district || ocr.district || '',
+      province: prev.province || ocr.province || '',
+    }));
+  }
+
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    setOcrPreview(URL.createObjectURL(file));
+    const ocr = await scan(file);
+    applyOcrToForm(ocr);
+  }
+
+  async function openWebcam() {
+    try {
+      setWebcamError(null);
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+      streamRef.current = stream;
+      setWebcamOpen(true);
+      setTimeout(() => {
+        if (videoRef.current) videoRef.current.srcObject = stream;
+      }, 0);
+    } catch {
+      setWebcamError('ไม่สามารถเปิดกล้องได้ กรุณาอัปโหลดไฟล์แทน');
+    }
+  }
+
+  function stopWebcam() {
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+    setWebcamOpen(false);
+  }
+
+  async function captureWebcam() {
+    const video = videoRef.current;
+    if (!video) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.92));
+    if (!blob) return;
+    const file = new File([blob], `id-card-${Date.now()}.jpg`, { type: 'image/jpeg' });
+    setOcrPreview(URL.createObjectURL(file));
+    stopWebcam();
+    const ocr = await scan(file);
+    applyOcrToForm(ocr);
+  }
+
+
+  useEffect(() => () => {
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+  }, []);
+
+  useEffect(() => {
+    if (!open) stopWebcam();
+  }, [open]);
 
   async function submit() {
     if (!form.full_name.trim()) { setError('กรุณากรอกชื่อ-นามสกุล'); return; }
@@ -66,8 +149,11 @@ export function CreateMemberDrawer({ open, onClose, onCreated }: Props) {
     setSaving(false);
     const d = (await res.json()) as { ok?:boolean; error?:string; member_id?: string };
     if (!res.ok) { setError(d.error ?? 'สร้างไม่สำเร็จ'); return; }
-    if (d.member_id) onCreated({ id: d.member_id, full_name: form.full_name.trim(), phone: form.phone || null });
-    else onCreated();
+    if (d.member_id) {
+      onCreated({ id: d.member_id, full_name: form.full_name.trim(), phone: form.phone.trim() || null });
+    } else {
+      onCreated();
+    }
     onClose();
     setForm({ full_name:'', phone:'', citizen_id:'', date_of_birth:'', gender:'', address:'', province:'', district:'', subdistrict:'', house_no:'', moo:'', bank_name:'', bank_account_number:'', bank_account_name:'', role:'farmer' });
     setPlots([{ name:'', area_rai:'', province:'', district:'', sub_district:'', description:'' }]);
@@ -82,6 +168,30 @@ export function CreateMemberDrawer({ open, onClose, onCreated }: Props) {
       )}
 
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 16px' }}>
+        <div style={{ gridColumn:'1/-1', marginBottom:8, border:'1px dashed #A7F3D0', borderRadius:10, padding:10, background:'#F0FDF4' }}>
+          <p style={{ margin:'0 0 8px', fontSize:13, fontWeight:700 }}>📷 OCR บัตรประชาชน</p>
+          <p style={{ margin:'0 0 8px', fontSize:12, color:'#4B5563' }}>ถ่ายจากเว็บแคม (เดสก์ท็อป) หรืออัปโหลดไฟล์เพื่อกรอกข้อมูลอัตโนมัติ</p>
+          {ocrPreview && <img src={ocrPreview} alt="OCR preview" style={{ width:'100%', maxHeight:150, objectFit:'contain', border:'1px solid #DCFCE7', borderRadius:8, marginBottom:8 }} />}
+          {ocrStatus === 'scanning' && <p style={{ margin:'0 0 8px', fontSize:12 }}>กำลังอ่านข้อมูลจากบัตร...</p>}
+          {ocrError && <p style={{ margin:'0 0 8px', fontSize:12, color:'#B91C1C' }}>⚠️ {ocrError}</p>}
+          {webcamError && <p style={{ margin:'0 0 8px', fontSize:12, color:'#B91C1C' }}>⚠️ {webcamError}</p>}
+
+          {webcamOpen ? (
+            <div style={{ marginBottom:8 }}>
+              <video ref={videoRef} autoPlay playsInline style={{ width:'100%', borderRadius:8, border:'1px solid #D1D5DB' }} />
+              <div style={{ display:'flex', gap:8, marginTop:8 }}>
+                <button type="button" onClick={captureWebcam}>📸 จับภาพ</button>
+                <button type="button" onClick={stopWebcam}>ปิดกล้อง</button>
+              </div>
+            </div>
+          ) : null}
+
+          <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileUpload} style={{ display:'none' }} />
+          <div style={{ display:'flex', gap:8 }}>
+            <button type="button" onClick={openWebcam}>เปิดเว็บแคม</button>
+            <button type="button" onClick={() => fileInputRef.current?.click()}>อัปโหลดไฟล์</button>
+          </div>
+        </div>
         <div style={{ gridColumn:'1/-1' }}>
           <F label="ชื่อ-นามสกุล" required>
             <input style={INPUT_STYLE} placeholder="เช่น สมชาย ใจดี" value={form.full_name} onChange={f('full_name')} />
