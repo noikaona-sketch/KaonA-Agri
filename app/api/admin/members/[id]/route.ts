@@ -15,10 +15,10 @@ export async function GET(_req: Request, { params }: Params) {
 
     const [mRes, pRes, vRes, rRes, dRes, lRes] = await Promise.all([
       s.from('members')
-        .select('id,full_name,phone,citizen_id_masked,address,subdistrict,district,province,status,registration_type,line_user_id,line_display_name,line_picture_url,created_at,updated_at,bank_name,bank_account_number,bank_account_name,bank_verified_status,return_reason,returned_at,rejection_reason')
+        .select('id,full_name,phone,citizen_id_masked,address,house_no,moo,subdistrict,district,province,address_full_text,status,registration_type,line_user_id,line_display_name,line_picture_url,created_at,updated_at,bank_name,bank_account_number,bank_account_name,bank_verified_status,return_reason,returned_at,rejection_reason')
         .eq('id', id).maybeSingle(),
       s.from('plots')
-        .select('id,name,area_rai,lat,lng,status,province,land_doc_type,land_doc_number')
+        .select('id,name,area_rai,lat,lng,status,province,district,sub_district,description,land_doc_type,land_doc_number')
         .eq('member_id', id).is('deleted_at', null),
       s.from('member_vehicles')
         .select('id,vehicle_type,plate_number,brand,model,year_be,province,capacity_ton')
@@ -73,7 +73,10 @@ export async function PATCH(req: Request, { params }: Params) {
     const admin = await requireAdmin();
     if (!admin) return NextResponse.json({ error: 'ไม่มีสิทธิ์เข้าถึง' }, { status: 403 });
 
-    const body = (await req.json()) as { status?: string; role?: string };
+    const body = (await req.json()) as {
+      status?: string; role?: string;
+      plot?: { id: string; name?: string; area_rai?: number; province?: string | null; district?: string | null; sub_district?: string | null; description?: string | null; lat?: number | null; lng?: number | null; land_doc_type?: string | null; land_doc_number?: string | null };
+    };
     const s = createServerSupabaseClient();
     const { id } = params;
 
@@ -88,6 +91,21 @@ export async function PATCH(req: Request, { params }: Params) {
         .update({ status: body.status, updated_at: new Date().toISOString() })
         .eq('member_id', id)
         .eq('status', 'pending');
+    }
+    if (body.plot?.id) {
+      const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      if (body.plot.name !== undefined) patch.name = body.plot.name?.trim() || null;
+      if (body.plot.area_rai !== undefined) patch.area_rai = Number(body.plot.area_rai) || 0;
+      if (body.plot.province !== undefined) patch.province = body.plot.province?.trim() || null;
+      if (body.plot.district !== undefined) patch.district = body.plot.district?.trim() || null;
+      if (body.plot.sub_district !== undefined) patch.sub_district = body.plot.sub_district?.trim() || null;
+      if (body.plot.description !== undefined) patch.description = body.plot.description?.trim() || null;
+      if (body.plot.lat !== undefined) patch.lat = body.plot.lat;
+      if (body.plot.lng !== undefined) patch.lng = body.plot.lng;
+      if (body.plot.land_doc_type !== undefined) patch.land_doc_type = body.plot.land_doc_type?.trim() || null;
+      if (body.plot.land_doc_number !== undefined) patch.land_doc_number = body.plot.land_doc_number?.trim() || null;
+      const { error } = await s.from('plots').update(patch).eq('id', body.plot.id).eq('member_id', id);
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
     return NextResponse.json({ ok: true });

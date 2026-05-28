@@ -25,6 +25,8 @@ const UAT_GROUPS = [
       { id:'m6', label:'Farmer กรอก onboarding checklist ครบ 4 ขั้น', critical:false },
       { id:'m7', label:'Farmer A ไม่เห็นข้อมูล Farmer B (RLS)', critical:true },
       { id:'m8', label:'Import CSV สมาชิก → review → approve batch', critical:false },
+      { id:'m9', label:'Admin สร้างสมาชิกเอง + เพิ่มแปลงอย่างน้อย 1 แปลงใน flow เดียว', critical:true },
+      { id:'m10', label:'Admin เปิดสมาชิกเดิมและแก้ไขรายละเอียดแปลงได้', critical:true },
     ],
   },
   {

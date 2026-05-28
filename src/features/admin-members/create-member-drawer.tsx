@@ -34,8 +34,11 @@ export function CreateMemberDrawer({ open, onClose, onCreated }: Props) {
   const [form, setForm] = useState({
     full_name:'', phone:'', citizen_id:'', date_of_birth:'',
     gender:'', address:'', province:'', district:'', subdistrict:'',
+    house_no:'', moo:'', address_full_text:'',
+    bank_name:'', bank_account_number:'', bank_account_name:'',
     role:'farmer',
   });
+  const [plots, setPlots] = useState([{ name:'', area_rai:'', province:'', district:'', sub_district:'', description:'' }]);
   const [saving, setSaving] = useState(false);
   const [error,  setError]  = useState<string|null>(null);
 
@@ -52,14 +55,21 @@ export function CreateMemberDrawer({ open, onClose, onCreated }: Props) {
     const res = await fetch('/api/admin/members/create', {
       method:'POST', credentials:'include',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify(form),
+      body: JSON.stringify({
+        ...form,
+        plots: plots
+          .filter((p) => p.name.trim() && Number(p.area_rai) > 0)
+          .map((p) => ({ ...p, area_rai: Number(p.area_rai) })),
+      }),
+      
     });
     setSaving(false);
     const d = (await res.json()) as { ok?:boolean; error?:string };
     if (!res.ok) { setError(d.error ?? 'สร้างไม่สำเร็จ'); return; }
     onCreated();
     onClose();
-    setForm({ full_name:'', phone:'', citizen_id:'', date_of_birth:'', gender:'', address:'', province:'', district:'', subdistrict:'', role:'farmer' });
+    setForm({ full_name:'', phone:'', citizen_id:'', date_of_birth:'', gender:'', address:'', province:'', district:'', subdistrict:'', house_no:'', moo:'', address_full_text:'', bank_name:'', bank_account_number:'', bank_account_name:'', role:'farmer' });
+    setPlots([{ name:'', area_rai:'', province:'', district:'', sub_district:'', description:'' }]);
   }
 
   return (
@@ -105,6 +115,13 @@ export function CreateMemberDrawer({ open, onClose, onCreated }: Props) {
               placeholder="บ้านเลขที่ ซอย ถนน" value={form.address} onChange={f('address')} />
           </F>
         </div>
+        <F label="บ้านเลขที่"><input style={INPUT_STYLE} value={form.house_no} onChange={f('house_no')} /></F>
+        <F label="หมู่"><input style={INPUT_STYLE} value={form.moo} onChange={f('moo')} /></F>
+        <div style={{ gridColumn:'1/-1' }}>
+          <F label="ที่อยู่ตามบัตร (เต็ม)">
+            <textarea style={{ ...INPUT_STYLE, resize:'vertical' } as React.CSSProperties} rows={2} value={form.address_full_text} onChange={f('address_full_text')} />
+          </F>
+        </div>
 
         <F label="จังหวัด">
           <select style={INPUT_STYLE} value={form.province} onChange={f('province')}>
@@ -126,6 +143,23 @@ export function CreateMemberDrawer({ open, onClose, onCreated }: Props) {
             {ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
           </select>
         </F>
+        <F label="ธนาคาร"><input style={INPUT_STYLE} value={form.bank_name} onChange={f('bank_name')} /></F>
+        <F label="เลขบัญชี"><input style={INPUT_STYLE} value={form.bank_account_number} onChange={f('bank_account_number')} /></F>
+        <F label="ชื่อบัญชี"><input style={INPUT_STYLE} value={form.bank_account_name} onChange={f('bank_account_name')} /></F>
+      </div>
+      <div style={{ marginTop: 12, borderTop:'1px solid #E5E7EB', paddingTop:12 }}>
+        <p style={{ margin:'0 0 8px', fontWeight:700 }}>แปลงเกษตร</p>
+        {plots.map((pl, i) => (
+          <div key={i} style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, border:'1px solid #E5E7EB', borderRadius:8, padding:8, marginBottom:8 }}>
+            <input style={INPUT_STYLE} placeholder="ชื่อแปลง" value={pl.name} onChange={(e)=>setPlots(prev=>prev.map((x,idx)=>idx===i?{...x,name:e.target.value}:x))}/>
+            <input style={INPUT_STYLE} placeholder="พื้นที่ (ไร่)" value={pl.area_rai} onChange={(e)=>setPlots(prev=>prev.map((x,idx)=>idx===i?{...x,area_rai:e.target.value}:x))}/>
+            <input style={INPUT_STYLE} placeholder="จังหวัด" value={pl.province} onChange={(e)=>setPlots(prev=>prev.map((x,idx)=>idx===i?{...x,province:e.target.value}:x))}/>
+            <input style={INPUT_STYLE} placeholder="อำเภอ" value={pl.district} onChange={(e)=>setPlots(prev=>prev.map((x,idx)=>idx===i?{...x,district:e.target.value}:x))}/>
+            <input style={INPUT_STYLE} placeholder="ตำบล" value={pl.sub_district} onChange={(e)=>setPlots(prev=>prev.map((x,idx)=>idx===i?{...x,sub_district:e.target.value}:x))}/>
+            <input style={INPUT_STYLE} placeholder="รายละเอียด" value={pl.description} onChange={(e)=>setPlots(prev=>prev.map((x,idx)=>idx===i?{...x,description:e.target.value}:x))}/>
+          </div>
+        ))}
+        <button type="button" onClick={()=>setPlots(p=>[...p,{ name:'', area_rai:'', province:'', district:'', sub_district:'', description:'' }])}>+ เพิ่มแปลง</button>
       </div>
 
       <div style={{ display:'flex', gap:10, marginTop:8 }}>

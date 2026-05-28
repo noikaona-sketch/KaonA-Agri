@@ -137,6 +137,20 @@ export function AdminMemberDetail({ memberId }: { memberId: string }) {
     else setNotice(`บัญชีธนาคาร: ${bankStatus}`);
     setActing(false); await load();
   }
+  async function editPlot(p: PlotRow) {
+    const name = prompt('ชื่อแปลง', p.name) ?? p.name;
+    const areaRaw = prompt('พื้นที่ (ไร่)', String(p.area_rai ?? '')) ?? String(p.area_rai ?? '');
+    const area = Number(areaRaw);
+    if (!name.trim() || !Number.isFinite(area) || area <= 0) return;
+    const res = await fetch(`/api/admin/members/${memberId}`, {
+      method: 'PATCH', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plot: { id: p.id, name: name.trim(), area_rai: area, province: p.province, district: p.district, sub_district: p.sub_district, description: p.description } }),
+    });
+    const payload = (await res.json()) as { ok?:boolean; error?:string };
+    if (!res.ok) { setError(payload.error ?? 'บันทึกแปลงไม่สำเร็จ'); return; }
+    setNotice('บันทึกข้อมูลแปลงแล้ว');
+    await load();
+  }
 
   if (loading) return <LoadingState label="กำลังโหลดข้อมูล…" />;
   if (error || !member) return <ErrorState title="ไม่พบข้อมูลสมาชิก" detail={error ?? ''} />;
@@ -319,7 +333,7 @@ export function AdminMemberDetail({ memberId }: { memberId: string }) {
               <table style={{ width:'100%', borderCollapse:'collapse' }}>
                 <thead>
                   <tr style={{ background:'#F9FAFB' }}>
-                    {['ชื่อแปลง','ไร่','จังหวัด','GPS','ขอบเขต'].map(h => (
+                    {['ชื่อแปลง','ไร่','จังหวัด','GPS','ขอบเขต','จัดการ'].map(h => (
                       <th key={h} style={{ padding:'9px 14px', textAlign:'left', fontSize:10, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'.04em', borderBottom:'1px solid #E5E7EB', whiteSpace:'nowrap' }}>{h}</th>
                     ))}
                   </tr>
@@ -339,6 +353,9 @@ export function AdminMemberDetail({ memberId }: { memberId: string }) {
                         {p.boundary_geojson
                           ? <span style={{ fontSize:10, padding:'1px 6px', borderRadius:4, background:'#EDE9FE', color:'#5B21B6', fontWeight:700 }}>มีขอบเขต</span>
                           : <span style={{ color:'#D1D5DB', fontSize:11 }}>—</span>}
+                      </td>
+                      <td style={{ padding:'10px 14px', fontSize:11 }}>
+                        <button onClick={(e) => { e.stopPropagation(); void editPlot(p); }} style={{ border:'1px solid #D1D5DB', background:'#fff', borderRadius:6, padding:'2px 8px', cursor:'pointer' }}>แก้ไข</button>
                       </td>
                     </tr>
                   ))}
