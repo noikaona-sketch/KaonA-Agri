@@ -42,10 +42,14 @@ type Screen = 'shop' | 'history' | 'success';
 export function SeedReservationFlow() {
   const member = useCurrentMember();
 
-  // ── helper ดึง Supabase session token ──
+  // ── helper ดึง Supabase session token (refresh ถ้าหมดอายุ) ──
   async function getToken(): Promise<string> {
     try {
       const s = createSupabaseBrowserClient();
+      // refreshSession ก่อน — ป้องกัน token หมดอายุ
+      const { data: refreshed } = await s.auth.refreshSession();
+      if (refreshed.session?.access_token) return refreshed.session.access_token;
+      // fallback: ดึง session ปัจจุบัน
       const { data } = await s.auth.getSession();
       return data.session?.access_token ?? '';
     } catch { return ''; }

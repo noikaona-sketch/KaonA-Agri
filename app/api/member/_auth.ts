@@ -6,27 +6,55 @@ export async function resolveApprovedMember(
   s: ReturnType<typeof createServerSupabaseClient>,
 ): Promise<{ ok: true; memberId: string } | { ok: false; response: ReturnType<typeof NextResponse.json> }> {
   const token = (request.headers.get('Authorization') ?? '').replace('Bearer ', '').trim();
-  if (!token) {
-    return { ok: false, response: NextResponse.json({ error: 'กรุณาเข้าสู่ระบบก่อน' }, { status: 401 }) };
+
+  // ── Path A: Bearer token (Supabase session) ──────────────────────
+  if (token) {
+    try {
+      const anon = createAnonSupabaseClient();
+      const { data: { user }, error: userError } = await anon.auth.getUser(token);
+      if (!userError && user) {
+        const { data: member } = await s
+          .from('members')
+          .select('id,status')
+          .eq('auth_user_id', user.id)
+          .maybeSingle();
+        if (member?.status === 'approved') {
+          return { ok: true, memberId: member.id as string };
+        }
+      }
+    } catch { /* token invalid — fall through to Path B */ }
   }
 
-  // ใช้ anon client verify token เพราะ service_role ไม่ validate user JWT
-  const anonClient = createAnonSupabaseClient();
-  const { data: { user }, error: userError } = await anonClient.auth.getUser(token);
-  if (userError || !user) {
-    return { ok: false, response: NextResponse.json({ error: 'session ไม่ถูกต้อง หรือหมดอายุ' }, { status: 401 }) };
+  // ── Path B: member_id ใน query param หรือ body (LIFF fallback) ──
+  // ใช้เมื่อ Supabase session หมดอายุ แต่ยัง login อยู่ใน LIFF
+  let memberId: string | null = null;
+
+  const url = new URL(request.url);
+  memberId = url.searchParams.get('member_id');
+
+  if (!memberId && request.method !== 'GET') {
+    try {
+      const clone = request.clone();
+      const body = await clone.json() as { member_id?: string };
+      memberId = body.member_id ?? null;
+    } catch { /* no body */ }
   }
 
-  // ดึง member จาก service role client (ข้าม RLS)
-  const { data: member } = await s
-    .from('members')
-    .select('id,status')
-    .eq('auth_user_id', user.id)
-    .maybeSingle();
-
-  if (!member || member.status !== 'approved') {
+  if (memberId) {
+    const { data: member } = await s
+      .from('members')
+      .select('id,status')
+      .eq('id', memberId)
+      .maybeSingle();
+    if (member?.status === 'approved') {
+      return { ok: true, memberId: member.id as string };
+    }
     return { ok: false, response: NextResponse.json({ error: 'สมาชิกไม่ถูกต้องหรือยังไม่ได้รับอนุมัติ' }, { status: 403 }) };
   }
 
-  return { ok: true, memberId: member.id as string };
+  // ── ไม่มีทั้ง token และ member_id ──
+  if (!token) {
+    return { ok: false, response: NextResponse.json({ error: 'กรุณาเข้าสู่ระบบก่อน' }, { status: 401 }) };
+  }
+  return { ok: false, response: NextResponse.json({ error: 'session หมดอายุ กรุณาเปิดแอปใหม่' }, { status: 401 }) };
 }
