@@ -1,6 +1,7 @@
 import { NextResponse }               from 'next/server';
 import { createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
 import { resolveApprovedMember }      from '../_auth';
+import { isCornSeedProduct }          from '@/lib/products/corn-seed';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,7 +17,7 @@ export async function GET(request: Request) {
       .from('stock_movements')
       .select(`
         id, movement_no, qty, unit, ref_type, ref_id, created_at,
-        products:product_id(id, name, bag_weight_kg, days_to_harvest, yield_ratio_kg, crop_type)
+        products:product_id(id, name, category, product_type, bag_weight_kg, days_to_harvest, yield_ratio_kg, crop_type)
       `)
       .in('movement_type', ['out','sale'])
       .in('ref_type', ['sale','sale_order'])
@@ -44,9 +45,17 @@ export async function GET(request: Request) {
       if (row.id) refMap.set(row.id, row);
     });
 
-    // filter เฉพาะ movement ที่เป็นของ member นี้
+    // filter เฉพาะ movement ที่เป็นของ member นี้ และเป็นเมล็ดพันธุ์ข้าวโพดเท่านั้น
     const items = movements
-      .filter(m => m.ref_id && refMap.has(m.ref_id))
+      .filter(m => {
+        const p = m.products as unknown as Record<string,unknown>|null;
+        return m.ref_id && refMap.has(m.ref_id) && isCornSeedProduct({
+          category:     p?.category as string | null | undefined,
+          product_type: p?.product_type as string | null | undefined,
+          crop_type:    p?.crop_type as string | null | undefined,
+          name:         p?.name as string | null | undefined,
+        });
+      })
       .map(m => {
         const ref = refMap.get(m.ref_id!)!;
         const p   = m.products as unknown as Record<string,unknown>|null;

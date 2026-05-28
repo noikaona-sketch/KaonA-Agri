@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient, getLineChannelId } from '../../auth/line/line-auth-helpers';
+import { isCornSeedProduct } from '@/lib/products/corn-seed';
 
 type OrderItem = { product_id: string; qty: number; unit_price: number };
 
@@ -101,11 +102,15 @@ export async function POST(request: Request) {
       }).then(() => {});
     }
 
-    // สร้าง planting cycles สำหรับเมล็ดพันธุ์
+    // สร้าง planting cycles สำหรับเมล็ดพันธุ์ข้าวโพดเท่านั้น
     if (body.create_planting_cycles) {
       for (const item of body.items) {
-        const { data: product } = await s.from('products').select('category').eq('id', item.product_id).single();
-        if (product?.category === 'seed') {
+        const { data: product } = await s
+          .from('products')
+          .select('category, product_type, crop_type, name')
+          .eq('id', item.product_id)
+          .single();
+        if (isCornSeedProduct(product)) {
           await s.rpc('create_planting_cycle_from_order', {
             p_order_id: order.id,
             p_member_id: memberId,
