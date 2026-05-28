@@ -148,8 +148,12 @@ export function DailyStockMovementReport() {
           <p style={{ margin:0, fontSize:20, fontWeight:600, color:'#166534' }}>{fmt(totals.received_qty + totals.transfer_in_qty)}</p>
         </div>
         <div style={{ flex:1, minWidth:130, border:'1px solid #fee2e2', background:'#fef2f2', borderRadius:12, padding:12 }}>
-          <p style={{ margin:'0 0 2px', fontSize:11, color:'#991b1b' }}>ออก + จอง</p>
-          <p style={{ margin:0, fontSize:20, fontWeight:600, color:'#991b1b' }}>{fmt(totals.transfer_out_qty + totals.sold_out_qty + totals.reserved_qty)}</p>
+          <p style={{ margin:'0 0 2px', fontSize:11, color:'#991b1b' }}>โอนออก + ขาย/ออก</p>
+          <p style={{ margin:0, fontSize:20, fontWeight:600, color:'#991b1b' }}>{fmt(totals.transfer_out_qty + totals.sold_out_qty)}</p>
+        </div>
+        <div style={{ flex:1, minWidth:130, border:'1px solid #fed7aa', background:'#fff7ed', borderRadius:12, padding:12 }}>
+          <p style={{ margin:'0 0 2px', fontSize:11, color:'#c2410c' }}>จองสุทธิ</p>
+          <p style={{ margin:0, fontSize:20, fontWeight:600, color:'#c2410c' }}>{fmt(totals.reserved_qty)}</p>
         </div>
       </div>
 

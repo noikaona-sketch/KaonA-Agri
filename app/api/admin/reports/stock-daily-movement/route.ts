@@ -92,8 +92,8 @@ function dayKey(date: string, warehouseId: string, productId: string | null, var
 }
 
 function movementDelta(type: string, qty: number): number {
-  if (['receive', 'transfer_in', 'adjust_add', 'return', 'cancel_res'].includes(type)) return qty;
-  if (['sale', 'transfer_out', 'adjust_sub', 'reservation'].includes(type)) return -qty;
+  if (['receive', 'transfer_in', 'adjust_add', 'return'].includes(type)) return qty;
+  if (['sale', 'transfer_out', 'adjust_sub'].includes(type)) return -qty;
   return 0;
 }
 
@@ -114,8 +114,9 @@ function movementBucket(type: string, qty: number): Partial<Totals> {
   if (type === 'transfer_in') return { transfer_in_qty: qty };
   if (type === 'transfer_out') return { transfer_out_qty: qty };
   if (type === 'reservation') return { reserved_qty: qty };
+  if (type === 'cancel_res') return { reserved_qty: -qty };
   if (['sale', 'adjust_sub'].includes(type)) return { sold_out_qty: qty };
-  if (['adjust_add', 'return', 'cancel_res'].includes(type)) return { received_qty: qty };
+  if (['adjust_add', 'return'].includes(type)) return { received_qty: qty };
   return {};
 }
 
@@ -237,7 +238,7 @@ export async function GET(request: Request) {
 
     days.forEach((date) => {
       const movement = dailyMovement.get(`${date}__${cKey}`) ?? emptyTotals();
-      const dayNet = movement.received_qty + movement.transfer_in_qty - movement.transfer_out_qty - movement.sold_out_qty - movement.reserved_qty;
+      const dayNet = movement.received_qty + movement.transfer_in_qty - movement.transfer_out_qty - movement.sold_out_qty;
       const ending = opening + dayNet;
       const includeRow = movement.received_qty || movement.transfer_in_qty || movement.transfer_out_qty || movement.sold_out_qty || movement.reserved_qty || opening || ending || currentReserved.get(cKey);
       if (includeRow) {
