@@ -3,6 +3,87 @@
 import { useCallback, useEffect, useState } from 'react';
 import { PlotMap, PlotData } from '@/shared/components/plot-map';
 
+/* ── Accordion: อำเภอ → ตำบล → รายแปลง ── */
+function PlotAccordion({ plots, selectedId, onSelect }: {
+  plots: PlotData[]; selectedId:string|null; onSelect:(id:string)=>void;
+}) {
+  const [openDistrict,    setOpenDistrict]    = useState<Set<string>>(new Set());
+  const [openSubdistrict, setOpenSubdistrict] = useState<Set<string>>(new Set());
+
+  // จัดกลุ่มตามอำเภอ → ตำบล
+  const byDistrict = plots.reduce((acc, p) => {
+    const d = p.district ?? 'ไม่ระบุอำเภอ';
+    const s = p.sub_district ?? 'ไม่ระบุตำบล';
+    if (!acc[d]) acc[d] = {};
+    if (!acc[d][s]) acc[d][s] = [];
+    acc[d][s].push(p);
+    return acc;
+  }, {} as Record<string, Record<string, PlotData[]>>);
+
+  function toggleD(d:string) {
+    setOpenDistrict(p => { const n=new Set(p); n.has(d)?n.delete(d):n.add(d); return n; });
+  }
+  function toggleS(key:string) {
+    setOpenSubdistrict(p => { const n=new Set(p); n.has(key)?n.delete(key):n.add(key); return n; });
+  }
+
+  return (
+    <div>
+      {Object.entries(byDistrict).map(([district, subdists]) => {
+        const dPlots   = Object.values(subdists).flat();
+        const dRai     = dPlots.reduce((s,p) => s+Number(p.area_rai), 0);
+        const isOpenD  = openDistrict.has(district);
+        return (
+          <div key={district}>
+            {/* อำเภอ row */}
+            <div onClick={() => toggleD(district)}
+              style={{ display:'flex', alignItems:'center', gap:8, padding:'10px 14px', cursor:'pointer', background:'#F9FAFB', borderBottom:'1px solid #E5E7EB', userSelect:'none' }}>
+              <span style={{ fontSize:11, color:'#9CA3AF', transition:'transform .15s', display:'inline-block', transform:isOpenD?'rotate(90deg)':'rotate(0)' }}>▶</span>
+              <span style={{ fontSize:13, fontWeight:700, color:'#111', flex:1 }}>อ. {district}</span>
+              <span style={{ fontSize:11, color:'#6B7280' }}>{dPlots.length} แปลง</span>
+              <span style={{ fontSize:11, color:'#2D6A4F', fontWeight:600, marginLeft:6 }}>{dRai.toFixed(1)} ไร่</span>
+            </div>
+
+            {isOpenD && Object.entries(subdists).map(([sub, sPlots]) => {
+              const skey    = `${district}__${sub}`;
+              const sRai    = sPlots.reduce((s,p) => s+Number(p.area_rai), 0);
+              const isOpenS = openSubdistrict.has(skey);
+              return (
+                <div key={skey}>
+                  {/* ตำบล row */}
+                  <div onClick={() => toggleS(skey)}
+                    style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 14px 8px 28px', cursor:'pointer', background:'#FAFAFA', borderBottom:'1px solid #F3F4F6', userSelect:'none' }}>
+                    <span style={{ fontSize:10, color:'#9CA3AF', transition:'transform .15s', display:'inline-block', transform:isOpenS?'rotate(90deg)':'rotate(0)' }}>▶</span>
+                    <span style={{ fontSize:12, fontWeight:600, color:'#374151', flex:1 }}>ต. {sub}</span>
+                    <span style={{ fontSize:11, color:'#6B7280' }}>{sPlots.length} แปลง · {sRai.toFixed(1)} ไร่</span>
+                  </div>
+
+                  {/* รายแปลง */}
+                  {isOpenS && sPlots.map((p,i) => (
+                    <div key={p.id} onClick={() => onSelect(p.id)}
+                      style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 14px 9px 44px', borderBottom:i<sPlots.length-1?'1px solid #F9FAFB':'1px solid #F3F4F6', cursor:'pointer', background:selectedId===p.id?'#F0FDF4':'#fff', transition:'background .1s' }}>
+                      <div style={{ width:8, height:8, borderRadius:'50%', background:selectedId===p.id?'#10B981':'#D1D5DB', flexShrink:0 }}/>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <p style={{ margin:0, fontSize:12, fontWeight:600, color:'#111', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.name}</p>
+                        {p.member && <p style={{ margin:0, fontSize:10, color:'#9CA3AF' }}>👤 {p.member.full_name}</p>}
+                      </div>
+                      <div style={{ textAlign:'right', flexShrink:0 }}>
+                        <p style={{ margin:0, fontSize:12, fontWeight:700, color:'#2D6A4F' }}>{p.area_rai}</p>
+                        <p style={{ margin:0, fontSize:9, color:'#9CA3AF' }}>ไร่</p>
+                      </div>
+                      {p.boundary_geojson && <span style={{ fontSize:9, padding:'1px 5px', borderRadius:4, background:'#EDE9FE', color:'#5B21B6', fontWeight:700 }}>⬡</span>}
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 type Tab = 'all' | 'by-member';
 type MemberOption = { id:string; full_name:string; plotCount:number };
 
@@ -127,29 +208,13 @@ export function AdminPlotsMapView() {
           <input placeholder="🔍 ค้นหาแปลง ชื่อ จังหวัด…" value={search} onChange={e=>setSearch(e.target.value)}
             style={{ padding:'8px 12px', borderRadius:8, border:'1.5px solid #E5E7EB', fontSize:13 }} />
 
-          {/* List */}
+          {/* Accordion by district → subdistrict → plots */}
           <div style={{ background:'#fff', border:'1px solid #E5E7EB', borderRadius:10, overflow:'hidden', maxHeight:420, overflowY:'auto' }}>
             {loading && <p style={{ textAlign:'center', padding:20, color:'#9CA3AF', fontSize:13 }}>⏳ กำลังโหลด…</p>}
             {!loading && filtered.length === 0 && <p style={{ textAlign:'center', padding:24, color:'#9CA3AF', fontSize:13 }}>ไม่พบแปลง</p>}
-            {filtered.map((p,i) => (
-              <div key={p.id} onClick={() => setSelPlot(selPlot===p.id?null:p.id)}
-                style={{ padding:'11px 14px', borderBottom:i<filtered.length-1?'1px solid #F3F4F6':'none', cursor:'pointer', background:selPlot===p.id?'#F0FDF4':'#fff', transition:'background .1s' }}>
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
-                  <div style={{ flex:1 }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:5, flexWrap:'wrap' }}>
-                      <span style={{ fontSize:13, fontWeight:700 }}>{p.name}</span>
-                      {p.boundary_geojson && <span style={{ fontSize:9, padding:'1px 5px', borderRadius:4, background:'#EDE9FE', color:'#5B21B6', fontWeight:700 }}>มีขอบเขต</span>}
-                    </div>
-                    {p.member && <p style={{ margin:'2px 0 0', fontSize:11, color:'#9CA3AF' }}>👤 {p.member.full_name}</p>}
-                    <p style={{ margin:'2px 0 0', fontSize:11, color:'#6B7280' }}>{p.province??'—'}{p.district?` · ${p.district}`:''}</p>
-                  </div>
-                  <div style={{ textAlign:'right', flexShrink:0 }}>
-                    <p style={{ margin:0, fontSize:14, fontWeight:700, color:'#2D6A4F' }}>{p.area_rai}</p>
-                    <p style={{ margin:0, fontSize:10, color:'#9CA3AF' }}>ไร่</p>
-                  </div>
-                </div>
-              </div>
-            ))}
+            {!loading && filtered.length > 0 && (
+              <PlotAccordion plots={filtered} selectedId={selPlot} onSelect={setSelPlot} />
+            )}
           </div>
         </div>
 

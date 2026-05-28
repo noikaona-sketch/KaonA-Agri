@@ -55,7 +55,7 @@ export function OnboardingChecklist({ memberId }: { memberId: string }) {
   if (!counts) return null;
 
   const steps: Step[] = [
-    { key: 'plot',    icon: '🗺️', label: 'ลงทะเบียนแปลง',    desc: 'บันทึกพื้นที่แปลงของคุณ',      href: '/plots/new',              done: counts.plot    > 0 },
+    { key: 'plot',    icon: '🗺️', label: 'ลงทะเบียนแปลง',    desc: 'บันทึกพื้นที่แปลงของคุณ',      href: '/plots/add',              done: counts.plot    > 0 },
     { key: 'cycle',   icon: '🌱', label: 'สร้างรอบปลูก',      desc: 'แจ้งข้อมูลการปลูกรอบแรก',     href: '/planting-cycles/new',    done: counts.cycle   > 0 },
     { key: 'no_burn', icon: '🔥', label: 'สมัครโครงการไม่เผา', desc: 'รับโบนัส +100 บาท/ตัน',       href: '/no-burn',                done: counts.no_burn > 0 },
     { key: 'seed',    icon: '🌽', label: 'จองเมล็ดพันธุ์',     desc: 'จองเมล็ดสำหรับรอบปลูกหน้า',  href: '/service/reservations',   done: counts.seed    > 0 },

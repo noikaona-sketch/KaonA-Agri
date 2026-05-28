@@ -15,7 +15,9 @@ const PLOT_SELECT =
 export async function GET(request: Request) {
   try {
     const s = createServerSupabaseClient();
-    const caller = await resolveApprovedMember(request, s);
+    // รับ member_id จาก query param โดยตรง (fallback เมื่อ session หมดอายุ)
+    const qMemberId = new URL(request.url).searchParams.get('member_id') ?? undefined;
+    const caller = await resolveApprovedMember(request, s, qMemberId);
     if (!caller.ok) return caller.response;
 
     const { data, error } = await s

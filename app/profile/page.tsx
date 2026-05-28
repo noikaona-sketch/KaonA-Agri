@@ -101,16 +101,18 @@ export default function ProfilePage() {
 
     void (async () => {
       const today = new Date().toISOString().slice(0, 10);
-      const { data: { session } } = await s.auth.getSession();
-      const authHeaders = session?.access_token
-        ? { Authorization: `Bearer ${session.access_token}` }
-        : undefined;
+      // refresh session ก่อน ป้องกัน token หมดอายุ
+      const { data: refreshed } = await s.auth.refreshSession();
+      const token = refreshed.session?.access_token
+        ?? (await s.auth.getSession()).data.session?.access_token;
+      const authHeaders = token ? { Authorization: `Bearer ${token}` } : undefined;
+      const plotsUrl = `/api/member/plots?member_id=${member.member_id}`;
       const [
         m, p, d, cr, pr,
         announcementRes, surveysRes, responsesRes, nextBookingRes, cyclesRes,
       ] = await Promise.all([
         s.from('members').select('full_name,phone,address,citizen_id_masked,status,bank_name,bank_account_number,bank_account_name').eq('id', member.member_id).maybeSingle(),
-        fetch('/api/member/plots', { headers: authHeaders }).then((r) => r.json()),
+        fetch(plotsUrl, { headers: authHeaders }).then((r) => r.json()),
         s.from('member_documents').select('doc_type,verified,file_url').eq('member_id', member.member_id),
         fetch('/api/member/credit').then((r) => r.json()),
         s.from('provider_requests')
