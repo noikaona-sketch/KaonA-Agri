@@ -15,6 +15,7 @@ type Movement = {
   total_amount: number | null; ref_no: string | null; note: string | null; created_at: string;
   ref_type: string | null; ref_id: string | null;
   buyer_name: string | null; buyer_phone: string | null; ref_order_number: string | null;
+  seller_name: string | null;
   warehouses: { name: string } | null;
 };
 type ReceiveEdit = { id: string; movement_no: string; qty: string; unit_cost: string; note: string } | null;
@@ -259,12 +260,13 @@ export function AdminStockDashboard() {
         </div>
         <div className="admin-table-wrap">
           <table className="admin-table">
-            <thead><tr><th>เลขที่</th><th>สินค้า</th><th>จำนวน</th><th>ทุน/หน่วย</th><th>หมายเหตุ</th><th>เวลา</th><th /></tr></thead>
+            <thead><tr><th>เลขที่</th><th>สินค้า</th><th>ผู้ขาย/Supplier</th><th>จำนวน</th><th>ทุน/หน่วย</th><th>หมายเหตุ</th><th>เวลา</th><th /></tr></thead>
             <tbody>
               {movements.filter((m) => m.movement_type === 'receive').slice(0, 20).map((mv) => (
                 <tr key={mv.id}>
                   <td style={{ fontFamily: 'monospace', fontSize: 12 }}>{mv.movement_no}</td>
                   <td>{mv.product_name}</td>
+                  <td>{mv.seller_name ?? '—'}</td>
                   <td style={{ fontWeight: 700 }}>{mv.qty.toLocaleString()} {mv.unit}</td>
                   <td>{mv.unit_cost ? mv.unit_cost.toLocaleString() : '—'}</td>
                   <td style={{ maxWidth: 200 }}>{mv.note || '—'}</td>
@@ -278,7 +280,7 @@ export function AdminStockDashboard() {
                 </tr>
               ))}
               {movements.filter((m) => m.movement_type === 'receive').length === 0 && (
-                <tr><td colSpan={7} style={{ textAlign: 'center', padding: 20, color: '#9ca3af' }}>ยังไม่มีประวัติรับเข้า</td></tr>
+                <tr><td colSpan={8} style={{ textAlign: 'center', padding: 20, color: '#9ca3af' }}>ยังไม่มีประวัติรับเข้า</td></tr>
               )}
             </tbody>
           </table>
