@@ -50,8 +50,6 @@ export function PlotMap({ plots, selectedId, onSelect, editMode, onSaveBoundary,
   const mapObj     = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<Map<string, google.maps.Marker>>(new Map());
   const polygonsRef= useRef<Map<string, google.maps.Polygon>>(new Map());
-  const drawingRef = useRef<google.maps.drawing.DrawingManager | null>(null);
-  const drawPoly   = useRef<google.maps.Polygon | null>(null);
 
   const [mapLoaded,   setMapLoaded]   = useState(false);
   const [saving,      setSaving]      = useState(false);
@@ -62,10 +60,15 @@ export function PlotMap({ plots, selectedId, onSelect, editMode, onSaveBoundary,
 
   /* ── Load Google Maps ── */
   useEffect(() => {
-    if (!apiKey || mapLoaded || window.google?.maps) { setMapLoaded(true); return; }
+    if (!apiKey) return;
+    if (window.google?.maps) { setMapLoaded(true); return; }
+    if (mapLoaded) return;
+
     const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=drawing,geometry&callback=initPlotsMap`;
+    // ใช้ loading=async ตาม best practice + ลบ drawing ออก (deprecated Aug 2025)
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=geometry&loading=async&callback=initPlotsMap`;
     script.async = true;
+    script.defer = true;
     window.initPlotsMap = () => setMapLoaded(true);
     document.head.appendChild(script);
     return () => { delete window.initPlotsMap; };
@@ -165,54 +168,84 @@ export function PlotMap({ plots, selectedId, onSelect, editMode, onSaveBoundary,
     }
   }, [mapLoaded, plots, selectedId, onSelect]);
 
-  /* ── Drawing Manager ── */
+  /* ── Drawing Mode — ใช้ click วาด polygon เอง แทน DrawingManager ที่ deprecated ── */
+  const drawPointsRef = useRef<google.maps.LatLng[]>([]);
+  const tempPolyRef   = useRef<google.maps.Polygon | null>(null);
+  const tempMarkersRef= useRef<google.maps.Marker[]>([]);
+  const mapClickRef   = useRef<google.maps.MapsEventListener | null>(null);
+
   useEffect(() => {
     if (!mapObj.current || !mapLoaded) return;
+    const map = mapObj.current;
+
+    // ล้าง listener เดิม
+    if (mapClickRef.current) google.maps.event.removeListener(mapClickRef.current);
+    mapClickRef.current = null;
+
     if (!editMode) {
-      drawingRef.current?.setMap(null);
-      drawingRef.current = null;
-      drawPoly.current?.setMap(null);
+      // ล้าง temp polygon
+      tempPolyRef.current?.setMap(null);
+      tempPolyRef.current = null;
+      tempMarkersRef.current.forEach(m => m.setMap(null));
+      tempMarkersRef.current = [];
+      drawPointsRef.current = [];
+      setPendingArea(null);
       return;
     }
 
-    const dm = new google.maps.drawing.DrawingManager({
-      drawingMode: google.maps.drawing.OverlayType.POLYGON,
-      drawingControl: true,
-      drawingControlOptions: {
-        position: google.maps.ControlPosition.TOP_CENTER,
-        drawingModes: [google.maps.drawing.OverlayType.POLYGON],
-      },
-      polygonOptions: {
-        strokeColor: '#F4A261', strokeWeight: 3,
-        fillColor: '#F4A261', fillOpacity: 0.2,
-        editable: true, draggable: true,
-      },
-    });
-    dm.setMap(mapObj.current);
-    drawingRef.current = dm;
+    // เปิด editMode → click บน map เพื่อเพิ่ม point
+    
+    mapClickRef.current = map.addListener('click', (e: google.maps.MapMouseEvent) => {
+      if (!e.latLng) return;
+      drawPointsRef.current = [...drawPointsRef.current, e.latLng];
 
-    dm.addListener('polygoncomplete', (polygon: google.maps.Polygon) => {
-      drawPoly.current?.setMap(null);
-      drawPoly.current = polygon;
-      dm.setDrawingMode(null);
-      const path = polygon.getPath().getArray();
-      const area = calcAreaRai(path);
-      setPendingArea(area);
+      // วาง marker
+      const dot = new google.maps.Marker({
+        position: e.latLng, map,
+        icon: { path: google.maps.SymbolPath.CIRCLE, scale:5, fillColor:'#F4A261', fillOpacity:1, strokeColor:'#fff', strokeWeight:1.5 },
+      });
+      tempMarkersRef.current.push(dot);
+
+      // อัพเดท polygon preview
+      tempPolyRef.current?.setMap(null);
+      if (drawPointsRef.current.length >= 3) {
+        tempPolyRef.current = new google.maps.Polygon({
+          paths: drawPointsRef.current, map,
+          strokeColor:'#F4A261', strokeWeight:2,
+          fillColor:'#F4A261', fillOpacity:0.2,
+          editable: true,
+        });
+        const area = calcAreaRai(drawPointsRef.current);
+        setPendingArea(area);
+      }
     });
+
+    return () => {
+      if (mapClickRef.current) google.maps.event.removeListener(mapClickRef.current);
+      
+    };
   }, [mapLoaded, editMode]);
 
   /* ── Save boundary ── */
   async function saveBoundary() {
-    if (!drawPoly.current || !drawingPlot || !onSaveBoundary) return;
-    const path = drawPoly.current.getPath().getArray();
-    const coords = [...path, path[0]].map(p => [p.lng(), p.lat()]);
+    if (!drawingPlot || !onSaveBoundary) return;
+    const points = drawPointsRef.current;
+    if (points.length < 3) return;
+
+    const coords = [...points, points[0]].map(p => [p.lng(), p.lat()]);
     const geojson = { type:'Polygon', coordinates:[coords] };
-    const area    = calcAreaRai(path);
+    const area    = calcAreaRai(points);
+
     setSaving(true);
     await onSaveBoundary(drawingPlot, geojson, area);
     setSaving(false);
-    drawPoly.current.setMap(null);
-    drawPoly.current = null;
+
+    // reset
+    tempPolyRef.current?.setMap(null);
+    tempPolyRef.current = null;
+    tempMarkersRef.current.forEach(m => m.setMap(null));
+    tempMarkersRef.current = [];
+    drawPointsRef.current = [];
     setPendingArea(null);
     setDrawingPlot(null);
   }
@@ -228,21 +261,71 @@ export function PlotMap({ plots, selectedId, onSelect, editMode, onSaveBoundary,
       {/* Drawing controls overlay */}
       {editMode && (
         <div style={{ position:'absolute', top:8, right:8, zIndex:10, display:'flex', flexDirection:'column', gap:6 }}>
+          {/* instruction */}
+          <div style={{ background:'rgba(255,255,255,.95)', borderRadius:8, padding:'8px 12px', fontSize:12, color:'#92400E', border:'1px solid #FCD34D', maxWidth:200 }}>
+            👆 คลิกบนแผนที่เพื่อวางจุด<br/>ต้องการอย่างน้อย 3 จุด
+          </div>
+
           {plots.length > 0 && (
-            <select value={drawingPlot ?? ''} onChange={e => setDrawingPlot(e.target.value || null)}
+            <select value={drawingPlot ?? ''} onChange={e => {
+              setDrawingPlot(e.target.value || null);
+              // reset ถ้าเปลี่ยนแปลง
+              tempPolyRef.current?.setMap(null);
+              tempMarkersRef.current.forEach(m => m.setMap(null));
+              tempMarkersRef.current = [];
+              drawPointsRef.current = [];
+              setPendingArea(null);
+            }}
               style={{ padding:'6px 10px', borderRadius:8, border:'1.5px solid #E5E7EB', fontSize:12, background:'#fff', maxWidth:180 }}>
               <option value="">เลือกแปลงที่จะวาด…</option>
               {plots.map(p => <option key={p.id} value={p.id}>{p.name} ({p.area_rai} ไร่)</option>)}
             </select>
           )}
-          {pendingArea !== null && drawingPlot && (
+
+          {(drawPointsRef.current.length > 0 || pendingArea !== null) && (
             <div style={{ background:'#fff', borderRadius:8, padding:'8px 12px', border:'1px solid #E5E7EB', fontSize:12 }}>
-              <p style={{ margin:'0 0 4px', fontWeight:600, color:'#111' }}>📐 วัดได้ {pendingArea} ไร่</p>
-              <p style={{ margin:'0 0 6px', fontSize:11, color:'#9CA3AF' }}>farmer กรอก: {plots.find(p=>p.id===drawingPlot)?.area_rai} ไร่</p>
-              <button onClick={saveBoundary} disabled={saving}
-                style={{ width:'100%', padding:'5px', borderRadius:6, border:'none', background:'#2D6A4F', color:'#fff', fontWeight:700, fontSize:12, cursor:'pointer' }}>
-                {saving ? '⏳ กำลังบันทึก…' : '💾 บันทึก polygon'}
-              </button>
+              <p style={{ margin:'0 0 4px', fontWeight:600, color:'#111' }}>
+                {drawPointsRef.current.length} จุด {pendingArea !== null ? `· 📐 ${pendingArea} ไร่` : ''}
+              </p>
+              {drawingPlot && pendingArea !== null && (
+                <p style={{ margin:'0 0 6px', fontSize:11, color:'#9CA3AF' }}>
+                  farmer กรอก: {plots.find(p=>p.id===drawingPlot)?.area_rai} ไร่
+                </p>
+              )}
+              <div style={{ display:'flex', gap:6 }}>
+                <button onClick={() => {
+                  // undo จุดสุดท้าย
+                  const last = tempMarkersRef.current.pop();
+                  last?.setMap(null);
+                  drawPointsRef.current = drawPointsRef.current.slice(0,-1);
+                  tempPolyRef.current?.setMap(null);
+                  tempPolyRef.current = null;
+                  if (drawPointsRef.current.length >= 3) {
+                    tempPolyRef.current = new google.maps.Polygon({
+                      paths:drawPointsRef.current, map:mapObj.current!,
+                      strokeColor:'#F4A261', strokeWeight:2, fillColor:'#F4A261', fillOpacity:.2, editable:true,
+                    });
+                    setPendingArea(calcAreaRai(drawPointsRef.current));
+                  } else setPendingArea(null);
+                }}
+                  style={{ flex:1, padding:'4px', borderRadius:6, border:'1px solid #E5E7EB', background:'#fff', cursor:'pointer', fontSize:11 }}>
+                  ↩️ undo
+                </button>
+                <button onClick={() => {
+                  tempPolyRef.current?.setMap(null); tempPolyRef.current = null;
+                  tempMarkersRef.current.forEach(m=>m.setMap(null)); tempMarkersRef.current=[];
+                  drawPointsRef.current=[]; setPendingArea(null);
+                }}
+                  style={{ flex:1, padding:'4px', borderRadius:6, border:'1px solid #FECACA', background:'#FEF2F2', color:'#DC2626', cursor:'pointer', fontSize:11 }}>
+                  🗑️ ล้าง
+                </button>
+              </div>
+              {drawingPlot && pendingArea !== null && (
+                <button onClick={saveBoundary} disabled={saving}
+                  style={{ width:'100%', marginTop:6, padding:'5px', borderRadius:6, border:'none', background:'#2D6A4F', color:'#fff', fontWeight:700, fontSize:12, cursor:'pointer' }}>
+                  {saving ? '⏳ กำลังบันทึก…' : '💾 บันทึก polygon'}
+                </button>
+              )}
             </div>
           )}
         </div>
