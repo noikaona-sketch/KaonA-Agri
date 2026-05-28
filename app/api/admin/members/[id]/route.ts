@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '../../../auth/line/line-auth-helpers';
-import { requireAdmin } from '../_admin-auth';
+import { isForbidden, requireAdminPermission } from '../_admin-auth';
 import { evaluateMemberReadiness } from '../readiness-policy';
 
 type Params = { params: { id: string } };
 
 export async function GET(_req: Request, { params }: Params) {
   try {
-    const admin = await requireAdmin();
-    if (!admin) return NextResponse.json({ error: 'ไม่มีสิทธิ์เข้าถึง' }, { status: 403 });
+    const auth = await requireAdminPermission('members.read');
+    if (isForbidden(auth)) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
     const s = createServerSupabaseClient();
     const { id } = params;
@@ -70,8 +70,8 @@ export async function GET(_req: Request, { params }: Params) {
 
 export async function PATCH(req: Request, { params }: Params) {
   try {
-    const admin = await requireAdmin();
-    if (!admin) return NextResponse.json({ error: 'ไม่มีสิทธิ์เข้าถึง' }, { status: 403 });
+    const auth = await requireAdminPermission('members.write');
+    if (isForbidden(auth)) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
     const body = (await req.json()) as {
       status?: string; role?: string;
@@ -92,10 +92,17 @@ export async function PATCH(req: Request, { params }: Params) {
         .eq('member_id', id)
         .eq('status', 'pending');
     }
+    if (body.plot !== undefined && !body.plot?.id) {
+      return NextResponse.json({ error: 'plot id required' }, { status: 400 });
+    }
     if (body.plot?.id) {
       const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
       if (body.plot.name !== undefined) patch.name = body.plot.name?.trim() || null;
-      if (body.plot.area_rai !== undefined) patch.area_rai = Number(body.plot.area_rai) || 0;
+      if (body.plot.area_rai !== undefined) {
+        const area = Number(body.plot.area_rai);
+        if (!Number.isFinite(area) || area <= 0) return NextResponse.json({ error: 'area_rai must be > 0' }, { status: 400 });
+        patch.area_rai = area;
+      }
       if (body.plot.province !== undefined) patch.province = body.plot.province?.trim() || null;
       if (body.plot.district !== undefined) patch.district = body.plot.district?.trim() || null;
       if (body.plot.sub_district !== undefined) patch.sub_district = body.plot.sub_district?.trim() || null;
@@ -116,8 +123,8 @@ export async function PATCH(req: Request, { params }: Params) {
 
 export async function DELETE(_req: Request, { params }: Params) {
   try {
-    const admin = await requireAdmin();
-    if (!admin) return NextResponse.json({ error: 'ไม่มีสิทธิ์เข้าถึง' }, { status: 401 });
+    const auth = await requireAdminPermission('members.write');
+    if (isForbidden(auth)) return NextResponse.json({ error: auth.error }, { status: auth.status });
     const { id } = await params;
     const s = createServerSupabaseClient();
     // Soft cancel only (not hard delete):

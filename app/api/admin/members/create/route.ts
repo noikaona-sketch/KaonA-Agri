@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '../../../auth/line/line-auth-helpers';
-import { requireAdmin } from '../_admin-auth';
+import { isForbidden, requireAdminPermission } from '../_admin-auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
   try {
-    const admin = await requireAdmin();
-    if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const auth = await requireAdminPermission('members.write');
+    if (isForbidden(auth)) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
     const body = (await request.json()) as {
       full_name:string; phone?:string; citizen_id?:string;
@@ -79,7 +79,7 @@ export async function POST(request: Request) {
           land_doc_type: p.land_doc_type?.trim() || null,
           land_doc_number: p.land_doc_number?.trim() || null,
           status: 'approved',
-          created_by: member.id,
+          created_by: null,
           role_used: 'staff',
           timestamp: now,
         }))
