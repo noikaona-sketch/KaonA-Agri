@@ -183,15 +183,35 @@ function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: stri
     })();
   }, [memberId]);
 
-  const FARMER_MENU = [
-    { href: '/service/reservations', icon: '🌽', label: 'จองเมล็ดพันธุ์',   desc: 'จองข้าวโพด', accent: true },
-    { href: '/planting-cycles/new', icon: '🌱',  label: 'แจ้งปลูก',          desc: 'บันทึกรอบปลูก' },
-    { href: '/plots',               icon: '📅',  label: 'จองคิวขาย',         desc: 'นัดวันขาย' },
-    { href: '/no-burn',             icon: '📸',  label: 'ส่งรูปแปลง',        desc: 'รูปแปลง/ไม่เผา' },
-    { href: '/no-burn',             icon: '🌿',  label: 'โครงการไม่เผา',     desc: 'สมัครโครงการ' },
-    { href: '/planting-cycles',     icon: '📊',  label: 'ประวัติรอบปลูก',     desc: 'ประวัติและยอดขาย' },
-    { href: '/harvest/calculator',  icon: '💧',  label: 'คำนวณ ชื้น/บาท',    desc: 'ขายเลย vs รอให้แห้ง' },
-    { href: '/harvest/book',        icon: '🚜',  label: 'แจ้งวันเกี่ยว',      desc: 'จองคิวรับซื้อ/เข้าอบ' },
+  const FARMER_MENU_GROUPS = [
+    {
+      group: '🌱 การปลูก',
+      accentColor: '#2e7d32',
+      items: [
+        { href: '/service/reservations', icon: '🌽', label: 'จองเมล็ดพันธุ์', desc: 'สั่งข้าวโพด', accent: true },
+        { href: '/planting-cycles/new',  icon: '🌱', label: 'แจ้งปลูกใหม่',   desc: 'เปิดรอบปลูก' },
+        { href: '/planting-cycles',      icon: '📋', label: 'รอบปลูกของฉัน',  desc: 'ติดตาม+บันทึก' },
+        { href: '/plots',                icon: '🗺️', label: 'แปลงของฉัน',     desc: 'ข้อมูลแปลง' },
+      ],
+    },
+    {
+      group: '💰 ขายผลผลิต',
+      accentColor: '#1565c0',
+      items: [
+        { href: '/harvest/book',       icon: '🚜', label: 'แจ้งวันเกี่ยว',   desc: 'จองคิวรับซื้อ' },
+        { href: '/plots',              icon: '📅', label: 'นัดวันขาย',        desc: 'จองคิวขาย' },
+        { href: '/harvest/calculator', icon: '💧', label: 'คำนวณชื้น/บาท',   desc: 'ขายเลย vs รอแห้ง' },
+        { href: '/planting-cycles',    icon: '📊', label: 'ประวัติยอดขาย',   desc: 'สรุปรายได้' },
+      ],
+    },
+    {
+      group: '🌿 โครงการไม่เผา',
+      accentColor: '#e65100',
+      items: [
+        { href: '/no-burn', icon: '🌿', label: 'ลงทะเบียนงดเผา', desc: 'สมัคร+ติดตามสถานะ' },
+        { href: '/no-burn', icon: '📸', label: 'ส่งรูปหลักฐาน',  desc: 'รูปแปลงงดเผา' },
+      ],
+    },
   ];
 
   return (
@@ -202,16 +222,24 @@ function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: stri
         {/* onboarding checklist — ซ่อนเองเมื่อทำครบ 4 ขั้น */}
         <OnboardingChecklist memberId={memberId} />
 
-        {/* P1.5 engagement feed — status + season + no-burn + announcement + price */}
+        {/* P1.5 engagement feed */}
         <MemberDashboardFeed memberId={memberId} />
 
-        {/* main menus */}
-        <div>
-          <p style={{ margin: '0 0 10px', fontWeight: 500, fontSize: 14, color: 'var(--color-text-secondary,#666)' }}>เมนูหลัก</p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8 }}>
-            {FARMER_MENU.map((item) => <MenuCard key={item.href + item.label} {...item} />)}
+        {/* เมนูแยกกลุ่ม */}
+        {FARMER_MENU_GROUPS.map((grp) => (
+          <div key={grp.group}>
+            {/* Group header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+              <div style={{ height: 3, width: 20, borderRadius: 99, background: grp.accentColor }} />
+              <p style={{ margin: 0, fontWeight: 700, fontSize: 13, color: grp.accentColor, letterSpacing: '0.02em' }}>
+                {grp.group}
+              </p>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8 }}>
+              {grp.items.map((item) => <MenuCard key={item.href + item.label} {...item} />)}
+            </div>
           </div>
-        </div>
+        ))}
 
         {/* bonus banner */}
         <div style={{ background: '#FFF8DB', borderRadius: 14, padding: '14px 16px', display: 'flex', gap: 12, alignItems: 'center', border: '0.5px solid #F9C74F' }}>

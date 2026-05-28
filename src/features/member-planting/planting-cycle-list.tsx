@@ -156,6 +156,16 @@ export function PlantingCycleList() {
                   )}
                 </div>
               )}
+              {/* Quick activity shortcut — for active cycles */}
+              {!['harvested','cancelled'].includes(c.status) && (
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}
+                  onClick={(e) => e.preventDefault()}>
+                  <Link href={`/planting-cycles/${c.id}/activity`}
+                    style={{ fontSize: 12, fontWeight: 700, padding: '5px 12px', borderRadius: 8, background: '#e8f5e9', color: '#2e7d32', textDecoration: 'none', border: '1px solid #a5d6a7' }}>
+                    📋 บันทึกกิจกรรม
+                  </Link>
+                </div>
+              )}
             </div>
           </Link>
         );
