@@ -43,6 +43,10 @@ export async function POST(request: Request) {
     const consentRaw      = (form.get('consent_accepted')  as string | null) ?? '';
     const plantingCycleId = (form.get('planting_cycle_id') as string | null)?.trim() || null;
     const note            = (form.get('note')              as string | null)?.trim() || null;
+    const timingRaw       = (form.get('timing')            as string | null)?.trim() || null;
+    const timing          = (timingRaw === 'before_planting' || timingRaw === 'after_planting')
+                              ? timingRaw
+                              : 'after_planting';
     const latRaw          = (form.get('lat')               as string | null) ?? '';
     const lngRaw          = (form.get('lng')               as string | null) ?? '';
     const accuracyRaw     = (form.get('accuracy')          as string | null) ?? '';
@@ -85,6 +89,7 @@ export async function POST(request: Request) {
         member_id:         caller.memberId,
         plot_id:           plotId,
         planting_cycle_id: plantingCycleId,
+        timing,
         status:            'submitted',
         consent_accepted:  true,
         note,
@@ -171,7 +176,7 @@ export async function GET(request: Request) {
     const { data, error } = await s
       .from('no_burn_requests')
       .select(
-        'id, status, submitted_at, review_note, consent_accepted, note, ' +
+        'id, status, timing, submitted_at, review_note, consent_accepted, note, ' +
         'plot_id, planting_cycle_id, ' +
         'plots(name, province), ' +
         'planting_cycles(crop_name, season_year)',

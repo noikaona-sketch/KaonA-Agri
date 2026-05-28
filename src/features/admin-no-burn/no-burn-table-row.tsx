@@ -6,6 +6,7 @@ export type NoBurnRow = {
   id:               string;
   member_id:        string;
   status:           string;
+  timing:           'before_planting' | 'after_planting' | null;
   submitted_at:     string;
   review_note:      string | null;
   consent_accepted: boolean | null;
@@ -25,20 +26,26 @@ export const STATUS_CFG: Record<string, { badge: string; label: string; color: s
   seeking_support:     { badge: 'pending',  label: '🤝 ขอคำแนะนำ',      color: '#0369a1' },
 };
 
+export const TIMING_CFG: Record<string, { label: string; color: string; bg: string }> = {
+  before_planting: { label: '🌱 ก่อนลงแปลง',      color: '#1565c0', bg: '#e3f2fd' },
+  after_planting:  { label: '🌿 หลังลงแปลงแล้ว',  color: '#2e7d32', bg: '#e8f5e9' },
+};
+
 export const ACTIONABLE = new Set(['submitted', 'under_review', 'inspection_required']);
 
 type Props = {
-  r:          NoBurnRow;
-  acting:     string | null;
-  noteDraft:  string;
-  onNoteChange: (v: string) => void;
-  onTransition: (id: string, status: 'under_review' | 'inspection_required' | 'approved' | 'rejected', note?: string, triggerInspection?: boolean) => void;
-  showEvidence: boolean;
+  r:                NoBurnRow;
+  acting:           string | null;
+  noteDraft:        string;
+  onNoteChange:     (v: string) => void;
+  onTransition:     (id: string, status: 'under_review' | 'inspection_required' | 'approved' | 'rejected', note?: string, triggerInspection?: boolean) => void;
+  showEvidence:     boolean;
   onToggleEvidence: () => void;
 };
 
 export function NoBurnTableRow({ r, acting, noteDraft, onNoteChange, onTransition, showEvidence, onToggleEvidence }: Props) {
   const st       = STATUS_CFG[r.status] ?? { badge: 'pending', label: r.status, color: '#666' };
+  const timingCfg = r.timing ? TIMING_CFG[r.timing] : null;
   const isActing = acting === r.id;
   const canAct   = ACTIONABLE.has(r.status) && !isActing;
 
@@ -49,59 +56,85 @@ export function NoBurnTableRow({ r, acting, noteDraft, onNoteChange, onTransitio
           <p style={{ margin: 0, fontWeight: 600 }}>{r.member?.[0]?.full_name ?? '—'}</p>
           <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>{r.member?.[0]?.phone ?? ''}</p>
         </td>
-        <td>{r.plots?.[0]?.name ?? '—'}{r.plots?.[0]?.area_rai ? ` (${r.plots[0].area_rai} ไร่)` : ''}</td>
-        <td>{r.planting_cycles?.[0] ? `${r.planting_cycles[0].crop_name} ${r.planting_cycles[0].season_year}` : '—'}</td>
-        <td style={{ textAlign: 'center' }}>{r.consent_accepted ? '✅' : '—'}</td>
         <td>
-          <span style={{ fontSize: 12, fontWeight: 700, padding: '3px 9px', borderRadius: 999, background: st.color + '22', color: st.color, whiteSpace: 'nowrap' }}>
+          <p style={{ margin: 0 }}>{r.plots?.[0]?.name ?? '—'}</p>
+          {r.plots?.[0]?.area_rai != null && (
+            <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>{r.plots[0].area_rai} ไร่</p>
+          )}
+        </td>
+        <td>
+          {/* Timing badge */}
+          {timingCfg ? (
+            <span style={{
+              display: 'inline-block', fontSize: 11, fontWeight: 700,
+              padding: '2px 8px', borderRadius: 999,
+              background: timingCfg.bg, color: timingCfg.color,
+              marginBottom: 4,
+            }}>
+              {timingCfg.label}
+            </span>
+          ) : (
+            <span style={{ fontSize: 11, color: '#9e9e9e' }}>—</span>
+          )}
+          {r.planting_cycles?.[0] && (
+            <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>
+              {r.planting_cycles[0].crop_name} {r.planting_cycles[0].season_year}
+            </p>
+          )}
+        </td>
+        <td>
+          <span style={{
+            fontSize: 11, fontWeight: 700, padding: '3px 8px',
+            borderRadius: 999, background: st.color + '22', color: st.color,
+            whiteSpace: 'nowrap',
+          }}>
             {st.label}
           </span>
-          {r.review_note && <p style={{ margin: '4px 0 0', fontSize: 11, color: '#6b7280', maxWidth: 160 }}>💬 {r.review_note}</p>}
-        </td>
-        <td style={{ fontSize: 13, color: '#6b7280', whiteSpace: 'nowrap' }}>
-          {new Date(r.submitted_at).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}
+          <p style={{ margin: '4px 0 0', fontSize: 11, color: '#9ca3af' }}>
+            {new Date(r.submitted_at).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })}
+          </p>
         </td>
         <td>
-          {/* ปุ่มดูรูปหลักฐาน */}
-          <button onClick={onToggleEvidence}
-            style={{ fontSize: 11, padding: '3px 8px', borderRadius: 6, border: '1px solid #d1d5db', background: showEvidence ? '#e8f5e9' : '#f9fafb', cursor: 'pointer', marginBottom: canAct ? 6 : 0, color: showEvidence ? '#2e7d32' : '#374151' }}>
-            📸 {showEvidence ? 'ซ่อนรูป' : 'ดูรูป GPS'}
-          </button>
-
           {canAct && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <textarea rows={2} placeholder="หมายเหตุ (ไม่บังคับ)" value={noteDraft} onChange={(e) => onNoteChange(e.target.value)}
-                style={{ width: '100%', fontSize: 12, borderRadius: 6, border: '1px solid #d1d5db', padding: '4px 8px', resize: 'vertical', minHeight: 40 }} />
-              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                {r.status === 'submitted' && (
-                  <button className="admin-btn" style={{ background: '#1565c0', color: '#fff', fontSize: 12 }}
-                    onClick={() => onTransition(r.id, 'under_review', noteDraft)} disabled={isActing}>
-                    🔍 ตรวจสอบ
-                  </button>
-                )}
-                {(r.status === 'submitted' || r.status === 'under_review') && (
-                  <button className="admin-btn" style={{ background: '#6a1b9a', color: '#fff', fontSize: 12 }}
-                    onClick={() => onTransition(r.id, 'inspection_required', noteDraft, true)} disabled={isActing}>
-                    📋 ส่งตรวจ + สร้างงาน
-                  </button>
-                )}
-                <button className="admin-btn admin-btn--success" style={{ fontSize: 12 }}
-                  onClick={() => onTransition(r.id, 'approved', noteDraft)} disabled={isActing}>✅ อนุมัติ</button>
-                <button className="admin-btn" style={{ background:'#059669', color:'#fff', fontSize: 12 }}
-                  onClick={() => onTransition(r.id, 'approved', noteDraft, true)} disabled={isActing}>✅ อนุมัติ + ตรวจแปลง</button>
-                <button className="admin-btn admin-btn--danger" style={{ fontSize: 12 }}
-                  onClick={() => onTransition(r.id, 'rejected', noteDraft)} disabled={isActing}>⛔ ปฏิเสธ</button>
-              </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 120 }}>
+              {r.status === 'submitted' && (
+                <button onClick={() => onTransition(r.id, 'under_review')}
+                  style={{ fontSize: 12, padding: '4px 10px', borderRadius: 6, border: '1px solid #1565c0', background: '#e3f2fd', color: '#1565c0', cursor: 'pointer' }}>
+                  รับเรื่อง
+                </button>
+              )}
+              {(r.status === 'submitted' || r.status === 'under_review') && (
+                <button onClick={() => onTransition(r.id, 'inspection_required', noteDraft, true)}
+                  style={{ fontSize: 12, padding: '4px 10px', borderRadius: 6, border: '1px solid #6a1b9a', background: '#f3e5f5', color: '#6a1b9a', cursor: 'pointer' }}>
+                  ส่งตรวจแปลง
+                </button>
+              )}
+              <button onClick={() => onTransition(r.id, 'approved', noteDraft)}
+                style={{ fontSize: 12, padding: '4px 10px', borderRadius: 6, border: '1px solid #2e7d32', background: '#e8f5e9', color: '#2e7d32', cursor: 'pointer' }}>
+                อนุมัติ ✅
+              </button>
+              <button onClick={() => onTransition(r.id, 'rejected', noteDraft)}
+                style={{ fontSize: 12, padding: '4px 10px', borderRadius: 6, border: '1px solid #9e9e9e', background: '#f5f5f5', color: '#666', cursor: 'pointer' }}>
+                ปฏิเสธ
+              </button>
+              <textarea
+                rows={2}
+                placeholder="หมายเหตุ (ส่งพร้อมการตัดสินใจ)"
+                value={noteDraft}
+                onChange={(e) => onNoteChange(e.target.value)}
+                style={{ fontSize: 11, padding: 4, borderRadius: 4, border: '1px solid #e0e0e0', resize: 'vertical' }}
+              />
             </div>
           )}
-          {isActing && <span style={{ fontSize: 12, color: '#9ca3af' }}>กำลังอัปเดต…</span>}
+          <button onClick={onToggleEvidence}
+            style={{ marginTop: 4, fontSize: 11, padding: '3px 8px', borderRadius: 6, border: '1px solid #e0e0e0', background: '#fafafa', cursor: 'pointer', color: '#374151' }}>
+            {showEvidence ? '🔼 ซ่อน' : '📷 หลักฐาน'}
+          </button>
         </td>
       </tr>
-
-      {/* แถวหลักฐาน GPS — แสดงเมื่อกดปุ่ม */}
       {showEvidence && (
         <tr>
-          <td colSpan={7} style={{ background: '#f8fafc', padding: '8px 16px 12px', borderTop: '1px solid #f0f0f0' }}>
+          <td colSpan={5} style={{ padding: '0 12px 12px' }}>
             <NoBurnEvidencePanel requestId={r.id} />
           </td>
         </tr>
