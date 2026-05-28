@@ -4,7 +4,11 @@ import { useEffect, useRef, useState } from 'react';
 import { Drawer } from '@/shared/components/drawer';
 import { useOcrIdCard } from '@/features/register-farmer/use-ocr-id-card';
 
-type Props = { open:boolean; onClose:()=>void; onCreated:()=>void };
+type Props = {
+  open:boolean;
+  onClose:()=>void;
+  onCreated:(member?: { id: string; full_name: string; phone?: string | null })=>void;
+};
 
 const ROLES = [
   { value:'farmer',     label:'🌾 เกษตรกร' },
@@ -36,7 +40,7 @@ export function CreateMemberDrawer({ open, onClose, onCreated }: Props) {
   const [form, setForm] = useState({
     full_name:'', phone:'', citizen_id:'', date_of_birth:'',
     gender:'', address:'', province:'', district:'', subdistrict:'',
-    house_no:'', moo:'', address_full_text:'',
+    house_no:'', moo:'',
     bank_name:'', bank_account_number:'', bank_account_name:'',
     role:'farmer',
   });
@@ -122,6 +126,10 @@ export function CreateMemberDrawer({ open, onClose, onCreated }: Props) {
     streamRef.current?.getTracks().forEach((t) => t.stop());
   }, []);
 
+  useEffect(() => {
+    if (!open) stopWebcam();
+  }, [open]);
+
   async function submit() {
     if (!form.full_name.trim()) { setError('กรุณากรอกชื่อ-นามสกุล'); return; }
     if (!form.citizen_id.trim()) { setError('กรุณากรอกเลขบัตรประชาชน'); return; }
@@ -139,11 +147,11 @@ export function CreateMemberDrawer({ open, onClose, onCreated }: Props) {
       
     });
     setSaving(false);
-    const d = (await res.json()) as { ok?:boolean; error?:string };
+    const d = (await res.json()) as { ok?:boolean; error?:string; member_id?: string };
     if (!res.ok) { setError(d.error ?? 'สร้างไม่สำเร็จ'); return; }
-    onCreated();
+    onCreated({ id: d.member_id ?? '', full_name: form.full_name.trim(), phone: form.phone.trim() || null });
     onClose();
-    setForm({ full_name:'', phone:'', citizen_id:'', date_of_birth:'', gender:'', address:'', province:'', district:'', subdistrict:'', house_no:'', moo:'', address_full_text:'', bank_name:'', bank_account_number:'', bank_account_name:'', role:'farmer' });
+    setForm({ full_name:'', phone:'', citizen_id:'', date_of_birth:'', gender:'', address:'', province:'', district:'', subdistrict:'', house_no:'', moo:'', bank_name:'', bank_account_number:'', bank_account_name:'', role:'farmer' });
     setPlots([{ name:'', area_rai:'', province:'', district:'', sub_district:'', description:'' }]);
   }
 
@@ -216,11 +224,6 @@ export function CreateMemberDrawer({ open, onClose, onCreated }: Props) {
         </div>
         <F label="บ้านเลขที่"><input style={INPUT_STYLE} value={form.house_no} onChange={f('house_no')} /></F>
         <F label="หมู่"><input style={INPUT_STYLE} value={form.moo} onChange={f('moo')} /></F>
-        <div style={{ gridColumn:'1/-1' }}>
-          <F label="ที่อยู่ตามบัตร (เต็ม)">
-            <textarea style={{ ...INPUT_STYLE, resize:'vertical' } as React.CSSProperties} rows={2} value={form.address_full_text} onChange={f('address_full_text')} />
-          </F>
-        </div>
 
         <F label="จังหวัด">
           <select style={INPUT_STYLE} value={form.province} onChange={f('province')}>
