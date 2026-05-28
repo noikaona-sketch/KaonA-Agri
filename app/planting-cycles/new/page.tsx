@@ -1,65 +1,64 @@
 'use client';
 
-import { useRouter }          from 'next/navigation';
+import { useRouter }           from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { useCurrentMember }   from '@/providers/auth-provider';
-import { MobileAppShell }     from '@/shared/components/mobile-app-shell';
-import { UIButton }           from '@/shared/components/ui-button';
-import { ErrorState }         from '@/shared/components/error-state';
-import { LoadingState }       from '@/shared/components/loading-state';
+import { useCurrentMember }    from '@/providers/auth-provider';
+import { MobileAppShell }      from '@/shared/components/mobile-app-shell';
+import { UIButton }            from '@/shared/components/ui-button';
+import { ErrorState }          from '@/shared/components/error-state';
+import { LoadingState }        from '@/shared/components/loading-state';
 
 /* ── Types ── */
 type Plot = { id:string; name:string; province:string|null; area_rai:number };
 type SaleItem = {
   id:string; order_number:string; created_at:string;
-  product_id:string; product_name:string;
-  qty:number; unit_price:number;
+  product_id:string; product_name:string; qty:number;
   bag_weight_kg:number|null; days_to_harvest:number|null;
-  yield_ratio_kg:number|null; crop_type:string|null;
-  variety_name:string|null;
+  yield_ratio_kg:number|null; crop_type:string|null; variety_name:string|null;
 };
 
-/* ── คำนวณ season_year จากวันคาดเก็บ ── */
-function calcSeasonYear(harvestDate:string): number {
-  const d   = new Date(harvestDate);
-  const m   = d.getMonth() + 1; // 1-12
-  const bey = d.getFullYear() + 543;
-  // ต้นฝน (พ.ค.-ต.ค.) = ปีนั้น, ปลายฝน/แล้ง (พ.ย.-เม.ย.) = ปีนั้น
-  return bey;
-}
+/* ── Config ── */
+const CROP_OPTIONS = [
+  { value:'ข้าวโพด',       label:'🌽 ข้าวโพด',        isCorn:true  },
+  { value:'ข้าว',          label:'🌾 ข้าว',            isCorn:false },
+  { value:'มันสำปะหลัง',   label:'🥔 มันสำปะหลัง',    isCorn:false },
+  { value:'อ้อย',          label:'🎋 อ้อย',            isCorn:false },
+  { value:'ข้าวโพดหวาน',   label:'🌽 ข้าวโพดหวาน',    isCorn:true  },
+  { value:'อื่นๆ',         label:'🌿 อื่นๆ',           isCorn:false },
+];
 
-const IS_CORN = (crop: string) =>
-  ['ข้าวโพด','corn','maize','ข้าวโพดเลี้ยงสัตว์'].some(k => crop.toLowerCase().includes(k.toLowerCase()));
+const IS_CORN = (crop:string) => CROP_OPTIONS.find(c => c.value === crop)?.isCorn ?? false;
+
+function calcSeasonYear(harvestDate:string): number {
+  return new Date(harvestDate).getFullYear() + 543;
+}
 
 export default function NewPlantingCyclePage() {
   const router  = useRouter();
   const member  = useCurrentMember();
 
-  const [plots,     setPlots]     = useState<Plot[]>([]);
-  const [saleItems, setSaleItems] = useState<SaleItem[]>([]);
-  const [loading,   setLoading]   = useState(true);
-  const [submitting,setSubmitting]= useState(false);
-  const [error,     setError]     = useState<string|null>(null);
+  const [plots,      setPlots]      = useState<Plot[]>([]);
+  const [saleItems,  setSaleItems]  = useState<SaleItem[]>([]);
+  const [loading,    setLoading]    = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error,      setError]      = useState<string|null>(null);
 
-  // form state
-  const [cropName,     setCropName]     = useState('ข้าวโพด');
-  const [plotId,       setPlotId]       = useState('');
-  const [areaRai,      setAreaRai]      = useState('');
-  const [plantedDate,  setPlantedDate]  = useState('');
-  const [notes,        setNotes]        = useState('');
+  /* form */
+  const [cropName,      setCropName]      = useState('ข้าวโพด');
+  const [plotId,        setPlotId]        = useState('');
+  const [areaRai,       setAreaRai]       = useState('');
+  const [plantedDate,   setPlantedDate]   = useState('');
+  const [notes,         setNotes]         = useState('');
+  const [selItemIds,    setSelItemIds]     = useState<Set<string>>(new Set()); // หลายบิล
+  const [harvestManual, setHarvestManual] = useState('');
 
-  // ข้าวโพด: เลือกบิล
-  const [selItemId,    setSelItemId]    = useState('');
-  // พืชอื่น: ระบุวันเก็บเอง
-  const [harvestManual,setHarvestManual]= useState('');
-
-  /* ── Load plots + sale items ── */
+  /* ── Load ── */
   useEffect(() => {
     if (!member?.member_id) return;
     void (async () => {
       const [pRes, sRes] = await Promise.all([
-        fetch(`/api/member/plots?member_id=${member.member_id}`).then(r => r.json()) as Promise<{ plots?:Plot[] }>,
-        fetch(`/api/member/sale-items?member_id=${member.member_id}`).then(r => r.json()) as Promise<{ items?:SaleItem[] }>,
+        fetch(`/api/member/plots?member_id=${member.member_id}`).then(r=>r.json()) as Promise<{plots?:Plot[]}>,
+        fetch(`/api/member/sale-items?member_id=${member.member_id}`).then(r=>r.json()) as Promise<{items?:SaleItem[]}>,
       ]);
       setPlots(pRes.plots ?? []);
       setSaleItems(sRes.items ?? []);
@@ -68,39 +67,50 @@ export default function NewPlantingCyclePage() {
   }, [member?.member_id]);
 
   /* ── Derived ── */
-  const isCorn     = IS_CORN(cropName);
-  const selItem    = saleItems.find(x => x.id === selItemId);
+  const isCorn    = IS_CORN(cropName);
+  const selItems  = saleItems.filter(x => selItemIds.has(x.id));
 
-  // คำนวณวันเก็บเกี่ยว
+  // วันเก็บ = วันปลูก + days_to_harvest น้อยสุดจากบิลที่เลือก
   const harvestDate = (() => {
     if (!plantedDate) return null;
-    if (isCorn && selItem?.days_to_harvest) {
-      const d = new Date(plantedDate);
-      d.setDate(d.getDate() + selItem.days_to_harvest);
-      return d.toISOString().slice(0, 10);
+    if (isCorn && selItems.length > 0) {
+      const minDays = Math.min(...selItems.map(s => s.days_to_harvest ?? 999).filter(d => d < 999));
+      if (minDays < 999) {
+        const d = new Date(plantedDate);
+        d.setDate(d.getDate() + minDays);
+        return d.toISOString().slice(0, 10);
+      }
     }
     if (!isCorn && harvestManual) return harvestManual;
     return null;
   })();
 
-  // คำนวณ quota
+  // quota รวมจากทุกบิล
   const quotaKg = (() => {
-    if (!isCorn || !selItem) return null;
-    const bagKg    = selItem.bag_weight_kg ?? 10;
-    const ratio    = selItem.yield_ratio_kg ?? 600;
-    const totalSeedKg = selItem.qty * bagKg;
-    return totalSeedKg * ratio;
+    if (!isCorn || selItems.length === 0) return null;
+    return selItems.reduce((sum, item) => {
+      const bagKg  = item.bag_weight_kg ?? 10;
+      const ratio  = item.yield_ratio_kg ?? 600;
+      return sum + (item.qty * bagKg * ratio);
+    }, 0);
   })();
 
-  const seasonYear = harvestDate ? calcSeasonYear(harvestDate) : new Date().getFullYear() + 543;
+  const seasonYear = harvestDate ? calcSeasonYear(harvestDate) : (new Date().getFullYear() + 543);
+
+  // product_id จากบิลแรก (ถ้ามี)
+  const primaryProductId = selItems[0]?.product_id ?? null;
+
+  function toggleItem(id:string) {
+    setSelItemIds(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  }
 
   /* ── Submit ── */
   async function handleSubmit() {
     if (!member?.member_id || !cropName || !plotId || !plantedDate) {
       setError('กรุณากรอกข้อมูลให้ครบ'); return;
     }
-    if (isCorn && !selItemId) {
-      setError('กรุณาเลือกบิลขาย/จองเมล็ดพันธุ์'); return;
+    if (isCorn && selItemIds.size === 0) {
+      setError('กรุณาเลือกบิลขาย/จองเมล็ดอย่างน้อย 1 รายการ'); return;
     }
     if (!harvestDate) {
       setError('กรุณาระบุวันที่คาดว่าจะเก็บเกี่ยว'); return;
@@ -114,7 +124,7 @@ export default function NewPlantingCyclePage() {
         member_id:           member.member_id,
         crop_name:           cropName,
         plot_id:             plotId,
-        product_id:          selItem?.product_id ?? null,
+        product_id:          primaryProductId,
         planted_at:          plantedDate,
         expected_harvest_at: harvestDate,
         area_planted_rai:    areaRai ? Number(areaRai) : null,
@@ -134,16 +144,18 @@ export default function NewPlantingCyclePage() {
 
   if (loading) return <LoadingState label="กำลังโหลด…" />;
 
+  /* ── UI ── */
   return (
     <MobileAppShell title="สร้างรอบปลูกใหม่" subtitle="บันทึกข้อมูลการเพาะปลูก">
       <div className="mobile-stack" style={{ paddingBottom:24 }}>
         {error && <ErrorState title="เกิดข้อผิดพลาด" detail={error} />}
 
-        {/* ชนิดพืช */}
+        {/* ชนิดพืช — dropdown */}
         <label className="reg-label">ชนิดพืช <span className="reg-required">*</span>
-          <input className="reg-input" value={cropName}
-            onChange={e => { setCropName(e.target.value); setSelItemId(''); }}
-            placeholder="ข้าวโพด / ข้าว / มันสำปะหลัง" />
+          <select className="reg-input" value={cropName}
+            onChange={e => { setCropName(e.target.value); setSelItemIds(new Set()); setHarvestManual(''); }}>
+            {CROP_OPTIONS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+          </select>
         </label>
 
         {/* เลือกแปลง */}
@@ -151,52 +163,107 @@ export default function NewPlantingCyclePage() {
           <select className="reg-input" value={plotId}
             onChange={e => { setPlotId(e.target.value); const p=plots.find(x=>x.id===e.target.value); if(p&&!areaRai) setAreaRai(String(p.area_rai)); }}>
             <option value="">— เลือกแปลง —</option>
-            {plots.map(p => <option key={p.id} value={p.id}>{p.name}{p.province?` (${p.province})`:''} · {p.area_rai} ไร่</option>)}
+            {plots.map(p => (
+              <option key={p.id} value={p.id}>
+                {p.name}{p.province?` (${p.province})`:''} · {p.area_rai} ไร่
+              </option>
+            ))}
           </select>
           {plots.length === 0 && (
             <span className="reg-hint">ยังไม่มีแปลง — <a href="/plots/add" style={{ color:'var(--primary)' }}>เพิ่มแปลงก่อน</a></span>
           )}
         </label>
 
-        {/* พื้นที่ */}
-        <label className="reg-label">พื้นที่ปลูก (ไร่)
-          <input className="reg-input" type="number" step="0.5" value={areaRai}
-            onChange={e => setAreaRai(e.target.value)} placeholder="0.0" />
-        </label>
+        {/* พื้นที่ + วันปลูก */}
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+          <label className="reg-label">พื้นที่ (ไร่)
+            <input className="reg-input" type="number" step="0.5" value={areaRai}
+              onChange={e => setAreaRai(e.target.value)} placeholder="0.0" />
+          </label>
+          <label className="reg-label">วันที่ปลูก <span className="reg-required">*</span>
+            <input className="reg-input" type="date" value={plantedDate}
+              onChange={e => setPlantedDate(e.target.value)}
+              max={new Date().toISOString().slice(0,10)} />
+          </label>
+        </div>
 
-        {/* วันที่ปลูก */}
-        <label className="reg-label">วันที่ปลูก <span className="reg-required">*</span>
-          <input className="reg-input" type="date" value={plantedDate}
-            onChange={e => setPlantedDate(e.target.value)}
-            max={new Date().toISOString().slice(0,10)} />
-        </label>
-
-        {/* ── ข้าวโพด: เลือกบิลขาย ── */}
+        {/* ── ข้าวโพด: เลือกบิล (หลายบิล) ── */}
         {isCorn && (
-          <label className="reg-label">บิลขาย / จองเมล็ดพันธุ์ <span className="reg-required">*</span>
-            <select className="reg-input" value={selItemId} onChange={e => setSelItemId(e.target.value)}>
-              <option value="">— เลือกบิล —</option>
-              {saleItems.length === 0 && <option disabled>ยังไม่มีประวัติซื้อเมล็ด</option>}
-              {saleItems.map(item => (
-                <option key={item.id} value={item.id}>
-                  {item.order_number} · {item.product_name} · {item.qty} ถุง · {new Date(item.created_at).toLocaleDateString('th-TH')}
-                </option>
-              ))}
-            </select>
-            {selItem && (
-              <div style={{ marginTop:8, background:'#F0FDF4', borderRadius:8, padding:'10px 12px', fontSize:13 }}>
-                <p style={{ margin:'0 0 4px', fontWeight:700, color:'#065F46' }}>{selItem.product_name}</p>
+          <div>
+            <p className="reg-label" style={{ marginBottom:8 }}>
+              บิลขาย / จองเมล็ดพันธุ์ <span className="reg-required">*</span>
+              <span style={{ fontSize:11, fontWeight:400, color:'#6B7280', marginLeft:6 }}>เลือกได้หลายบิล</span>
+            </p>
+
+            {saleItems.length === 0 ? (
+              <div style={{ padding:'14px 16px', background:'#FEF3C7', borderRadius:10, fontSize:13, color:'#92400E' }}>
+                ⚠️ ยังไม่มีประวัติซื้อ/จองเมล็ดพันธุ์ข้าวโพด
+              </div>
+            ) : (
+              <div style={{ border:'1.5px solid #E5E7EB', borderRadius:10, overflow:'hidden' }}>
+                {saleItems.map((item, i) => {
+                  const checked = selItemIds.has(item.id);
+                  const bagKg   = item.bag_weight_kg ?? 10;
+                  const ratio   = item.yield_ratio_kg ?? 600;
+                  const itemQuota = item.qty * bagKg * ratio;
+                  return (
+                    <div key={item.id}
+                      onClick={() => toggleItem(item.id)}
+                      style={{ display:'flex', gap:12, padding:'12px 14px', cursor:'pointer', background:checked?'#F0FDF4':'#fff', borderBottom:i<saleItems.length-1?'1px solid #F3F4F6':'none', transition:'background .1s' }}>
+                      <input type="checkbox" readOnly checked={checked}
+                        style={{ width:16, height:16, accentColor:'#2D6A4F', flexShrink:0, marginTop:2 }} />
+                      <div style={{ flex:1 }}>
+                        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+                          <div>
+                            <p style={{ margin:0, fontSize:13, fontWeight:700, color:'#111' }}>
+                              {item.product_name}
+                            </p>
+                            <p style={{ margin:'1px 0 0', fontSize:11, color:'#9CA3AF' }}>
+                              {item.order_number} · {new Date(item.created_at).toLocaleDateString('th-TH')}
+                            </p>
+                          </div>
+                          <div style={{ textAlign:'right', flexShrink:0 }}>
+                            <p style={{ margin:0, fontSize:13, fontWeight:700, color:'#2D6A4F' }}>
+                              {item.qty} ถุง
+                            </p>
+                            <p style={{ margin:0, fontSize:10, color:'#9CA3AF' }}>
+                              {bagKg} กก./ถุง
+                            </p>
+                          </div>
+                        </div>
+                        <div style={{ display:'flex', gap:12, marginTop:4 }}>
+                          <span style={{ fontSize:11, color:'#6B7280' }}>📅 {item.days_to_harvest??'—'} วัน</span>
+                          <span style={{ fontSize:11, color:'#059669', fontWeight:600 }}>
+                            โควต้า {itemQuota.toLocaleString('th-TH')} กก.
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* สรุปบิลที่เลือก */}
+            {selItems.length > 0 && (
+              <div style={{ marginTop:8, background:'#F0FDF4', border:'1px solid #D1FAE5', borderRadius:8, padding:'10px 14px', fontSize:13 }}>
+                <p style={{ margin:'0 0 4px', fontWeight:700, color:'#065F46' }}>
+                  ✅ เลือก {selItems.length} บิล
+                </p>
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:4 }}>
-                  <span style={{ color:'#6B7280' }}>🌽 {selItem.qty} ถุง × {selItem.bag_weight_kg??10} กก.</span>
-                  <span style={{ color:'#6B7280' }}>📅 อายุ {selItem.days_to_harvest??'—'} วัน</span>
-                  <span style={{ color:'#059669', fontWeight:600 }}>
-                    📦 โควต้า: {quotaKg?.toLocaleString('th-TH') ?? '—'} กก.
+                  <span style={{ color:'#374151' }}>
+                    🌽 รวม {selItems.reduce((s,x)=>s+(x.qty*(x.bag_weight_kg??10)),0)} กก.เมล็ด
                   </span>
-                  <span style={{ color:'#6B7280' }}>อัตรา {selItem.yield_ratio_kg??600} กก./กก.</span>
+                  <span style={{ color:'#7C3AED', fontWeight:600 }}>
+                    📦 โควต้ารวม {quotaKg?.toLocaleString('th-TH')} กก.
+                  </span>
+                  <span style={{ color:'#6B7280' }}>
+                    📅 อายุน้อยสุด {Math.min(...selItems.map(s=>s.days_to_harvest??999).filter(d=>d<999))} วัน
+                  </span>
                 </div>
               </div>
             )}
-          </label>
+          </div>
         )}
 
         {/* ── พืชอื่น: ระบุวันเก็บเอง ── */}
@@ -215,7 +282,7 @@ export default function NewPlantingCyclePage() {
             </p>
             <p style={{ margin:0, fontSize:12, color:'#388E3C' }}>
               ฤดูกาล พ.ศ. {seasonYear}
-              {quotaKg && ` · โควต้า ${quotaKg.toLocaleString('th-TH')} กก.`}
+              {quotaKg ? ` · โควต้า ${quotaKg.toLocaleString('th-TH')} กก.` : ''}
             </p>
           </div>
         )}
