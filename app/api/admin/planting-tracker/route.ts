@@ -173,6 +173,7 @@ export async function POST(request: Request) {
     quota_kg:            body.quota_kg ?? null,
     status:              'planted',
     source:              'admin_entry',
+    created_by:          body.member_id,
     member_note:         body.member_note ?? 'บันทึกโดย admin',
     confirmed_at:        new Date().toISOString(),
   }).select('id').single();

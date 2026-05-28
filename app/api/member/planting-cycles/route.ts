@@ -33,6 +33,7 @@ export async function POST(request: Request) {
         quota_kg:            body.quota_kg ?? null,
         status:              body.status ?? 'planted',
         source:              body.source ?? 'manual',
+        created_by:          caller.memberId,
         member_note:         body.member_note ?? null,
         confirmed_at:        body.confirmed_at ?? new Date().toISOString(),
       })
