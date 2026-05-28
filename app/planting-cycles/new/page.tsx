@@ -7,14 +7,16 @@ import { MobileAppShell }      from '@/shared/components/mobile-app-shell';
 import { UIButton }            from '@/shared/components/ui-button';
 import { ErrorState }          from '@/shared/components/error-state';
 import { LoadingState }        from '@/shared/components/loading-state';
+import { isCornSeedProduct }    from '@/lib/products/corn-seed';
 
 /* ── Types ── */
 type Plot = { id:string; name:string; province:string|null; area_rai:number };
 type SaleItem = {
   id:string; order_number:string; created_at:string;
-  product_id:string; product_name:string; qty:number;
+  product_id:string|null; product_name:string; qty:number;
   bag_weight_kg:number|null; days_to_harvest:number|null;
   yield_ratio_kg:number|null; crop_type:string|null; variety_name:string|null;
+  category:string|null; product_type:string|null;
 };
 type CropConfig = { crop_type:string; yield_per_rai:number; quota_per_seed_kg:number };
 
@@ -26,6 +28,10 @@ const CROP_ICONS: Record<string,string> = {
 
 function calcSeasonYear(harvestDate:string): number {
   return new Date(harvestDate).getFullYear() + 543;
+}
+
+function isCornCrop(cropName:string) {
+  return isCornSeedProduct({ category:'seed', product_type:'seed', crop_type:cropName, name:cropName });
 }
 
 export default function NewPlantingCyclePage() {
@@ -48,28 +54,43 @@ export default function NewPlantingCyclePage() {
   const [selItemIds,    setSelItemIds]     = useState<Set<string>>(new Set()); // หลายบิล
   const [harvestManual, setHarvestManual] = useState('');
 
+  const usesBillFlow = isCornCrop(cropName);
+
   /* ── Load ── */
   useEffect(() => {
     if (!member?.member_id) return;
     setLoading(true);
     void (async () => {
-      const [pRes, sRes, cRes] = await Promise.all([
+      const [pRes, cRes] = await Promise.all([
         fetch(`/api/member/plots?member_id=${member.member_id}`).then(r=>r.json()) as Promise<{plots?:Plot[]}>,
-        fetch(`/api/member/sale-items?member_id=${member.member_id}&crop_type=${encodeURIComponent(cropName)}`).then(r=>r.json()) as Promise<{items?:SaleItem[]}>,
         fetch('/api/member/crop-types').then(r=>r.json()) as Promise<{crops?:CropConfig[]}>,
       ]);
       setPlots(pRes.plots ?? []);
-      setSaleItems(sRes.items ?? []);
       setCropConfigs([...(cRes.crops ?? []), { crop_type:'อื่นๆ', yield_per_rai:0, quota_per_seed_kg:0 }]);
       setLoading(false);
     })();
-  }, [member?.member_id, cropName]);
+  }, [member?.member_id]);
+
+  useEffect(() => {
+    setSelItemIds(new Set());
+    setSaleItems([]);
+    if (!member?.member_id || !usesBillFlow) return;
+
+    let cancelled = false;
+    void (async () => {
+      const sRes = await fetch(`/api/member/sale-items?member_id=${member.member_id}&crop_type=${encodeURIComponent(cropName)}`)
+        .then(r=>r.json()) as {items?:SaleItem[]};
+      if (!cancelled) setSaleItems(sRes.items ?? []);
+    })();
+
+    return () => { cancelled = true; };
+  }, [member?.member_id, cropName, usesBillFlow]);
 
   /* ── Derived ── */
   const selItems  = saleItems.filter(x => selItemIds.has(x.id));
-  const hasSelectedSaleItems = selItems.length > 0;
-  const hasSelectedHarvestDays = selItems.some(s => s.days_to_harvest != null);
-  const needsManualHarvestDate = !hasSelectedSaleItems || !hasSelectedHarvestDays;
+  const hasSelectedSaleItems = usesBillFlow && selItems.length > 0;
+  const hasSelectedHarvestDays = usesBillFlow && selItems.some(s => s.days_to_harvest != null);
+  const needsManualHarvestDate = !usesBillFlow || !hasSelectedSaleItems || !hasSelectedHarvestDays;
 
   // วันเก็บ = วันปลูก + days_to_harvest น้อยสุดจากบิลที่เลือก หรือระบุเองเมื่อไม่มีบิล
   const harvestDate = (() => {
@@ -88,7 +109,7 @@ export default function NewPlantingCyclePage() {
 
   // quota รวมจากทุกบิลที่เลือก ถ้าไม่มีบิลให้เป็น null เพื่อสร้างแบบ manual
   const quotaKg = (() => {
-    if (selItems.length === 0) return null;
+    if (!usesBillFlow || selItems.length === 0) return null;
     return selItems.reduce((sum, item) => {
       const bagKg  = item.bag_weight_kg ?? 10;
       const ratio  = item.yield_ratio_kg ?? 600;
@@ -99,7 +120,7 @@ export default function NewPlantingCyclePage() {
   const seasonYear = harvestDate ? calcSeasonYear(harvestDate) : (new Date().getFullYear() + 543);
 
   // product_id จากบิลแรก (ถ้ามี)
-  const primaryProductId = selItems[0]?.product_id ?? null;
+  const primaryProductId = usesBillFlow ? (selItems[0]?.product_id ?? null) : null;
 
   function toggleItem(id:string) {
     setSelItemIds(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -151,7 +172,7 @@ export default function NewPlantingCyclePage() {
         {/* ชนิดพืช — dropdown จาก yield_config */}
         <label className="reg-label">ชนิดพืช <span className="reg-required">*</span>
           <select className="reg-input" value={cropName}
-            onChange={e => { setCropName(e.target.value); setSelItemIds(new Set()); setHarvestManual(''); }}>
+            onChange={e => { setCropName(e.target.value); setSelItemIds(new Set()); setSaleItems([]); }}>
             {cropConfigs.map(c => (
               <option key={c.crop_type} value={c.crop_type}>
                 {CROP_ICONS[c.crop_type] ?? '🌿'} {c.crop_type}
@@ -189,8 +210,8 @@ export default function NewPlantingCyclePage() {
           </label>
         </div>
 
-        {/* ── เลือกบิลเมล็ดพันธุ์ที่ตรงกับชนิดพืช (ถ้ามี) ── */}
-        <div>
+        {/* ── เลือกบิลเมล็ดพันธุ์ที่ตรงกับชนิดพืช (เฉพาะข้าวโพด) ── */}
+        {usesBillFlow && <div>
             <p className="reg-label" style={{ marginBottom:8 }}>
               บิลขายเมล็ดพันธุ์ {cropName}
               <span style={{ fontSize:11, fontWeight:400, color:'#6B7280', marginLeft:6 }}>ถ้ามี เลือกได้หลายบิล</span>
@@ -264,9 +285,9 @@ export default function NewPlantingCyclePage() {
                 </div>
               </div>
             )}
-          </div>
+          </div>}
 
-        {/* ── ระบุวันเก็บเองเมื่อไม่มีบิล/ไม่มีอายุเก็บเกี่ยวจากสินค้า ── */}
+        {/* ── ระบุวันเก็บเองเมื่อไม่มีบิล/ไม่มีอายุเก็บเกี่ยวจากสินค้า หรือไม่ใช่ข้าวโพด ── */}
         {needsManualHarvestDate && (
           <label className="reg-label">วันที่คาดว่าจะเก็บเกี่ยว <span className="reg-required">*</span>
             <input className="reg-input" type="date" value={harvestManual}

@@ -1,6 +1,7 @@
 import { NextResponse }               from 'next/server';
 import { createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
 import { requireAdmin }               from '../members/_admin-auth';
+import { isCornSeedProduct, isSeedProductMatchingCrop } from '@/lib/products/corn-seed';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,7 +25,7 @@ export async function GET() {
     .from('order_items')
     .select(`
       id, order_id, qty, product_unit, created_at,
-      product:product_id(id, name, bag_weight_kg, days_to_harvest, yield_ratio_kg, crop_type)
+      product:product_id(id, name, category, product_type, bag_weight_kg, days_to_harvest, yield_ratio_kg, crop_type)
     `)
     .in('order_id', saleOrderIds)
     .order('created_at', { ascending: false });
@@ -82,8 +83,9 @@ export async function GET() {
     if (!order?.member_id) continue;
     const member = order.members as { id:string; full_name:string; phone:string|null }|null|undefined;
     if (!member) continue;
+    const p      = item.product as unknown as { id:string; name:string; category:string|null; product_type:string|null; bag_weight_kg:number|null; days_to_harvest:number|null; yield_ratio_kg:number|null; crop_type:string|null }|null;
+    if (!isSeedProductMatchingCrop({ category:p?.category, product_type:p?.product_type, crop_type:p?.crop_type, name:p?.name }, 'ข้าวโพด')) continue;
     const row    = getOrCreate(order.member_id, { full_name:member.full_name, phone:member.phone??null });
-    const p      = item.product as unknown as { id:string; name:string; bag_weight_kg:number|null; days_to_harvest:number|null; yield_ratio_kg:number|null }|null;
     const bagKg  = p?.bag_weight_kg ?? 10;
     const ratio  = p?.yield_ratio_kg ?? 600;
     row.bills.push({
@@ -113,17 +115,22 @@ export async function POST(request: Request) {
     area_planted_rai?:number; season_year?:number; quota_kg?:number; member_note?:string;
   };
 
+  if (!body.crop_name) return NextResponse.json({ error: 'กรุณาเลือกชนิดพืช' }, { status: 400 });
+  if (!body.expected_harvest_at) return NextResponse.json({ error: 'กรุณาระบุวันที่คาดว่าจะเก็บเกี่ยว' }, { status: 400 });
+
+  const usesBillFlow = isCornSeedProduct({ category:'seed', product_type:'seed', crop_type:body.crop_name, name:body.crop_name });
+
   const s = createServerSupabaseClient();
   const { data, error } = await s.from('planting_cycles').insert({
     member_id:           body.member_id,
     crop_name:           body.crop_name,
     plot_id:             body.plot_id || null,
-    product_id:          body.product_id || null,
+    product_id:          usesBillFlow ? (body.product_id || null) : null,
     planted_at:          body.planted_at,
     expected_harvest_at: body.expected_harvest_at || null,
     area_planted_rai:    body.area_planted_rai ?? null,
     season_year:         body.season_year ?? (new Date().getFullYear()+543),
-    quota_kg:            body.quota_kg ?? null,
+    quota_kg:            usesBillFlow ? (body.quota_kg ?? null) : null,
     status:              'growing',
     source:              'manual',
     created_by:          body.member_id,
