@@ -51,7 +51,8 @@ export function FarmerWizard({ lineUserId, onSubmitted }: FarmerWizardProps) {
   function handleOcrScan(file: File) {
     void ocr.scan(file).then((res) => {
       if (!res) return;
-      if (res.fullName && isThaiFullName(res.fullName) && !fullName) setFullName(res.fullName);
+      const parsedFullName = res.fullName && isThaiFullName(res.fullName) ? res.fullName : '';
+      if (parsedFullName && !fullName) setFullName(parsedFullName);
       if (res.citizenId   && !citizenId)   setCitizenId(res.citizenId);
       if (res.address     && !address)     setAddress(res.address);
       if (res.houseNo     && !houseNo)     setHouseNo(res.houseNo);
@@ -59,7 +60,13 @@ export function FarmerWizard({ lineUserId, onSubmitted }: FarmerWizardProps) {
       if (res.subdistrict && !subdistrict) setSubdistrict(res.subdistrict);
       if (res.district    && !district)    setDistrict(res.district);
       if (res.province    && !province)    setProvince(res.province);
-      if (res.bankAccountName && isThaiFullName(res.bankAccountName) && !bankAccountName) setBankAccountName(res.bankAccountName);
+
+      if (!bankAccountName) {
+        const parsedBankAccountName = res.bankAccountName && isThaiFullName(res.bankAccountName)
+          ? res.bankAccountName
+          : parsedFullName;
+        if (parsedBankAccountName) setBankAccountName(parsedBankAccountName);
+      }
     });
   }
 
