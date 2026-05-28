@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { PosCartPanel }  from './pos-cart-panel';
 import { PosReceipt }    from './pos-receipt';
+import { CreateMemberDrawer } from '@/features/admin-members/create-member-drawer';
 
 // ── Types ─────────────────────────────────────────────────────────────
 type Warehouse = { id: string; code: string; name: string };
@@ -23,14 +24,22 @@ type Slot    = { id: string; pickup_date: string; pickup_time: string; status: s
 type MemberReservation = { id: string; reservation_no: string; product_id: string | null; qty_reserved: number; variety_name: string; price_per_bag: number };
 
 // ── MemberSearch ───────────────────────────────────────────────────────
-function MemberSearch({ onSelect }: { onSelect: (m: Member | null) => void }) {
+function MemberSearch({ onSelect, selected, refreshKey }: { onSelect: (m: Member | null) => void; selected: Member | null; refreshKey: number }) {
   const [q, setQ]           = useState('');
   const [results, setResults] = useState<Member[]>([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen]     = useState(false);
-  const [selected, setSelected] = useState<Member | null>(null);
   const [scanMode, setScanMode] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => {
+    if (!q) return;
+    void (async () => {
+      const res = await fetch(`/api/admin/members?q=${encodeURIComponent(q)}&limit=10&status=approved`);
+      const d = (await res.json()) as { members?: Member[] };
+      setResults(d.members ?? []);
+    })();
+  }, [refreshKey]);
 
   useEffect(() => {
     clearTimeout(timer.current);
@@ -43,8 +52,8 @@ function MemberSearch({ onSelect }: { onSelect: (m: Member | null) => void }) {
     }, 200);
   }, [q]);
 
-  function pick(m: Member) { setSelected(m); onSelect(m); setQ(''); setResults([]); setOpen(false); }
-  function clear()         { setSelected(null); onSelect(null); setQ(''); }
+  function pick(m: Member) { onSelect(m); setQ(''); setResults([]); setOpen(false); }
+  function clear()         { onSelect(null); setQ(''); }
 
   if (selected) return (
     <div style={{ background: '#e8f5e9', borderRadius: 12, padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1.5px solid #a5d6a7' }}>
@@ -130,10 +139,14 @@ export function AdminPos() {
   const [reservationId, setReservationId] = useState<string | null>(null);
   const [resNote,       setResNote]       = useState('');
   const [resChannel,    setResChannel]    = useState('หน้าร้าน');
+  const [memberDrawerOpen, setMemberDrawerOpen] = useState(false);
+  const [memberRefreshKey, setMemberRefreshKey] = useState(0);
 
   // ── member select: auto-load reservations ──
-  async function onMemberSelect(m: Member | null) {
-    setMember(m); setMemberReservations([]); setCart([]); setReservationId(null); setResNote(''); setResChannel('หน้าร้าน');
+  async function onMemberSelect(m: Member | null, options?: { preserveForm?: boolean }) {
+    setMember(m);
+    setMemberReservations([]);
+    if (!options?.preserveForm) { setCart([]); setReservationId(null); setResNote(''); setResChannel('หน้าร้าน'); }
     if (!m) return;
     const res = await fetch(`/api/admin/seed-reservations?status=confirmed&member_id=${m.id}`);
     const payload = (await res.json()) as { items?: MemberReservation[] };
@@ -300,7 +313,14 @@ export function AdminPos() {
           {/* member + product search ในแถวเดียวกัน */}
           <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
             <div style={{ flex: '0 0 340px' }}>
-              <MemberSearch onSelect={onMemberSelect} />
+              <MemberSearch onSelect={onMemberSelect} selected={member} refreshKey={memberRefreshKey} />
+              <button
+                onClick={() => setMemberDrawerOpen(true)}
+                className="admin-btn admin-btn--secondary"
+                style={{ marginTop: 8, width: '100%' }}
+              >
+                ➕ เพิ่มสมาชิก
+              </button>
             </div>
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="🔍 ค้นหาสินค้า…"
               style={{ flex: 1, padding: '7px 12px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 14 }} />
@@ -371,6 +391,16 @@ export function AdminPos() {
           </div>
         </aside>
       </div>
+      <CreateMemberDrawer
+        open={memberDrawerOpen}
+        onClose={() => setMemberDrawerOpen(false)}
+        onCreated={(createdMember) => {
+          setMemberRefreshKey((k) => k + 1);
+          if (createdMember) {
+            void onMemberSelect(createdMember, { preserveForm: true });
+          }
+        }}
+      />
     </div>
   );
 }
