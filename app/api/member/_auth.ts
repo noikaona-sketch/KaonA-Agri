@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createServerSupabaseClient } from '../auth/line/line-auth-helpers';
+import { createServerSupabaseClient, createAnonSupabaseClient } from '../auth/line/line-auth-helpers';
 
 export async function resolveApprovedMember(
   request: Request,
@@ -10,11 +10,14 @@ export async function resolveApprovedMember(
     return { ok: false, response: NextResponse.json({ error: 'กรุณาเข้าสู่ระบบก่อน' }, { status: 401 }) };
   }
 
-  const { data: { user }, error: userError } = await s.auth.getUser(token);
+  // ใช้ anon client verify token เพราะ service_role ไม่ validate user JWT
+  const anonClient = createAnonSupabaseClient();
+  const { data: { user }, error: userError } = await anonClient.auth.getUser(token);
   if (userError || !user) {
-    return { ok: false, response: NextResponse.json({ error: 'session ไม่ถูกต้อง' }, { status: 401 }) };
+    return { ok: false, response: NextResponse.json({ error: 'session ไม่ถูกต้อง หรือหมดอายุ' }, { status: 401 }) };
   }
 
+  // ดึง member จาก service role client (ข้าม RLS)
   const { data: member } = await s
     .from('members')
     .select('id,status')
