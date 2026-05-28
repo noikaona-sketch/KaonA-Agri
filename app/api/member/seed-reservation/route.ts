@@ -23,7 +23,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'ข้อมูลไม่ครบ' }, { status: 400 });
 
     const s = createServerSupabaseClient();
-    const caller = await resolveApprovedMember(request, s);
+    // ส่ง member_id จาก body ตรงๆ เพื่อ bypass Supabase session หมดอายุ
+    const caller = await resolveApprovedMember(request, s, body.member_id);
     if (!caller.ok) return caller.response;
     const { data: product, error: pErr } = await s.from('products')
       .select('id,name,seed_variety,brand,price_per_unit,product_type,is_active,deleted_at,seed_variety_id')
@@ -123,7 +124,8 @@ export type HistoryRow = {
 export async function GET(request: Request) {
   try {
     const s = createServerSupabaseClient();
-    const caller = await resolveApprovedMember(request, s);
+    const qMemberId = new URL(request.url).searchParams.get('member_id') ?? undefined;
+    const caller = await resolveApprovedMember(request, s, qMemberId);
     if (!caller.ok) return caller.response;
     const memberId = caller.memberId;
 
