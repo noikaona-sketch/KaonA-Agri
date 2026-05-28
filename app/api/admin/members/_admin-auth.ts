@@ -89,6 +89,15 @@ export async function requireAdmin(): Promise<AdminActor | null> {
     const cookieVal   = cookieStore.get(ADMIN_COOKIE_NAME)?.value ?? '';
     if (!VALID_ADMIN_COOKIE.test(cookieVal)) return null;
 
+    // ต่ออายุ cookie ทุกครั้งที่ใช้งาน (7 วัน rolling)
+    cookieStore.set(ADMIN_COOKIE_NAME, cookieVal, {
+      httpOnly: true,
+      secure:   process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path:     '/',
+      maxAge:   60 * 60 * 24 * 7,
+    });
+
     // env-super-admin (dev/emergency) → super_admin
     if (cookieVal === 'env-super-admin') {
       return {
