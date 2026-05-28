@@ -174,6 +174,7 @@ export async function POST(request: Request) {
     status:              'planted',
     source:              'admin_entry',
     created_by:          body.member_id,
+    role_used:           'admin',
     member_note:         body.member_note ?? 'บันทึกโดย admin',
     confirmed_at:        new Date().toISOString(),
   }).select('id').single();

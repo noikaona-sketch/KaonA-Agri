@@ -34,6 +34,7 @@ export async function POST(request: Request) {
         status:              body.status ?? 'planted',
         source:              body.source ?? 'manual',
         created_by:          caller.memberId,
+        role_used:           'farmer',
         member_note:         body.member_note ?? null,
         confirmed_at:        body.confirmed_at ?? new Date().toISOString(),
       })
