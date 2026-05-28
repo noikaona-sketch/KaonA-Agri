@@ -60,6 +60,8 @@ export function AdminMemberDetail({ memberId }: { memberId: string }) {
   const [selectedPlotId, setSelectedPlotId] = useState<string|null>(null);
   const [error,    setError]    = useState<string | null>(null);
   const [acting,   setActing]   = useState(false);
+  const [editingPlot, setEditingPlot] = useState<PlotRow | null>(null);
+  const [plotForm, setPlotForm] = useState({ name:'', area_rai:'', province:'', district:'', sub_district:'', description:'', land_doc_type:'', land_doc_number:'' });
 
   async function cancelAndAllowReapply() {
     if (!member) return;
@@ -136,6 +138,27 @@ export function AdminMemberDetail({ memberId }: { memberId: string }) {
     if (!res.ok) setError(payload.error ?? 'ดำเนินการไม่สำเร็จ');
     else setNotice(`บัญชีธนาคาร: ${bankStatus}`);
     setActing(false); await load();
+  }
+  function openEditPlot(p: PlotRow) {
+    setEditingPlot(p);
+    setPlotForm({
+      name: p.name ?? '', area_rai: String(p.area_rai ?? ''), province: p.province ?? '', district: p.district ?? '', sub_district: p.sub_district ?? '',
+      description: p.description ?? '', land_doc_type: p.land_doc_type ?? '', land_doc_number: (p as PlotRow & { land_doc_number?: string | null }).land_doc_number ?? '',
+    });
+  }
+  async function saveEditPlot() {
+    if (!editingPlot) return;
+    const area = Number(plotForm.area_rai);
+    if (!plotForm.name.trim() || !Number.isFinite(area) || area <= 0) { setError('กรอกชื่อแปลงและพื้นที่ให้ถูกต้อง'); return; }
+    const res = await fetch(`/api/admin/members/${memberId}`, {
+      method: 'PATCH', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plot: { id: editingPlot.id, name: plotForm.name, area_rai: area, province: plotForm.province, district: plotForm.district, sub_district: plotForm.sub_district, description: plotForm.description, land_doc_type: plotForm.land_doc_type, land_doc_number: plotForm.land_doc_number } }),
+    });
+    const payload = (await res.json()) as { ok?:boolean; error?:string };
+    if (!res.ok) { setError(payload.error ?? 'บันทึกแปลงไม่สำเร็จ'); return; }
+    setNotice('บันทึกข้อมูลแปลงแล้ว');
+    setEditingPlot(null);
+    await load();
   }
 
   if (loading) return <LoadingState label="กำลังโหลดข้อมูล…" />;
@@ -257,6 +280,32 @@ export function AdminMemberDetail({ memberId }: { memberId: string }) {
         )}
       </div>
 
+      {plots.length > 0 && (
+        <div style={{ display:'flex', gap:12, flexWrap:'wrap', marginTop:-8 }}>
+          <span style={{ fontSize:12, padding:'4px 10px', borderRadius:99, background:'#D1FAE5', color:'#065F46', fontWeight:700 }}>🌾 {plots.length} แปลง</span>
+          <span style={{ fontSize:12, padding:'4px 10px', borderRadius:99, background:'#EEF2FF', color:'#3730A3', fontWeight:700 }}>รวม {plots.reduce((s,p)=>s+(Number(p.area_rai)||0),0).toLocaleString()} ไร่</span>
+        </div>
+      )}
+
+      {/* ── แปลงเกษตร ── */}
+      {plots.length > 0 && (
+        <div style={{ background:'#fff', border:'1px solid #E5E7EB', borderRadius:12, overflow:'hidden', boxShadow:'0 1px 3px rgba(0,0,0,.04)' }}>
+          <div style={{ padding:'13px 18px', background:'#F9FAFB', borderBottom:'1px solid #E5E7EB', display:'flex', alignItems:'center', gap:8 }}>
+            <span style={{ fontSize:15 }}>🌾</span><span style={{ fontSize:13, fontWeight:700, color:'#374151' }}>แปลงเกษตร</span>
+          </div>
+          {editingPlot && <div style={{ padding:12, borderBottom:'1px solid #E5E7EB', background:'#FAFAFA', display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+            {(['name','area_rai','province','district','sub_district','description','land_doc_type','land_doc_number'] as const).map((k) => (
+              <input key={k} value={plotForm[k]} onChange={(e)=>setPlotForm((p)=>({ ...p, [k]: e.target.value }))} placeholder={k} style={{ padding:'8px 10px', border:'1px solid #D1D5DB', borderRadius:8 }} />
+            ))}
+            <div style={{ gridColumn:'1/-1', display:'flex', gap:8, justifyContent:'flex-end' }}>
+              <button className="admin-btn admin-btn--secondary" onClick={()=>setEditingPlot(null)}>ยกเลิก</button>
+              <button className="admin-btn admin-btn--success" onClick={() => void saveEditPlot()}>บันทึกแปลง</button>
+            </div>
+          </div>}
+          
+        </div>
+      )}
+
       {/* ── 2-Column Grid ── */}
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
 
@@ -300,7 +349,7 @@ export function AdminMemberDetail({ memberId }: { memberId: string }) {
       {/* ── Role Manager ── */}
       <MemberRoleManager memberId={memberId} memberName={member.full_name} currentRoles={roles} onRolesUpdated={load} />
 
-      {/* ── แปลงเกษตร ── */}
+      {/* ── แปลงเกษตร table/map ── */}
       {plots.length > 0 && (
         <div style={{ background:'#fff', border:'1px solid #E5E7EB', borderRadius:12, overflow:'hidden', boxShadow:'0 1px 3px rgba(0,0,0,.04)' }}>
           <div style={{ padding:'13px 18px', background:'#F9FAFB', borderBottom:'1px solid #E5E7EB', display:'flex', alignItems:'center', gap:8 }}>
@@ -319,7 +368,7 @@ export function AdminMemberDetail({ memberId }: { memberId: string }) {
               <table style={{ width:'100%', borderCollapse:'collapse' }}>
                 <thead>
                   <tr style={{ background:'#F9FAFB' }}>
-                    {['ชื่อแปลง','ไร่','จังหวัด','GPS','ขอบเขต'].map(h => (
+                    {['ชื่อแปลง','ไร่','จังหวัด','GPS','ขอบเขต','จัดการ'].map(h => (
                       <th key={h} style={{ padding:'9px 14px', textAlign:'left', fontSize:10, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'.04em', borderBottom:'1px solid #E5E7EB', whiteSpace:'nowrap' }}>{h}</th>
                     ))}
                   </tr>
@@ -339,6 +388,9 @@ export function AdminMemberDetail({ memberId }: { memberId: string }) {
                         {p.boundary_geojson
                           ? <span style={{ fontSize:10, padding:'1px 6px', borderRadius:4, background:'#EDE9FE', color:'#5B21B6', fontWeight:700 }}>มีขอบเขต</span>
                           : <span style={{ color:'#D1D5DB', fontSize:11 }}>—</span>}
+                      </td>
+                      <td style={{ padding:'10px 14px', fontSize:11 }}>
+                        <button onClick={(e) => { e.stopPropagation(); openEditPlot(p); }} style={{ border:'1px solid #D1D5DB', background:'#fff', borderRadius:6, padding:'2px 8px', cursor:'pointer' }}>แก้ไข</button>
                       </td>
                     </tr>
                   ))}

@@ -30,21 +30,22 @@ export function CompletenessChecklistPanel({ member, plots, vehicles, docs, role
       ? [{ label: 'ยานพาหนะ', ok: vehicles.length > 0 }] : []),
   ];
   const passed = checks.filter((c) => c.ok).length;
+  const critical = checks.filter((c) => ['เบอร์โทร', 'ที่อยู่', 'เลขบัตรประชาชน', 'แปลงเกษตร'].includes(c.label));
   const allPass = readiness?.readyToApprove ?? passed === checks.length;
 
   return (
     <section>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#0d3d1f' }}>📋 Completeness Checklist</h2>
-        <span style={{ fontSize: 13, fontWeight: 700, color: allPass ? '#1b5e20' : '#e65100' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <h2 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#0d3d1f' }}>📋 Checklist</h2>
+        <span style={{ fontSize: 12, fontWeight: 700, color: allPass ? '#1b5e20' : '#e65100' }}>
           {passed}/{checks.length} {allPass ? '✅ พร้อมอนุมัติ' : '⚠️ ยังไม่ครบ'}
         </span>
       </div>
-      <div style={{ display: 'grid', gap: 6 }}>
-        {checks.map((c) => (
-          <div key={c.label} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', borderRadius: 8, background: c.ok ? '#f0faf0' : '#fff8f0', border: `1px solid ${c.ok ? '#c8e6c9' : '#ffe0b2'}` }}>
-            <span style={{ fontSize: 16 }}>{c.ok ? '✅' : '⚠️'}</span>
-            <span style={{ fontSize: 13, color: c.ok ? '#1b5e20' : '#e65100', fontWeight: c.ok ? 400 : 500 }}>{c.label}</span>
+      <div style={{ display: 'grid', gap: 4 }}>
+        {critical.map((c) => (
+          <div key={c.label} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', borderRadius: 6, background: c.ok ? '#f0faf0' : '#fff8f0', border: `1px solid ${c.ok ? '#c8e6c9' : '#ffe0b2'}` }}>
+            <span style={{ fontSize: 13 }}>{c.ok ? '✅' : '⚠️'}</span>
+            <span style={{ fontSize: 12, color: c.ok ? '#1b5e20' : '#e65100', fontWeight: c.ok ? 400 : 500 }}>{c.label}</span>
           </div>
         ))}
       </div>
