@@ -13,7 +13,7 @@ export async function POST(request: Request) {
       full_name:string; phone?:string; citizen_id?:string;
       date_of_birth?:string; gender?:string; address?:string;
       province?:string; district?:string; subdistrict?:string;
-      house_no?:string; moo?:string; address_full_text?:string;
+      house_no?:string; moo?:string;
       bank_name?:string; bank_account_number?:string; bank_account_name?:string;
       plots?: Array<{ name:string; area_rai:number; province?:string; district?:string; sub_district?:string; lat?:number|null; lng?:number|null; description?:string; land_doc_type?:string|null; land_doc_number?:string|null }>;
       role?:string;
