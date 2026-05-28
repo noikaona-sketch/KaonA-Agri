@@ -16,18 +16,16 @@ type SaleItem = {
   bag_weight_kg:number|null; days_to_harvest:number|null;
   yield_ratio_kg:number|null; crop_type:string|null; variety_name:string|null;
 };
+type CropConfig = { crop_type:string; yield_per_rai:number; quota_per_seed_kg:number };
 
 /* ── Config ── */
-const CROP_OPTIONS = [
-  { value:'ข้าวโพด',       label:'🌽 ข้าวโพด',        isCorn:true  },
-  { value:'ข้าว',          label:'🌾 ข้าว',            isCorn:false },
-  { value:'มันสำปะหลัง',   label:'🥔 มันสำปะหลัง',    isCorn:false },
-  { value:'อ้อย',          label:'🎋 อ้อย',            isCorn:false },
-  { value:'ข้าวโพดหวาน',   label:'🌽 ข้าวโพดหวาน',    isCorn:true  },
-  { value:'อื่นๆ',         label:'🌿 อื่นๆ',           isCorn:false },
-];
+const CORN_KEYWORDS = ['ข้าวโพด','corn','maize'];
+const IS_CORN = (crop:string) => CORN_KEYWORDS.some(k => crop.toLowerCase().includes(k.toLowerCase()));
 
-const IS_CORN = (crop:string) => CROP_OPTIONS.find(c => c.value === crop)?.isCorn ?? false;
+const CROP_ICONS: Record<string,string> = {
+  'ข้าวโพด':'🌽', 'ข้าว':'🌾', 'มันสำปะหลัง':'🥔',
+  'อ้อย':'🎋', 'ถั่วเหลือง':'🫘', 'ข้าวโพดหวาน':'🌽',
+};
 
 function calcSeasonYear(harvestDate:string): number {
   return new Date(harvestDate).getFullYear() + 543;
@@ -39,6 +37,7 @@ export default function NewPlantingCyclePage() {
 
   const [plots,      setPlots]      = useState<Plot[]>([]);
   const [saleItems,  setSaleItems]  = useState<SaleItem[]>([]);
+  const [cropConfigs,setCropConfigs]= useState<CropConfig[]>([]);
   const [loading,    setLoading]    = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error,      setError]      = useState<string|null>(null);
@@ -56,12 +55,14 @@ export default function NewPlantingCyclePage() {
   useEffect(() => {
     if (!member?.member_id) return;
     void (async () => {
-      const [pRes, sRes] = await Promise.all([
+      const [pRes, sRes, cRes] = await Promise.all([
         fetch(`/api/member/plots?member_id=${member.member_id}`).then(r=>r.json()) as Promise<{plots?:Plot[]}>,
         fetch(`/api/member/sale-items?member_id=${member.member_id}`).then(r=>r.json()) as Promise<{items?:SaleItem[]}>,
+        fetch('/api/member/crop-types').then(r=>r.json()) as Promise<{crops?:CropConfig[]}>,
       ]);
       setPlots(pRes.plots ?? []);
       setSaleItems(sRes.items ?? []);
+      setCropConfigs([...(cRes.crops ?? []), { crop_type:'อื่นๆ', yield_per_rai:0, quota_per_seed_kg:0 }]);
       setLoading(false);
     })();
   }, [member?.member_id]);
@@ -150,11 +151,15 @@ export default function NewPlantingCyclePage() {
       <div className="mobile-stack" style={{ paddingBottom:24 }}>
         {error && <ErrorState title="เกิดข้อผิดพลาด" detail={error} />}
 
-        {/* ชนิดพืช — dropdown */}
+        {/* ชนิดพืช — dropdown จาก yield_config */}
         <label className="reg-label">ชนิดพืช <span className="reg-required">*</span>
           <select className="reg-input" value={cropName}
             onChange={e => { setCropName(e.target.value); setSelItemIds(new Set()); setHarvestManual(''); }}>
-            {CROP_OPTIONS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+            {cropConfigs.map(c => (
+              <option key={c.crop_type} value={c.crop_type}>
+                {CROP_ICONS[c.crop_type] ?? '🌿'} {c.crop_type}
+              </option>
+            ))}
           </select>
         </label>
 

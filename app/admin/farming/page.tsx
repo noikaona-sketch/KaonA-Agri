@@ -8,12 +8,15 @@ import { YieldConfigPanel }       from '@/features/admin-farming/yield-config-pa
 import { AdminPlotsList }         from '@/features/admin-plots/admin-plots-list';
 import { AdminPlotsMapView }      from '@/features/admin-plots/admin-plots-map-view';
 
-type Tab = 'map' | 'plots' | 'plots-map' | 'calendar' | 'config';
+import { AdminPlantingTracker }   from '@/features/admin-farming/admin-planting-tracker';
+
+type Tab = 'map' | 'plots' | 'plots-map' | 'tracker' | 'calendar' | 'config';
 
 const TABS: { key:Tab; icon:string; label:string }[] = [
   { key:'map',       icon:'🗺️', label:'แผนที่แปลง'        },
   { key:'plots',     icon:'🌾', label:'แปลง'              },
   { key:'plots-map', icon:'📍', label:'แผนที่แปลงสมาชิก'   },
+  { key:'tracker',   icon:'📋', label:'ติดตามรอบปลูก'      },
   { key:'calendar',  icon:'📅', label:'ปฏิทินเก็บเกี่ยว'   },
   { key:'config',    icon:'⚙️', label:'ตั้งค่า Yield / ราคา' },
 ];
@@ -38,6 +41,7 @@ export default function AdminFarmingPage() {
       {activeTab === 'map'       && <FarmingMap />}
       {activeTab === 'plots'     && <AdminPlotsList />}
       {activeTab === 'plots-map' && <AdminPlotsMapView />}
+      {activeTab === 'tracker'   && <AdminPlantingTracker />}
       {activeTab === 'calendar'  && <HarvestCalendarPanel />}
       {activeTab === 'config'    && <YieldConfigPanel />}
     </AdminWebShell>
