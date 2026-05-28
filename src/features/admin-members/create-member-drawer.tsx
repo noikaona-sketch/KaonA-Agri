@@ -149,7 +149,11 @@ export function CreateMemberDrawer({ open, onClose, onCreated }: Props) {
     setSaving(false);
     const d = (await res.json()) as { ok?:boolean; error?:string; member_id?: string };
     if (!res.ok) { setError(d.error ?? 'สร้างไม่สำเร็จ'); return; }
-    onCreated({ id: d.member_id ?? '', full_name: form.full_name.trim(), phone: form.phone.trim() || null });
+    if (d.member_id) {
+      onCreated({ id: d.member_id, full_name: form.full_name.trim(), phone: form.phone.trim() || null });
+    } else {
+      onCreated();
+    }
     onClose();
     setForm({ full_name:'', phone:'', citizen_id:'', date_of_birth:'', gender:'', address:'', province:'', district:'', subdistrict:'', house_no:'', moo:'', bank_name:'', bank_account_number:'', bank_account_name:'', role:'farmer' });
     setPlots([{ name:'', area_rai:'', province:'', district:'', sub_district:'', description:'' }]);
