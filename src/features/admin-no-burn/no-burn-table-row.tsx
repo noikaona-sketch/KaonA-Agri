@@ -13,6 +13,22 @@ export type NoBurnRow = {
   member:           { full_name: string; phone: string | null }[] | null;
   plots:            { name: string; area_rai: number }[] | null;
   planting_cycles:  { crop_name: string; season_year: number }[] | null;
+  inspections:      {
+    id: string;
+    result_status: string;
+    result_note: string | null;
+    visited_at: string | null;
+    inspector: { full_name: string }[] | null;
+  }[] | null;
+};
+
+const INSP_RESULT_CFG: Record<string, { label: string; color: string; bg: string }> = {
+  pending:      { label: '⏳ รอตรวจ',           color: '#e65100', bg: '#fff8e1' },
+  assigned:     { label: '📋 รับมอบหมาย',       color: '#1565c0', bg: '#e3f2fd' },
+  passed:       { label: '✅ ผ่าน',              color: '#2e7d32', bg: '#e8f5e9' },
+  failed:       { label: '❌ ไม่ผ่าน',           color: '#c62828', bg: '#ffebee' },
+  needs_update: { label: '📝 ให้แก้ไข',         color: '#e65100', bg: '#fff3e0' },
+  completed:    { label: '✓ ปิดแล้ว',           color: '#6b7280', bg: '#f5f5f5' },
 };
 
 export const STATUS_CFG: Record<string, { badge: string; label: string; color: string }> = {
@@ -82,6 +98,33 @@ export function NoBurnTableRow({ r, acting, noteDraft, onNoteChange, onTransitio
             </p>
           )}
         </td>
+        {/* Inspection result column */}
+        <td>
+          {r.inspections?.[0] ? (() => {
+            const ins = r.inspections[0];
+            const cfg = INSP_RESULT_CFG[ins.result_status] ?? { label: ins.result_status, color: '#666', bg: '#f5f5f5' };
+            return (
+              <div>
+                <span style={{ display: 'inline-block', fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: cfg.bg, color: cfg.color, marginBottom: 3 }}>
+                  {cfg.label}
+                </span>
+                {ins.inspector?.[0]?.full_name && (
+                  <p style={{ margin: 0, fontSize: 11, color: '#6b7280' }}>👤 {ins.inspector[0].full_name}</p>
+                )}
+                {ins.visited_at && (
+                  <p style={{ margin: 0, fontSize: 11, color: '#9ca3af' }}>
+                    {new Date(ins.visited_at).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}
+                  </p>
+                )}
+                {ins.result_note && (
+                  <p style={{ margin: '3px 0 0', fontSize: 11, color: '#374151', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {ins.result_note}
+                  </p>
+                )}
+              </div>
+            );
+          })() : <span style={{ fontSize: 11, color: '#9ca3af' }}>—</span>}
+        </td>
         <td>
           <span style={{
             fontSize: 11, fontWeight: 700, padding: '3px 8px',
@@ -109,9 +152,15 @@ export function NoBurnTableRow({ r, acting, noteDraft, onNoteChange, onTransitio
                   ส่งตรวจแปลง
                 </button>
               )}
+              {/* Final approve — highlighted when inspector already passed */}
               <button onClick={() => onTransition(r.id, 'approved', noteDraft)}
-                style={{ fontSize: 12, padding: '4px 10px', borderRadius: 6, border: '1px solid #2e7d32', background: '#e8f5e9', color: '#2e7d32', cursor: 'pointer' }}>
-                อนุมัติ ✅
+                style={{
+                  fontSize: 12, padding: '4px 10px', borderRadius: 6, cursor: 'pointer',
+                  border: '1px solid #2e7d32', color: '#fff',
+                  background: r.inspections?.[0]?.result_status === 'passed' ? '#2e7d32' : '#e8f5e9',
+                  fontWeight: r.inspections?.[0]?.result_status === 'passed' ? 700 : 400,
+                }}>
+                {r.inspections?.[0]?.result_status === 'passed' ? '✅ อนุมัติขั้นสุดท้าย' : 'อนุมัติ ✅'}
               </button>
               <button onClick={() => onTransition(r.id, 'rejected', noteDraft)}
                 style={{ fontSize: 12, padding: '4px 10px', borderRadius: 6, border: '1px solid #9e9e9e', background: '#f5f5f5', color: '#666', cursor: 'pointer' }}>
@@ -134,7 +183,7 @@ export function NoBurnTableRow({ r, acting, noteDraft, onNoteChange, onTransitio
       </tr>
       {showEvidence && (
         <tr>
-          <td colSpan={5} style={{ padding: '0 12px 12px' }}>
+          <td colSpan={7} style={{ padding: '0 12px 12px' }}>
             <NoBurnEvidencePanel requestId={r.id} />
           </td>
         </tr>

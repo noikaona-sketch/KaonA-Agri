@@ -24,12 +24,14 @@ export async function PATCH(request: Request) {
     if (!inspectorId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = (await request.json()) as {
-      inspection_id : string
-      result_status : 'passed' | 'failed' | 'needs_update'
-      result_note   : string
-      visited_at?   : string
-      gps_lat?      : number
-      gps_lng?      : number
+      inspection_id            : string
+      result_status            : 'passed' | 'failed' | 'needs_update'
+      result_note              : string
+      visited_at?              : string
+      gps_lat?                 : number
+      gps_lng?                 : number
+      gps_accuracy?            : number
+      inspector_submitted_at?  : string
     };
 
     if (!body.inspection_id || !body.result_status)
@@ -43,10 +45,15 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'ไม่ใช่งานของคุณ' }, { status: 403 });
 
     await s.from('inspections').update({
-      result_status : body.result_status,
-      result_note   : body.result_note,
-      visited_at    : body.visited_at ?? new Date().toISOString(),
-      ...(body.gps_lat && body.gps_lng ? { gps_lat:body.gps_lat, gps_lng:body.gps_lng } : {}),
+      result_status            : body.result_status,
+      result_note              : body.result_note,
+      visited_at               : body.visited_at ?? new Date().toISOString(),
+      inspector_submitted_at   : body.inspector_submitted_at ?? new Date().toISOString(),
+      ...(body.gps_lat && body.gps_lng ? {
+        gps_lat:      body.gps_lat,
+        gps_lng:      body.gps_lng,
+        gps_accuracy: body.gps_accuracy ?? null,
+      } : {}),
     }).eq('id', body.inspection_id);
 
     return NextResponse.json({ ok: true });

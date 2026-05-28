@@ -21,7 +21,7 @@ export function AdminNoBurnList() {
     setLoading(true); setError(null);
     const s = createSupabaseBrowserClient();
     let q = s.from('no_burn_requests')
-      .select('id,member_id,status,timing,submitted_at,review_note,consent_accepted,member:members!no_burn_requests_member_id_fkey(full_name,phone),plots(name,area_rai),planting_cycles(crop_name,season_year)')
+      .select('id,member_id,status,timing,submitted_at,review_note,consent_accepted,member:members!no_burn_requests_member_id_fkey(full_name,phone),plots(name,area_rai),planting_cycles(crop_name,season_year),inspections(id,result_status,result_note,visited_at,inspector:inspector_member_id(full_name))')
       .order('submitted_at', { ascending: false }).limit(200);
     if (statusFilter) q = q.eq('status', statusFilter);
     const { data, error: err } = await q;
@@ -97,8 +97,8 @@ export function AdminNoBurnList() {
           <table className="admin-table">
             <thead>
               <tr>
-                <th>สมาชิก</th><th>แปลง / พื้นที่</th><th>พืช / ฤดูกาล</th>
-                <th>ยินยอม</th><th>สถานะ</th><th>วันที่ยื่น</th>
+                <th>สมาชิก</th><th>แปลง / พื้นที่</th><th>จังหวะ / พืช</th>
+                <th>ผลตรวจ</th><th>สถานะ</th><th>วันที่ยื่น</th>
                 <th style={{ minWidth: 200 }}>ดำเนินการ</th>
               </tr>
             </thead>
