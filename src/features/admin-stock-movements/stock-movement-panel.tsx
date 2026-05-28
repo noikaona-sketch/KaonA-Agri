@@ -1,117 +1,175 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createSupabaseBrowserClient } from '@/lib/supabase/client';
-import { LoadingState } from '@/shared/components/loading-state';
 
 type Movement = {
-  id: string; movement_type: string;
-  qty: number; qty_before: number | null; qty_after: number | null;
-  unit: string; ref_type: string | null; note: string | null;
-  created_at: string;
-  seed_stock_lots: { variety_name: string; lot_no: string }[] | null;
+  id:string; movement_no?:string; movement_type:string;
+  qty:number; unit:string; ref_type:string|null; ref_id:string|null;
+  ref_order_number:string|null; note:string|null; created_at:string;
+  buyer_name:string|null; buyer_phone:string|null; buyer_id:string|null;
+  warehouses?:{ name:string }|null;
+  product?:{ name:string; bag_weight_kg:number|null }|null;
+  creator?:{ id:string; full_name:string }|null;
 };
 
-const TYPE_CFG: Record<string, { icon: string; label: string; color: string }> = {
-  in:     { icon: '📥', label: 'รับเข้า',   color: '#2e7d32' },
-  out:    { icon: '📤', label: 'จ่ายออก',   color: '#c62828' },
-  adjust: { icon: '🔧', label: 'ปรับยอด',   color: '#1565c0' },
-  return: { icon: '↩️', label: 'คืนสินค้า', color: '#e65100' },
+const TYPE_CFG: Record<string,{icon:string;label:string;color:string;bg:string}> = {
+  out:    { icon:'📤', label:'ขายออก',   color:'#c62828', bg:'#FEF2F2' },
+  in:     { icon:'📥', label:'รับเข้า',   color:'#2e7d32', bg:'#F0FDF4' },
+  adjust: { icon:'🔧', label:'ปรับยอด',  color:'#1565c0', bg:'#EFF6FF' },
+  return: { icon:'↩️', label:'คืนของ',   color:'#e65100', bg:'#FFF7ED' },
+};
+
+const REF_TYPE_LABEL: Record<string,string> = {
+  sale:             'ขายออก',
+  sale_order:       'ขายออก',
+  reservation:      'จอง',
+  seed_reservation: 'จอง',
+  manual:           'manual',
+  transfer:         'โอน',
 };
 
 export function StockMovementPanel() {
-  const [movements, setMovements] = useState<Movement[]>([]);
-  const [loading, setLoading]     = useState(true);
-  const [dateFilter, setDateFilter] = useState(new Date().toISOString().slice(0, 10));
+  const [movements,  setMovements]  = useState<Movement[]>([]);
+  const [loading,    setLoading]    = useState(true);
+  const [dateFrom,   setDateFrom]   = useState('');
+  const [dateTo,     setDateTo]     = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
 
   useEffect(() => {
-    void (async () => {
-      setLoading(true);
-      const s = createSupabaseBrowserClient();
-      const start = new Date(dateFilter);
-      const end   = new Date(dateFilter);
-      end.setDate(end.getDate() + 1);
+    void load();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dateFrom, dateTo, typeFilter]);
 
-      const { data } = await s.from('stock_movements')
-        .select('id,movement_type,qty,qty_before,qty_after,unit,ref_type,note,created_at,seed_stock_lots(variety_name,lot_no)')
-        .gte('created_at', start.toISOString())
-        .lt('created_at', end.toISOString())
-        .order('created_at', { ascending: false })
-        .limit(100);
+  async function load() {
+    setLoading(true);
+    const params = new URLSearchParams({ limit:'200' });
+    if (dateFrom)   params.set('date_from', dateFrom);
+    if (dateTo)     params.set('date_to',   dateTo);
+    if (typeFilter) params.set('type',      typeFilter);
+    const res = await fetch(`/api/admin/stock-movements?${params}`, { credentials:'include' });
+    const d   = (await res.json()) as { movements?:Movement[] };
+    setMovements(d.movements ?? []);
+    setLoading(false);
+  }
 
-      setMovements((data as Movement[]) ?? []);
-      setLoading(false);
-    })();
-  }, [dateFilter]);
-
-  const totalIn  = movements.filter((m) => m.movement_type === 'in').reduce((s, m) => s + m.qty, 0);
-  const totalOut = movements.filter((m) => m.movement_type === 'out').reduce((s, m) => s + m.qty, 0);
+  // stats
+  const totalOut  = movements.filter(m=>m.movement_type==='out').reduce((s,m)=>s+m.qty,0);
+  const totalIn   = movements.filter(m=>m.movement_type==='in').reduce((s,m)=>s+m.qty,0);
 
   return (
     <div>
-      <div className="admin-filter-bar">
-        <label style={{ fontSize: 13, fontWeight: 600, color: '#4a6741', whiteSpace: 'nowrap' }}>วันที่</label>
-        <input type="date" className="admin-select" value={dateFilter}
-          onChange={(e) => setDateFilter(e.target.value)}
-          max={new Date().toISOString().slice(0, 10)} />
-        {!loading && (
-          <div style={{ marginLeft: 'auto', display: 'flex', gap: 12, fontSize: 13 }}>
-            <span style={{ color: '#2e7d32', fontWeight: 700 }}>📥 รับเข้า {totalIn.toLocaleString()} ถุง</span>
-            <span style={{ color: '#c62828', fontWeight: 700 }}>📤 จ่ายออก {totalOut.toLocaleString()} ถุง</span>
+      {/* Filter bar */}
+      <div style={{ display:'flex', gap:10, marginBottom:16, flexWrap:'wrap', alignItems:'center' }}>
+        <div style={{ display:'flex', gap:8, alignItems:'center', flex:1, flexWrap:'wrap' }}>
+          <label style={{ fontSize:12, fontWeight:600, color:'#374151', whiteSpace:'nowrap' }}>จากวันที่</label>
+          <input type="date" value={dateFrom} onChange={e=>setDateFrom(e.target.value)}
+            style={{ padding:'7px 10px', borderRadius:8, border:'1.5px solid #E5E7EB', fontSize:13 }} />
+          <label style={{ fontSize:12, fontWeight:600, color:'#374151', whiteSpace:'nowrap' }}>ถึงวันที่</label>
+          <input type="date" value={dateTo} onChange={e=>setDateTo(e.target.value)}
+            style={{ padding:'7px 10px', borderRadius:8, border:'1.5px solid #E5E7EB', fontSize:13 }} />
+          <select value={typeFilter} onChange={e=>setTypeFilter(e.target.value)}
+            style={{ padding:'7px 10px', borderRadius:8, border:'1.5px solid #E5E7EB', fontSize:13 }}>
+            <option value="">ทุกประเภท</option>
+            {Object.entries(TYPE_CFG).map(([k,v]) => <option key={k} value={k}>{v.icon} {v.label}</option>)}
+          </select>
+        </div>
+        <div style={{ display:'flex', gap:8 }}>
+          <button onClick={() => { setDateFrom(''); setDateTo(''); setTypeFilter(''); }}
+            style={{ padding:'7px 12px', borderRadius:8, border:'1px solid #E5E7EB', background:'#fff', fontSize:12, cursor:'pointer' }}>
+            ล้าง filter
+          </button>
+          <button onClick={load}
+            style={{ padding:'7px 12px', borderRadius:8, border:'1px solid #E5E7EB', background:'#fff', fontSize:13, cursor:'pointer' }}>
+            🔄
+          </button>
+        </div>
+      </div>
+
+      {/* KPI */}
+      <div style={{ display:'flex', gap:10, marginBottom:16, flexWrap:'wrap' }}>
+        {[
+          { label:'รายการทั้งหมด', value:movements.length,  color:'#374151' },
+          { label:'📤 จ่ายออกรวม', value:`${totalOut} ถุง`, color:'#DC2626' },
+          { label:'📥 รับเข้ารวม', value:`${totalIn} ถุง`,  color:'#059669' },
+        ].map(k => (
+          <div key={k.label} style={{ flex:1, minWidth:120, background:'#fff', border:'1px solid #E5E7EB', borderRadius:10, padding:'10px 14px', textAlign:'center' }}>
+            <p style={{ margin:0, fontSize:18, fontWeight:800, color:k.color }}>{k.value}</p>
+            <p style={{ margin:0, fontSize:11, color:'#9CA3AF' }}>{k.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Table */}
+      <div style={{ background:'#fff', border:'1px solid #E5E7EB', borderRadius:12, overflow:'hidden', boxShadow:'0 1px 3px rgba(0,0,0,.05)' }}>
+        {loading && <p style={{ textAlign:'center', padding:40, color:'#9CA3AF' }}>⏳ กำลังโหลด…</p>}
+        {!loading && movements.length === 0 && (
+          <p style={{ textAlign:'center', padding:40, color:'#9CA3AF' }}>ไม่พบรายการ</p>
+        )}
+        {!loading && movements.length > 0 && (
+          <div style={{ overflowX:'auto' }}>
+            <table style={{ width:'100%', borderCollapse:'collapse', minWidth:760 }}>
+              <thead>
+                <tr style={{ background:'#F9FAFB', borderBottom:'1.5px solid #E5E7EB' }}>
+                  {['เลขที่','ประเภท','สินค้า','คลัง','จำนวน','ผู้ซื้อ / อ้างอิง','วันที่'].map((h,i) => (
+                    <th key={i} style={{ padding:'10px 14px', textAlign:'left', fontSize:10, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'.05em', whiteSpace:'nowrap' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {movements.map((m, idx) => {
+                  const cfg = TYPE_CFG[m.movement_type] ?? TYPE_CFG.adjust;
+                  const isOut = m.movement_type === 'out';
+                  return (
+                    <tr key={m.id} style={{ borderBottom:idx<movements.length-1?'1px solid #F3F4F6':'none' }}
+                      onMouseEnter={e=>(e.currentTarget.style.background='#F9FAFB')}
+                      onMouseLeave={e=>(e.currentTarget.style.background='#fff')}>
+                      <td style={{ padding:'11px 14px', fontSize:11, color:'#9CA3AF', fontFamily:'monospace' }}>
+                        {m.movement_no ?? m.id.slice(0,8)}
+                      </td>
+                      <td style={{ padding:'11px 14px' }}>
+                        <span style={{ fontSize:12, padding:'2px 8px', borderRadius:99, background:cfg.bg, color:cfg.color, fontWeight:700 }}>
+                          {cfg.icon} {m.ref_type ? (REF_TYPE_LABEL[m.ref_type] ?? m.ref_type) : cfg.label}
+                        </span>
+                      </td>
+                      <td style={{ padding:'11px 14px', fontSize:13, fontWeight:600 }}>
+                        {m.product?.name ?? '—'}
+                      </td>
+                      <td style={{ padding:'11px 14px', fontSize:12, color:'#6B7280' }}>
+                        {(m.warehouses as {name:string}|null)?.name ?? '—'}
+                      </td>
+                      <td style={{ padding:'11px 14px' }}>
+                        <span style={{ fontSize:14, fontWeight:800, color:isOut?'#DC2626':'#059669' }}>
+                          {isOut?'-':'+'}{m.qty}
+                        </span>
+                        <span style={{ fontSize:11, color:'#9CA3AF', marginLeft:4 }}>{m.unit}</span>
+                      </td>
+                      <td style={{ padding:'11px 14px' }}>
+                        {m.buyer_name ? (
+                          <div>
+                            <p style={{ margin:0, fontSize:13, fontWeight:600, color:'#111' }}>👤 {m.buyer_name}</p>
+                            <p style={{ margin:0, fontSize:10, color:'#9CA3AF' }}>
+                              {m.buyer_phone ?? ''}{m.ref_order_number ? ` · ${m.ref_order_number}` : ''}
+                            </p>
+                          </div>
+                        ) : (
+                          <span style={{ fontSize:12, color:'#9CA3AF' }}>
+                            {m.ref_order_number ?? m.note ?? '—'}
+                          </span>
+                        )}
+                      </td>
+                      <td style={{ padding:'11px 14px', fontSize:12, color:'#6B7280', whiteSpace:'nowrap' }}>
+                        {new Date(m.created_at).toLocaleDateString('th-TH',{day:'numeric',month:'short'})}
+                        {' '}
+                        {new Date(m.created_at).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
-
-      {loading && <LoadingState label="กำลังโหลด…" />}
-
-      {!loading && movements.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '40px 0', color: '#9ca3af' }}>
-          <div style={{ fontSize: 40 }}>📦</div>
-          <p style={{ marginTop: 8 }}>ไม่มีการเคลื่อนไหวในวันนี้</p>
-        </div>
-      )}
-
-      {!loading && movements.length > 0 && (
-        <div className="admin-table-wrap">
-          <table className="admin-table">
-            <thead>
-              <tr><th>เวลา</th><th>พันธุ์ / LOT</th><th>ประเภท</th><th>จำนวน</th><th>ก่อน</th><th>หลัง</th><th>อ้างอิง</th></tr>
-            </thead>
-            <tbody>
-              {movements.map((m) => {
-                const cfg = TYPE_CFG[m.movement_type] ?? { icon: '•', label: m.movement_type, color: '#666' };
-                const lot = m.seed_stock_lots?.[0];
-                return (
-                  <tr key={m.id}>
-                    <td style={{ fontSize: 12, color: '#6b7280', whiteSpace: 'nowrap' }}>
-                      {new Date(m.created_at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
-                    </td>
-                    <td>
-                      {lot ? (
-                        <>
-                          <p style={{ margin: 0, fontWeight: 700, fontSize: 14 }}>{lot.variety_name}</p>
-                          <p style={{ margin: 0, fontSize: 12, color: '#6b7280', fontFamily: 'monospace' }}>LOT: {lot.lot_no}</p>
-                        </>
-                      ) : <span style={{ color: '#9ca3af' }}>—</span>}
-                    </td>
-                    <td>
-                      <span style={{ fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 999, background: cfg.color + '18', color: cfg.color }}>
-                        {cfg.icon} {cfg.label}
-                      </span>
-                    </td>
-                    <td style={{ fontWeight: 800, color: cfg.color }}>
-                      {m.movement_type === 'out' ? '-' : '+'}{m.qty.toLocaleString()} {m.unit}
-                    </td>
-                    <td style={{ fontSize: 13, color: '#6b7280' }}>{m.qty_before?.toLocaleString() ?? '—'}</td>
-                    <td style={{ fontSize: 13, fontWeight: 600 }}>{m.qty_after?.toLocaleString() ?? '—'}</td>
-                    <td style={{ fontSize: 12, color: '#6b7280' }}>{m.ref_type ?? '—'}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
     </div>
   );
 }

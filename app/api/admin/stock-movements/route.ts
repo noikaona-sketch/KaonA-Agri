@@ -14,7 +14,13 @@ export async function GET(request: Request) {
 
   const s = createServerSupabaseClient();
   let q = s.from('stock_movements')
-    .select('*, warehouses!warehouse_id(name), dest_wh:warehouses!dest_warehouse_id(name)')
+    .select(`
+      *,
+      warehouses!warehouse_id(name),
+      dest_wh:warehouses!dest_warehouse_id(name),
+      product:product_id(name, bag_weight_kg),
+      creator:created_by(id, full_name, phone)
+    `)
     .order('created_at', { ascending: false })
     .limit(limit);
 
@@ -23,9 +29,43 @@ export async function GET(request: Request) {
   if (dateFrom)    q = q.gte('created_at', dateFrom);
   if (dateTo)      q = q.lte('created_at', dateTo + 'T23:59:59');
 
-  const { data, error } = await q;
+  const { data: movements, error } = await q;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ movements: data ?? [] });
+
+  // ดึง member info จาก ref_id สำหรับ sale_orders และ seed_reservations
+  const saleRefIds  = (movements ?? []).filter(m => m.ref_type === 'sale_order' || m.ref_type === 'sale').map(m => m.ref_id).filter(Boolean);
+  const seedRefIds  = (movements ?? []).filter(m => m.ref_type === 'reservation' || m.ref_type === 'seed_reservation').map(m => m.ref_id).filter(Boolean);
+
+  const [saleRes, seedRes] = await Promise.all([
+    saleRefIds.length
+      ? s.from('sale_orders').select('id, order_number, member_id, members:member_id(id, full_name, phone)').in('id', saleRefIds)
+      : Promise.resolve({ data: [] }),
+    seedRefIds.length
+      ? s.from('seed_reservations').select('id, reservation_no, member_id, members:member_id(id, full_name, phone)').in('id', seedRefIds)
+      : Promise.resolve({ data: [] }),
+  ]);
+
+  type RefRow = { id:string; order_number?:string; reservation_no?:string; member_id:string; members?: { id:string; full_name:string; phone:string|null }|null };
+  const refMap = new Map<string, RefRow>();
+  [...(saleRes.data ?? []), ...(seedRes.data ?? [])].forEach((r: unknown) => {
+    const row = r as RefRow;
+    if (row.id) refMap.set(row.id, row);
+  });
+
+  // รวมข้อมูล
+  const enriched = (movements ?? []).map(m => {
+    const ref = m.ref_id ? refMap.get(m.ref_id) : null;
+    const member = ref?.members as { id:string; full_name:string; phone:string|null }|null|undefined;
+    return {
+      ...m,
+      ref_order_number: (ref as RefRow & {order_number?:string})?.order_number ?? (ref as RefRow & {reservation_no?:string})?.reservation_no ?? null,
+      buyer_name:    member?.full_name ?? null,
+      buyer_phone:   member?.phone    ?? null,
+      buyer_id:      member?.id       ?? null,
+    };
+  });
+
+  return NextResponse.json({ movements: enriched });
 }
 
 export async function POST(request: Request) {
