@@ -15,7 +15,7 @@ export async function GET(_req: Request, { params }: Params) {
 
     const [mRes, pRes, vRes, rRes, dRes, lRes] = await Promise.all([
       s.from('members')
-        .select('id,full_name,phone,citizen_id_masked,address,house_no,moo,subdistrict,district,province,address_full_text,status,registration_type,line_user_id,line_display_name,line_picture_url,created_at,updated_at,bank_name,bank_account_number,bank_account_name,bank_verified_status,return_reason,returned_at,rejection_reason')
+        .select('id,full_name,phone,citizen_id_masked,address,house_no,moo,subdistrict,district,province,status,registration_type,line_user_id,line_display_name,line_picture_url,created_at,updated_at,bank_name,bank_account_number,bank_account_name,bank_verified_status,return_reason,returned_at,rejection_reason')
         .eq('id', id).maybeSingle(),
       s.from('plots')
         .select('id,name,area_rai,lat,lng,status,province,district,sub_district,description,land_doc_type,land_doc_number')

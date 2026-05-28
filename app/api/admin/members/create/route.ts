@@ -48,7 +48,6 @@ export async function POST(request: Request) {
       province:          body.province || null,
       district:          body.district || null,
       subdistrict:       body.subdistrict || null,
-      address_full_text: body.address_full_text?.trim() || null,
       bank_name:         body.bank_name?.trim() || null,
       bank_account_number: body.bank_account_number?.trim() || null,
       bank_account_name: body.bank_account_name?.trim() || null,
