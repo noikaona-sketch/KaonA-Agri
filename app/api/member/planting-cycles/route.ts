@@ -19,12 +19,16 @@ export async function POST(request: Request) {
     const caller = await resolveApprovedMember(request, s, body.member_id);
     if (!caller.ok) return caller.response;
 
+    if (!body.plot_id) {
+      return NextResponse.json({ error: 'กรุณาเลือกแปลงก่อนสร้างรอบปลูก' }, { status: 400 });
+    }
+
     const { data, error } = await s
       .from('planting_cycles')
       .insert({
         member_id:           caller.memberId,
         crop_name:           body.crop_name,
-        plot_id:             body.plot_id || null,
+        plot_id:             body.plot_id,
         product_id:          body.product_id || null,
         planted_at:          body.planted_at,
         expected_harvest_at: body.expected_harvest_at || null,

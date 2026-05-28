@@ -30,7 +30,7 @@ export async function GET() {
       members:member_id(id, full_name, phone, status),
       products:product_id(id, name, bag_weight_kg, days_to_harvest, yield_ratio_kg, crop_type)
     `)
-    .in('status', ['confirmed','received','completed'])
+    .in('status', ['pending','confirmed','received','completed'])
     .order('created_at', { ascending: false });
 
   // รวม member ids จากทั้งสอง source
@@ -165,7 +165,6 @@ export async function POST(request: Request) {
     member_id:           body.member_id,
     crop_name:           body.crop_name,
     plot_id:             body.plot_id || null,
-    product_id:          body.product_id || null,
     planted_at:          body.planted_at,
     expected_harvest_at: body.expected_harvest_at || null,
     area_planted_rai:    body.area_planted_rai ?? null,

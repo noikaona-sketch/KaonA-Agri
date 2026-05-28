@@ -109,7 +109,7 @@ export default function NewPlantingCyclePage() {
   /* ── Submit ── */
   async function handleSubmit() {
     if (!member?.member_id || !cropName || !plotId || !plantedDate) {
-      setError('กรุณากรอกข้อมูลให้ครบ'); return;
+      setError(!plotId ? 'กรุณาเลือกแปลงก่อน' : 'กรุณากรอกข้อมูลให้ครบ'); return;
     }
     if (isCorn && selItemIds.size === 0) {
       setError('กรุณาเลือกบิลขาย/จองเมล็ดอย่างน้อย 1 รายการ'); return;
