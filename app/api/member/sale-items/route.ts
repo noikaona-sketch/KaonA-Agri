@@ -29,7 +29,12 @@ export async function GET(request: Request) {
     const saleIds = movements.map(m => m.ref_id).filter(Boolean) as string[];
 
     const { data: saleRows } = saleIds.length
-      ? await s.from('sale_orders').select('id, order_number, member_id').in('id', saleIds).eq('member_id', caller.memberId)
+      ? await s.from('sale_orders')
+        .select('id, order_number, member_id')
+        .in('id', saleIds)
+        .eq('member_id', caller.memberId)
+        .eq('order_type', 'sale')
+        .eq('status', 'completed')
       : { data: [] };
 
     type Ref = { id:string; order_number?:string; member_id:string };
