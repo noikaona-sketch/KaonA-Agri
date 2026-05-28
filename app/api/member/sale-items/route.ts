@@ -11,74 +11,59 @@ export async function GET(request: Request) {
     const caller   = await resolveApprovedMember(request, s, memberId);
     if (!caller.ok) return caller.response;
 
-    // Source 1: seed_reservations (จองเมล็ด)
-    const { data: seeds } = await s
-      .from('seed_reservations')
+    // ดึงจาก stock_movements ที่เป็นการขายออกให้ member นี้
+    // โดย join ผ่าน sale_orders หรือ seed_reservations
+    const { data: movements } = await s
+      .from('stock_movements')
       .select(`
-        id, reservation_no, qty_reserved, variety_name, created_at, status,
-        products:product_id(
-          id, name, bag_weight_kg, days_to_harvest, yield_ratio_kg, crop_type
-        )
+        id, movement_no, qty, unit, ref_type, ref_id, created_at,
+        products:product_id(id, name, bag_weight_kg, days_to_harvest, yield_ratio_kg, crop_type)
       `)
-      .eq('member_id', caller.memberId)
-      .in('status', ['received','completed'])
+      .in('movement_type', ['out','sale'])
+      .in('ref_type', ['sale','sale_order','reservation','seed_reservation'])
       .order('created_at', { ascending: false })
-      .limit(30);
+      .limit(50);
 
-    // Source 2: sale_orders ที่มี seed products (ซื้อโดยตรง)
-    const { data: orders } = await s
-      .from('order_items')
-      .select(`
-        id, qty, unit_price, product_id, product_name,
-        sale_orders!inner(id, order_number, status, created_at, member_id),
-        products(id, name, bag_weight_kg, days_to_harvest, yield_ratio_kg, crop_type, product_type)
-      `)
-      .eq('sale_orders.member_id', caller.memberId)
-      .in('sale_orders.status', ['completed','confirmed','ready'])
-      .eq('products.product_type', 'seed')
-      .order('sale_orders.created_at', { ascending: false })
-      .limit(30);
+    if (!movements?.length) return NextResponse.json({ items: [] });
 
-    const items: Record<string,unknown>[] = [];
+    // หา ref_ids แยกตาม type
+    const saleIds = movements.filter(m => ['sale','sale_order'].includes(m.ref_type??'')).map(m => m.ref_id).filter(Boolean) as string[];
+    const rsvIds  = movements.filter(m => ['reservation','seed_reservation'].includes(m.ref_type??'')).map(m => m.ref_id).filter(Boolean) as string[];
 
-    // map seed_reservations
-    for (const r of seeds ?? []) {
-      const p = r.products as unknown as Record<string,unknown> | null;
-      items.push({
-        id:             r.id,
-        order_number:   r.reservation_no,
-        created_at:     r.created_at,
-        product_id:     p?.id ?? null,
-        product_name:   r.variety_name ?? p?.name ?? '—',
-        qty:            r.qty_reserved,
-        bag_weight_kg:  p?.bag_weight_kg ?? 10,
-        days_to_harvest:p?.days_to_harvest ?? null,
-        yield_ratio_kg: p?.yield_ratio_kg ?? 600,
-        crop_type:      p?.crop_type ?? 'ข้าวโพด',
-        variety_name:   r.variety_name as string|null,
+    const [saleRes, rsvRes] = await Promise.all([
+      saleIds.length ? s.from('sale_orders').select('id, order_number, member_id').in('id', saleIds).eq('member_id', caller.memberId) : Promise.resolve({ data: [] }),
+      rsvIds.length  ? s.from('seed_reservations').select('id, reservation_no, member_id').in('id', rsvIds).eq('member_id', caller.memberId) : Promise.resolve({ data: [] }),
+    ]);
+
+    type Ref = { id:string; order_number?:string; reservation_no?:string; member_id:string };
+    const refMap = new Map<string, Ref>();
+    [...(saleRes.data??[]), ...(rsvRes.data??[])].forEach((r: unknown) => {
+      const row = r as Ref;
+      if (row.id) refMap.set(row.id, row);
+    });
+
+    // filter เฉพาะ movement ที่เป็นของ member นี้
+    const items = movements
+      .filter(m => m.ref_id && refMap.has(m.ref_id))
+      .map(m => {
+        const ref = refMap.get(m.ref_id!)!;
+        const p   = m.products as unknown as Record<string,unknown>|null;
+        const bagKg = (p?.bag_weight_kg as number) ?? 10;
+        const ratio = (p?.yield_ratio_kg as number) ?? 600;
+        return {
+          id:             m.id,
+          order_number:   (ref as Ref & {order_number?:string})?.order_number ?? (ref as Ref & {reservation_no?:string})?.reservation_no ?? m.movement_no,
+          created_at:     m.created_at,
+          product_id:     p?.id as string ?? null,
+          product_name:   p?.name as string ?? '—',
+          qty:            m.qty,
+          bag_weight_kg:  bagKg,
+          days_to_harvest:(p?.days_to_harvest as number) ?? null,
+          yield_ratio_kg: ratio,
+          crop_type:      p?.crop_type as string ?? 'ข้าวโพด',
+          variety_name:   p?.name as string ?? null,
+        };
       });
-    }
-
-    // map sale_orders (ไม่ duplicate)
-    const existingIds = new Set(items.map(x => x.product_id));
-    for (const r of orders ?? []) {
-      const p = r.products as unknown as Record<string,unknown> | null;
-      const o = r.sale_orders as unknown as Record<string,unknown>;
-      if (!p || existingIds.has(p.id)) continue; // skip ถ้ามีใน seed_reservations แล้ว
-      items.push({
-        id:             r.id,
-        order_number:   o?.order_number,
-        created_at:     o?.created_at,
-        product_id:     r.product_id,
-        product_name:   r.product_name ?? p?.name ?? '—',
-        qty:            r.qty,
-        bag_weight_kg:  p?.bag_weight_kg ?? 10,
-        days_to_harvest:p?.days_to_harvest ?? null,
-        yield_ratio_kg: p?.yield_ratio_kg ?? 600,
-        crop_type:      p?.crop_type ?? 'ข้าวโพด',
-        variety_name:   p?.name as string|null,
-      });
-    }
 
     return NextResponse.json({ items });
   } catch (e) {

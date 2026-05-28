@@ -35,7 +35,7 @@ export async function POST(request: Request) {
         area_planted_rai:    body.area_planted_rai ?? null,
         season_year:         body.season_year ?? (new Date().getFullYear() + 543),
         quota_kg:            body.quota_kg ?? null,
-        status:              body.status ?? 'planted',
+        status:              body.status ?? 'growing',
         source:              body.source ?? 'manual',
         created_by:          caller.memberId,
         role_used:           'farmer',
