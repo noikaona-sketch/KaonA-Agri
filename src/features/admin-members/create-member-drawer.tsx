@@ -59,15 +59,14 @@ export function CreateMemberDrawer({ open, onClose, onCreated }: Props) {
     if (!ocr) return;
     setForm((prev) => ({
       ...prev,
-      full_name: ocr.fullName || prev.full_name,
-      citizen_id: ocr.citizenId || prev.citizen_id,
-      address: ocr.address || prev.address,
-      address_full_text: ocr.address || prev.address_full_text,
-      house_no: ocr.houseNo || prev.house_no,
-      moo: ocr.moo || prev.moo,
-      subdistrict: ocr.subdistrict || prev.subdistrict,
-      district: ocr.district || prev.district,
-      province: ocr.province || prev.province,
+      full_name: prev.full_name || ocr.fullName || '',
+      citizen_id: prev.citizen_id || ocr.citizenId || '',
+      address: prev.address || ocr.address || '',
+      house_no: prev.house_no || ocr.houseNo || '',
+      moo: prev.moo || ocr.moo || '',
+      subdistrict: prev.subdistrict || ocr.subdistrict || '',
+      district: prev.district || ocr.district || '',
+      province: prev.province || ocr.province || '',
     }));
   }
 
