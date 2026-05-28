@@ -8,7 +8,7 @@ type Params = { params: { id: string } };
 export async function GET(_req: Request, { params }: Params) {
   try {
     const auth = await requireAdminPermission('members.read');
-    if (isForbidden(auth)) return NextResponse.json({ error: auth.error }, { status: auth.status });
+    if (isForbidden(auth)) return auth.forbidden;
 
     const s = createServerSupabaseClient();
     const { id } = params;
@@ -71,7 +71,7 @@ export async function GET(_req: Request, { params }: Params) {
 export async function PATCH(req: Request, { params }: Params) {
   try {
     const auth = await requireAdminPermission('members.write');
-    if (isForbidden(auth)) return NextResponse.json({ error: auth.error }, { status: auth.status });
+    if (isForbidden(auth)) return auth.forbidden;
 
     const body = (await req.json()) as {
       status?: string; role?: string;
@@ -124,7 +124,7 @@ export async function PATCH(req: Request, { params }: Params) {
 export async function DELETE(_req: Request, { params }: Params) {
   try {
     const auth = await requireAdminPermission('members.write');
-    if (isForbidden(auth)) return NextResponse.json({ error: auth.error }, { status: auth.status });
+    if (isForbidden(auth)) return auth.forbidden;
     const { id } = await params;
     const s = createServerSupabaseClient();
     // Soft cancel only (not hard delete):

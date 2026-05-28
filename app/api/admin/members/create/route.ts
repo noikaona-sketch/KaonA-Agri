@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: Request) {
   try {
     const auth = await requireAdminPermission('members.write');
-    if (isForbidden(auth)) return NextResponse.json({ error: auth.error }, { status: auth.status });
+    if (isForbidden(auth)) return auth.forbidden;
 
     const body = (await request.json()) as {
       full_name:string; phone?:string; citizen_id?:string;
