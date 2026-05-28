@@ -4,41 +4,7 @@ import { createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared: resolve member from Bearer token
 // ─────────────────────────────────────────────────────────────────────────────
-async function resolveCaller(
-  request: Request,
-  s: ReturnType<typeof createServerSupabaseClient>,
-): Promise<
-  | { ok: true;  memberId: string }
-  | { ok: false; response: ReturnType<typeof NextResponse.json> }
-> {
-  const token = (request.headers.get('Authorization') ?? '').replace('Bearer ', '').trim();
-  if (!token) {
-    return { ok: false, response: NextResponse.json({ error: 'กรุณาเข้าสู่ระบบก่อน' }, { status: 401 }) };
-  }
-
-  const { data: { user }, error: userError } = await s.auth.getUser(token);
-  if (userError || !user) {
-    return { ok: false, response: NextResponse.json({ error: 'session ไม่ถูกต้อง' }, { status: 401 }) };
-  }
-
-  const { data: member } = await s
-    .from('members')
-    .select('id, status')
-    .eq('auth_user_id', user.id)
-    .maybeSingle();
-
-  if (!member) {
-    return { ok: false, response: NextResponse.json({ error: 'ไม่พบข้อมูลสมาชิก' }, { status: 403 }) };
-  }
-  if (member.status !== 'approved') {
-    return { ok: false, response: NextResponse.json(
-      { error: 'เฉพาะสมาชิกที่อนุมัติแล้วเท่านั้นที่ยื่นคำของดเผาได้' },
-      { status: 403 },
-    )};
-  }
-
-  return { ok: true, memberId: member.id };
-}
+import { resolveApprovedMember } from '../_auth';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/member/no-burn
@@ -59,7 +25,7 @@ async function resolveCaller(
 export async function POST(request: Request) {
   try {
     const s      = createServerSupabaseClient();
-    const caller = await resolveCaller(request, s);
+    const caller = await resolveApprovedMember(request, s);
     if (!caller.ok) return caller.response;
 
     // ── Parse multipart form ──────────────────────────────────────────────────
@@ -197,8 +163,9 @@ export async function POST(request: Request) {
 // ─────────────────────────────────────────────────────────────────────────────
 export async function GET(request: Request) {
   try {
-    const s      = createServerSupabaseClient();
-    const caller = await resolveCaller(request, s);
+    const s = createServerSupabaseClient();
+    const qMemberId = new URL(request.url).searchParams.get('member_id') ?? undefined;
+    const caller = await resolveApprovedMember(request, s, qMemberId);
     if (!caller.ok) return caller.response;
 
     const { data, error } = await s

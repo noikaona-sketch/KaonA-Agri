@@ -34,11 +34,13 @@ export default function NewPlantingCyclePage() {
     if (!member?.member_id) return;
     void (async () => {
       const s = createSupabaseBrowserClient();
+      // ดึง plots ผ่าน API route (ข้าม RLS) แทน browser client
       const [pRes, vRes] = await Promise.all([
-        s.from('plots').select('id,name,province,area_rai').eq('member_id', member.member_id).is('deleted_at', null),
+        fetch(`/api/member/plots?member_id=${member.member_id}`)
+          .then(r => r.json()) as Promise<{ plots?: Plot[] }>,
         s.from('member_seed_variety_catalog').select('id,variety_name,crop_type,days_to_harvest'),
       ]);
-      setPlots((pRes.data as Plot[]) ?? []);
+      setPlots((pRes.plots as Plot[]) ?? []);
       setVarieties((vRes.data as Variety[]) ?? []);
       setLoading(false);
     })();

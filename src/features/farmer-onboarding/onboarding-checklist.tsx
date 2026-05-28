@@ -38,7 +38,7 @@ export function OnboardingChecklist({ memberId }: { memberId: string }) {
     const s = createSupabaseBrowserClient();
     void (async () => {
       const [plotRes, cycleRes, burnRes, seedRes] = await Promise.all([
-        s.from('plots').select('id', { count: 'exact', head: true }).eq('member_id', memberId).eq('status', 'active'),
+        s.from('plots').select('id', { count: 'exact', head: true }).eq('member_id', memberId).is('deleted_at', null),
         s.from('planting_cycles').select('id', { count: 'exact', head: true }).eq('member_id', memberId),
         s.from('no_burn_requests').select('id', { count: 'exact', head: true }).eq('member_id', memberId),
         s.from('seed_reservations').select('id', { count: 'exact', head: true }).eq('member_id', memberId),

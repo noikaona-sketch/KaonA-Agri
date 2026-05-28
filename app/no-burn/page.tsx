@@ -44,6 +44,9 @@ const STATUS_STYLE: Record<string, { bg: string; color: string; label: string }>
 async function getBearerToken(): Promise<string | null> {
   const sb = tryCreateSupabaseBrowserClient();
   if (!sb) return null;
+  // refresh session ก่อน ป้องกัน token หมดอายุ
+  const { data: refreshed } = await sb.auth.refreshSession();
+  if (refreshed.session?.access_token) return refreshed.session.access_token;
   const { data: { session } } = await sb.auth.getSession();
   return session?.access_token ?? null;
 }
@@ -82,7 +85,7 @@ function NoBurnPageContent() {
       : {};
 
     // Own requests via new API (session-based)
-    const reqRes = await fetch('/api/member/no-burn', { headers });
+    const reqRes = await fetch(`/api/member/no-burn?member_id=${member?.member_id ?? ''}`, { headers });
     if (reqRes.ok) {
       const j = (await reqRes.json()) as { requests?: NoBurnRequest[] };
       setRequests(j.requests ?? []);
