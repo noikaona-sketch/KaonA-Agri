@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useCurrentMember } from '@/providers/auth-provider';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { LoadingState } from '@/shared/components/loading-state';
 
 // ── Types ────────────────────────────────────────────────────────────
@@ -41,6 +42,19 @@ type Screen = 'shop' | 'history' | 'success';
 export function SeedReservationFlow() {
   const member = useCurrentMember();
 
+  // ── helper ดึง Supabase session token ──
+  async function getToken(): Promise<string> {
+    try {
+      const s = createSupabaseBrowserClient();
+      const { data } = await s.auth.getSession();
+      return data.session?.access_token ?? '';
+    } catch { return ''; }
+  }
+
+  function authHeaders(token: string): Record<string,string> {
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  }
+
   const [screen, setScreen]   = useState<Screen>('shop');
   const [varieties, setVarieties] = useState<Variety[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
@@ -59,12 +73,13 @@ export function SeedReservationFlow() {
   // ── load ─────────────────────────────────────────────────────────
   async function load() {
     setLoading(true);
+    const token = await getToken();
     const [lotsRes, resRes, slotRes] = await Promise.all([
-      fetch('/api/member/seed-lots').then((r) => r.json()) as Promise<{ lots: Record<string, unknown>[] }>,
+      fetch('/api/member/seed-lots', { headers: authHeaders(token) }).then((r) => r.json()) as Promise<{ lots: Record<string, unknown>[] }>,
       member?.member_id
-        ? fetch(`/api/member/seed-reservation?member_id=${member.member_id}`).then((r) => r.json()) as Promise<{ reservations: Reservation[] }>
+        ? fetch(`/api/member/seed-reservation?member_id=${member.member_id}`, { headers: authHeaders(token) }).then((r) => r.json()) as Promise<{ reservations: Reservation[] }>
         : Promise.resolve({ reservations: [] }),
-      fetch('/api/member/pickup-slots').then((r) => r.json()) as Promise<{ slots: Slot[] }>,
+      fetch('/api/member/pickup-slots', { headers: authHeaders(token) }).then((r) => r.json()) as Promise<{ slots: Slot[] }>,
     ]);
 
     setVarieties((lotsRes.lots ?? []).map((l) => ({
@@ -107,6 +122,7 @@ export function SeedReservationFlow() {
   async function submit() {
     if (cart.length === 0 || !member?.member_id) return;
     setSaving(true); setError(null);
+    const token = await getToken();
     const nos: string[] = [];
     const selSlot = slots.find((s) => s.id === selSlotId);
     for (const item of cart) {
@@ -116,7 +132,8 @@ export function SeedReservationFlow() {
         setSaving(false); return;
       }
       const res = await fetch('/api/member/seed-reservation', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders(token) },
         body: JSON.stringify({
           member_id:     member.member_id,
           product_id:    item.variety.product_id,   // required — Product Master only
