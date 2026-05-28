@@ -92,6 +92,7 @@ export function PlantingCycleManagementScreen() {
       expected_harvest_date: expectedHarvestDate || null,
       season_year: parsedSeasonYear,
       status: 'planned',
+      source: 'manual',
     });
     setSubmitting(false);
     if (insertError) return setError(insertError.message);

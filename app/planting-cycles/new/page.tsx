@@ -19,9 +19,6 @@ type SaleItem = {
 type CropConfig = { crop_type:string; yield_per_rai:number; quota_per_seed_kg:number };
 
 /* ── Config ── */
-const CORN_KEYWORDS = ['ข้าวโพด','corn','maize'];
-const IS_CORN = (crop:string) => CORN_KEYWORDS.some(k => crop.toLowerCase().includes(k.toLowerCase()));
-
 const CROP_ICONS: Record<string,string> = {
   'ข้าวโพด':'🌽', 'ข้าว':'🌾', 'มันสำปะหลัง':'🥔',
   'อ้อย':'🎋', 'ถั่วเหลือง':'🫘', 'ข้าวโพดหวาน':'🌽',
@@ -58,7 +55,7 @@ export default function NewPlantingCyclePage() {
     void (async () => {
       const [pRes, sRes, cRes] = await Promise.all([
         fetch(`/api/member/plots?member_id=${member.member_id}`).then(r=>r.json()) as Promise<{plots?:Plot[]}>,
-        fetch(`/api/member/sale-items?member_id=${member.member_id}`).then(r=>r.json()) as Promise<{items?:SaleItem[]}>,
+        fetch(`/api/member/sale-items?member_id=${member.member_id}&crop_type=${encodeURIComponent(cropName)}`).then(r=>r.json()) as Promise<{items?:SaleItem[]}>,
         fetch('/api/member/crop-types').then(r=>r.json()) as Promise<{crops?:CropConfig[]}>,
       ]);
       setPlots(pRes.plots ?? []);
@@ -66,16 +63,18 @@ export default function NewPlantingCyclePage() {
       setCropConfigs([...(cRes.crops ?? []), { crop_type:'อื่นๆ', yield_per_rai:0, quota_per_seed_kg:0 }]);
       setLoading(false);
     })();
-  }, [member?.member_id]);
+  }, [member?.member_id, cropName]);
 
   /* ── Derived ── */
-  const isCorn    = IS_CORN(cropName);
   const selItems  = saleItems.filter(x => selItemIds.has(x.id));
+  const hasSelectedSaleItems = selItems.length > 0;
+  const hasSelectedHarvestDays = selItems.some(s => s.days_to_harvest != null);
+  const needsManualHarvestDate = !hasSelectedSaleItems || !hasSelectedHarvestDays;
 
-  // วันเก็บ = วันปลูก + days_to_harvest น้อยสุดจากบิลที่เลือก
+  // วันเก็บ = วันปลูก + days_to_harvest น้อยสุดจากบิลที่เลือก หรือระบุเองเมื่อไม่มีบิล
   const harvestDate = (() => {
     if (!plantedDate) return null;
-    if (isCorn && selItems.length > 0) {
+    if (hasSelectedHarvestDays) {
       const minDays = Math.min(...selItems.map(s => s.days_to_harvest ?? 999).filter(d => d < 999));
       if (minDays < 999) {
         const d = new Date(plantedDate);
@@ -83,13 +82,13 @@ export default function NewPlantingCyclePage() {
         return d.toISOString().slice(0, 10);
       }
     }
-    if (!isCorn && harvestManual) return harvestManual;
+    if (harvestManual) return harvestManual;
     return null;
   })();
 
-  // quota รวมจากทุกบิล
+  // quota รวมจากทุกบิลที่เลือก ถ้าไม่มีบิลให้เป็น null เพื่อสร้างแบบ manual
   const quotaKg = (() => {
-    if (!isCorn || selItems.length === 0) return null;
+    if (selItems.length === 0) return null;
     return selItems.reduce((sum, item) => {
       const bagKg  = item.bag_weight_kg ?? 10;
       const ratio  = item.yield_ratio_kg ?? 600;
@@ -110,9 +109,6 @@ export default function NewPlantingCyclePage() {
   async function handleSubmit() {
     if (!member?.member_id || !cropName || !plotId || !plantedDate) {
       setError(!plotId ? 'กรุณาเลือกแปลงก่อน' : 'กรุณากรอกข้อมูลให้ครบ'); return;
-    }
-    if (isCorn && selItemIds.size === 0) {
-      setError('กรุณาเลือกบิลขายเมล็ดพันธุ์อย่างน้อย 1 รายการ'); return;
     }
     if (!harvestDate) {
       setError('กรุณาระบุวันที่คาดว่าจะเก็บเกี่ยว'); return;
@@ -193,17 +189,16 @@ export default function NewPlantingCyclePage() {
           </label>
         </div>
 
-        {/* ── ข้าวโพด: เลือกบิล (หลายบิล) ── */}
-        {isCorn && (
-          <div>
+        {/* ── เลือกบิลเมล็ดพันธุ์ที่ตรงกับชนิดพืช (ถ้ามี) ── */}
+        <div>
             <p className="reg-label" style={{ marginBottom:8 }}>
-              บิลขายเมล็ดพันธุ์ <span className="reg-required">*</span>
-              <span style={{ fontSize:11, fontWeight:400, color:'#6B7280', marginLeft:6 }}>เลือกได้หลายบิล</span>
+              บิลขายเมล็ดพันธุ์ {cropName}
+              <span style={{ fontSize:11, fontWeight:400, color:'#6B7280', marginLeft:6 }}>ถ้ามี เลือกได้หลายบิล</span>
             </p>
 
             {saleItems.length === 0 ? (
               <div style={{ padding:'14px 16px', background:'#FEF3C7', borderRadius:10, fontSize:13, color:'#92400E' }}>
-                ⚠️ ยังไม่มีประวัติซื้อเมล็ดพันธุ์ข้าวโพด
+                ℹ️ ยังไม่มีประวัติซื้อเมล็ดพันธุ์ที่ตรงกับชนิดพืชนี้ — สามารถสร้างรอบปลูกแบบ manual ได้
               </div>
             ) : (
               <div style={{ border:'1.5px solid #E5E7EB', borderRadius:10, overflow:'hidden' }}>
@@ -258,22 +253,21 @@ export default function NewPlantingCyclePage() {
                 </p>
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:4 }}>
                   <span style={{ color:'#374151' }}>
-                    🌽 รวม {selItems.reduce((s,x)=>s+(x.qty*(x.bag_weight_kg??10)),0)} กก.เมล็ด
+                    🌱 รวม {selItems.reduce((s,x)=>s+(x.qty*(x.bag_weight_kg??10)),0)} กก.เมล็ด
                   </span>
                   <span style={{ color:'#7C3AED', fontWeight:600 }}>
                     📦 โควต้ารวม {quotaKg?.toLocaleString('th-TH')} กก.
                   </span>
                   <span style={{ color:'#6B7280' }}>
-                    📅 อายุน้อยสุด {Math.min(...selItems.map(s=>s.days_to_harvest??999).filter(d=>d<999))} วัน
+                    📅 อายุน้อยสุด {hasSelectedHarvestDays ? Math.min(...selItems.map(s=>s.days_to_harvest??999).filter(d=>d<999)) : '—'} วัน
                   </span>
                 </div>
               </div>
             )}
           </div>
-        )}
 
-        {/* ── พืชอื่น: ระบุวันเก็บเอง ── */}
-        {!isCorn && (
+        {/* ── ระบุวันเก็บเองเมื่อไม่มีบิล/ไม่มีอายุเก็บเกี่ยวจากสินค้า ── */}
+        {needsManualHarvestDate && (
           <label className="reg-label">วันที่คาดว่าจะเก็บเกี่ยว <span className="reg-required">*</span>
             <input className="reg-input" type="date" value={harvestManual}
               onChange={e => setHarvestManual(e.target.value)} />

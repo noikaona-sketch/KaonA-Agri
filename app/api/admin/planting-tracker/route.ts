@@ -125,7 +125,7 @@ export async function POST(request: Request) {
     season_year:         body.season_year ?? (new Date().getFullYear()+543),
     quota_kg:            body.quota_kg ?? null,
     status:              'growing',
-    source:              'admin_entry',
+    source:              'manual',
     created_by:          body.member_id,
     role_used:           'admin',
     member_note:         body.member_note ?? 'บันทึกโดย admin',

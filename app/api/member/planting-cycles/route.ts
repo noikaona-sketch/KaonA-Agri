@@ -36,7 +36,7 @@ export async function POST(request: Request) {
         season_year:         body.season_year ?? (new Date().getFullYear() + 543),
         quota_kg:            body.quota_kg ?? null,
         status:              body.status ?? 'growing',
-        source:              body.source ?? 'manual',
+        source:              'manual',
         created_by:          caller.memberId,
         role_used:           'farmer',
         member_note:         body.member_note ?? null,
