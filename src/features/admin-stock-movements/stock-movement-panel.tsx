@@ -124,8 +124,11 @@ export function StockMovementPanel() {
                     <tr key={m.id} style={{ borderBottom:idx<movements.length-1?'1px solid #F3F4F6':'none' }}
                       onMouseEnter={e=>(e.currentTarget.style.background='#F9FAFB')}
                       onMouseLeave={e=>(e.currentTarget.style.background='#fff')}>
-                      <td style={{ padding:'11px 14px', fontSize:11, color:'#9CA3AF', fontFamily:'monospace' }}>
-                        {m.movement_no ?? m.id.slice(0,8)}
+                      <td style={{ padding:'11px 14px', fontFamily:'monospace' }}>
+                        <p style={{ margin:0, fontSize:11, color:'#9CA3AF' }}>{m.movement_no ?? m.id.slice(0,8)}</p>
+                        {m.ref_order_number && (
+                          <p style={{ margin:0, marginTop:2, fontSize:10, color:'#9CA3AF' }}>บิลขาย: {m.ref_order_number}</p>
+                        )}
                       </td>
                       <td style={{ padding:'11px 14px' }}>
                         <span style={{ fontSize:12, padding:'2px 8px', borderRadius:99, background:cfg.bg, color:cfg.color, fontWeight:700 }}>

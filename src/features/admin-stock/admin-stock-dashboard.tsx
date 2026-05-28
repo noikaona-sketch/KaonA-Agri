@@ -336,7 +336,12 @@ export function AdminStockDashboard() {
                 const isOut = ['sale','transfer_out','adjust_sub','reservation'].includes(mv.movement_type);
                 return (
                   <tr key={mv.id}>
-                    <td style={{ fontFamily: 'monospace', fontSize: 12 }}>{mv.movement_no}</td>
+                    <td style={{ fontFamily: 'monospace', fontSize: 12 }}>
+                      <div>{mv.movement_no}</div>
+                      {mv.ref_order_number && (
+                        <div style={{ marginTop: 2, fontSize: 11, color: '#9CA3AF' }}>บิลขาย: {mv.ref_order_number}</div>
+                      )}
+                    </td>
                     <td><span style={{ color: cfg.color, fontWeight: 700 }}>{cfg.icon} {cfg.label}</span></td>
                     <td>{mv.product_name}</td>
                     <td style={{ fontSize: 12 }}>{mv.warehouses?.name ?? '—'}</td>
