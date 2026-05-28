@@ -65,6 +65,11 @@ export function AdminMemberDetail({ memberId }: { memberId: string }) {
   const [acting,   setActing]   = useState(false);
   const [editingPlot, setEditingPlot] = useState<PlotRow | null>(null);
   const [plotForm, setPlotForm] = useState({ name:'', area_rai:'', province:'', district:'', sub_district:'', description:'', land_doc_type:'', land_doc_number:'' });
+  const [editingMember, setEditingMember] = useState(false);
+  const [memberForm, setMemberForm] = useState({
+    full_name:'', phone:'', citizen_id:'', address:'', house_no:'', moo:'', subdistrict:'', district:'', province:'',
+    bank_name:'', bank_account_number:'', bank_account_name:'',
+  });
 
   async function cancelAndAllowReapply() {
     if (!member) return;
@@ -104,6 +109,20 @@ export function AdminMemberDetail({ memberId }: { memberId: string }) {
       readinessReason: payload.readinessReason ?? [],
     });
     setLoading(false);
+    setMemberForm({
+      full_name: payload.member?.full_name ?? '',
+      phone: payload.member?.phone ?? '',
+      citizen_id: '',
+      address: payload.member?.address ?? '',
+      house_no: payload.member?.house_no ?? '',
+      moo: payload.member?.moo ?? '',
+      subdistrict: payload.member?.subdistrict ?? '',
+      district: payload.member?.district ?? '',
+      province: payload.member?.province ?? '',
+      bank_name: payload.member?.bank_name ?? '',
+      bank_account_number: payload.member?.bank_account_number ?? '',
+      bank_account_name: payload.member?.bank_account_name ?? '',
+    });
   }
 
   useEffect(() => { void load(); }, [memberId]);
@@ -161,6 +180,26 @@ export function AdminMemberDetail({ memberId }: { memberId: string }) {
     if (!res.ok) { setError(payload.error ?? 'บันทึกแปลงไม่สำเร็จ'); return; }
     setNotice('บันทึกข้อมูลแปลงแล้ว');
     setEditingPlot(null);
+    await load();
+  }
+  async function saveMemberProfile() {
+    const citizenDigits = memberForm.citizen_id.trim();
+    if (citizenDigits.length > 0 && citizenDigits.length !== 13) {
+      setError('เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก');
+      return;
+    }
+    const { citizen_id, ...rest } = memberForm;
+    const memberPayload = citizenDigits.length > 0 ? { ...rest, citizen_id: citizenDigits } : rest;
+    setActing(true);
+    const res = await fetch(`/api/admin/members/${memberId}`, {
+      method: 'PATCH', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ member: memberPayload }),
+    });
+    const payload = (await res.json()) as { ok?: boolean; error?: string };
+    setActing(false);
+    if (!res.ok) { setError(payload.error ?? 'บันทึกข้อมูลสมาชิกไม่สำเร็จ'); return; }
+    setNotice('บันทึกข้อมูลสมาชิกแล้ว');
+    setEditingMember(false);
     await load();
   }
 
@@ -319,6 +358,26 @@ export function AdminMemberDetail({ memberId }: { memberId: string }) {
             <span style={{ fontSize:13, fontWeight:700, color:'#374151' }}>ข้อมูลส่วนตัว</span>
           </div>
           <div style={{ padding:'4px 0' }}>
+            <div style={{ padding:'12px 18px', borderBottom:'1px solid #F3F4F6', display:'flex', justifyContent:'flex-end' }}>
+              {!editingMember ? (
+                <button className="admin-btn admin-btn--secondary" onClick={() => setEditingMember(true)} disabled={acting}>✏️ แก้ไขข้อมูลสมาชิก</button>
+              ) : (
+                <div style={{ display:'flex', gap:8 }}>
+                  <button className="admin-btn admin-btn--secondary" onClick={() => setEditingMember(false)} disabled={acting}>ยกเลิก</button>
+                  <button className="admin-btn admin-btn--success" onClick={() => void saveMemberProfile()} disabled={acting}>บันทึก</button>
+                </div>
+              )}
+            </div>
+            {editingMember && (
+              <div style={{ padding:'12px 18px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, borderBottom:'1px solid #F3F4F6', background:'#FAFAFA' }}>
+                {Object.entries({
+                  full_name:'ชื่อ-นามสกุล', phone:'เบอร์โทร', citizen_id:'เลขบัตรประชาชน (13 หลัก)', address:'ที่อยู่ตามทะเบียน', house_no:'บ้านเลขที่', moo:'หมู่', subdistrict:'ตำบล', district:'อำเภอ', province:'จังหวัด',
+                  bank_name:'ธนาคาร', bank_account_number:'เลขบัญชี', bank_account_name:'ชื่อบัญชี',
+                }).map(([key, label]) => (
+                  <input key={key} value={memberForm[key as keyof typeof memberForm]} onChange={(e) => setMemberForm((p) => ({ ...p, [key]: key === 'citizen_id' ? e.target.value.replace(/\D/g, '').slice(0, 13) : e.target.value }))} placeholder={label} inputMode={key === 'citizen_id' ? 'numeric' : undefined} style={{ padding:'8px 10px', border:'1px solid #D1D5DB', borderRadius:8 }} />
+                ))}
+              </div>
+            )}
             {[
               { label:'ชื่อ-นามสกุล', value: member.full_name || '—' },
               { label:'ชื่อ LINE',     value: member.line_display_name || '—' },

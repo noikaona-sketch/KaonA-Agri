@@ -7,8 +7,10 @@ type Params = { params: { id: string } };
 
 export async function GET(_req: Request, { params }: Params) {
   try {
-    const auth = await requireAdminPermission('members.read');
-    if (isForbidden(auth)) return auth.forbidden;
+    const readAuth = await requireAdminPermission('members.read');
+    if (isForbidden(readAuth)) return readAuth.forbidden;
+    const writeAuth = await requireAdminPermission('members.write');
+    const canReadSensitive = !isForbidden(writeAuth);
 
     const s = createServerSupabaseClient();
     const { id } = params;
@@ -52,8 +54,24 @@ export async function GET(_req: Request, { params }: Params) {
       roles: roleList,
     });
 
+    const memberSafe = canReadSensitive
+      ? mRes.data
+      : {
+          ...mRes.data,
+          citizen_id_masked: null,
+          address: null,
+          house_no: null,
+          moo: null,
+          subdistrict: null,
+          district: null,
+          province: null,
+          bank_name: null,
+          bank_account_number: null,
+          bank_account_name: null,
+        };
+
     return NextResponse.json({
-      member:   mRes.data,
+      member:   memberSafe,
       plots:    pRes.data  ?? [],
       vehicles: vRes.data  ?? [],
       roles:    rRes.data  ?? [],
@@ -75,6 +93,11 @@ export async function PATCH(req: Request, { params }: Params) {
 
     const body = (await req.json()) as {
       status?: string; role?: string;
+      member?: {
+        full_name?: string | null; phone?: string | null; citizen_id?: string | null;
+        address?: string | null; house_no?: string | null; moo?: string | null; subdistrict?: string | null; district?: string | null; province?: string | null;
+        bank_name?: string | null; bank_account_number?: string | null; bank_account_name?: string | null;
+      };
       plot?: { id: string; name?: string; area_rai?: number; province?: string | null; district?: string | null; sub_district?: string | null; description?: string | null; lat?: number | null; lng?: number | null; land_doc_type?: string | null; land_doc_number?: string | null };
     };
     const s = createServerSupabaseClient();
@@ -91,6 +114,38 @@ export async function PATCH(req: Request, { params }: Params) {
         .update({ status: body.status, updated_at: new Date().toISOString() })
         .eq('member_id', id)
         .eq('status', 'pending');
+    }
+    if (body.member) {
+      const trimOrNull = (v: string | null | undefined) => {
+        if (v === undefined) return undefined;
+        const t = (v ?? '').trim();
+        return t.length ? t : null;
+      };
+      const toMaskedCitizen = (raw: string) => {
+        const digits = raw.replace(/\D/g, '');
+        return digits.length === 13 ? `${digits.slice(0, 1)}-${digits.slice(1, 5)}-${digits.slice(5, 10)}-XX-X` : null;
+      };
+      const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      if (body.member.full_name !== undefined) patch.full_name = trimOrNull(body.member.full_name);
+      if (body.member.phone !== undefined) patch.phone = trimOrNull(body.member.phone);
+      if (body.member.address !== undefined) patch.address = trimOrNull(body.member.address);
+      if (body.member.house_no !== undefined) patch.house_no = trimOrNull(body.member.house_no);
+      if (body.member.moo !== undefined) patch.moo = trimOrNull(body.member.moo);
+      if (body.member.subdistrict !== undefined) patch.subdistrict = trimOrNull(body.member.subdistrict);
+      if (body.member.district !== undefined) patch.district = trimOrNull(body.member.district);
+      if (body.member.province !== undefined) patch.province = trimOrNull(body.member.province);
+      if (body.member.bank_name !== undefined) patch.bank_name = trimOrNull(body.member.bank_name);
+      if (body.member.bank_account_number !== undefined) patch.bank_account_number = trimOrNull(body.member.bank_account_number);
+      if (body.member.bank_account_name !== undefined) patch.bank_account_name = trimOrNull(body.member.bank_account_name);
+      if (body.member.citizen_id !== undefined) {
+        const raw = (body.member.citizen_id ?? '').trim();
+        if (raw.length > 0) {
+          if (!/^\d{13}$/.test(raw)) return NextResponse.json({ error: 'citizen_id must be exactly 13 digits' }, { status: 400 });
+          patch.citizen_id_masked = toMaskedCitizen(raw);
+        }
+      }
+      const { error } = await s.from('members').update(patch).eq('id', id);
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     }
     if (body.plot !== undefined && !body.plot?.id) {
       return NextResponse.json({ error: 'plot id required' }, { status: 400 });
