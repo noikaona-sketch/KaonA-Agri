@@ -8,9 +8,10 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const warehouseId = searchParams.get('warehouse_id');
   const productId   = searchParams.get('product_id');
-  const type        = searchParams.get('type');
+  const type        = searchParams.get('movement_type') ?? searchParams.get('type');
   const dateFrom    = searchParams.get('date_from');
   const dateTo      = searchParams.get('date_to');
+  const search      = (searchParams.get('search') ?? '').trim().toLowerCase();
   const limit       = Number(searchParams.get('limit') ?? 100);
 
   const s = createServerSupabaseClient();
@@ -27,11 +28,16 @@ export async function GET(request: Request) {
 
   // Keep the warehouse history focused on real stock moves. Reservation holds and
   // reservation cancellations are stock calculations, but they should not appear here.
-  q = q.neq('movement_type', 'reservation').neq('movement_type', 'cancel_res');
+  if (type === 'reservation') {
+    q = q.eq('movement_type', 'reservation');
+  } else {
+    q = q.neq('movement_type', 'reservation').neq('movement_type', 'cancel_res');
+    if (type === 'adjust') q = q.in('movement_type', ['adjust_add', 'adjust_sub']);
+    else if (type) q = q.eq('movement_type', type);
+  }
 
   if (warehouseId) q = q.eq('warehouse_id', warehouseId);
   if (productId)   q = q.eq('product_id', productId);
-  if (type)        q = q.eq('movement_type', type);
   if (dateFrom)    q = q.gte('created_at', dateFrom);
   if (dateTo)      q = q.lte('created_at', dateTo + 'T23:59:59');
 
@@ -84,7 +90,23 @@ export async function GET(request: Request) {
     };
   });
 
-  return NextResponse.json({ movements: enriched });
+  const filtered = search
+    ? enriched.filter((m) => {
+        const haystack = [
+          m.movement_no,
+          m.ref_no,
+          m.ref_order_number,
+          m.product_name,
+          m.buyer_name,
+          m.buyer_phone,
+          m.seller_name,
+          m.note,
+        ].filter(Boolean).join(' ').toLowerCase();
+        return haystack.includes(search);
+      })
+    : enriched;
+
+  return NextResponse.json({ movements: filtered });
 }
 
 export async function POST(request: Request) {

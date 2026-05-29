@@ -40,6 +40,23 @@ type ReceiveForm = {
   warehouse_id: string; product_type: string; product_id: string;
   unit: string; qty: string; unit_cost: string; note: string;
 };
+type MovementFilter = {
+  warehouse_id: string;
+  product_id: string;
+  movement_type: string;
+  date_from: string;
+  date_to: string;
+  search: string;
+};
+
+const DEFAULT_MOVEMENT_FILTER: MovementFilter = {
+  warehouse_id: '',
+  product_id: '',
+  movement_type: '',
+  date_from: '',
+  date_to: '',
+  search: '',
+};
 
 export function AdminStockDashboard({ initialTab = 'stock' }: { initialTab?: 'stock' | 'receive' | 'transfer' | 'movements' | 'dailyReport' | 'periods' }) {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
@@ -55,6 +72,7 @@ export function AdminStockDashboard({ initialTab = 'stock' }: { initialTab?: 'st
   const [periods, setPeriods] = useState<Period[]>([]);
   const [periodEvents, setPeriodEvents] = useState<PeriodEvent[]>([]);
   const [periodReason, setPeriodReason] = useState('');
+  const [movementFilter, setMovementFilter] = useState<MovementFilter>(DEFAULT_MOVEMENT_FILTER);
 
   const [rf, setRf] = useState<ReceiveForm>({
     warehouse_id: '', product_type: '', product_id: '',
@@ -66,10 +84,18 @@ export function AdminStockDashboard({ initialTab = 'stock' }: { initialTab?: 'st
 
   async function load() {
     setLoading(true);
+    const movementParams = new URLSearchParams({ limit: '50' });
+    if (movementFilter.warehouse_id) movementParams.set('warehouse_id', movementFilter.warehouse_id);
+    if (movementFilter.product_id) movementParams.set('product_id', movementFilter.product_id);
+    if (movementFilter.movement_type) movementParams.set('movement_type', movementFilter.movement_type);
+    if (movementFilter.date_from) movementParams.set('date_from', movementFilter.date_from);
+    if (movementFilter.date_to) movementParams.set('date_to', movementFilter.date_to);
+    if (movementFilter.search.trim()) movementParams.set('search', movementFilter.search.trim());
+
     const [whRes, stockRes, mvRes, prodRes, periodRes] = await Promise.all([
       fetch('/api/admin/warehouses', { credentials: 'include' }).then((r) => r.json()),
       fetch(`/api/admin/stock-movements/summary${selWH ? `?warehouse_id=${selWH}` : ''}`).then((r) => r.json()),
-      fetch(`/api/admin/stock-movements?limit=50${selWH ? `&warehouse_id=${selWH}` : ''}`).then((r) => r.json()),
+      fetch(`/api/admin/stock-movements?${movementParams.toString()}`).then((r) => r.json()),
       fetch('/api/admin/products', { credentials: 'include' }).then((r) => r.json()),
       fetch('/api/admin/periods', { credentials: 'include' }).then((r) => r.json()),
     ]);
@@ -83,7 +109,11 @@ export function AdminStockDashboard({ initialTab = 'stock' }: { initialTab?: 'st
     setLoading(false);
   }
 
-  useEffect(() => { void load(); }, [selWH]);
+  useEffect(() => { void load(); }, [selWH, movementFilter]);
+
+  function updateMovementFilter<K extends keyof MovementFilter>(key: K, value: MovementFilter[K]) {
+    setMovementFilter((prev) => ({ ...prev, [key]: value }));
+  }
 
   async function receive() {
     if (!rf.warehouse_id || !rf.product_id || !rf.qty || !rf.product_type) {
@@ -369,44 +399,84 @@ export function AdminStockDashboard({ initialTab = 'stock' }: { initialTab?: 'st
 
       {/* MOVEMENTS tab */}
       {tab === 'movements' && (
-        <div className="admin-table-wrap">
-          <table className="admin-table">
-            <thead><tr><th>เลขที่</th><th>ประเภท</th><th>สินค้า</th><th>คลัง</th><th>จำนวน</th><th>👤 ผู้ซื้อ / อ้างอิง</th><th>ยอดเงิน</th><th>วันที่</th></tr></thead>
-            <tbody>
-              {movements.length === 0 && <tr><td colSpan={8} style={{ textAlign: 'center', padding: 32, color: '#9ca3af' }}>ยังไม่มีรายการ</td></tr>}
-              {movements.map((mv) => {
-                const cfg = TYPE_CFG[mv.movement_type] ?? { icon: '•', label: mv.movement_type, color: '#666' };
-                const isOut = ['sale','transfer_out','adjust_sub','reservation'].includes(mv.movement_type);
-                return (
-                  <tr key={mv.id}>
-                    <td style={{ fontFamily: 'monospace', fontSize: 12 }}>{mv.movement_no}</td>
-                    <td><span style={{ color: cfg.color, fontWeight: 700 }}>{cfg.icon} {cfg.label}</span></td>
-                    <td>{mv.product_name}</td>
-                    <td style={{ fontSize: 12 }}>{mv.warehouses?.name ?? '—'}</td>
-                    <td style={{ fontWeight: 800, color: isOut ? '#c62828' : '#2e7d32' }}>
-                      {isOut ? '−' : '+'}{mv.qty.toLocaleString()} {mv.unit}
-                    </td>
-                    <td style={{ fontSize: 12 }}>
-                      {mv.buyer_name ? (
-                        <div>
-                          <span style={{ fontWeight: 600 }}>👤 {mv.buyer_name}</span>
-                          {(mv.ref_order_number || mv.buyer_phone) && (
-                            <div style={{ color: '#9CA3AF', fontSize: 11 }}>
-                              {mv.buyer_phone}{mv.ref_order_number ? ` · ${mv.ref_order_number}` : ''}
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <span style={{ color: '#9CA3AF' }}>{mv.ref_order_number ?? mv.note ?? '—'}</span>
-                      )}
-                    </td>
-                    <td>{mv.total_amount ? mv.total_amount.toLocaleString('th-TH', { minimumFractionDigits: 2 }) : '—'}</td>
-                    <td style={{ fontSize: 12 }}>{new Date(mv.created_at).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div style={{ display: 'grid', gap: 12 }}>
+          <div className="kaona-card" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, alignItems: 'end' }}>
+            <label className="reg-label">คลัง
+              <select className="reg-input" value={movementFilter.warehouse_id} onChange={(e) => updateMovementFilter('warehouse_id', e.target.value)}>
+                <option value="">ทั้งหมด</option>
+                {warehouses.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
+              </select>
+            </label>
+            <label className="reg-label">สินค้า
+              <select className="reg-input" value={movementFilter.product_id} onChange={(e) => updateMovementFilter('product_id', e.target.value)}>
+                <option value="">ทั้งหมด</option>
+                {products.map((p) => <option key={p.id} value={p.id}>{p.name} ({p.category})</option>)}
+              </select>
+            </label>
+            <label className="reg-label">ประเภทความเคลื่อนไหว
+              <select className="reg-input" value={movementFilter.movement_type} onChange={(e) => updateMovementFilter('movement_type', e.target.value)}>
+                <option value="">ทั้งหมด</option>
+                <option value="receive">รับเข้า</option>
+                <option value="sale">ขายออก</option>
+                <option value="transfer_in">โอนเข้า</option>
+                <option value="transfer_out">โอนออก</option>
+                <option value="adjust">ปรับสต๊อก</option>
+                <option value="reservation">จอง</option>
+              </select>
+            </label>
+            <label className="reg-label">วันที่เริ่มต้น
+              <input className="reg-input" type="date" value={movementFilter.date_from} onChange={(e) => updateMovementFilter('date_from', e.target.value)} />
+            </label>
+            <label className="reg-label">วันที่สิ้นสุด
+              <input className="reg-input" type="date" value={movementFilter.date_to} onChange={(e) => updateMovementFilter('date_to', e.target.value)} />
+            </label>
+            <label className="reg-label" style={{ gridColumn: 'span 2' }}>ค้นหา MV / SO / Ref / สินค้า / ผู้ซื้อ-ผู้ขาย
+              <input className="reg-input" value={movementFilter.search} onChange={(e) => updateMovementFilter('search', e.target.value)} placeholder="เช่น MV-0001, SO-0001, ชื่อสินค้า, ชื่อลูกค้า" />
+            </label>
+            <button className="admin-btn admin-btn--secondary" type="button" onClick={() => setMovementFilter(DEFAULT_MOVEMENT_FILTER)}>
+              ล้างตัวกรอง
+            </button>
+          </div>
+
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead><tr><th>เลขที่</th><th>ประเภท</th><th>สินค้า</th><th>คลัง</th><th>จำนวน</th><th>👤 ผู้ซื้อ / อ้างอิง</th><th>ยอดเงิน</th><th>วันที่</th></tr></thead>
+              <tbody>
+                {movements.length === 0 && <tr><td colSpan={8} style={{ textAlign: 'center', padding: 32, color: '#9ca3af' }}>ยังไม่มีรายการ</td></tr>}
+                {movements.map((mv) => {
+                  const cfg = TYPE_CFG[mv.movement_type] ?? { icon: '•', label: mv.movement_type, color: '#666' };
+                  const isOut = ['sale','transfer_out','adjust_sub','reservation'].includes(mv.movement_type);
+                  return (
+                    <tr key={mv.id}>
+                      <td style={{ fontFamily: 'monospace', fontSize: 12 }}>{mv.movement_no}</td>
+                      <td><span style={{ color: cfg.color, fontWeight: 700 }}>{cfg.icon} {cfg.label}</span></td>
+                      <td>{mv.product_name}</td>
+                      <td style={{ fontSize: 12 }}>{mv.warehouses?.name ?? '—'}</td>
+                      <td style={{ fontWeight: 800, color: isOut ? '#c62828' : '#2e7d32' }}>
+                        {isOut ? '−' : '+'}{mv.qty.toLocaleString()} {mv.unit}
+                      </td>
+                      <td style={{ fontSize: 12 }}>
+                        {mv.buyer_name ? (
+                          <div>
+                            <span style={{ fontWeight: 600 }}>👤 {mv.buyer_name}</span>
+                            {(mv.ref_order_number || mv.buyer_phone) && (
+                              <div style={{ color: '#9CA3AF', fontSize: 11 }}>
+                                {mv.buyer_phone}{mv.ref_order_number ? ` · ${mv.ref_order_number}` : ''}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span style={{ color: '#9CA3AF' }}>{mv.ref_order_number ?? mv.note ?? '—'}</span>
+                        )}
+                      </td>
+                      <td>{mv.total_amount ? mv.total_amount.toLocaleString('th-TH', { minimumFractionDigits: 2 }) : '—'}</td>
+                      <td style={{ fontSize: 12 }}>{new Date(mv.created_at).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
