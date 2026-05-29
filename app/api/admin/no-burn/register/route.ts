@@ -21,6 +21,8 @@ export async function POST(request: Request) {
       timing:             'before_planting' | 'after_planting';
       planting_cycle_id?: string | null;
       note?:              string | null;
+      registered_by?:     string | null;
+      photo_paths?:       string[];
     };
 
     if (!body.member_id || !body.plot_id || !body.timing)
@@ -78,7 +80,7 @@ export async function POST(request: Request) {
         timing:            body.timing,
         status:            'submitted',
         consent_accepted:  true,
-        note:              body.note?.trim() || `ลงทะเบียนโดยเจ้าหน้าที่`,
+        note:              body.note?.trim() || `ลงทะเบียนโดย ${body.registered_by ?? 'เจ้าหน้าที่'}`,
         submitted_at:      new Date().toISOString(),
       })
       .select('id')
@@ -90,6 +92,21 @@ export async function POST(request: Request) {
     // ── LINE notify member ─────────────────────────────────────────────────
     if (member.line_uid) {
       const timingText = body.timing === 'before_planting' ? 'ก่อนลงแปลง' : 'หลังลงแปลงแล้ว';
+      // Save photo metadata (best-effort)
+      if (body.photo_paths?.length) {
+        const photoRows = body.photo_paths.map((path) => ({
+          member_id:           body.member_id,
+          plot_id:             body.plot_id,
+          no_burn_request_id:  (newReq as { id: string }).id,
+          storage_path:        path,
+          photo_type:          'no_burn_evidence',
+          evidence_status:     'submitted',
+          uploaded_by:         _ar.admin.adminUserId,
+          captured_at:         new Date().toISOString(),
+        }));
+        await s.from('photos').insert(photoRows);
+      }
+
       await sendLineMessage(member.line_uid, [{
         type: 'text',
         text: `✅ เจ้าหน้าที่ลงทะเบียนโครงการงดเผาให้คุณแล้ว\n📍 แปลง: ${plot.name}${plot.province ? ` (${plot.province})` : ''}\n⏱ ${timingText}\n\nรอเจ้าหน้าที่ตรวจสอบและอนุมัติ`,
