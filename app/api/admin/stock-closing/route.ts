@@ -277,10 +277,10 @@ export async function POST(request: Request) {
       .eq('scope', snapshot.scope);
     if (existingErr) throw new Error(existingErr.message);
     const existing = (existingRows ?? []).find((row) => snapshot.warehouse_id ? row.warehouse_id === snapshot.warehouse_id : row.warehouse_id === null);
-    if (existing?.status === 'closed' && body.action !== 'close') {
-      return NextResponse.json({ error: 'งวดนี้ปิดแล้ว ไม่สามารถบันทึกทบทวนซ้ำ' }, { status: 400 });
+    if (existing?.status === 'closed') {
+      return NextResponse.json({ error: 'งวดนี้ปิดแล้ว ไม่สามารถแก้ไขหรือปิดซ้ำได้' }, { status: 400 });
     }
-    if (body.action === 'close' && existing?.status !== 'review' && existing?.status !== 'closed') {
+    if (body.action === 'close' && existing?.status !== 'review') {
       return NextResponse.json({ error: 'ต้องบันทึก snapshot เพื่อให้ Admin review ก่อนปิดงวด' }, { status: 400 });
     }
 

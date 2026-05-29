@@ -86,12 +86,12 @@ alter table public.stock_closing_snapshots enable row level security;
 alter table public.stock_closing_lines enable row level security;
 
 create policy stock_closing_snapshots_read on public.stock_closing_snapshots
-  for select using (true);
+  for select using (public.current_member_has_role('admin') or public.current_member_has_role('staff'));
 create policy stock_closing_snapshots_admin on public.stock_closing_snapshots
   for all using (public.current_member_has_role('admin') or public.current_member_has_role('staff'));
 
 create policy stock_closing_lines_read on public.stock_closing_lines
-  for select using (true);
+  for select using (public.current_member_has_role('admin') or public.current_member_has_role('staff'));
 create policy stock_closing_lines_admin on public.stock_closing_lines
   for all using (public.current_member_has_role('admin') or public.current_member_has_role('staff'));
 
