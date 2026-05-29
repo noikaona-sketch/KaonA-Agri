@@ -9,7 +9,7 @@ export async function GET() {
   if (isForbidden(_ar)) return _ar.forbidden;
   const { data, error } = await createServerSupabaseClient()
     .from('moisture_deductions')
-    .select('id,crop_type,moisture_pct,weight_deduct_pct,price_deduct_per_kg,drying_days_per_pct,note,is_active')
+    .select('id,crop_type,moisture_pct,weight_deduct_pct,price_adjust_per_kg,drying_days_per_pct,note,is_active')
     .order('moisture_pct', { ascending: false });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ rows: data ?? [] });

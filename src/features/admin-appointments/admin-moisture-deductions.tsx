@@ -8,7 +8,7 @@ type Row = {
   drying_days_per_pct: number; note: string | null; is_active: boolean;
 };
 
-const EMPTY = { moisture_pct: '', weight_deduct_pct: '0', price_deduct_per_kg: '0', drying_days_per_pct: '1', note: '' };
+const EMPTY = { moisture_pct: '', weight_deduct_pct: '0', price_adjust_per_kg: '0', drying_days_per_pct: '1', note: '' };
 
 export function AdminMoistureDeductions() {
   const [rows,    setRows]    = useState<Row[]>([]);
@@ -37,7 +37,7 @@ export function AdminMoistureDeductions() {
       body: JSON.stringify({
         moisture_pct:        Number(form.moisture_pct),
         weight_deduct_pct:   Number(form.weight_deduct_pct),
-        price_adjust_per_kg: Number(form.price_deduct_per_kg),
+        price_adjust_per_kg: Number(form.price_adjust_per_kg),
         drying_days_per_pct: Number(form.drying_days_per_pct),
         note:                form.note || null,
       }),
@@ -113,7 +113,7 @@ export function AdminMoistureDeductions() {
             <span className="reg-hint">หักออกจากน้ำหนักที่ชั่ง</span>
           </label>
           <label className="reg-label">บวกราคา บาท/กก. (ยิ่งแห้งยิ่งบวกมาก)
-            <input className="reg-input" type="number" step="0.01" min="0" placeholder="เช่น 0.30" value={form.price_deduct_per_kg} onChange={field('price_deduct_per_kg')} />
+            <input className="reg-input" type="number" step="0.01" min="0" placeholder="เช่น 0.30" value={form.price_adjust_per_kg} onChange={field('price_adjust_per_kg')} />
             <span className="reg-hint">บวกเพิ่มจากราคาฐานเปียก 30%</span>
           </label>
           <label className="reg-label">วันที่ใช้ลดความชื้น 1%
