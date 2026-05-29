@@ -1,6 +1,7 @@
 'use client';
 
-import { type ChangeEvent, useCallback, useEffect, useId, useState } from 'react';
+import { Suspense, type ChangeEvent, useCallback, useEffect, useId, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 import { tryCreateSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useCurrentMember }               from '@/providers/auth-provider';
@@ -130,6 +131,8 @@ function PhotoRow({ file, onRemove, disabled }: { file: File; onRemove: () => vo
 // ─────────────────────────────────────────────────────────────────────────────
 function NoBurnPageContent() {
   const member   = useCurrentMember();
+  const searchParams = useSearchParams();
+  const selectedPlotId = searchParams.get('plot_id') ?? '';
   const fileId   = useId();
 
   const [requests,  setRequests]  = useState<NoBurnRequest[]>([]);
@@ -171,11 +174,16 @@ function NoBurnPageContent() {
         : Promise.resolve({ data: [] as Cycle[] });
       const [plotsRes, cyclesRes] = await Promise.all([plotPromise, cyclePromise]);
       if (!plotsRes.ok) setError(plotsRes.payload.error ?? 'ไม่สามารถโหลดแปลงได้');
-      setPlots(plotsRes.payload.plots ?? []);
+      const loadedPlots = plotsRes.payload.plots ?? [];
+      setPlots(loadedPlots);
+      if (selectedPlotId && loadedPlots.some((plot) => plot.id === selectedPlotId)) {
+        setSelectedPlot(selectedPlotId);
+        setShowForm(true);
+      }
       setCycles((cyclesRes.data ?? []) as Cycle[]);
     }
     setLoading(false);
-  }, [member?.member_id, member?.line_user_id]);
+  }, [member?.member_id, member?.line_user_id, selectedPlotId]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -334,7 +342,7 @@ function NoBurnPageContent() {
                   </p>
                 </div>
               </div>
-              <a href="/planting-cycles/new" style={{
+              <a href={`/planting-cycles/new${selectedPlot ? `?plot_id=${encodeURIComponent(selectedPlot)}` : ''}`} style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                 padding: '14px', background: '#185FA5', color: '#fff',
                 fontSize: 14, fontWeight: 800, textDecoration: 'none',
@@ -633,7 +641,9 @@ function NoBurnPageContent() {
 export default function NoBurnPage() {
   return (
     <ProtectedRoute allowedRoles={['farmer', 'leader', 'admin']}>
-      <NoBurnPageContent />
+      <Suspense fallback={<LoadingState label="กำลังโหลด…" />}>
+        <NoBurnPageContent />
+      </Suspense>
     </ProtectedRoute>
   );
 }

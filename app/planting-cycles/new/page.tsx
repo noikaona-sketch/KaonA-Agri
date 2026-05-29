@@ -1,7 +1,7 @@
 'use client';
 
-import { useRouter }           from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
 import { useCurrentMember }    from '@/providers/auth-provider';
 import { MobileAppShell }      from '@/shared/components/mobile-app-shell';
 import { UIButton }            from '@/shared/components/ui-button';
@@ -34,8 +34,10 @@ function isCornCrop(cropName:string) {
   return isCornSeedProduct({ category:'seed', product_type:'seed', crop_type:cropName, name:cropName });
 }
 
-export default function NewPlantingCyclePage() {
+function NewPlantingCyclePageContent() {
   const router  = useRouter();
+  const searchParams = useSearchParams();
+  const selectedPlotId = searchParams.get('plot_id') ?? '';
   const member  = useCurrentMember();
 
   const [plots,      setPlots]      = useState<Plot[]>([]);
@@ -65,11 +67,17 @@ export default function NewPlantingCyclePage() {
         fetch(`/api/member/plots?line_user_id=${encodeURIComponent(member.line_user_id)}`).then(r=>r.json()) as Promise<{plots?:Plot[]}>,
         fetch('/api/member/crop-types').then(r=>r.json()) as Promise<{crops?:CropConfig[]}>,
       ]);
-      setPlots(pRes.plots ?? []);
+      const loadedPlots = pRes.plots ?? [];
+      setPlots(loadedPlots);
+      if (selectedPlotId && loadedPlots.some((plot) => plot.id === selectedPlotId)) {
+        const selectedPlot = loadedPlots.find((plot) => plot.id === selectedPlotId);
+        setPlotId(selectedPlotId);
+        if (selectedPlot) setAreaRai(String(selectedPlot.area_rai));
+      }
       setCropConfigs([...(cRes.crops ?? []), { crop_type:'อื่นๆ', yield_per_rai:0, quota_per_seed_kg:0 }]);
       setLoading(false);
     })();
-  }, [member?.member_id, member?.line_user_id]);
+  }, [member?.member_id, member?.line_user_id, selectedPlotId]);
 
   useEffect(() => {
     setSelItemIds(new Set());
@@ -321,5 +329,13 @@ export default function NewPlantingCyclePage() {
         <UIButton variant="ghost" fullWidth onClick={() => router.back()}>← ยกเลิก</UIButton>
       </div>
     </MobileAppShell>
+  );
+}
+
+export default function NewPlantingCyclePage() {
+  return (
+    <Suspense fallback={<LoadingState label="กำลังโหลด…" />}>
+      <NewPlantingCyclePageContent />
+    </Suspense>
   );
 }
