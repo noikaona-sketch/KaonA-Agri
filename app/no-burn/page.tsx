@@ -164,7 +164,7 @@ function NoBurnPageContent() {
         sb.from('plots').select('id,name,province').eq('member_id', member.member_id).is('deleted_at', null),
         sb.from('planting_cycles').select('id,crop_name,season_year,status')
           .eq('member_id', member.member_id)
-          .not('status', 'in', '("harvested","cancelled")'),
+          .in('status', ['pending','active','confirmed','growing']),
       ]);
       setPlots((plotsRes.data ?? []) as Plot[]);
       setCycles((cyclesRes.data ?? []) as Cycle[]);
@@ -391,7 +391,7 @@ function NoBurnPageContent() {
                     }}>
                     <option value="">ไม่ระบุ</option>
                     {cycles.map((c) => (
-                      <option key={c.id} value={c.id}>{c.crop_name} {c.season_year}</option>
+                      <option key={c.id} value={c.id}>{c.crop_name} ปี {c.season_year} · {c.status === 'active' || c.status === 'confirmed' || c.status === 'growing' ? 'กำลังปลูก' : c.status}</option>
                     ))}
                   </select>
                   <span style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#6b7280', fontSize: 12 }}>▾</span>
