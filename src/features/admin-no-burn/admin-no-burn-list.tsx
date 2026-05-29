@@ -83,6 +83,13 @@ export function AdminNoBurnList() {
         </div>
       )}
 
+      <div style={{ marginBottom: 10 }}>
+        <button onClick={() => setShowRegister(true)}
+          style={{ padding: '9px 18px', borderRadius: 10, border: 'none', background: '#2e7d32', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          ＋ ลงทะเบียนแทนสมาชิก
+        </button>
+      </div>
+
       <div className="admin-filter-bar">
         <select className="admin-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
           <option value="">ทุกสถานะ</option>
