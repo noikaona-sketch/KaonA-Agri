@@ -170,7 +170,6 @@ begin
   v_delta := case
     when p_type in ('receive','transfer_in','adjust_add','return') then  p_qty
     when p_type in ('sale','transfer_out','adjust_sub')            then -p_qty
-    when p_type in ('reservation','cancel_res')                    then  0
     else 0
   end;
 
