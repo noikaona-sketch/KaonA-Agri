@@ -6,6 +6,7 @@ import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { ErrorState }   from '@/shared/components/error-state';
 import { LoadingState } from '@/shared/components/loading-state';
 import { NoBurnTableRow, type NoBurnRow, ACTIONABLE } from './no-burn-table-row';
+import { AdminNoBurnRegisterModal }                  from './admin-no-burn-register-modal';
 
 export function AdminNoBurnList() {
   const [rows,         setRows]         = useState<NoBurnRow[]>([]);
@@ -15,7 +16,8 @@ export function AdminNoBurnList() {
   const [notice,       setNotice]       = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState('');
   const [noteMap,      setNoteMap]      = useState<Record<string, string>>({});
-  const [evidenceOpen, setEvidenceOpen] = useState<Record<string, boolean>>({});
+  const [evidenceOpen,   setEvidenceOpen]   = useState<Record<string, boolean>>({});
+  const [showRegister,   setShowRegister]   = useState(false);
 
   async function load() {
     setLoading(true); setError(null);
@@ -68,6 +70,12 @@ export function AdminNoBurnList() {
 
   return (
     <div>
+      {showRegister && (
+        <AdminNoBurnRegisterModal
+          onClose={() => setShowRegister(false)}
+          onSuccess={() => { setShowRegister(false); void load(); setNotice('✅ ลงทะเบียนงดเผาให้สมาชิกแล้ว'); }}
+        />
+      )}
       {notice && (
         <div style={{ background: '#e8f5e9', border: '1px solid #a5d6a7', borderRadius: 10, padding: '10px 14px', marginBottom: 14, fontWeight: 600, color: '#1b5e20', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span>{notice}</span>
