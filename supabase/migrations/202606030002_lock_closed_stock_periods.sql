@@ -168,8 +168,9 @@ begin
     || lpad(nextval('public.stock_movement_seq')::text, 5, '0');
 
   v_delta := case
-    when p_type in ('receive','transfer_in','adjust_add','return','cancel_res') then  p_qty
-    when p_type in ('sale','transfer_out','adjust_sub','reservation')           then -p_qty
+    when p_type in ('receive','transfer_in','adjust_add','return') then  p_qty
+    when p_type in ('sale','transfer_out','adjust_sub')            then -p_qty
+    when p_type in ('reservation','cancel_res')                    then  0
     else 0
   end;
 
@@ -185,7 +186,9 @@ begin
     p_ref_type, p_ref_id, p_ref_no, p_note, v_period_id, p_created_by
   ) returning id into v_mv_id;
 
-  perform public.adjust_stock(p_warehouse_id, p_product_id, p_variety_id, v_delta, p_unit);
+  if p_type not in ('reservation', 'cancel_res') then
+    perform public.adjust_stock(p_warehouse_id, p_product_id, p_variety_id, v_delta, p_unit);
+  end if;
 
   if p_type = 'transfer_out' and p_dest_warehouse_id is not null then
     perform public.adjust_stock(p_dest_warehouse_id, p_product_id, p_variety_id, p_qty, p_unit);
