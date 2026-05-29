@@ -1,13 +1,14 @@
 'use client';
 
 import Link                                        from 'next/link';
-import { useEffect, useState, type ReactNode }       from 'react';
+import { useEffect, useState }                     from 'react';
 import { useRouter }                               from 'next/navigation';
 import { useAuth, useCurrentMember, useEffectiveRole } from '@/providers/auth-provider';
 import { createSupabaseBrowserClient }             from '@/lib/supabase/client';
 import { LoadingState }                            from '@/shared/components/loading-state';
 import { MobileAppShell }                          from '@/shared/components/mobile-app-shell';
 import type { AppRole }                            from '@/shared/auth/auth-types';
+import { FarmerSmartDashboard, type FarmerDashboardData } from '@/features/member-mobile/farmer-smart-dashboard';
 
 // ─────────────────────────────────────────────────────────────────────
 // Helpers
@@ -35,15 +36,6 @@ const ROLE_COLOR: Record<AppRole, { bg: string; text: string }> = {
 // ─────────────────────────────────────────────────────────────────────
 type BadgeStyle = { label: string; color: string; bg: string };
 type FarmerCardTone = { border: string; bg: string; iconBg: string; iconText: string; shadow: string };
-type FarmerPlotSummary = { id: string; name: string | null; area_rai: number | null; status: string | null };
-type FarmerCycleSummary = {
-  id: string; plot_id: string | null; status: string; expected_harvest_at: string | null; crop_name: string | null;
-};
-type FarmerNoBurnSummary = { id: string; plot_id: string | null; status: string };
-type FarmerHarvestBookingSummary = {
-  id: string; plot_id: string | null; planting_cycle_id: string | null; scheduled_date: string | null; status: string;
-};
-type FarmerReminder = { id: string; priority: number; icon: string; title: string; desc: string; href: string; cta: string; tone: 'warn' | 'seed' | 'fire' | 'sale' | 'info' };
 
 const FARMER_CARD_TONES = {
   field: { border: '#7AC46B', bg: 'linear-gradient(145deg, #F2FBEF 0%, #FFFFFF 100%)', iconBg: '#DFF4D8', iconText: '#236B1F', shadow: 'rgba(46, 125, 50, 0.14)' },
@@ -195,377 +187,98 @@ function SecondaryRoleCards({ primaryRole, allRoles }: { primaryRole: AppRole; a
   );
 }
 
-const ACTIVE_CYCLE_STATUSES = ['planned','pending','active','confirmed','planted','growing','flowering','maturing','fruiting','ready'];
-const ACTIVE_NO_BURN_STATUSES = ['submitted','under_review','inspection_required','approved','completed'];
-const ACTIVE_BOOKING_STATUSES = ['pending','confirmed'];
-
-function daysUntil(dateStr: string | null): number | null {
-  if (!dateStr) return null;
-  return Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86400000);
-}
-
-function formatRai(area: number | null) {
-  if (area === null || area === undefined) return 'ไม่ระบุไร่';
-  return `${Number(area).toLocaleString('th-TH')} ไร่`;
-}
-
-function reminderToneStyle(tone: FarmerReminder['tone']) {
-  return {
-    warn: { bg: '#FFF8E1', border: '#F2C94C', text: '#7A4A00' },
-    seed: { bg: '#FFF1E6', border: '#F6A35A', text: '#9A4A00' },
-    fire: { bg: '#F4EEFF', border: '#B99AF4', text: '#5B21B6' },
-    sale: { bg: '#EAF5FF', border: '#8BC2FF', text: '#1D4ED8' },
-    info: { bg: '#EAF3DE', border: '#A3C78A', text: '#27500A' },
-  }[tone];
-}
-
-function SmartReminderCard({ reminder }: { reminder: FarmerReminder }) {
-  const tone = reminderToneStyle(reminder.tone);
-  return (
-    <Link href={reminder.href} style={{ textDecoration: 'none', WebkitTapHighlightColor: 'transparent' }}>
-      <div style={{
-        display: 'flex', gap: 10, alignItems: 'center', padding: '12px 12px', borderRadius: 16,
-        background: tone.bg, border: `1px solid ${tone.border}`, boxShadow: '0 6px 16px rgba(22, 64, 28, 0.06)',
-      }}>
-        <div style={{ fontSize: 24, width: 34, height: 34, borderRadius: 12, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          {reminder.icon}
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ margin: 0, color: tone.text, fontSize: 14, fontWeight: 800, lineHeight: 1.3 }}>{reminder.title}</p>
-          <p style={{ margin: '2px 0 0', color: '#5f6b5f', fontSize: 12, lineHeight: 1.35 }}>{reminder.desc}</p>
-        </div>
-        <span style={{ color: tone.text, fontWeight: 800, fontSize: 12, whiteSpace: 'nowrap' }}>{reminder.cta}</span>
-      </div>
-    </Link>
-  );
-}
-
-function ReminderSection({ reminders }: { reminders: FarmerReminder[] }) {
-  return (
-    <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <p style={{ margin: 0, fontSize: 18, fontWeight: 900, color: '#173B16' }}>สิ่งที่ต้องทำ</p>
-          <p style={{ margin: '2px 0 0', fontSize: 12, color: '#6b7280' }}>เรียงตามงานที่สำคัญที่สุดก่อน</p>
-        </div>
-        <Link href="/notifications" style={{ color: '#3B6D11', fontSize: 12, fontWeight: 800, textDecoration: 'none' }}>ดูทั้งหมด</Link>
-      </div>
-      {reminders.length > 0 ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {reminders.map((r) => <SmartReminderCard key={r.id} reminder={r} />)}
-        </div>
-      ) : (
-        <div style={{ borderRadius: 16, padding: '14px 12px', background: '#F4FAF0', border: '1px solid #D9EAD1', color: '#3B6D11', fontSize: 14, fontWeight: 700 }}>
-          ✅ วันนี้ยังไม่มีงานด่วน แปลงของคุณพร้อมติดตามแล้ว
-        </div>
-      )}
-    </section>
-  );
-}
-
-function QuickActionPill({ href, children, tone }: { href: string; children: ReactNode; tone: FarmerReminder['tone'] }) {
-  const st = reminderToneStyle(tone);
-  return (
-    <Link href={href} style={{ textDecoration: 'none', color: st.text, background: st.bg, border: `1px solid ${st.border}`, borderRadius: 999, padding: '9px 12px', fontSize: 12, fontWeight: 800, textAlign: 'center', whiteSpace: 'nowrap' }}>
-      {children}
-    </Link>
-  );
-}
-
-function plotScopedHref(path: string, plotId?: string | null) {
-  return plotId ? `${path}?plot_id=${encodeURIComponent(plotId)}` : path;
-}
-
-function PlotProgressCards({ plots, cycles, noBurnRequests, bookings }: {
-  plots: FarmerPlotSummary[]; cycles: FarmerCycleSummary[]; noBurnRequests: FarmerNoBurnSummary[]; bookings: FarmerHarvestBookingSummary[];
-}) {
-  if (plots.length === 0) return null;
-  const cyclesByPlot = new Map<string, FarmerCycleSummary>();
-  cycles.forEach((cycle) => { if (cycle.plot_id && !cyclesByPlot.has(cycle.plot_id)) cyclesByPlot.set(cycle.plot_id, cycle); });
-  const noBurnByPlot = new Map<string, FarmerNoBurnSummary>();
-  noBurnRequests.forEach((req) => { if (req.plot_id && !noBurnByPlot.has(req.plot_id)) noBurnByPlot.set(req.plot_id, req); });
-  const bookingsByPlot = new Map<string, FarmerHarvestBookingSummary>();
-  bookings.forEach((booking) => { if (booking.plot_id && !bookingsByPlot.has(booking.plot_id)) bookingsByPlot.set(booking.plot_id, booking); });
-
-  return (
-    <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div>
-        <p style={{ margin: 0, fontSize: 18, fontWeight: 900, color: '#173B16' }}>ความคืบหน้าแปลง</p>
-        <p style={{ margin: '2px 0 0', fontSize: 12, color: '#6b7280' }}>สถานะสำคัญแยกตามแปลง</p>
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {plots.slice(0, 4).map((plot) => {
-          const cycle = cyclesByPlot.get(plot.id);
-          const noBurn = noBurnByPlot.get(plot.id);
-          const booking = bookingsByPlot.get(plot.id) ?? bookings.find((b) => b.planting_cycle_id && b.planting_cycle_id === cycle?.id);
-          return (
-            <div key={plot.id} style={{ background: '#fff', border: '1px solid #E1EBDD', borderRadius: 18, padding: 14, boxShadow: '0 8px 22px rgba(46, 125, 50, 0.08)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'flex-start' }}>
-                <div>
-                  <p style={{ margin: 0, fontSize: 16, fontWeight: 900, color: '#173B16' }}>{plot.name || 'แปลงไม่มีชื่อ'} {formatRai(plot.area_rai)}</p>
-                  <p style={{ margin: '2px 0 0', fontSize: 12, color: '#6b7280' }}>✅ ลงทะเบียนแล้ว</p>
-                </div>
-                <Link href="/plots" style={{ color: '#3B6D11', fontSize: 12, fontWeight: 800, textDecoration: 'none' }}>รายละเอียด</Link>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 6, marginTop: 10, fontSize: 13, fontWeight: 700 }}>
-                <span style={{ color: cycle ? '#2e7d32' : '#8A5A00' }}>{cycle ? `✅ รอบปลูก${cycle.crop_name ? ` ${cycle.crop_name}` : ''}` : '⚠️ ยังไม่สร้างรอบปลูก'}</span>
-                <span style={{ color: noBurn ? '#2e7d32' : '#6D28D9' }}>{noBurn ? '✅ สมัครไม่เผาแล้ว' : '🔥 ยังไม่สมัครไม่เผา'}</span>
-                <span style={{ color: booking ? '#1D4ED8' : '#6b7280' }}>{booking ? '📅 มีนัดขายแล้ว' : '📅 ยังไม่มีนัดขาย'}</span>
-              </div>
-              <div style={{ display: 'flex', gap: 8, overflowX: 'auto', marginTop: 12, paddingBottom: 2 }}>
-                {!cycle && <QuickActionPill href={plotScopedHref('/planting-cycles/new', plot.id)} tone="warn">สร้างรอบปลูก</QuickActionPill>}
-                <QuickActionPill href={plotScopedHref('/service/reservations', plot.id)} tone="seed">จองเมล็ดพันธุ์</QuickActionPill>
-                {!noBurn && <QuickActionPill href={plotScopedHref('/no-burn', plot.id)} tone="fire">สมัครไม่เผา</QuickActionPill>}
-                <QuickActionPill href="/plots" tone="info">ดูรายละเอียดแปลง</QuickActionPill>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
 // ─────────────────────────────────────────────────────────────────────
 // FARMER HOME
 // ─────────────────────────────────────────────────────────────────────
 function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: string; allRoles: AppRole[] }) {
-  const [plots,         setPlots]         = useState(0);
-  const [plotCards,     setPlotCards]     = useState<FarmerPlotSummary[]>([]);
-  const [cycles,        setCycles]        = useState<FarmerCycleSummary[]>([]);
-  const [noBurnRequests,setNoBurnRequests]= useState<FarmerNoBurnSummary[]>([]);
-  const [bookings,      setBookings]      = useState<FarmerHarvestBookingSummary[]>([]);
-  const [hasSeedReservation, setHasSeedReservation] = useState(false);
-  const [quota,         setQuota]         = useState<number | null>(null);
-  const [cycleStatus,   setCycleStatus]   = useState<string | null>(null);   // active cycle status
-  const [noBurnStatus,  setNoBurnStatus]  = useState<string | null>(null);   // latest no-burn status
+  function renderFarmerMenu(data: FarmerDashboardData) {
+    // ── Badge helpers ────────────────────────────────────────────────────────
+    const CYCLE_STATUS_TH: Record<string, string> = {
+      planned: 'วางแผน', pending: 'วางแผน', active: 'กำลังปลูก', confirmed: 'ยืนยันแล้ว', planted: 'ปลูกแล้ว',
+      growing: 'กำลังโต', flowering: 'ออกดอก', maturing: 'กำลังแก่', fruiting: 'ติดฝัก', ready: 'พร้อมเก็บ',
+    };
+    const NO_BURN_STATUS_TH: Record<string, { label: string; color: string; bg: string }> = {
+      submitted:           { label: 'รอตรวจสอบ',   color: '#633806', bg: '#FAEEDA' },
+      under_review:        { label: 'กำลังตรวจ',    color: '#0C447C', bg: '#E6F1FB' },
+      inspection_required: { label: 'นัดตรวจแปลง',  color: '#3C3489', bg: '#EEEDFE' },
+      approved:            { label: '✅ ลงทะเบียนแล้ว', color: '#27500A', bg: '#EAF3DE' },
+      completed:           { label: '✅ เสร็จสิ้น',   color: '#27500A', bg: '#EAF3DE' },
+      rejected:            { label: 'ไม่ผ่าน',       color: '#444441', bg: '#F1EFE8' },
+    };
 
-  useEffect(() => {
-    if (!memberId) return;
-    const s = createSupabaseBrowserClient();
-    void (async () => {
-      const sessionRes = await s.auth.getSession();
-      const accessToken = sessionRes.data.session?.access_token;
-      const today = new Date().toISOString().slice(0, 10);
-      const authHeaders = accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined;
+    const plotBadge: BadgeStyle = data.plotsCount > 0
+      ? { label: '✅ ลงทะเบียนแล้ว', color: '#27500A', bg: '#EAF3DE' }
+      : { label: '⚠️ เพิ่มแปลง', color: '#854F0B', bg: '#FFF4D6' };
 
-      const plotsPromise = accessToken
-        ? fetch('/api/member/plots', { headers: authHeaders }).then((r) => r.ok ? r.json() : { plots: [] })
-        : s.from('plots').select('id,name,area_rai,status').eq('member_id', memberId).is('deleted_at', null).order('created_at', { ascending: false });
+    const cycleBadge: BadgeStyle = data.cycleStatus
+      ? { label: `✅ ${CYCLE_STATUS_TH[data.cycleStatus] ?? data.cycleStatus}`, color: '#27500A', bg: '#EAF3DE' }
+      : { label: '⚠️ ยังไม่สร้างรอบปลูก', color: '#8A5A00', bg: '#FFF4D6' };
 
-      const [plotsRes, cycleRes, noBurnRes, bookingRes, seedRes] = await Promise.all([
-        plotsPromise,
-        s.from('planting_cycles')
-          .select('id,plot_id,status,expected_harvest_at,crop_name')
-          .eq('member_id', memberId)
-          .in('status', ACTIVE_CYCLE_STATUSES)
-          .is('deleted_at', null)
-          .order('created_at', { ascending: false })
-          .limit(20),
-        s.from('no_burn_requests')
-          .select('id,plot_id,status')
-          .eq('member_id', memberId)
-          .in('status', ACTIVE_NO_BURN_STATUSES)
-          .is('deleted_at', null)
-          .order('submitted_at', { ascending: false })
-          .limit(20),
-        s.from('harvest_bookings')
-          .select('id,plot_id,planting_cycle_id,scheduled_date,status')
-          .eq('member_id', memberId)
-          .in('status', ACTIVE_BOOKING_STATUSES)
-          .gte('scheduled_date', today)
-          .order('scheduled_date', { ascending: true })
-          .limit(10),
-        s.from('seed_reservations')
-          .select('id', { count: 'exact', head: true })
-          .eq('member_id', memberId)
-          .in('status', ACTIVE_BOOKING_STATUSES),
-      ]);
+    const noBurnBadge: BadgeStyle = data.noBurnStatus
+      ? (NO_BURN_STATUS_TH[data.noBurnStatus] ?? { label: data.noBurnStatus, color: '#633806', bg: '#FAEEDA' })
+      : { label: '🔥 สมัครไม่เผาได้', color: '#6D28D9', bg: '#F4EEFF' };
 
-      const plotList = Array.isArray((plotsRes as { plots?: FarmerPlotSummary[] }).plots)
-        ? ((plotsRes as { plots: FarmerPlotSummary[] }).plots)
-        : (((plotsRes as { data?: FarmerPlotSummary[] }).data) ?? []);
-      const activePlots = plotList.filter((plot) => plot.status !== 'deleted');
-      const cycleList = ((cycleRes.data ?? []) as FarmerCycleSummary[]);
-      const noBurnList = ((noBurnRes.data ?? []) as FarmerNoBurnSummary[]);
-      const bookingList = ((bookingRes.data ?? []) as FarmerHarvestBookingSummary[]);
+    const saleBadge: BadgeStyle = data.bookings.length > 0
+      ? { label: '📅 มีนัดขาย', color: '#1D4ED8', bg: '#EAF5FF' }
+      : { label: '📅 แจ้งวันเกี่ยว', color: '#1D4ED8', bg: '#EAF5FF' };
 
-      setPlotCards(activePlots);
-      setPlots(activePlots.length);
-      setCycles(cycleList);
-      setNoBurnRequests(noBurnList);
-      setBookings(bookingList);
-      setHasSeedReservation((seedRes.count ?? 0) > 0);
-      setCycleStatus(cycleList[0]?.status ?? null);
-      setNoBurnStatus(noBurnList[0]?.status ?? null);
+    const FARMER_MENU_GROUPS = [
+      {
+        group: '🌱 การปลูก',
+        accentColor: '#2e7d32',
+        items: [
+          { href: '/plots',                icon: '🗺️', label: 'แปลงของฉัน',     desc: 'ดูข้อมูลแปลงและพิกัด', badge: plotBadge, tone: FARMER_CARD_TONES.field },
+          { href: '/planting-cycles',      icon: '🌽', label: 'ฤดูปลูก',         desc: 'ติดตามรอบปลูกล่าสุด', badge: cycleBadge, tone: FARMER_CARD_TONES.cycle },
+          { href: '/service/reservations', icon: '🌱', label: 'จองเมล็ดพันธุ์', desc: 'เลือกพันธุ์และจำนวนถุง', accent: true, tone: FARMER_CARD_TONES.seed },
+          { href: '/planting-cycles/new',  icon: '➕', label: 'แจ้งปลูกใหม่',   desc: 'สร้างรอบปลูกได้ทันที', tone: FARMER_CARD_TONES.cycle },
+        ],
+      },
+      {
+        group: '💰 ขายผลผลิต',
+        accentColor: '#1565c0',
+        items: [
+          { href: '/harvest/book',       icon: '🚜', label: 'แจ้งวันเกี่ยว',   desc: 'จองคิวรับซื้อผลผลิต', badge: saleBadge, tone: FARMER_CARD_TONES.sale },
+          { href: '/plots',              icon: '📅', label: 'นัดวันขาย',        desc: 'ดูรอบนัดหมายขาย', tone: FARMER_CARD_TONES.sale },
+          { href: '/harvest/calculator', icon: '💧', label: 'คำนวณชื้น/บาท',   desc: 'อ่านง่ายกลางแจ้ง', tone: FARMER_CARD_TONES.sale },
+          { href: '/planting-cycles',    icon: '📊', label: 'ประวัติยอดขาย',   desc: 'สรุปรายได้จากฤดูปลูก', tone: FARMER_CARD_TONES.sale },
+        ],
+      },
+      {
+        group: '🌿 โครงการไม่เผา',
+        accentColor: '#6D28D9',
+        items: [
+          { href: '/no-burn', icon: '🔥', label: 'ไม่เผา', desc: 'สมัครและติดตามสถานะ', badge: noBurnBadge, tone: FARMER_CARD_TONES.noBurn },
+          { href: '/no-burn', icon: '📸', label: 'ส่งรูปหลักฐาน',  desc: 'อัปโหลดรูปแปลงงดเผา', tone: FARMER_CARD_TONES.noBurn },
+        ],
+      },
+    ];
 
-      // ดึง quota ถ้ามี session (ใช้ token ที่ได้จากด้านบน)
-      if (accessToken) {
-        void fetch('/api/member/quota', {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        }).then((r) => r.json())
-          .then((q: { quota_ton?: number | null }) => {
-            if (q.quota_ton !== null && q.quota_ton !== undefined) setQuota(q.quota_ton);
-          }).catch(() => null); // quota ไม่ critical — ล้มเหลวก็ไม่เป็นไร
-      }
-    })();
-  }, [memberId]);
-
-
-  // ── Badge helpers ──────────────────────────────────────────────────────────
-  const CYCLE_STATUS_TH: Record<string, string> = {
-    planned: 'วางแผน', pending: 'วางแผน', active: 'กำลังปลูก', confirmed: 'ยืนยันแล้ว', planted: 'ปลูกแล้ว',
-    growing: 'กำลังโต', flowering: 'ออกดอก', maturing: 'กำลังแก่', fruiting: 'ติดฝัก', ready: 'พร้อมเก็บ',
-  };
-  const NO_BURN_STATUS_TH: Record<string, { label: string; color: string; bg: string }> = {
-    submitted:           { label: 'รอตรวจสอบ',   color: '#633806', bg: '#FAEEDA' },
-    under_review:        { label: 'กำลังตรวจ',    color: '#0C447C', bg: '#E6F1FB' },
-    inspection_required: { label: 'นัดตรวจแปลง',  color: '#3C3489', bg: '#EEEDFE' },
-    approved:            { label: '✅ ลงทะเบียนแล้ว', color: '#27500A', bg: '#EAF3DE' },
-    completed:           { label: '✅ เสร็จสิ้น',   color: '#27500A', bg: '#EAF3DE' },
-    rejected:            { label: 'ไม่ผ่าน',       color: '#444441', bg: '#F1EFE8' },
-  };
-
-  const plotBadge: BadgeStyle = plots > 0
-    ? { label: '✅ ลงทะเบียนแล้ว', color: '#27500A', bg: '#EAF3DE' }
-    : { label: '⚠️ เพิ่มแปลง', color: '#854F0B', bg: '#FFF4D6' };
-
-  const cycleBadge: BadgeStyle = cycleStatus
-    ? { label: `✅ ${CYCLE_STATUS_TH[cycleStatus] ?? cycleStatus}`, color: '#27500A', bg: '#EAF3DE' }
-    : { label: '⚠️ ยังไม่สร้างรอบปลูก', color: '#8A5A00', bg: '#FFF4D6' };
-
-  const noBurnBadge: BadgeStyle = noBurnStatus
-    ? (NO_BURN_STATUS_TH[noBurnStatus] ?? { label: noBurnStatus, color: '#633806', bg: '#FAEEDA' })
-    : { label: '🔥 สมัครไม่เผาได้', color: '#6D28D9', bg: '#F4EEFF' };
-
-  const saleBadge: BadgeStyle = bookings.length > 0
-    ? { label: '📅 มีนัดขาย', color: '#1D4ED8', bg: '#EAF5FF' }
-    : { label: '📅 แจ้งวันเกี่ยว', color: '#1D4ED8', bg: '#EAF5FF' };
-
-  const plotIdsWithCycles = new Set(cycles.map((cycle) => cycle.plot_id).filter(Boolean));
-  const plotIdsWithNoBurn = new Set(noBurnRequests.map((req) => req.plot_id).filter(Boolean));
-  const plotsWithoutCycles = plotCards.filter((plot) => !plotIdsWithCycles.has(plot.id));
-  const plotsWithoutNoBurn = plotCards.filter((plot) => !plotIdsWithNoBurn.has(plot.id));
-  const firstPlot = plotCards[0];
-  const firstPlotWithoutCycle = plotsWithoutCycles[0];
-  const firstPlotWithoutNoBurn = plotsWithoutNoBurn[0];
-  const nextBooking = bookings.find((booking) => daysUntil(booking.scheduled_date) !== null && (daysUntil(booking.scheduled_date) ?? 999) >= 0);
-  const nextBookingDays = daysUntil(nextBooking?.scheduled_date ?? null);
-  const harvestSoonCycle = cycles.find((cycle) => {
-    const days = daysUntil(cycle.expected_harvest_at);
-    return days !== null && days >= 0 && days <= 30;
-  });
-  const harvestSoonDays = daysUntil(harvestSoonCycle?.expected_harvest_at ?? null);
-  const reminders: FarmerReminder[] = [
-    ...(plotsWithoutCycles.length > 0 ? [{
-      id: 'missing-cycle', priority: 10, icon: '⚠️', title: `ยังไม่สร้างรอบปลูก ${plotsWithoutCycles.length} แปลง`,
-      desc: 'สร้างรอบปลูกเพื่อเริ่มติดตามฤดูปลูกและวันเก็บเกี่ยว', href: plotScopedHref('/planting-cycles/new', firstPlotWithoutCycle?.id), cta: 'สร้าง', tone: 'warn' as const,
-    }] : []),
-    ...(plotsWithoutNoBurn.length > 0 ? [{
-      id: 'missing-no-burn', priority: 20, icon: '🔥', title: `สมัครไม่เผาได้ ${plotsWithoutNoBurn.length} แปลง`,
-      desc: 'ยื่นคำขอโครงการไม่เผาจากแปลงที่ลงทะเบียนแล้ว', href: plotScopedHref('/no-burn', firstPlotWithoutNoBurn?.id), cta: 'สมัคร', tone: 'fire' as const,
-    }] : []),
-    ...(nextBooking && nextBookingDays !== null && nextBookingDays <= 30 ? [{
-      id: 'upcoming-sale', priority: 30, icon: '📅', title: `นัดขายอีก ${Math.max(0, nextBookingDays)} วัน`,
-      desc: 'ตรวจสอบวันนัด รถเกี่ยว และข้อมูลรับซื้อให้พร้อม', href: '/planting-cycles', cta: 'ดูนัด', tone: 'sale' as const,
-    }] : []),
-    ...(plotCards.length > 0 && !hasSeedReservation ? [{
-      id: 'seed-eligible', priority: 40, icon: '🌽', title: 'มีสิทธิ์จองเมล็ดพันธุ์',
-      desc: 'เลือกพันธุ์ข้าวโพดและจำนวนถุงสำหรับฤดูปลูกถัดไป', href: plotScopedHref('/service/reservations', firstPlot?.id), cta: 'จอง', tone: 'seed' as const,
-    }] : []),
-    ...(harvestSoonCycle && harvestSoonDays !== null ? [{
-      id: 'harvest-soon', priority: 50, icon: '⏳', title: 'รอบปลูกใกล้เก็บเกี่ยว',
-      desc: harvestSoonDays <= 0 ? 'ถึงกำหนดเก็บเกี่ยวแล้ว กรุณาแจ้งวันเกี่ยว' : `เหลือประมาณ ${harvestSoonDays} วันถึงวันเก็บเกี่ยว`,
-      href: '/harvest/book', cta: 'แจ้งวัน', tone: 'info' as const,
-    }] : []),
-  ].sort((a, b) => a.priority - b.priority).slice(0, 5);
-
-  const FARMER_MENU_GROUPS = [
-    {
-      group: '🌱 การปลูก',
-      accentColor: '#2e7d32',
-      items: [
-        { href: '/plots',                icon: '🗺️', label: 'แปลงของฉัน',     desc: 'ดูข้อมูลแปลงและพิกัด', badge: plotBadge, tone: FARMER_CARD_TONES.field },
-        { href: '/planting-cycles',      icon: '🌽', label: 'ฤดูปลูก',         desc: 'ติดตามรอบปลูกล่าสุด', badge: cycleBadge, tone: FARMER_CARD_TONES.cycle },
-        { href: '/service/reservations', icon: '🌱', label: 'จองเมล็ดพันธุ์', desc: 'เลือกพันธุ์และจำนวนถุง', accent: true, tone: FARMER_CARD_TONES.seed },
-        { href: '/planting-cycles/new',  icon: '➕', label: 'แจ้งปลูกใหม่',   desc: 'สร้างรอบปลูกได้ทันที', tone: FARMER_CARD_TONES.cycle },
-      ],
-    },
-    {
-      group: '💰 ขายผลผลิต',
-      accentColor: '#1565c0',
-      items: [
-        { href: '/harvest/book',       icon: '🚜', label: 'แจ้งวันเกี่ยว',   desc: 'จองคิวรับซื้อผลผลิต', badge: saleBadge, tone: FARMER_CARD_TONES.sale },
-        { href: '/plots',              icon: '📅', label: 'นัดวันขาย',        desc: 'ดูรอบนัดหมายขาย', tone: FARMER_CARD_TONES.sale },
-        { href: '/harvest/calculator', icon: '💧', label: 'คำนวณชื้น/บาท',   desc: 'อ่านง่ายกลางแจ้ง', tone: FARMER_CARD_TONES.sale },
-        { href: '/planting-cycles',    icon: '📊', label: 'ประวัติยอดขาย',   desc: 'สรุปรายได้จากฤดูปลูก', tone: FARMER_CARD_TONES.sale },
-      ],
-    },
-    {
-      group: '🌿 โครงการไม่เผา',
-      accentColor: '#6D28D9',
-      items: [
-        { href: '/no-burn', icon: '🔥', label: 'ไม่เผา', desc: 'สมัครและติดตามสถานะ', badge: noBurnBadge, tone: FARMER_CARD_TONES.noBurn },
-        { href: '/no-burn', icon: '📸', label: 'ส่งรูปหลักฐาน',  desc: 'อัปโหลดรูปแปลงงดเผา', tone: FARMER_CARD_TONES.noBurn },
-      ],
-    },
-  ];
+    return FARMER_MENU_GROUPS.map((grp) => (
+      <div key={grp.group}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+          <div style={{ height: 3, width: 20, borderRadius: 99, background: grp.accentColor }} />
+          <p style={{ margin: 0, fontWeight: 700, fontSize: 13, color: grp.accentColor, letterSpacing: '0.02em' }}>
+            {grp.group}
+          </p>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
+          {grp.items.map((item) => <MenuCard key={item.href + item.label} {...item} />)}
+        </div>
+      </div>
+    ));
+  }
 
   return (
     <MobileAppShell title="" subtitle="">
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-        <div style={{
-          background: 'linear-gradient(135deg, #F2FBEF 0%, #FFFFFF 62%, #FFF8D9 100%)',
-          border: '1px solid #D9EAD1', borderRadius: 24, padding: '18px 16px',
-          boxShadow: '0 10px 28px rgba(46, 125, 50, 0.10)',
-        }}>
-          <p style={{ margin: 0, fontSize: 22, fontWeight: 950, color: '#173B16', lineHeight: 1.25 }}>สวัสดี {name} 🌽</p>
-          <p style={{ margin: '6px 0 0', fontSize: 13, color: '#5f6b5f', lineHeight: 1.45 }}>
-            วันนี้มี {reminders.length} รายการที่ควรติดตาม · แปลงลงทะเบียน {plots} แปลง
-          </p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8, marginTop: 14 }}>
-            <div style={{ background: '#fff', borderRadius: 14, padding: '10px 8px', textAlign: 'center', border: '1px solid #E1EBDD' }}>
-              <p style={{ margin: 0, fontSize: 18, fontWeight: 900, color: '#236B1F' }}>{plots}</p>
-              <p style={{ margin: 0, fontSize: 11, color: '#6b7280' }}>แปลง</p>
-            </div>
-            <div style={{ background: '#fff', borderRadius: 14, padding: '10px 8px', textAlign: 'center', border: '1px solid #E1EBDD' }}>
-              <p style={{ margin: 0, fontSize: 18, fontWeight: 900, color: '#8A5A00' }}>{cycles.length}</p>
-              <p style={{ margin: 0, fontSize: 11, color: '#6b7280' }}>รอบปลูก</p>
-            </div>
-            <div style={{ background: '#fff', borderRadius: 14, padding: '10px 8px', textAlign: 'center', border: '1px solid #E1EBDD' }}>
-              <p style={{ margin: 0, fontSize: 18, fontWeight: 900, color: '#1D4ED8' }}>{bookings.length}</p>
-              <p style={{ margin: 0, fontSize: 11, color: '#6b7280' }}>นัดขาย</p>
-            </div>
-          </div>
-        </div>
-
-        <HeroCard name={name} memberId={memberId} primaryRole="farmer" allRoles={allRoles} plots={plots} price={null} quota={quota} />
-
-        <ReminderSection reminders={reminders} />
-
-        <PlotProgressCards plots={plotCards} cycles={cycles} noBurnRequests={noBurnRequests} bookings={bookings} />
-
-        {/* เมนูแยกกลุ่ม */}
-        {FARMER_MENU_GROUPS.map((grp) => (
-          <div key={grp.group}>
-            {/* Group header */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-              <div style={{ height: 3, width: 20, borderRadius: 99, background: grp.accentColor }} />
-              <p style={{ margin: 0, fontWeight: 700, fontSize: 13, color: grp.accentColor, letterSpacing: '0.02em' }}>
-                {grp.group}
-              </p>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
-              {grp.items.map((item) => <MenuCard key={item.href + item.label} {...item} />)}
-            </div>
-            {/* No-burn status widget — only for the no-burn group */}
-
-          </div>
-        ))}
-
-
-        <SecondaryRoleCards primaryRole="farmer" allRoles={allRoles} />
-      </div>
+      <FarmerSmartDashboard
+        name={name}
+        memberId={memberId}
+        renderHero={(data) => (
+          <HeroCard name={name} memberId={memberId} primaryRole="farmer" allRoles={allRoles} plots={data.plotsCount} price={null} quota={data.quota} />
+        )}
+        renderMenu={renderFarmerMenu}
+        footer={<SecondaryRoleCards primaryRole="farmer" allRoles={allRoles} />}
+      />
     </MobileAppShell>
   );
 }
