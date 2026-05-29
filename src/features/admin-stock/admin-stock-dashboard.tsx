@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { LoadingState } from '@/shared/components/loading-state';
+import { DailyStockMovementReport } from '@/features/admin-reports/daily-stock-movement-report';
 
 type Warehouse = { id: string; code: string; name: string };
 type StockItem = {
@@ -40,14 +41,14 @@ type ReceiveForm = {
   unit: string; qty: string; unit_cost: string; note: string;
 };
 
-export function AdminStockDashboard({ initialTab = 'stock' }: { initialTab?: 'stock' | 'receive' | 'transfer' | 'movements' | 'periods' }) {
+export function AdminStockDashboard({ initialTab = 'stock' }: { initialTab?: 'stock' | 'receive' | 'transfer' | 'movements' | 'dailyReport' | 'periods' }) {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [stock,      setStock]      = useState<StockItem[]>([]);
   const [movements,  setMovements]  = useState<Movement[]>([]);
   const [products,   setProducts]   = useState<{ id: string; name: string; unit: string; category: string; product_type?: string | null }[]>([]);
   const [loading,    setLoading]    = useState(true);
   const [selWH,      setSelWH]      = useState('');
-  const [tab,        setTab]        = useState<'stock' | 'receive' | 'transfer' | 'movements' | 'periods'>(initialTab);
+  const [tab,        setTab]        = useState<'stock' | 'receive' | 'transfer' | 'movements' | 'dailyReport' | 'periods'>(initialTab);
   const [notice,     setNotice]     = useState<string | null>(null);
   const [saving,     setSaving]     = useState(false);
   const [editingReceive, setEditingReceive] = useState<ReceiveEdit>(null);
@@ -213,6 +214,7 @@ export function AdminStockDashboard({ initialTab = 'stock' }: { initialTab?: 'st
           { key: 'receive',   label: '📥 รับเข้า' },
           { key: 'transfer',  label: '📤 โอน' },
           { key: 'movements', label: '📊 เคลื่อนไหว' },
+          { key: 'dailyReport', label: '📈 รายงานเคลื่อนไหวรายวัน' },
           { key: 'periods',   label: '🔒 ปิดงวด' },
         ] as const).map((t) => (
           <button key={t.key} onClick={() => setTab(t.key)}
@@ -407,6 +409,9 @@ export function AdminStockDashboard({ initialTab = 'stock' }: { initialTab?: 'st
           </table>
         </div>
       )}
+
+      {/* DAILY REPORT tab */}
+      {tab === 'dailyReport' && <DailyStockMovementReport />}
 
       {/* PERIODS tab */}
       {tab === 'periods' && (

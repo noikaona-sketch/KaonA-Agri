@@ -4,14 +4,13 @@ import { useState }                         from 'react';
 import { AdminWebShell }                    from '@/shared/components/admin-web-shell';
 import { SalesByProductReport }             from '@/features/admin-reports/sales-by-product-report';
 import { StockSummaryReport }               from '@/features/admin-reports/stock-summary-report';
-import { DailyStockMovementReport }         from '@/features/admin-reports/daily-stock-movement-report';
 import { ByAreaReport }                     from '@/features/admin-reports/by-area-report';
 import { ExpectedVsActualReport }           from '@/features/admin-reports/expected-vs-actual-report';
 import { MemberSummaryReport }              from '@/features/admin-reports/member-summary-report';
 import { BookingReport }                    from '@/features/admin-reports/booking-report';
 import { ByVehicleReport }                  from '@/features/admin-reports/by-vehicle-report';
 
-type Tab = 'members' | 'bookings' | 'sales' | 'stock' | 'stockMovement' | 'area' | 'accuracy' | 'vehicle';
+type Tab = 'members' | 'bookings' | 'sales' | 'stock' | 'area' | 'accuracy' | 'vehicle';
 const TABS: { key: Tab; icon: string; label: string }[] = [
   { key: 'members',  icon: '👥', label: 'สมาชิก'        },
   { key: 'bookings', icon: '📅', label: 'การจองขาย'      },
@@ -19,7 +18,6 @@ const TABS: { key: Tab; icon: string; label: string }[] = [
   { key: 'vehicle',  icon: '🚛', label: 'ตามรถ'          },
   { key: 'sales',    icon: '💰', label: 'ยอดขายสินค้า'   },
   { key: 'stock',    icon: '📦', label: 'สต็อก'          },
-  { key: 'stockMovement', icon: '📊', label: 'เคลื่อนไหวรายวัน' },
   { key: 'area',     icon: '📍', label: 'ตามพื้นที่'      },
 ];
 
@@ -43,7 +41,6 @@ export default function AdminReportsPage() {
       {tab === 'vehicle'  && <ByVehicleReport />}
       {tab === 'sales'    && <SalesByProductReport />}
       {tab === 'stock'    && <StockSummaryReport />}
-      {tab === 'stockMovement' && <DailyStockMovementReport />}
       {tab === 'area'     && <ByAreaReport />}
     </AdminWebShell>
   );
