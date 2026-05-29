@@ -34,40 +34,63 @@ const ROLE_COLOR: Record<AppRole, { bg: string; text: string }> = {
 // MenuCard — clean flat style matching mockup
 // ─────────────────────────────────────────────────────────────────────
 type BadgeStyle = { label: string; color: string; bg: string };
+type FarmerCardTone = { border: string; bg: string; iconBg: string; iconText: string; shadow: string };
 
-function MenuCard({ href, icon, label, desc, accent, badge }: {
+const FARMER_CARD_TONES = {
+  field: { border: '#7AC46B', bg: 'linear-gradient(145deg, #F2FBEF 0%, #FFFFFF 100%)', iconBg: '#DFF4D8', iconText: '#236B1F', shadow: 'rgba(46, 125, 50, 0.14)' },
+  cycle: { border: '#F2C94C', bg: 'linear-gradient(145deg, #FFF8D9 0%, #FFFFFF 100%)', iconBg: '#FFECA6', iconText: '#8A5A00', shadow: 'rgba(217, 119, 6, 0.16)' },
+  seed: { border: '#F6A35A', bg: 'linear-gradient(145deg, #FFF1E6 0%, #FFFFFF 100%)', iconBg: '#FFD9B8', iconText: '#B45309', shadow: 'rgba(234, 88, 12, 0.16)' },
+  noBurn: { border: '#B99AF4', bg: 'linear-gradient(145deg, #F4EEFF 0%, #FFFFFF 100%)', iconBg: '#E6DAFF', iconText: '#6D28D9', shadow: 'rgba(109, 40, 217, 0.16)' },
+  sale: { border: '#8BC2FF', bg: 'linear-gradient(145deg, #EAF5FF 0%, #FFFFFF 100%)', iconBg: '#D9ECFF', iconText: '#1D4ED8', shadow: 'rgba(37, 99, 235, 0.14)' },
+} satisfies Record<string, FarmerCardTone>;
+
+function MenuCard({ href, icon, label, desc, accent, badge, tone }: {
   href: string; icon: string; label: string; desc: string; accent?: boolean;
-  badge?: BadgeStyle;
+  badge?: BadgeStyle; tone?: FarmerCardTone;
 }) {
+  const isFarmerTone = Boolean(tone);
+  const cardTone = tone ?? FARMER_CARD_TONES.field;
   return (
-    <Link href={href} style={{ textDecoration: 'none' }}>
+    <Link href={href} style={{ textDecoration: 'none', WebkitTapHighlightColor: 'transparent' }}>
       <div style={{
-        background: 'var(--color-background-primary,#fff)',
-        borderRadius: 14, padding: '14px 10px 12px',
+        background: isFarmerTone ? cardTone.bg : 'var(--color-background-primary,#fff)',
+        borderRadius: isFarmerTone ? 20 : 14,
+        padding: isFarmerTone ? '18px 12px 16px' : '14px 10px 12px',
         display: 'flex', flexDirection: 'column', alignItems: 'center',
-        gap: 6, border: accent ? '1.5px solid #639922' : '0.5px solid #e4ede4',
-        minHeight: 90, textAlign: 'center', position: 'relative',
-        transition: 'transform 0.1s',
+        gap: isFarmerTone ? 8 : 6,
+        border: isFarmerTone
+          ? (accent ? `2px solid ${cardTone.border}` : `1.5px solid ${cardTone.border}`)
+          : (accent ? '1.5px solid #639922' : '0.5px solid #e4ede4'),
+        minHeight: isFarmerTone ? 132 : 90, textAlign: 'center', position: 'relative',
+        transition: 'transform 0.1s, box-shadow 0.15s',
+        boxShadow: isFarmerTone ? `0 8px 22px ${cardTone.shadow}` : 'none',
       }}
         onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.96)')}
         onMouseUp={(e)   => (e.currentTarget.style.transform = 'scale(1)')}>
         {/* Status badge */}
         {badge && (
           <div style={{
-            position: 'absolute', top: 7, right: 7,
-            fontSize: 9, fontWeight: 800, padding: '2px 6px',
+            position: isFarmerTone ? 'static' : 'absolute', top: 8, right: 8,
+            alignSelf: isFarmerTone ? 'flex-end' : undefined,
+            marginBottom: isFarmerTone ? 2 : undefined,
+            fontSize: isFarmerTone ? 11 : 9, fontWeight: 800, padding: isFarmerTone ? '4px 8px' : '2px 6px',
             borderRadius: 99, background: badge.bg, color: badge.color,
-            display: 'flex', alignItems: 'center', gap: 3, lineHeight: 1.4,
+            display: 'flex', alignItems: 'center', gap: 4, lineHeight: 1.35,
+            boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
           }}>
-            <div style={{ width: 5, height: 5, borderRadius: '50%', background: badge.color, flexShrink: 0 }} />
             {badge.label}
           </div>
         )}
-        <div style={{ width: 44, height: 44, borderRadius: 12, background: '#f0faf0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>
+        <div style={{
+          width: isFarmerTone ? 58 : 44, height: isFarmerTone ? 58 : 44,
+          borderRadius: isFarmerTone ? 18 : 12, background: isFarmerTone ? cardTone.iconBg : '#f0faf0', color: cardTone.iconText,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: isFarmerTone ? 32 : 24,
+          boxShadow: isFarmerTone ? 'inset 0 0 0 1px rgba(255,255,255,0.65)' : 'none',
+        }}>
           {icon}
         </div>
-        <p style={{ margin: 0, fontWeight: 500, fontSize: 13, color: 'var(--color-text-primary,#111)', lineHeight: 1.2 }}>{label}</p>
-        <p style={{ margin: 0, fontSize: 11, color: 'var(--color-text-secondary,#666)', lineHeight: 1.3 }}>{desc}</p>
+        <p style={{ margin: isFarmerTone ? '2px 0 0' : 0, fontWeight: isFarmerTone ? 800 : 500, fontSize: isFarmerTone ? 16 : 13, color: 'var(--color-text-primary,#111)', lineHeight: isFarmerTone ? 1.25 : 1.2 }}>{label}</p>
+        <p style={{ margin: 0, fontSize: isFarmerTone ? 13 : 11, fontWeight: isFarmerTone ? 600 : 400, color: 'var(--color-text-secondary,#5f6b5f)', lineHeight: isFarmerTone ? 1.35 : 1.3 }}>{desc}</p>
       </div>
     </Link>
   );
@@ -222,53 +245,59 @@ function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: stri
     submitted:           { label: 'รอตรวจสอบ',   color: '#633806', bg: '#FAEEDA' },
     under_review:        { label: 'กำลังตรวจ',    color: '#0C447C', bg: '#E6F1FB' },
     inspection_required: { label: 'นัดตรวจแปลง',  color: '#3C3489', bg: '#EEEDFE' },
-    approved:            { label: '✓ อนุมัติแล้ว', color: '#27500A', bg: '#EAF3DE' },
-    completed:           { label: '✓ เสร็จสิ้น',   color: '#27500A', bg: '#EAF3DE' },
+    approved:            { label: '✅ ลงทะเบียนแล้ว', color: '#27500A', bg: '#EAF3DE' },
+    completed:           { label: '✅ เสร็จสิ้น',   color: '#27500A', bg: '#EAF3DE' },
     rejected:            { label: 'ไม่ผ่าน',       color: '#444441', bg: '#F1EFE8' },
   };
 
-  const cycleBadge: BadgeStyle | undefined = cycleStatus
-    ? { label: CYCLE_STATUS_TH[cycleStatus] ?? cycleStatus, color: '#27500A', bg: '#EAF3DE' }
-    : undefined;
+  const plotBadge: BadgeStyle = plots > 0
+    ? { label: '✅ ลงทะเบียนแล้ว', color: '#27500A', bg: '#EAF3DE' }
+    : { label: '⚠️ เพิ่มแปลง', color: '#854F0B', bg: '#FFF4D6' };
 
-  const noBurnBadge: BadgeStyle | undefined = noBurnStatus
+  const cycleBadge: BadgeStyle = cycleStatus
+    ? { label: `✅ ${CYCLE_STATUS_TH[cycleStatus] ?? cycleStatus}`, color: '#27500A', bg: '#EAF3DE' }
+    : { label: '⚠️ ยังไม่สร้างรอบปลูก', color: '#8A5A00', bg: '#FFF4D6' };
+
+  const noBurnBadge: BadgeStyle = noBurnStatus
     ? (NO_BURN_STATUS_TH[noBurnStatus] ?? { label: noBurnStatus, color: '#633806', bg: '#FAEEDA' })
-    : { label: 'ยังไม่สมัคร', color: '#854F0B', bg: '#FAEEDA' };
+    : { label: '🔥 สมัครไม่เผาได้', color: '#6D28D9', bg: '#F4EEFF' };
+
+  const saleBadge: BadgeStyle = { label: '📅 มีนัดขาย', color: '#1D4ED8', bg: '#EAF5FF' };
 
   const FARMER_MENU_GROUPS = [
     {
       group: '🌱 การปลูก',
       accentColor: '#2e7d32',
       items: [
-        { href: '/service/reservations', icon: '🌽', label: 'จองเมล็ดพันธุ์', desc: 'สั่งข้าวโพด', accent: true },
-        { href: '/planting-cycles/new',  icon: '🌱', label: 'แจ้งปลูกใหม่',   desc: 'เปิดรอบปลูก' },
-        { href: '/planting-cycles',      icon: '🌾', label: 'ไร่ของฉัน',        desc: 'ติดตาม+บันทึก', badge: cycleBadge },
-        { href: '/plots',                icon: '🗺️', label: 'แปลงของฉัน',     desc: 'ข้อมูลแปลง' },
+        { href: '/plots',                icon: '🗺️', label: 'แปลงของฉัน',     desc: 'ดูข้อมูลแปลงและพิกัด', badge: plotBadge, tone: FARMER_CARD_TONES.field },
+        { href: '/planting-cycles',      icon: '🌽', label: 'ฤดูปลูก',         desc: 'ติดตามรอบปลูกล่าสุด', badge: cycleBadge, tone: FARMER_CARD_TONES.cycle },
+        { href: '/service/reservations', icon: '🌱', label: 'จองเมล็ดพันธุ์', desc: 'เลือกพันธุ์และจำนวนถุง', accent: true, tone: FARMER_CARD_TONES.seed },
+        { href: '/planting-cycles/new',  icon: '➕', label: 'แจ้งปลูกใหม่',   desc: 'สร้างรอบปลูกได้ทันที', tone: FARMER_CARD_TONES.cycle },
       ],
     },
     {
       group: '💰 ขายผลผลิต',
       accentColor: '#1565c0',
       items: [
-        { href: '/harvest/book',       icon: '🚜', label: 'แจ้งวันเกี่ยว',   desc: 'จองคิวรับซื้อ' },
-        { href: '/plots',              icon: '📅', label: 'นัดวันขาย',        desc: 'จองคิวขาย' },
-        { href: '/harvest/calculator', icon: '💧', label: 'คำนวณชื้น/บาท',   desc: 'ขายเลย vs รอแห้ง' },
-        { href: '/planting-cycles',    icon: '📊', label: 'ประวัติยอดขาย',   desc: 'สรุปรายได้' },
+        { href: '/harvest/book',       icon: '🚜', label: 'แจ้งวันเกี่ยว',   desc: 'จองคิวรับซื้อผลผลิต', badge: saleBadge, tone: FARMER_CARD_TONES.sale },
+        { href: '/plots',              icon: '📅', label: 'นัดวันขาย',        desc: 'ดูรอบนัดหมายขาย', tone: FARMER_CARD_TONES.sale },
+        { href: '/harvest/calculator', icon: '💧', label: 'คำนวณชื้น/บาท',   desc: 'อ่านง่ายกลางแจ้ง', tone: FARMER_CARD_TONES.sale },
+        { href: '/planting-cycles',    icon: '📊', label: 'ประวัติยอดขาย',   desc: 'สรุปรายได้จากฤดูปลูก', tone: FARMER_CARD_TONES.sale },
       ],
     },
     {
       group: '🌿 โครงการไม่เผา',
-      accentColor: '#e65100',
+      accentColor: '#6D28D9',
       items: [
-        { href: '/no-burn', icon: '🌿', label: 'ลงทะเบียนงดเผา', desc: 'สมัคร+ติดตามสถานะ', badge: noBurnBadge },
-        { href: '/no-burn', icon: '📸', label: 'ส่งรูปหลักฐาน',  desc: 'รูปแปลงงดเผา' },
+        { href: '/no-burn', icon: '🔥', label: 'ไม่เผา', desc: 'สมัครและติดตามสถานะ', badge: noBurnBadge, tone: FARMER_CARD_TONES.noBurn },
+        { href: '/no-burn', icon: '📸', label: 'ส่งรูปหลักฐาน',  desc: 'อัปโหลดรูปแปลงงดเผา', tone: FARMER_CARD_TONES.noBurn },
       ],
     },
   ];
 
   return (
     <MobileAppShell title="" subtitle="">
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         <HeroCard name={name} memberId={memberId} primaryRole="farmer" allRoles={allRoles} plots={plots} price={null} quota={quota} />
 
         {/* เมนูแยกกลุ่ม */}
@@ -281,7 +310,7 @@ function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: stri
                 {grp.group}
               </p>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
               {grp.items.map((item) => <MenuCard key={item.href + item.label} {...item} />)}
             </div>
             {/* No-burn status widget — only for the no-burn group */}
@@ -349,7 +378,7 @@ function StaffHome({ name, memberId, primaryRole, allRoles }: { name: string; me
 
   return (
     <MobileAppShell title="" subtitle="">
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         <HeroCard name={name} memberId={memberId} primaryRole={primaryRole} allRoles={allRoles} plots={plots} price={null} />
 
         {/* Leader: สรุปกลุ่มสมาชิก */}
@@ -380,7 +409,7 @@ function StaffHome({ name, memberId, primaryRole, allRoles }: { name: string; me
 
         <div>
           <p style={{ margin: '0 0 10px', fontWeight: 500, fontSize: 14, color: 'var(--color-text-secondary,#666)' }}>เมนูหลัก</p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
             {STAFF_MENU.map((item) => <MenuCard key={item.href + item.label} {...item} />)}
           </div>
         </div>
@@ -400,9 +429,9 @@ function TruckHome({ name, memberId, allRoles }: { name: string; memberId: strin
   ];
   return (
     <MobileAppShell title="" subtitle="">
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         <HeroCard name={name} memberId={memberId} primaryRole="truck_owner" allRoles={allRoles} plots={0} price={null} />
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
           {TRUCK_MENU.map((item) => <MenuCard key={item.href} {...item} />)}
         </div>
         <SecondaryRoleCards primaryRole="truck_owner" allRoles={allRoles} />

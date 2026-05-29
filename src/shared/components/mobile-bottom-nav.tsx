@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 import { useAuth, useEffectiveRole } from '@/providers/auth-provider';
-import { getNavConfig } from '@/shared/auth/role-nav-config';
+import { getNavConfig, type NavTab } from '@/shared/auth/role-nav-config';
 import { iconPaths } from '@/shared/design/icon-tokens';
 
 const NAV_STYLE = {
@@ -13,24 +13,24 @@ const NAV_STYLE = {
   borderTop: '0.5px solid var(--color-border-tertiary, #e4ede4)',
   borderRadius: 0,
   boxShadow: 'none',
-  padding: '4px 8px 8px',
+  padding: '6px 8px 10px',
 } as const;
 
-function getTabStyle(isActive: boolean) {
+function getTabStyle(tab: NavTab, isActive: boolean) {
   return {
-    minHeight: 48,
+    minHeight: 58,
     display: 'grid',
     placeItems: 'center',
-    gap: 2,
-    padding: '6px 4px',
+    gap: 3,
+    padding: '8px 4px',
     textDecoration: 'none',
-    borderRadius: 10,
-    background: 'transparent',
+    borderRadius: 14,
+    background: isActive ? (tab.activeBg ?? 'var(--color-background-secondary, #f5f5f5)') : 'transparent',
     color: isActive
-      ? 'var(--color-text-primary, #111)'
-      : 'var(--color-text-secondary, #888)',
-    boxShadow: 'none',
-    fontWeight: isActive ? 500 : 400,
+      ? (tab.color ?? 'var(--color-text-primary, #111)')
+      : 'var(--color-text-secondary, #777)',
+    boxShadow: isActive ? '0 4px 12px rgba(17, 24, 39, 0.08)' : 'none',
+    fontWeight: isActive ? 800 : 700,
   } as const;
 }
 
@@ -39,7 +39,7 @@ function NavIcon({ iconKey }: { iconKey: string }) {
   const isEmoji = /\p{Emoji}/u.test(iconKey) && !['member','field','service','admin'].includes(iconKey);
   if (isEmoji) {
     return (
-      <span style={{ display: 'block', lineHeight: 1, fontSize: 20, textAlign: 'center' }} aria-hidden="true">
+      <span style={{ display: 'block', lineHeight: 1, fontSize: 24, textAlign: 'center' }} aria-hidden="true">
         {iconKey}
       </span>
     );
@@ -68,7 +68,7 @@ export function MobileBottomNav() {
   const { tabs } = getNavConfig(status, effectiveRole, pathname);
 
   return (
-    <nav className="mobile-bottom-nav" aria-label="เมนูหลัก" style={NAV_STYLE}>
+    <nav className="mobile-bottom-nav" aria-label="เมนูหลัก" style={{ ...NAV_STYLE, gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
       {tabs.map((tab) => {
         const isActive =
           tab.href === '/'
@@ -85,15 +85,15 @@ export function MobileBottomNav() {
             ]
               .filter(Boolean)
               .join(' ')}
-            style={getTabStyle(isActive)}
+            style={getTabStyle(tab, isActive)}
             aria-current={isActive ? 'page' : undefined}
           >
             <NavIcon iconKey={tab.iconKey} />
-            <span style={{ display: 'block', fontSize: 10, lineHeight: 1.2, whiteSpace: 'nowrap' }}>
+            <span style={{ display: 'block', fontSize: 11, lineHeight: 1.2, whiteSpace: 'nowrap' }}>
               {tab.label}
             </span>
             {isActive && (
-              <span style={{ display: 'block', width: 4, height: 4, borderRadius: '50%', background: '#3B6D11', margin: '0 auto' }} />
+              <span style={{ display: 'block', width: 4, height: 4, borderRadius: '50%', background: tab.color ?? '#3B6D11', margin: '0 auto' }} />
             )}
           </Link>
         );
