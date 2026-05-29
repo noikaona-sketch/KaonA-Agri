@@ -21,23 +21,16 @@ export type MemberCompleteness = {
   error:    string | null;
 };
 
-// Fetch plot count via /api/member/plots (Bearer token, Mode A).
-// Reuses the session-based GET added in PR #237.
-async function fetchPlotCount(): Promise<number> {
+// Query Supabase directly — avoids dependency on /api/member/plots
+async function fetchPlotCount(memberId: string): Promise<number> {
   const sb = tryCreateSupabaseBrowserClient();
   if (!sb) return 0;
-
-  const { data: { session } } = await sb.auth.getSession();
-  const token = session?.access_token ?? '';
-  if (!token) return 0;
-
-  const res = await fetch('/api/member/plots', {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!res.ok) return 0;
-
-  const json = (await res.json()) as { plots?: unknown[] };
-  return json.plots?.length ?? 0;
+  const { count } = await sb
+    .from('plots')
+    .select('id', { count: 'exact', head: true })
+    .eq('member_id', memberId)
+    .is('deleted_at', null);
+  return count ?? 0;
 }
 
 export function useMemberCompleteness(): MemberCompleteness {
@@ -57,7 +50,7 @@ export function useMemberCompleteness(): MemberCompleteness {
     setLoading(true);
     setError(null);
     try {
-      const count = await fetchPlotCount();
+      const count = await fetchPlotCount(member.member_id);
       setPlotCount(count);
     } catch (e) {
       setError(String(e));
