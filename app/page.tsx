@@ -8,8 +8,6 @@ import { createSupabaseBrowserClient }             from '@/lib/supabase/client';
 import { LoadingState }                            from '@/shared/components/loading-state';
 import { MobileAppShell }                          from '@/shared/components/mobile-app-shell';
 import type { AppRole }                            from '@/shared/auth/auth-types';
-import { MemberDashboardFeed }                     from '@/features/engagement/member-dashboard-feed';
-import { NoBurnStatusWidget }                      from '@/features/no-burn-status/no-burn-status-widget';
 
 // ─────────────────────────────────────────────────────────────────────
 // Helpers
@@ -35,21 +33,36 @@ const ROLE_COLOR: Record<AppRole, { bg: string; text: string }> = {
 // ─────────────────────────────────────────────────────────────────────
 // MenuCard — clean flat style matching mockup
 // ─────────────────────────────────────────────────────────────────────
-function MenuCard({ href, icon, label, desc, accent }: {
+type BadgeStyle = { label: string; color: string; bg: string };
+
+function MenuCard({ href, icon, label, desc, accent, badge }: {
   href: string; icon: string; label: string; desc: string; accent?: boolean;
+  badge?: BadgeStyle;
 }) {
   return (
     <Link href={href} style={{ textDecoration: 'none' }}>
       <div style={{
         background: 'var(--color-background-primary,#fff)',
-        borderRadius: 14, padding: '14px 10px',
+        borderRadius: 14, padding: '14px 10px 12px',
         display: 'flex', flexDirection: 'column', alignItems: 'center',
         gap: 6, border: accent ? '1.5px solid #639922' : '0.5px solid #e4ede4',
-        minHeight: 90, textAlign: 'center',
+        minHeight: 90, textAlign: 'center', position: 'relative',
         transition: 'transform 0.1s',
       }}
         onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.96)')}
         onMouseUp={(e)   => (e.currentTarget.style.transform = 'scale(1)')}>
+        {/* Status badge */}
+        {badge && (
+          <div style={{
+            position: 'absolute', top: 7, right: 7,
+            fontSize: 9, fontWeight: 800, padding: '2px 6px',
+            borderRadius: 99, background: badge.bg, color: badge.color,
+            display: 'flex', alignItems: 'center', gap: 3, lineHeight: 1.4,
+          }}>
+            <div style={{ width: 5, height: 5, borderRadius: '50%', background: badge.color, flexShrink: 0 }} />
+            {badge.label}
+          </div>
+        )}
         <div style={{ width: 44, height: 44, borderRadius: 12, background: '#f0faf0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>
           {icon}
         </div>
@@ -154,8 +167,10 @@ function SecondaryRoleCards({ primaryRole, allRoles }: { primaryRole: AppRole; a
 // FARMER HOME
 // ─────────────────────────────────────────────────────────────────────
 function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: string; allRoles: AppRole[] }) {
-  const [plots, setPlots] = useState(0);
-  const [quota, setQuota] = useState<number | null>(null);
+  const [plots,         setPlots]         = useState(0);
+  const [quota,         setQuota]         = useState<number | null>(null);
+  const [cycleStatus,   setCycleStatus]   = useState<string | null>(null);   // active cycle status
+  const [noBurnStatus,  setNoBurnStatus]  = useState<string | null>(null);   // latest no-burn status
 
   useEffect(() => {
     // plots count — browser client, RLS controls access by auth.uid()
@@ -170,6 +185,20 @@ function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: stri
       ]);
       setPlots(plotsRes.count ?? 0);
 
+      // Badge data — cycle + no-burn (silent fail)
+      const [cycleRes, noBurnRes] = await Promise.all([
+        s.from('planting_cycles')
+          .select('status').eq('member_id', memberId)
+          .in('status', ['pending','active','confirmed','growing','flowering','maturing','ready'])
+          .order('created_at', { ascending: false }).limit(1).maybeSingle(),
+        s.from('no_burn_requests')
+          .select('status').eq('member_id', memberId)
+          .is('deleted_at', null)
+          .order('submitted_at', { ascending: false }).limit(1).maybeSingle(),
+      ]);
+      if (cycleRes.data?.status)  setCycleStatus(cycleRes.data.status);
+      if (noBurnRes.data?.status) setNoBurnStatus(noBurnRes.data.status);
+
       // ดึง quota ถ้ามี session (ใช้ token ที่ได้จากด้านบน)
       const accessToken = sessionRes.data.session?.access_token;
       if (accessToken) {
@@ -183,6 +212,29 @@ function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: stri
     })();
   }, [memberId]);
 
+
+  // ── Badge helpers ──────────────────────────────────────────────────────────
+  const CYCLE_STATUS_TH: Record<string, string> = {
+    pending: 'วางแผน', active: 'กำลังปลูก', confirmed: 'ยืนยันแล้ว',
+    growing: 'กำลังโต', flowering: 'ออกดอก', maturing: 'กำลังแก่', ready: 'พร้อมเก็บ',
+  };
+  const NO_BURN_STATUS_TH: Record<string, { label: string; color: string; bg: string }> = {
+    submitted:           { label: 'รอตรวจสอบ',   color: '#633806', bg: '#FAEEDA' },
+    under_review:        { label: 'กำลังตรวจ',    color: '#0C447C', bg: '#E6F1FB' },
+    inspection_required: { label: 'นัดตรวจแปลง',  color: '#3C3489', bg: '#EEEDFE' },
+    approved:            { label: '✓ อนุมัติแล้ว', color: '#27500A', bg: '#EAF3DE' },
+    completed:           { label: '✓ เสร็จสิ้น',   color: '#27500A', bg: '#EAF3DE' },
+    rejected:            { label: 'ไม่ผ่าน',       color: '#444441', bg: '#F1EFE8' },
+  };
+
+  const cycleBadge: BadgeStyle | undefined = cycleStatus
+    ? { label: CYCLE_STATUS_TH[cycleStatus] ?? cycleStatus, color: '#27500A', bg: '#EAF3DE' }
+    : undefined;
+
+  const noBurnBadge: BadgeStyle | undefined = noBurnStatus
+    ? (NO_BURN_STATUS_TH[noBurnStatus] ?? { label: noBurnStatus, color: '#633806', bg: '#FAEEDA' })
+    : { label: 'ยังไม่สมัคร', color: '#854F0B', bg: '#FAEEDA' };
+
   const FARMER_MENU_GROUPS = [
     {
       group: '🌱 การปลูก',
@@ -190,7 +242,7 @@ function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: stri
       items: [
         { href: '/service/reservations', icon: '🌽', label: 'จองเมล็ดพันธุ์', desc: 'สั่งข้าวโพด', accent: true },
         { href: '/planting-cycles/new',  icon: '🌱', label: 'แจ้งปลูกใหม่',   desc: 'เปิดรอบปลูก' },
-        { href: '/planting-cycles',      icon: '📋', label: 'รอบปลูกของฉัน',  desc: 'ติดตาม+บันทึก' },
+        { href: '/planting-cycles',      icon: '📋', label: 'รอบปลูกของฉัน',  desc: 'ติดตาม+บันทึก', badge: cycleBadge },
         { href: '/plots',                icon: '🗺️', label: 'แปลงของฉัน',     desc: 'ข้อมูลแปลง' },
       ],
     },
@@ -208,7 +260,7 @@ function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: stri
       group: '🌿 โครงการไม่เผา',
       accentColor: '#e65100',
       items: [
-        { href: '/no-burn', icon: '🌿', label: 'ลงทะเบียนงดเผา', desc: 'สมัคร+ติดตามสถานะ' },
+        { href: '/no-burn', icon: '🌿', label: 'ลงทะเบียนงดเผา', desc: 'สมัคร+ติดตามสถานะ', badge: noBurnBadge },
         { href: '/no-burn', icon: '📸', label: 'ส่งรูปหลักฐาน',  desc: 'รูปแปลงงดเผา' },
       ],
     },
@@ -218,9 +270,6 @@ function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: stri
     <MobileAppShell title="" subtitle="">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <HeroCard name={name} memberId={memberId} primaryRole="farmer" allRoles={allRoles} plots={plots} price={null} quota={quota} />
-
-        {/* P1.5 engagement feed */}
-        <MemberDashboardFeed memberId={memberId} />
 
         {/* เมนูแยกกลุ่ม */}
         {FARMER_MENU_GROUPS.map((grp) => (
@@ -236,20 +285,10 @@ function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: stri
               {grp.items.map((item) => <MenuCard key={item.href + item.label} {...item} />)}
             </div>
             {/* No-burn status widget — only for the no-burn group */}
-            {grp.group === '🌿 โครงการไม่เผา' && memberId && (
-              <NoBurnStatusWidget memberId={memberId} />
-            )}
+
           </div>
         ))}
 
-        {/* bonus banner */}
-        <div style={{ background: '#FFF8DB', borderRadius: 14, padding: '14px 16px', display: 'flex', gap: 12, alignItems: 'center', border: '0.5px solid #F9C74F' }}>
-          <span style={{ fontSize: 26, flexShrink: 0 }}>🎁</span>
-          <div>
-            <p style={{ margin: 0, fontWeight: 500, fontSize: 14, color: '#92400E' }}>สิทธิพิเศษสำหรับสมาชิก</p>
-            <p style={{ margin: '2px 0 0', fontSize: 12, color: '#B45309' }}>รับโบนัส +100 บาท/ตัน สำหรับสมาชิกไม่เผาตอซัง</p>
-          </div>
-        </div>
 
         <SecondaryRoleCards primaryRole="farmer" allRoles={allRoles} />
       </div>
