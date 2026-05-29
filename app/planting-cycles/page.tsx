@@ -24,7 +24,7 @@ function PlantingCyclesContent() {
   ] as const;
 
   return (
-    <MobileAppShell title="งานของฉัน" subtitle="รอบปลูก · ประวัติขาย · แจ้งเตือน">
+    <MobileAppShell title="🌾 ไร่ของฉัน" subtitle="รอบปลูก · ประวัติขาย · แจ้งเตือน">
       <CompletenessReminder />
 
       {/* Tabs */}

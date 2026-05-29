@@ -242,7 +242,7 @@ function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: stri
       items: [
         { href: '/service/reservations', icon: '🌽', label: 'จองเมล็ดพันธุ์', desc: 'สั่งข้าวโพด', accent: true },
         { href: '/planting-cycles/new',  icon: '🌱', label: 'แจ้งปลูกใหม่',   desc: 'เปิดรอบปลูก' },
-        { href: '/planting-cycles',      icon: '📋', label: 'รอบปลูกของฉัน',  desc: 'ติดตาม+บันทึก', badge: cycleBadge },
+        { href: '/planting-cycles',      icon: '🌾', label: 'ไร่ของฉัน',        desc: 'ติดตาม+บันทึก', badge: cycleBadge },
         { href: '/plots',                icon: '🗺️', label: 'แปลงของฉัน',     desc: 'ข้อมูลแปลง' },
       ],
     },
