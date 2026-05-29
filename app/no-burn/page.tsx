@@ -286,20 +286,74 @@ function NoBurnPageContent() {
         </div>
       )}
 
-      {/* ── CTA button (when no form) ── */}
+      {/* ── CTA gate: ต้องมีแปลง + รอบปลูกก่อน ── */}
       {!showForm && (
-        <button
-          onClick={() => { setShowForm(true); setError(null); setNotice(null); }}
-          style={{
-            width: '100%', padding: '15px', borderRadius: 14, border: 'none',
-            background: '#2e7d32', color: '#fff', fontSize: 15, fontWeight: 800,
-            cursor: 'pointer', letterSpacing: '0.01em',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            marginBottom: 20,
-            WebkitTapHighlightColor: 'transparent',
-          }}>
-          <span style={{ fontSize: 18 }}>+</span> ยื่นคำของดเผาใหม่
-        </button>
+        <>
+          {/* ยังไม่มีแปลง */}
+          {plots.length === 0 && (
+            <div style={{
+              borderRadius: 16, overflow: 'hidden', marginBottom: 16,
+              border: '1.5px solid #854F0B',
+            }}>
+              <div style={{ background: '#FAEEDA', padding: '14px 16px', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                <span style={{ fontSize: 22, flexShrink: 0 }}>🗺️</span>
+                <div style={{ flex: 1 }}>
+                  <p style={{ margin: '0 0 2px', fontWeight: 800, fontSize: 14, color: '#633806' }}>ขั้นตอนที่ 1 — เพิ่มแปลงเกษตร</p>
+                  <p style={{ margin: 0, fontSize: 12, color: '#854F0B', lineHeight: 1.5 }}>
+                    ต้องลงทะเบียนแปลงก่อนจึงจะสมัครโครงการงดเผาได้
+                  </p>
+                </div>
+              </div>
+              <a href="/plots/add" style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                padding: '14px', background: '#854F0B', color: '#fff',
+                fontSize: 14, fontWeight: 800, textDecoration: 'none',
+              }}>
+                + เพิ่มแปลงเกษตร
+              </a>
+            </div>
+          )}
+
+          {/* มีแปลงแล้ว แต่ยังไม่มีรอบปลูก */}
+          {plots.length > 0 && cycles.length === 0 && (
+            <div style={{
+              borderRadius: 16, overflow: 'hidden', marginBottom: 16,
+              border: '1.5px solid #185FA5',
+            }}>
+              <div style={{ background: '#E6F1FB', padding: '14px 16px', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                <span style={{ fontSize: 22, flexShrink: 0 }}>🌱</span>
+                <div style={{ flex: 1 }}>
+                  <p style={{ margin: '0 0 2px', fontWeight: 800, fontSize: 14, color: '#0C447C' }}>ขั้นตอนที่ 2 — เปิดรอบปลูก</p>
+                  <p style={{ margin: 0, fontSize: 12, color: '#185FA5', lineHeight: 1.5 }}>
+                    แจ้งรอบปลูกที่กำลังดำเนินอยู่เพื่อใช้อ้างอิงในโครงการงดเผา
+                  </p>
+                </div>
+              </div>
+              <a href="/planting-cycles/new" style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                padding: '14px', background: '#185FA5', color: '#fff',
+                fontSize: 14, fontWeight: 800, textDecoration: 'none',
+              }}>
+                + เปิดรอบปลูกใหม่
+              </a>
+            </div>
+          )}
+
+          {/* ครบทั้ง 2 ขั้น — ยื่นได้ */}
+          {plots.length > 0 && (
+            <button
+              onClick={() => { setShowForm(true); setError(null); setNotice(null); }}
+              style={{
+                width: '100%', padding: '15px', borderRadius: 14, border: 'none',
+                background: '#2e7d32', color: '#fff', fontSize: 15, fontWeight: 800,
+                cursor: 'pointer', letterSpacing: '0.01em',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                marginBottom: 20, WebkitTapHighlightColor: 'transparent',
+              }}>
+              <span style={{ fontSize: 18 }}>+</span> ยื่นคำของดเผาใหม่
+            </button>
+          )}
+        </>
       )}
 
       {/* ═══════════════════════════════════════════════════════════════════════
@@ -354,15 +408,7 @@ function NoBurnPageContent() {
                 </select>
                 <span style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#6b7280', fontSize: 12 }}>▾</span>
               </div>
-              {plots.length === 0 && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, padding: '8px 12px', background: '#FAEEDA', borderRadius: 8 }}>
-                  <span style={{ fontSize: 14 }}>⚠️</span>
-                  <p style={{ margin: 0, fontSize: 12, color: '#633806' }}>
-                    ยังไม่มีแปลง —{' '}
-                    <a href="/plots/add" style={{ color: '#185FA5', fontWeight: 600 }}>เพิ่มแปลงก่อน</a>
-                  </p>
-                </div>
-              )}
+
             </div>
 
             {/* ── Step 2: Timing ── */}
