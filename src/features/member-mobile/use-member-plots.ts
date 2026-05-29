@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useCurrentMember } from '@/providers/auth-provider';
 import { tryCreateSupabaseBrowserClient } from '@/lib/supabase/client';
 import type { MemberPlot, PlotContext } from './plot-context';
-import { resolvePlotContext } from './plot-context';
+import { resolvePlotContext, SESSION_EXPIRED_MESSAGE } from './plot-context';
 
 type MemberPlotsResponse = {
   plots?: MemberPlot[];
@@ -25,12 +25,35 @@ type UseMemberPlotsResult = PlotContext & {
 };
 
 async function getBearerToken() {
-  const supabase = tryCreateSupabaseBrowserClient();
-  if (!supabase) return null;
-  const { data: refreshed } = await supabase.auth.refreshSession();
-  if (refreshed.session?.access_token) return refreshed.session.access_token;
-  const { data: { session } } = await supabase.auth.getSession();
-  return session?.access_token ?? null;
+  try {
+    const supabase = tryCreateSupabaseBrowserClient();
+    if (!supabase) return null;
+    const { data: refreshed } = await supabase.auth.refreshSession();
+    if (refreshed.session?.access_token) return refreshed.session.access_token;
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.access_token ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function buildMemberPlotsRequest(token: string | null, lineUserId?: string | null): { url: string; headers: Record<string, string> } | null {
+  if (token) {
+    return {
+      url: '/api/member/plots',
+      headers: { Authorization: `Bearer ${token}` },
+    };
+  }
+
+  if (lineUserId) {
+    const params = new URLSearchParams({ line_user_id: lineUserId });
+    return {
+      url: `/api/member/plots?${params.toString()}`,
+      headers: {},
+    };
+  }
+
+  return null;
 }
 
 export function useMemberPlots(options: UseMemberPlotsOptions = {}): UseMemberPlotsResult {
@@ -51,9 +74,14 @@ export function useMemberPlots(options: UseMemberPlotsOptions = {}): UseMemberPl
     setError(null);
     try {
       const token = await getBearerToken();
-      const response = await fetch('/api/member/plots', {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
+      const request = buildMemberPlotsRequest(token, member.line_user_id);
+      if (!request) {
+        setError(SESSION_EXPIRED_MESSAGE);
+        setPlots([]);
+        return;
+      }
+
+      const response = await fetch(request.url, { headers: request.headers });
       const payload = (await response.json()) as MemberPlotsResponse;
       if (!response.ok) {
         setError(payload.error ?? 'ไม่สามารถโหลดแปลงได้');
@@ -67,7 +95,7 @@ export function useMemberPlots(options: UseMemberPlotsOptions = {}): UseMemberPl
     } finally {
       setLoading(false);
     }
-  }, [enabled, member?.member_id]);
+  }, [enabled, member?.line_user_id, member?.member_id]);
 
   useEffect(() => {
     void refresh();
