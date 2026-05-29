@@ -30,7 +30,7 @@ function ActivityPageContent({ params }: Props) {
       const { data } = await sb.from('planting_cycles')
         .select('id,crop_name,season_year,status,plots(id,name),products(fertilizer_guide,pest_guide,planting_guide)')
         .eq('id', params.id).maybeSingle();
-      setCycle(data as CycleBasic);
+      setCycle(data as unknown as CycleBasic);
       setLoading(false);
     })();
   }, [params.id]);
