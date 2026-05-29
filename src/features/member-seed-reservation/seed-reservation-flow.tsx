@@ -15,6 +15,7 @@ type Variety = {
   product_id?: string;
 };
 type CartItem = { variety: Variety; qty: number };
+type Plot = { id: string; name: string; province: string | null; area_rai: number };
 type Slot = {
   id: string; pickup_date: string; pickup_time: string;
   capacity_qty: number; booked_qty: number; note: string | null;
@@ -39,7 +40,7 @@ const STATUS_CFG: Record<string, { icon: string; label: string; color: string; b
 
 type Screen = 'shop' | 'history' | 'success';
 
-export function SeedReservationFlow() {
+export function SeedReservationFlow({ selectedPlotId }: { selectedPlotId?: string } = {}) {
   const member = useCurrentMember();
 
   // ── helper ดึง Supabase session token (refresh ถ้าหมดอายุ) ──
@@ -73,17 +74,22 @@ export function SeedReservationFlow() {
   const [filterSupplier, setFilterSupplier] = useState('');
   const [search, setSearch]   = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [selectedPlot, setSelectedPlot] = useState<Plot | null>(null);
 
   // ── load ─────────────────────────────────────────────────────────
   async function load() {
     setLoading(true);
     const token = await getToken();
-    const [lotsRes, resRes, slotRes] = await Promise.all([
-      fetch('/api/member/seed-lots', { headers: authHeaders(token) }).then((r) => r.json()) as Promise<{ lots: Record<string, unknown>[] }>,
+    const headers = authHeaders(token);
+    const [lotsRes, resRes, slotRes, plotRes] = await Promise.all([
+      fetch('/api/member/seed-lots', { headers }).then((r) => r.json()) as Promise<{ lots: Record<string, unknown>[] }>,
       member?.member_id
-        ? fetch(`/api/member/seed-reservation?member_id=${member.member_id}`, { headers: authHeaders(token) }).then((r) => r.json()) as Promise<{ reservations: Reservation[] }>
+        ? fetch(`/api/member/seed-reservation?member_id=${member.member_id}`, { headers }).then((r) => r.json()) as Promise<{ reservations: Reservation[] }>
         : Promise.resolve({ reservations: [] }),
-      fetch('/api/member/pickup-slots', { headers: authHeaders(token) }).then((r) => r.json()) as Promise<{ slots: Slot[] }>,
+      fetch('/api/member/pickup-slots', { headers }).then((r) => r.json()) as Promise<{ slots: Slot[] }>,
+      member?.line_user_id && selectedPlotId
+        ? fetch(`/api/member/plots?line_user_id=${encodeURIComponent(member.line_user_id)}`, { headers }).then((r) => r.json()) as Promise<{ plots?: Plot[] }>
+        : Promise.resolve({ plots: [] }),
     ]);
 
     setVarieties((lotsRes.lots ?? []).map((l) => ({
@@ -101,10 +107,11 @@ export function SeedReservationFlow() {
     })));
     setReservations(resRes.reservations ?? []);
     setSlots(slotRes.slots ?? []);
+    setSelectedPlot((plotRes.plots ?? []).find((plot) => plot.id === selectedPlotId) ?? null);
     setLoading(false);
   }
 
-  useEffect(() => { void load(); }, [member?.member_id]);
+  useEffect(() => { void load(); }, [member?.member_id, member?.line_user_id, selectedPlotId]);
 
   // ── cart ─────────────────────────────────────────────────────────
   function setQty(variety: Variety, qty: number) {
@@ -249,6 +256,11 @@ export function SeedReservationFlow() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingBottom: totalBags > 0 ? 140 : 0 }}>
+      {selectedPlotId && (
+        <div style={{ background: '#E6F1FB', border: '1px solid #185FA544', borderRadius: 14, padding: '12px 14px', color: '#0C447C', fontSize: 13, lineHeight: 1.6 }}>
+          <strong>แปลงที่เลือก:</strong> {selectedPlot ? `${selectedPlot.name}${selectedPlot.province ? ` · ${selectedPlot.province}` : ''}` : 'ใช้แปลงที่เลือกจากหน้าแปลงของฉัน'}
+        </div>
+      )}
 
       {/* filter bar */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>

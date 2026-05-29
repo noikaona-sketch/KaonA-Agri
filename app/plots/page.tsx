@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { type CSSProperties, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { useCurrentMember } from '@/providers/auth-provider';
@@ -34,6 +34,7 @@ export default function PlotsPage() {
   const [plots, setPlots]     = useState<Plot[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
     if (!member?.member_id) return;
@@ -51,11 +52,26 @@ export default function PlotsPage() {
     })();
   }, [member?.member_id, member?.line_user_id]);
 
+  function goTo(path: string, plotId: string) {
+    const params = new URLSearchParams({ plot_id: plotId });
+    router.push(`${path}?${params.toString()}`);
+  }
+
+  function showPhotoNotice(plotName: string) {
+    setNotice(`การจัดการรูปภาพของแปลง ${plotName} จะแยกทำใน PR ถัดไปหลังตรวจ RLS/storage policy`);
+  }
+
   return (
     <ProtectedRoute allowedRoles={['farmer','leader','admin']}>
-      <MobileAppShell title="แปลงของฉัน" subtitle="จัดการแปลงเกษตรทั้งหมด">
+      <MobileAppShell title="แปลงของฉัน" subtitle="ศูนย์รวมการทำงานของเกษตรกร">
       <div className="mobile-stack">
         {loading && <LoadingState label="กำลังโหลดแปลง…" />}
+
+        {notice && (
+          <div style={{ background: '#e8f5e9', borderRadius: 12, padding: '12px 16px', color: '#1b5e20', fontSize: 14, fontWeight: 700 }}>
+            ℹ️ {notice}
+          </div>
+        )}
 
         {error && (
           <div style={{ background: '#ffebee', borderRadius: 12, padding: '12px 16px', color: '#c62828', fontSize: 14 }}>
@@ -95,6 +111,21 @@ export default function PlotsPage() {
                   📍 {plot.lat.toFixed(5)}, {plot.lng.toFixed(5)}
                 </p>
               )}
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 14 }}>
+                <button type="button" onClick={() => goTo('/planting-cycles/new', plot.id)} style={actionButtonStyle('#2D6A4F', '#fff')}>
+                  🌱 สร้างรอบปลูก
+                </button>
+                <button type="button" onClick={() => goTo('/service/reservations', plot.id)} style={actionButtonStyle('#185FA5', '#fff')}>
+                  🌽 จองเมล็ดพันธุ์
+                </button>
+                <button type="button" onClick={() => goTo('/no-burn', plot.id)} style={actionButtonStyle('#388e3c', '#fff')}>
+                  🌿 เข้าร่วมไม่เผา
+                </button>
+                <button type="button" onClick={() => showPhotoNotice(plot.name)} style={actionButtonStyle('#fff', '#2D6A4F', '#2D6A4F')}>
+                  📷 เพิ่ม/ดูรูปภาพ
+                </button>
+              </div>
             </div>
           );
         })}
@@ -106,4 +137,19 @@ export default function PlotsPage() {
     </MobileAppShell>
     </ProtectedRoute>
   );
+}
+
+function actionButtonStyle(background: string, color: string, borderColor?: string): CSSProperties {
+  return {
+    border: borderColor ? `1.5px solid ${borderColor}` : 'none',
+    borderRadius: 12,
+    background,
+    color,
+    padding: '10px 8px',
+    fontSize: 12,
+    fontWeight: 800,
+    cursor: 'pointer',
+    minHeight: 44,
+    textAlign: 'center',
+  };
 }
