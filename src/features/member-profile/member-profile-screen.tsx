@@ -38,25 +38,29 @@ export function MemberProfileScreen() {
       setError(null);
       const supabase = createSupabaseBrowserClient();
 
+      const plotParams = new URLSearchParams({ line_user_id: member.line_user_id });
       const [memberResult, plotResult, cycleResult, noBurnResult] = await Promise.all([
         supabase
           .from('members')
           .select('full_name, identity_verification_status, line_display_name, line_avatar_url')
           .eq('id', member.member_id)
           .maybeSingle(),
-        supabase.from('plots').select('*', { count: 'exact', head: true }).eq('member_id', member.member_id),
+        fetch(`/api/member/plots?${plotParams.toString()}`).then(async (r) => ({
+          ok: r.ok,
+          payload: (await r.json()) as { plots?: unknown[]; error?: string },
+        })),
         supabase.from('planting_cycles').select('*', { count: 'exact', head: true }).eq('member_id', member.member_id),
         supabase.from('no_burn_requests').select('*', { count: 'exact', head: true }).eq('member_id', member.member_id),
       ]);
 
-      if (memberResult.error || plotResult.error || cycleResult.error || noBurnResult.error) {
-        setError(memberResult.error?.message ?? plotResult.error?.message ?? cycleResult.error?.message ?? noBurnResult.error?.message ?? 'ไม่สามารถโหลดข้อมูลได้');
+      if (memberResult.error || !plotResult.ok || cycleResult.error || noBurnResult.error) {
+        setError(memberResult.error?.message ?? plotResult.payload.error ?? cycleResult.error?.message ?? noBurnResult.error?.message ?? 'ไม่สามารถโหลดข้อมูลได้');
         setLoading(false);
         return;
       }
 
       setProfile(memberResult.data);
-      setPlotCount(plotResult.count ?? 0);
+      setPlotCount(plotResult.payload.plots?.length ?? 0);
       setCycleCount(cycleResult.count ?? 0);
       setNoBurnCount(noBurnResult.count ?? 0);
       setLoading(false);

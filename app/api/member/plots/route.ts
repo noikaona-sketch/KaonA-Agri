@@ -8,16 +8,16 @@ const PLOT_SELECT =
   'id,name,area_rai,lat,lng,accuracy,status,province,description,land_doc_type,created_at,' +
   'photos(id)';
 
+const REGISTERED_PLOTS_STATUS_FILTER = 'non_deleted:any_status';
+
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/member/plots
-// Requires Bearer token and resolves member_id server-side.
+// Resolves the current LINE member server-side and returns non-deleted registered plots.
 // ─────────────────────────────────────────────────────────────────────────────
 export async function GET(request: Request) {
   try {
     const s = createServerSupabaseClient();
-    // รับ member_id จาก query param โดยตรง (fallback เมื่อ session หมดอายุ)
-    const qMemberId = new URL(request.url).searchParams.get('member_id') ?? undefined;
-    const caller = await resolveApprovedMember(request, s, qMemberId);
+    const caller = await resolveApprovedMember(request, s);
     if (!caller.ok) return caller.response;
 
     const { data, error } = await s
@@ -28,7 +28,15 @@ export async function GET(request: Request) {
       .order('created_at', { ascending: false });
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ plots: normalisePlots(data) });
+
+    if ((data ?? []).length === 0) {
+      console.info('[MEMBER_PLOTS] 0 registered plots', {
+        memberId: caller.memberId,
+        statusFilter: REGISTERED_PLOTS_STATUS_FILTER,
+      });
+    }
+
+    return NextResponse.json({ plots: normalisePlots(data), status_filter: REGISTERED_PLOTS_STATUS_FILTER });
 
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });

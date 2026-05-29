@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import { tryCreateSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useCurrentMember } from '@/providers/auth-provider';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -21,16 +20,12 @@ export type MemberCompleteness = {
   error:    string | null;
 };
 
-// Query Supabase directly — avoids dependency on /api/member/plots
-async function fetchPlotCount(memberId: string): Promise<number> {
-  const sb = tryCreateSupabaseBrowserClient();
-  if (!sb) return 0;
-  const { count } = await sb
-    .from('plots')
-    .select('id', { count: 'exact', head: true })
-    .eq('member_id', memberId)
-    .is('deleted_at', null);
-  return count ?? 0;
+async function fetchPlotCount(lineUserId: string): Promise<number> {
+  const params = new URLSearchParams({ line_user_id: lineUserId });
+  const res = await fetch(`/api/member/plots?${params.toString()}`);
+  const payload = (await res.json()) as { plots?: unknown[]; error?: string };
+  if (!res.ok) throw new Error(payload.error ?? 'ไม่สามารถโหลดข้อมูลแปลงได้');
+  return payload.plots?.length ?? 0;
 }
 
 export function useMemberCompleteness(): MemberCompleteness {
@@ -50,14 +45,14 @@ export function useMemberCompleteness(): MemberCompleteness {
     setLoading(true);
     setError(null);
     try {
-      const count = await fetchPlotCount(member.member_id);
+      const count = await fetchPlotCount(member.line_user_id);
       setPlotCount(count);
     } catch (e) {
       setError(String(e));
       setPlotCount(0);
     }
     setLoading(false);
-  }, [member?.is_approved, member?.status]);
+  }, [member?.is_approved, member?.status, member?.line_user_id]);
 
   useEffect(() => { void load(); }, [load]);
 

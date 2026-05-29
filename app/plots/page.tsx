@@ -1,11 +1,9 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { useCurrentMember } from '@/providers/auth-provider';
-import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { MobileAppShell } from '@/shared/components/mobile-app-shell';
 import { LoadingState } from '@/shared/components/loading-state';
 import { UIButton } from '@/shared/components/ui-button';
@@ -40,18 +38,18 @@ export default function PlotsPage() {
   useEffect(() => {
     if (!member?.member_id) return;
     void (async () => {
-      const s = createSupabaseBrowserClient();
-      const { data, error: err } = await s
-        .from('plots')
-        .select('id,name,area_rai,province,status,land_doc_type,lat,lng')
-        .eq('member_id', member.member_id)
-        .is('deleted_at', null)
-        .order('created_at', { ascending: false });
-      if (err) setError(err.message);
-      else setPlots((data as Plot[]) ?? []);
+      try {
+        const params = new URLSearchParams({ line_user_id: member.line_user_id });
+        const res = await fetch(`/api/member/plots?${params.toString()}`);
+        const payload = (await res.json()) as { plots?: Plot[]; error?: string };
+        if (!res.ok) setError(payload.error ?? 'ไม่สามารถโหลดแปลงได้');
+        else setPlots(payload.plots ?? []);
+      } catch (e) {
+        setError(String(e));
+      }
       setLoading(false);
     })();
-  }, [member?.member_id]);
+  }, [member?.member_id, member?.line_user_id]);
 
   return (
     <ProtectedRoute allowedRoles={['farmer','leader','admin']}>
