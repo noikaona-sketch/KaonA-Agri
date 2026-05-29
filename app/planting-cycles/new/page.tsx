@@ -8,9 +8,10 @@ import { UIButton }            from '@/shared/components/ui-button';
 import { ErrorState }          from '@/shared/components/error-state';
 import { LoadingState }        from '@/shared/components/loading-state';
 import { isCornSeedProduct }    from '@/lib/products/corn-seed';
+import { useMemberPlots }       from '@/features/member-mobile/use-member-plots';
+import { INVALID_PLOT_ID_MESSAGE, MISSING_PLOT_MESSAGE } from '@/features/member-mobile/plot-context';
 
 /* ── Types ── */
-type Plot = { id:string; name:string; province:string|null; area_rai:number };
 type SaleItem = {
   id:string; order_number:string; created_at:string;
   product_id:string|null; product_name:string; qty:number;
@@ -39,8 +40,8 @@ function NewPlantingCyclePageContent() {
   const searchParams = useSearchParams();
   const selectedPlotId = searchParams.get('plot_id') ?? '';
   const member  = useCurrentMember();
+  const { plots, loading: plotsLoading, invalidPlotId, warning: plotWarning, selectedPlot } = useMemberPlots({ selectedPlotId });
 
-  const [plots,      setPlots]      = useState<Plot[]>([]);
   const [saleItems,  setSaleItems]  = useState<SaleItem[]>([]);
   const [cropConfigs,setCropConfigs]= useState<CropConfig[]>([]);
   const [loading,    setLoading]    = useState(true);
@@ -63,21 +64,18 @@ function NewPlantingCyclePageContent() {
     if (!member?.member_id) return;
     setLoading(true);
     void (async () => {
-      const [pRes, cRes] = await Promise.all([
-        fetch(`/api/member/plots?line_user_id=${encodeURIComponent(member.line_user_id)}`).then(r=>r.json()) as Promise<{plots?:Plot[]}>,
-        fetch('/api/member/crop-types').then(r=>r.json()) as Promise<{crops?:CropConfig[]}>,
-      ]);
-      const loadedPlots = pRes.plots ?? [];
-      setPlots(loadedPlots);
-      if (selectedPlotId && loadedPlots.some((plot) => plot.id === selectedPlotId)) {
-        const selectedPlot = loadedPlots.find((plot) => plot.id === selectedPlotId);
-        setPlotId(selectedPlotId);
-        if (selectedPlot) setAreaRai(String(selectedPlot.area_rai));
-      }
+      const cRes = await fetch('/api/member/crop-types').then(r=>r.json()) as {crops?:CropConfig[]};
       setCropConfigs([...(cRes.crops ?? []), { crop_type:'อื่นๆ', yield_per_rai:0, quota_per_seed_kg:0 }]);
       setLoading(false);
     })();
-  }, [member?.member_id, member?.line_user_id, selectedPlotId]);
+  }, [member?.member_id]);
+
+  useEffect(() => {
+    if (selectedPlot) {
+      setPlotId(selectedPlot.id);
+      setAreaRai(String(selectedPlot.area_rai));
+    }
+  }, [selectedPlot]);
 
   useEffect(() => {
     setSelItemIds(new Set());
@@ -169,13 +167,14 @@ function NewPlantingCyclePageContent() {
     router.replace(`/planting-cycles/${d.id}`);
   }
 
-  if (loading || !member?.member_id) return <LoadingState label="กำลังโหลด…" />;
+  if (loading || plotsLoading || !member?.member_id) return <LoadingState label="กำลังโหลด…" />;
 
   /* ── UI ── */
   return (
     <MobileAppShell title="สร้างรอบปลูกใหม่" subtitle="บันทึกข้อมูลการเพาะปลูก">
       <div className="mobile-stack" style={{ paddingBottom:24 }}>
         {error && <ErrorState title="เกิดข้อผิดพลาด" detail={error} />}
+        {plotWarning && <ErrorState title={invalidPlotId ? INVALID_PLOT_ID_MESSAGE : 'ข้อมูลแปลง'} detail={plotWarning} />}
 
         {/* ชนิดพืช — dropdown จาก yield_config */}
         <label className="reg-label">ชนิดพืช <span className="reg-required">*</span>
@@ -201,7 +200,7 @@ function NewPlantingCyclePageContent() {
             ))}
           </select>
           {plots.length === 0 && (
-            <span className="reg-hint">ยังไม่มีแปลง — <a href="/plots/add" style={{ color:'var(--primary)' }}>เพิ่มแปลงก่อน</a></span>
+            <span className="reg-hint">{MISSING_PLOT_MESSAGE} — <a href="/plots/add" style={{ color:'var(--primary)' }}>เพิ่มแปลงก่อน</a></span>
           )}
         </label>
 
