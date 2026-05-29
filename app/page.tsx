@@ -9,7 +9,6 @@ import { LoadingState }                            from '@/shared/components/loa
 import { MobileAppShell }                          from '@/shared/components/mobile-app-shell';
 import type { AppRole }                            from '@/shared/auth/auth-types';
 import { MemberDashboardFeed }                     from '@/features/engagement/member-dashboard-feed';
-import { OnboardingChecklist }                     from '@/features/farmer-onboarding/onboarding-checklist';
 
 // ─────────────────────────────────────────────────────────────────────
 // Helpers
@@ -218,9 +217,6 @@ function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: stri
     <MobileAppShell title="" subtitle="">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <HeroCard name={name} memberId={memberId} primaryRole="farmer" allRoles={allRoles} plots={plots} price={null} quota={quota} />
-
-        {/* onboarding checklist — ซ่อนเองเมื่อทำครบ 4 ขั้น */}
-        <OnboardingChecklist memberId={memberId} />
 
         {/* P1.5 engagement feed */}
         <MemberDashboardFeed memberId={memberId} />

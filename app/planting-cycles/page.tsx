@@ -7,6 +7,7 @@ import { CompletenessReminder }    from '@/shared/components/completeness-remind
 import { PlantingCycleList }       from '@/features/member-planting/planting-cycle-list';
 import { SaleHistory }             from '@/features/member-planting/sale-history';
 import { MemberSeasonReport }      from '@/features/member-report/member-season-report';
+import { OnboardingChecklist }     from '@/features/farmer-onboarding/onboarding-checklist';
 import { useCurrentMember }        from '@/providers/auth-provider';
 
 type Tab = 'cycles' | 'sales' | 'report';
@@ -15,8 +16,17 @@ function PlantingCyclesContent() {
   const [tab, setTab] = useState<Tab>('cycles');
   const member = useCurrentMember();
   return (
-    <MobileAppShell title="รอบเพาะปลูก" subtitle="ติดตามการเพาะปลูกและประวัติขาย">
+    <MobileAppShell title="งานของฉัน" subtitle="รอบปลูก · ประวัติขาย · รายงาน">
       <CompletenessReminder />
+
+      {/* Onboarding checklist — ซ่อนเองเมื่อทำครบ 4 ขั้น */}
+      {member?.member_id && (
+        <div style={{ marginBottom: 12 }}>
+          <OnboardingChecklist memberId={member.member_id} />
+        </div>
+      )}
+
+      {/* Tabs */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
         {([
           { key: 'cycles', label: '🌱 รอบปลูก'   },
@@ -32,6 +42,7 @@ function PlantingCyclesContent() {
           </button>
         ))}
       </div>
+
       {tab === 'cycles' && <PlantingCycleList />}
       {tab === 'sales'  && <SaleHistory />}
       {tab === 'report' && member?.member_id
