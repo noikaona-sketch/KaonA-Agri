@@ -159,13 +159,16 @@ export function AdminStockDashboard() {
       )}
 
       {/* warehouse selector */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         {warehouses.map((wh) => (
           <button key={wh.id} onClick={() => setSelWH(wh.id)}
             style={{ padding: '6px 16px', borderRadius: 20, border: '1.5px solid', borderColor: selWH === wh.id ? 'var(--primary)' : '#e0e0e0', background: selWH === wh.id ? 'var(--primary)' : '#fff', color: selWH === wh.id ? '#fff' : 'inherit', fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>
             🏭 {wh.name}
           </button>
         ))}
+        </div>
+        <a href="/admin/stock-closing" className="admin-btn admin-btn--secondary" style={{ textDecoration: 'none' }}>🧾 ปิดงวดรายเดือน</a>
       </div>
 
       {/* tabs */}
