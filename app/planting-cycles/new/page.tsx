@@ -62,14 +62,14 @@ export default function NewPlantingCyclePage() {
     setLoading(true);
     void (async () => {
       const [pRes, cRes] = await Promise.all([
-        fetch(`/api/member/plots?member_id=${member.member_id}`).then(r=>r.json()) as Promise<{plots?:Plot[]}>,
+        fetch(`/api/member/plots?line_user_id=${encodeURIComponent(member.line_user_id)}`).then(r=>r.json()) as Promise<{plots?:Plot[]}>,
         fetch('/api/member/crop-types').then(r=>r.json()) as Promise<{crops?:CropConfig[]}>,
       ]);
       setPlots(pRes.plots ?? []);
       setCropConfigs([...(cRes.crops ?? []), { crop_type:'อื่นๆ', yield_per_rai:0, quota_per_seed_kg:0 }]);
       setLoading(false);
     })();
-  }, [member?.member_id]);
+  }, [member?.member_id, member?.line_user_id]);
 
   useEffect(() => {
     setSelItemIds(new Set());

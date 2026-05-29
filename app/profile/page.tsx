@@ -106,7 +106,7 @@ export default function ProfilePage() {
       const token = refreshed.session?.access_token
         ?? (await s.auth.getSession()).data.session?.access_token;
       const authHeaders = token ? { Authorization: `Bearer ${token}` } : undefined;
-      const plotsUrl = `/api/member/plots?member_id=${member.member_id}`;
+      const plotsUrl = `/api/member/plots?line_user_id=${encodeURIComponent(member.line_user_id)}`;
       const [
         m, p, d, cr, pr,
         announcementRes, surveysRes, responsesRes, nextBookingRes, cyclesRes,
@@ -157,7 +157,7 @@ export default function ProfilePage() {
     return () => {
       cancelled = true;
     };
-  }, [member?.member_id]);
+  }, [member?.member_id, member?.line_user_id]);
 
   if (!member || !data) return <LoadingState label="กำลังโหลด…" />;
 

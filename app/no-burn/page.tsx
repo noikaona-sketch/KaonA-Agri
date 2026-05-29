@@ -1,6 +1,6 @@
 'use client';
 
-import { type ChangeEvent, useEffect, useId, useState } from 'react';
+import { type ChangeEvent, useCallback, useEffect, useId, useState } from 'react';
 
 import { tryCreateSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useCurrentMember }               from '@/providers/auth-provider';
@@ -149,30 +149,35 @@ function NoBurnPageContent() {
   const [notice,     setNotice]     = useState<string | null>(null);
   const [error,      setError]      = useState<string | null>(null);
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true);
     const token = await getBearerToken();
     const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
-    const reqRes = await fetch(`/api/member/no-burn?member_id=${member?.member_id ?? ''}`, { headers });
+    const requestParams = new URLSearchParams(member?.line_user_id ? { line_user_id: member.line_user_id } : {});
+    const reqRes = await fetch(`/api/member/no-burn?${requestParams.toString()}`, { headers });
     if (reqRes.ok) {
       const j = (await reqRes.json()) as { requests?: NoBurnRequest[] };
       setRequests(j.requests ?? []);
     }
     const sb = tryCreateSupabaseBrowserClient();
-    if (sb && member?.member_id) {
-      const [plotsRes, cyclesRes] = await Promise.all([
-        sb.from('plots').select('id,name,province').eq('member_id', member.member_id).is('deleted_at', null),
-        sb.from('planting_cycles').select('id,crop_name,season_year,status')
+    if (member?.member_id) {
+      const plotParams = new URLSearchParams({ line_user_id: member.line_user_id });
+      const plotPromise = fetch(`/api/member/plots?${plotParams.toString()}`, { headers })
+        .then(async (r) => ({ ok: r.ok, payload: (await r.json()) as { plots?: Plot[]; error?: string } }));
+      const cyclePromise = sb
+        ? sb.from('planting_cycles').select('id,crop_name,season_year,status')
           .eq('member_id', member.member_id)
-          .in('status', ['pending','active','confirmed','growing']),
-      ]);
-      setPlots((plotsRes.data ?? []) as Plot[]);
+          .in('status', ['pending','active','confirmed','growing'])
+        : Promise.resolve({ data: [] as Cycle[] });
+      const [plotsRes, cyclesRes] = await Promise.all([plotPromise, cyclePromise]);
+      if (!plotsRes.ok) setError(plotsRes.payload.error ?? 'ไม่สามารถโหลดแปลงได้');
+      setPlots(plotsRes.payload.plots ?? []);
       setCycles((cyclesRes.data ?? []) as Cycle[]);
     }
     setLoading(false);
-  }
+  }, [member?.member_id, member?.line_user_id]);
 
-  useEffect(() => { void load(); }, [member?.member_id]);
+  useEffect(() => { void load(); }, [load]);
 
   function resetForm() {
     setShowForm(false); setSelectedPlot(''); setTiming('after_planting');
