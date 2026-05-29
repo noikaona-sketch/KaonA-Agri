@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LoadingState } from '@/shared/components/loading-state';
 
 type Warehouse = { id: string; code: string; name: string };
@@ -60,54 +60,113 @@ export function AdminStockClosingPage() {
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [note, setNote] = useState('');
+  const [loadingProgress, setLoadingProgress] = useState('กำลังโหลด movement...');
+  const loadSeq = useRef(0);
 
   const selectedWarehouseName = useMemo(() => {
     if (warehouseId === 'all') return 'ทุกคลัง';
     return warehouses.find((w) => w.id === warehouseId)?.name ?? '—';
   }, [warehouseId, warehouses]);
 
-  async function load() {
+  const load = useCallback(async () => {
+    const seq = loadSeq.current + 1;
+    loadSeq.current = seq;
     setLoading(true);
+    setLoadingProgress('กำลังโหลด movement...');
     setNotice(null);
-    const whParam = warehouseId === 'all' ? '' : `&warehouse_id=${warehouseId}`;
-    const [whRes, closingRes] = await Promise.all([
-      fetch('/api/admin/warehouses', { credentials: 'include' }).then((r) => r.json()),
-      fetch(`/api/admin/stock-closing?month=${month}${whParam}`, { credentials: 'include' }).then((r) => r.json()),
-    ]);
-    setWarehouses(whRes.warehouses ?? []);
-    setPayload(closingRes.error ? null : closingRes);
-    if (closingRes.error) setNotice(`❌ ${closingRes.error}`);
-    setNote(closingRes.saved_snapshot?.note ?? '');
-    setLoading(false);
-  }
 
-  useEffect(() => { void load(); }, [month, warehouseId]);
+    const timers = [
+      window.setTimeout(() => { if (loadSeq.current === seq) setLoadingProgress('กำลังคำนวณยอดยกมา...'); }, 4000),
+      window.setTimeout(() => { if (loadSeq.current === seq) setLoadingProgress('กำลังสร้าง snapshot...'); }, 10000),
+      window.setTimeout(() => { if (loadSeq.current === seq) setNotice('กำลังคำนวณนานกว่าปกติ กรุณารอสักครู่'); }, 20000),
+    ];
+
+    try {
+      const whParam = warehouseId === 'all' ? '' : `&warehouse_id=${encodeURIComponent(warehouseId)}`;
+      const [whResponse, closingResponse] = await Promise.all([
+        fetch('/api/admin/warehouses', { credentials: 'include' }),
+        fetch(`/api/admin/stock-closing?month=${encodeURIComponent(month)}${whParam}`, { credentials: 'include' }),
+      ]);
+      const [whRes, closingRes] = await Promise.all([
+        whResponse.json(),
+        closingResponse.json(),
+      ]);
+
+      if (loadSeq.current !== seq) return;
+      if (!whResponse.ok) throw new Error(whRes.error ?? 'โหลดคลังสินค้าไม่สำเร็จ');
+      if (!closingResponse.ok || closingRes.error) throw new Error(closingRes.error ?? 'คำนวณปิดงวดสต๊อกไม่สำเร็จ');
+
+      setWarehouses(whRes.warehouses ?? []);
+      setPayload(closingRes);
+      setNote(closingRes.saved_snapshot?.note ?? '');
+    } catch (error) {
+      if (loadSeq.current !== seq) return;
+      setPayload(null);
+      setNotice(`❌ ${error instanceof Error ? error.message : 'คำนวณปิดงวดสต๊อกไม่สำเร็จ'}`);
+    } finally {
+      timers.forEach(window.clearTimeout);
+      if (loadSeq.current === seq) setLoading(false);
+    }
+  }, [month, warehouseId]);
+
+  useEffect(() => { void load(); }, [load]);
 
   async function save(action: 'save_review' | 'close') {
     setSaving(true);
     setNotice(null);
-    const res = await fetch('/api/admin/stock-closing', {
-      credentials: 'include',
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action,
-        month,
-        warehouse_id: warehouseId === 'all' ? null : warehouseId,
-        note: note || null,
-      }),
-    });
-    const data = await res.json() as { ok?: boolean; error?: string; status?: string };
-    setSaving(false);
-    if (!res.ok) {
-      setNotice(`❌ ${data.error ?? 'บันทึกไม่สำเร็จ'}`);
-      return;
+    const slowTimer = window.setTimeout(() => setNotice('กำลังคำนวณนานกว่าปกติ กรุณารอสักครู่'), 20000);
+    try {
+      const res = await fetch('/api/admin/stock-closing', {
+        credentials: 'include',
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action,
+          month,
+          warehouse_id: warehouseId === 'all' ? null : warehouseId,
+          note: note || null,
+        }),
+      });
+      const data = await res.json() as { ok?: boolean; error?: string; status?: string };
+      if (!res.ok) {
+        setNotice(`❌ ${data.error ?? 'บันทึกไม่สำเร็จ'}`);
+        return;
+      }
+      setNotice(action === 'close' ? '✅ ปิด snapshot สต๊อกแล้ว (ยังไม่บังคับ lock)' : '✅ บันทึก snapshot เพื่อรอ Admin review แล้ว');
+      void load();
+    } catch (error) {
+      setNotice(`❌ ${error instanceof Error ? error.message : 'บันทึกไม่สำเร็จ'}`);
+    } finally {
+      window.clearTimeout(slowTimer);
+      setSaving(false);
     }
-    setNotice(action === 'close' ? '✅ ปิด snapshot สต๊อกแล้ว (ยังไม่บังคับ lock)' : '✅ บันทึก snapshot เพื่อรอ Admin review แล้ว');
-    void load();
   }
 
-  if (loading || !payload) return <LoadingState label="กำลังคำนวณปิดงวดสต๊อก…" />;
+  if (loading) {
+    return (
+      <div style={{ display: 'grid', gap: 16 }}>
+        {notice && (
+          <div style={{ background: '#fff8e1', border: '1px solid #ffcc80', borderRadius: 10, padding: '10px 14px', fontWeight: 700 }}>
+            {notice}
+          </div>
+        )}
+        <LoadingState label={loadingProgress} />
+      </div>
+    );
+  }
+
+  if (!payload) {
+    return (
+      <div style={{ display: 'grid', gap: 16 }}>
+        {notice && (
+          <div style={{ background: '#ffebee', border: '1px solid #ef9a9a', borderRadius: 10, padding: '10px 14px', fontWeight: 700 }}>
+            {notice}
+          </div>
+        )}
+        <button className="admin-btn admin-btn--secondary" onClick={load}>🔄 ลองคำนวณใหม่</button>
+      </div>
+    );
+  }
 
   const canClose = payload.saved_snapshot?.status === 'review';
   const alreadyClosed = payload.saved_snapshot?.status === 'closed';

@@ -2,14 +2,19 @@ import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
 import { requireAdminPermission, isForbidden } from '../members/_admin-auth';
 
-type MovementRow = {
+type MovementSummaryRow = {
   warehouse_id: string;
   product_id: string | null;
   variety_id: string | null;
   product_name: string;
   unit: string;
-  movement_type: string;
-  qty: number | string;
+  receive_qty: number | string;
+  out_qty: number | string;
+  transfer_in_qty: number | string;
+  transfer_out_qty: number | string;
+  adjustment_qty: number | string;
+  reserved_qty: number | string;
+  movement_count: number | string;
 };
 
 type StockRow = {
@@ -59,6 +64,22 @@ function roundQty(value: number) {
   return Math.round(value * 100) / 100;
 }
 
+
+function durationMs(start: number) {
+  return Math.round((performance.now() - start) * 100) / 100;
+}
+
+async function timedQuery<T>(label: string, query: PromiseLike<T>, timings: Record<string, number>) {
+  const start = performance.now();
+  try {
+    return await query;
+  } finally {
+    const ms = durationMs(start);
+    timings[label] = ms;
+    console.info(`[stock-closing] ${label} query duration=${ms}ms`);
+  }
+}
+
 function emptyLine(stock: StockRow): ClosingLine {
   const productName = stock.products?.name ?? stock.seed_varieties?.variety_name ?? '—';
   return {
@@ -83,8 +104,11 @@ function emptyLine(stock: StockRow): ClosingLine {
 }
 
 async function calculateSnapshot(s: ReturnType<typeof createServerSupabaseClient>, monthParam: string | null, warehouseId: string | null) {
+  const totalStart = performance.now();
+  const timings: Record<string, number> = {};
+  const selectedWarehouseId = warehouseId && warehouseId !== 'all' ? warehouseId : null;
   const period = periodBounds(monthParam);
-  const scope = warehouseId ? 'warehouse' : 'all';
+  const scope = selectedWarehouseId ? 'warehouse' : 'all';
 
   let stockQuery = s.from('product_stock').select(`
     warehouse_id, product_id, variety_id, qty_on_hand, unit,
@@ -92,13 +116,7 @@ async function calculateSnapshot(s: ReturnType<typeof createServerSupabaseClient
     products(id, name, category, unit),
     seed_varieties(id, variety_name, crop_type)
   `);
-  if (warehouseId) stockQuery = stockQuery.eq('warehouse_id', warehouseId);
-
-  let movementQuery = s.from('stock_movements')
-    .select('warehouse_id,product_id,variety_id,product_name,unit,movement_type,qty')
-    .gte('created_at', period.start)
-    .lte('created_at', `${period.end}T23:59:59`);
-  if (warehouseId) movementQuery = movementQuery.eq('warehouse_id', warehouseId);
+  if (selectedWarehouseId) stockQuery = stockQuery.eq('warehouse_id', selectedWarehouseId);
 
   let previousHeaderQuery = s.from('stock_closing_snapshots')
     .select('id, closing_no, period_end, closed_at')
@@ -106,47 +124,58 @@ async function calculateSnapshot(s: ReturnType<typeof createServerSupabaseClient
     .lt('period_end', period.start)
     .order('period_end', { ascending: false })
     .limit(1);
-  if (warehouseId) previousHeaderQuery = previousHeaderQuery.eq('warehouse_id', warehouseId).eq('scope', 'warehouse');
+  if (selectedWarehouseId) previousHeaderQuery = previousHeaderQuery.eq('warehouse_id', selectedWarehouseId).eq('scope', 'warehouse');
   else previousHeaderQuery = previousHeaderQuery.eq('scope', 'all');
 
-  const [stockRes, movementRes, previousHeaderRes, savedHeaderRes] = await Promise.all([
-    stockQuery,
-    movementQuery,
-    previousHeaderQuery.maybeSingle(),
-    s.from('stock_closing_snapshots')
-      .select('*, warehouses(id, code, name)')
-      .eq('period_year', period.year)
-      .eq('period_month', period.month)
-      .eq('scope', scope)
-      .then((queryRes) => queryRes),
+  let savedHeaderQuery = s.from('stock_closing_snapshots')
+    .select('*, warehouses(id, code, name)')
+    .eq('period_year', period.year)
+    .eq('period_month', period.month)
+    .eq('scope', scope);
+  if (selectedWarehouseId) savedHeaderQuery = savedHeaderQuery.eq('warehouse_id', selectedWarehouseId);
+  else savedHeaderQuery = savedHeaderQuery.is('warehouse_id', null);
+
+  const movementSummaryQuery = s.rpc('stock_closing_movement_summary', {
+    p_start_date: period.start,
+    p_end_date: period.end,
+    p_warehouse_id: selectedWarehouseId,
+  });
+
+  const [stockRes, movementSummaryRes, previousHeaderRes, savedHeaderRes] = await Promise.all([
+    timedQuery('product_stock', stockQuery, timings),
+    timedQuery('movement_summary', movementSummaryQuery, timings),
+    timedQuery('previous_header', previousHeaderQuery.maybeSingle(), timings),
+    timedQuery('saved_snapshot', savedHeaderQuery.maybeSingle(), timings),
   ]);
 
   if (stockRes.error) throw new Error(stockRes.error.message);
-  if (movementRes.error) throw new Error(movementRes.error.message);
+  if (movementSummaryRes.error) throw new Error(movementSummaryRes.error.message);
   if (previousHeaderRes.error) throw new Error(previousHeaderRes.error.message);
   if (savedHeaderRes.error) throw new Error(savedHeaderRes.error.message);
 
-  let savedHeaderRows = savedHeaderRes.data ?? [];
-  if (warehouseId) savedHeaderRows = savedHeaderRows.filter((row) => row.warehouse_id === warehouseId);
-  else savedHeaderRows = savedHeaderRows.filter((row) => row.warehouse_id === null);
-  const savedSnapshot = savedHeaderRows[0] ?? null;
-
+  const savedSnapshot = savedHeaderRes.data ?? null;
   const lines = new Map<string, ClosingLine>();
+  const warehouseNames = new Map<string, string>();
+
   for (const raw of (stockRes.data ?? []) as unknown as StockRow[]) {
+    if (raw.warehouses?.name) warehouseNames.set(raw.warehouse_id, raw.warehouses.name);
     lines.set(lineKey(raw.warehouse_id, raw.product_id, raw.variety_id), emptyLine(raw));
   }
 
   const previousHeader = previousHeaderRes.data as { id: string; closing_no: string; period_end: string; closed_at: string | null } | null;
+  let previousLineCount = 0;
   if (previousHeader) {
-    const { data: previousLines, error: prevLineErr } = await s.from('stock_closing_lines')
+    const previousLineRes = await timedQuery('previous_lines', s.from('stock_closing_lines')
       .select('warehouse_id,product_id,variety_id,product_name,unit,ending_qty')
-      .eq('snapshot_id', previousHeader.id);
-    if (prevLineErr) throw new Error(prevLineErr.message);
-    for (const prev of previousLines ?? []) {
+      .eq('snapshot_id', previousHeader.id), timings);
+    if (previousLineRes.error) throw new Error(previousLineRes.error.message);
+    previousLineCount = previousLineRes.data?.length ?? 0;
+
+    for (const prev of previousLineRes.data ?? []) {
       const key = lineKey(prev.warehouse_id, prev.product_id, prev.variety_id);
       const line = lines.get(key) ?? {
         warehouse_id: prev.warehouse_id,
-        warehouse_name: '—',
+        warehouse_name: warehouseNames.get(prev.warehouse_id) ?? '—',
         product_id: prev.product_id,
         variety_id: prev.variety_id,
         product_name: prev.product_name,
@@ -168,11 +197,12 @@ async function calculateSnapshot(s: ReturnType<typeof createServerSupabaseClient
     }
   }
 
-  for (const movement of (movementRes.data ?? []) as unknown as MovementRow[]) {
+  let movementCount = 0;
+  for (const movement of (movementSummaryRes.data ?? []) as unknown as MovementSummaryRow[]) {
     const key = lineKey(movement.warehouse_id, movement.product_id, movement.variety_id);
     const line = lines.get(key) ?? {
       warehouse_id: movement.warehouse_id,
-      warehouse_name: '—',
+      warehouse_name: warehouseNames.get(movement.warehouse_id) ?? '—',
       product_id: movement.product_id,
       variety_id: movement.variety_id,
       product_name: movement.product_name,
@@ -189,16 +219,15 @@ async function calculateSnapshot(s: ReturnType<typeof createServerSupabaseClient
       variance_qty: null,
       movement_count: 0,
     };
-    const qty = Number(movement.qty ?? 0);
-    if (['receive', 'return'].includes(movement.movement_type)) line.receive_qty += qty;
-    else if (['sale'].includes(movement.movement_type)) line.out_qty += qty;
-    else if (movement.movement_type === 'transfer_in') line.transfer_in_qty += qty;
-    else if (movement.movement_type === 'transfer_out') line.transfer_out_qty += qty;
-    else if (movement.movement_type === 'adjust_add') line.adjustment_qty += qty;
-    else if (movement.movement_type === 'adjust_sub') line.adjustment_qty -= qty;
-    else if (movement.movement_type === 'reservation') line.reserved_qty += qty;
-    else if (movement.movement_type === 'cancel_res') line.reserved_qty -= qty;
-    line.movement_count += 1;
+
+    line.receive_qty += Number(movement.receive_qty ?? 0);
+    line.out_qty += Number(movement.out_qty ?? 0);
+    line.transfer_in_qty += Number(movement.transfer_in_qty ?? 0);
+    line.transfer_out_qty += Number(movement.transfer_out_qty ?? 0);
+    line.adjustment_qty += Number(movement.adjustment_qty ?? 0);
+    line.reserved_qty += Number(movement.reserved_qty ?? 0);
+    line.movement_count += Number(movement.movement_count ?? 0);
+    movementCount += Number(movement.movement_count ?? 0);
     lines.set(key, line);
   }
 
@@ -229,7 +258,19 @@ async function calculateSnapshot(s: ReturnType<typeof createServerSupabaseClient
     total_ending_qty: acc.total_ending_qty + line.ending_qty,
   }), { line_count: 0, total_opening_qty: 0, total_receive_qty: 0, total_out_qty: 0, total_transfer_in_qty: 0, total_transfer_out_qty: 0, total_reserved_qty: 0, total_ending_qty: 0 });
 
-  return { period, scope, warehouse_id: warehouseId, previous_snapshot: previousHeader, saved_snapshot: savedSnapshot, lines: orderedLines, totals };
+  const totalMs = durationMs(totalStart);
+  console.info('[stock-closing] calculation complete', {
+    period: period.monthKey,
+    scope,
+    warehouse_id: selectedWarehouseId,
+    timings_ms: timings,
+    movement_count: movementCount,
+    previous_snapshot_line_count: previousLineCount,
+    snapshot_line_count: orderedLines.length,
+    total_execution_ms: totalMs,
+  });
+
+  return { period, scope, warehouse_id: selectedWarehouseId, previous_snapshot: previousHeader, saved_snapshot: savedSnapshot, lines: orderedLines, totals };
 }
 
 export async function GET(request: Request) {
