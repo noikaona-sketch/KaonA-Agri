@@ -8,6 +8,7 @@ import { createSupabaseBrowserClient }             from '@/lib/supabase/client';
 import { LoadingState }                            from '@/shared/components/loading-state';
 import { MobileAppShell }                          from '@/shared/components/mobile-app-shell';
 import type { AppRole }                            from '@/shared/auth/auth-types';
+import { useMemberPlots }                           from '@/features/member-mobile/use-member-plots';
 
 // ─────────────────────────────────────────────────────────────────────
 // Helpers
@@ -190,23 +191,17 @@ function SecondaryRoleCards({ primaryRole, allRoles }: { primaryRole: AppRole; a
 // FARMER HOME
 // ─────────────────────────────────────────────────────────────────────
 function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: string; allRoles: AppRole[] }) {
-  const [plots,         setPlots]         = useState(0);
+  const { plots: memberPlots } = useMemberPlots();
+  const plots = memberPlots.length;
   const [quota,         setQuota]         = useState<number | null>(null);
   const [cycleStatus,   setCycleStatus]   = useState<string | null>(null);   // active cycle status
   const [noBurnStatus,  setNoBurnStatus]  = useState<string | null>(null);   // latest no-burn status
 
   useEffect(() => {
-    // plots count — browser client, RLS controls access by auth.uid()
-    // quota fetch is handled in PR #205 (feat/quota-display)
+    // Plot count comes from /api/member/plots via useMemberPlots; keep this effect to load badges.
     const s = createSupabaseBrowserClient();
     void (async () => {
-      // ดึง session token และ plots พร้อมกัน
-      const [sessionRes, plotsRes] = await Promise.all([
-        s.auth.getSession(),
-        s.from('plots').select('id', { count: 'exact', head: true })
-          .eq('member_id', memberId).eq('status', 'active'),
-      ]);
-      setPlots(plotsRes.count ?? 0);
+      const sessionRes = await s.auth.getSession();
 
       // Badge data — cycle + no-burn (silent fail)
       const [cycleRes, noBurnRes] = await Promise.all([
@@ -271,8 +266,8 @@ function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: stri
       items: [
         { href: '/plots',                icon: '🗺️', label: 'แปลงของฉัน',     desc: 'ดูข้อมูลแปลงและพิกัด', badge: plotBadge, tone: FARMER_CARD_TONES.field },
         { href: '/planting-cycles',      icon: '🌽', label: 'ฤดูปลูก',         desc: 'ติดตามรอบปลูกล่าสุด', badge: cycleBadge, tone: FARMER_CARD_TONES.cycle },
-        { href: '/service/reservations', icon: '🌱', label: 'จองเมล็ดพันธุ์', desc: 'เลือกพันธุ์และจำนวนถุง', accent: true, tone: FARMER_CARD_TONES.seed },
-        { href: '/planting-cycles/new',  icon: '➕', label: 'แจ้งปลูกใหม่',   desc: 'สร้างรอบปลูกได้ทันที', tone: FARMER_CARD_TONES.cycle },
+        { href: '/plots', icon: '🌱', label: 'จองเมล็ดพันธุ์', desc: 'เลือกแปลงก่อนจองเมล็ดพันธุ์', accent: true, tone: FARMER_CARD_TONES.seed },
+        { href: '/plots',  icon: '➕', label: 'แจ้งปลูกใหม่',   desc: 'เลือกแปลงก่อนสร้างรอบปลูก', tone: FARMER_CARD_TONES.cycle },
       ],
     },
     {
@@ -289,8 +284,8 @@ function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: stri
       group: '🌿 โครงการไม่เผา',
       accentColor: '#6D28D9',
       items: [
-        { href: '/no-burn', icon: '🔥', label: 'ไม่เผา', desc: 'สมัครและติดตามสถานะ', badge: noBurnBadge, tone: FARMER_CARD_TONES.noBurn },
-        { href: '/no-burn', icon: '📸', label: 'ส่งรูปหลักฐาน',  desc: 'อัปโหลดรูปแปลงงดเผา', tone: FARMER_CARD_TONES.noBurn },
+        { href: '/plots', icon: '🔥', label: 'ไม่เผา', desc: 'เลือกแปลงก่อนสมัครงดเผา', badge: noBurnBadge, tone: FARMER_CARD_TONES.noBurn },
+        { href: '/plots', icon: '📸', label: 'ส่งรูปหลักฐาน',  desc: 'เลือกแปลงก่อนอัปโหลดรูป', tone: FARMER_CARD_TONES.noBurn },
       ],
     },
   ];
