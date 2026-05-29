@@ -9,6 +9,7 @@ import { LoadingState }                            from '@/shared/components/loa
 import { MobileAppShell }                          from '@/shared/components/mobile-app-shell';
 import type { AppRole }                            from '@/shared/auth/auth-types';
 import { MemberDashboardFeed }                     from '@/features/engagement/member-dashboard-feed';
+import { NoBurnStatusWidget }                      from '@/features/no-burn-status/no-burn-status-widget';
 
 // ─────────────────────────────────────────────────────────────────────
 // Helpers
@@ -234,6 +235,10 @@ function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: stri
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8 }}>
               {grp.items.map((item) => <MenuCard key={item.href + item.label} {...item} />)}
             </div>
+            {/* No-burn status widget — only for the no-burn group */}
+            {grp.group === '🌿 โครงการไม่เผา' && memberId && (
+              <NoBurnStatusWidget memberId={memberId} />
+            )}
           </div>
         ))}
 
