@@ -160,7 +160,7 @@ export async function PATCH(request: Request) {
     if (mv.movement_type !== 'receive') {
       return NextResponse.json({ error: 'แก้ไขได้เฉพาะรายการรับเข้า' }, { status: 400 });
     }
-    if (mv.is_locked) return NextResponse.json({ error: 'รายการถูกปิดงวดแล้ว' }, { status: 400 });
+    if (mv.is_locked) return NextResponse.json({ error: 'งวดสต๊อกนี้ปิดแล้ว กรุณายกเลิกปิดงวดก่อนแก้ไข' }, { status: 400 });
 
     const oldQty = Number(mv.qty);
     const newQty = body.qty == null ? oldQty : Number(body.qty);

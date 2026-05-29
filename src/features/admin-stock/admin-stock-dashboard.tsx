@@ -12,13 +12,15 @@ type StockItem = {
 type Movement = {
   id: string; movement_no: string; movement_type: string; product_name: string;
   unit: string; qty: number; unit_cost: number | null; unit_price: number | null;
-  total_amount: number | null; ref_no: string | null; note: string | null; created_at: string;
+  total_amount: number | null; ref_no: string | null; note: string | null; created_at: string; is_locked: boolean;
   ref_type: string | null; ref_id: string | null;
   buyer_name: string | null; buyer_phone: string | null; ref_order_number: string | null;
   seller_name: string | null;
   warehouses: { name: string } | null;
 };
 type ReceiveEdit = { id: string; movement_no: string; qty: string; unit_cost: string; note: string } | null;
+type Period = { id: string; period_year: number; period_month: number; start_date: string; end_date: string; status: 'open' | 'review' | 'closing' | 'closed'; closed_at: string | null; reopened_at: string | null; reason: string | null; close_reason: string | null; reopen_reason: string | null };
+type PeriodEvent = { id: string; period_id: string; action: 'close' | 'reopen' | 'cancel_close'; reason: string | null; previous_status: string | null; new_status: string; created_at: string };
 
 const TYPE_CFG: Record<string, { icon: string; label: string; color: string }> = {
   receive:      { icon: '📥', label: 'รับเข้า',    color: '#2e7d32' },
@@ -38,17 +40,20 @@ type ReceiveForm = {
   unit: string; qty: string; unit_cost: string; note: string;
 };
 
-export function AdminStockDashboard() {
+export function AdminStockDashboard({ initialTab = 'stock' }: { initialTab?: 'stock' | 'receive' | 'transfer' | 'movements' | 'periods' }) {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [stock,      setStock]      = useState<StockItem[]>([]);
   const [movements,  setMovements]  = useState<Movement[]>([]);
   const [products,   setProducts]   = useState<{ id: string; name: string; unit: string; category: string; product_type?: string | null }[]>([]);
   const [loading,    setLoading]    = useState(true);
   const [selWH,      setSelWH]      = useState('');
-  const [tab,        setTab]        = useState<'stock' | 'receive' | 'transfer' | 'movements'>('stock');
+  const [tab,        setTab]        = useState<'stock' | 'receive' | 'transfer' | 'movements' | 'periods'>(initialTab);
   const [notice,     setNotice]     = useState<string | null>(null);
   const [saving,     setSaving]     = useState(false);
   const [editingReceive, setEditingReceive] = useState<ReceiveEdit>(null);
+  const [periods, setPeriods] = useState<Period[]>([]);
+  const [periodEvents, setPeriodEvents] = useState<PeriodEvent[]>([]);
+  const [periodReason, setPeriodReason] = useState('');
 
   const [rf, setRf] = useState<ReceiveForm>({
     warehouse_id: '', product_type: '', product_id: '',
@@ -60,16 +65,19 @@ export function AdminStockDashboard() {
 
   async function load() {
     setLoading(true);
-    const [whRes, stockRes, mvRes, prodRes] = await Promise.all([
+    const [whRes, stockRes, mvRes, prodRes, periodRes] = await Promise.all([
       fetch('/api/admin/warehouses', { credentials: 'include' }).then((r) => r.json()),
       fetch(`/api/admin/stock-movements/summary${selWH ? `?warehouse_id=${selWH}` : ''}`).then((r) => r.json()),
       fetch(`/api/admin/stock-movements?limit=50${selWH ? `&warehouse_id=${selWH}` : ''}`).then((r) => r.json()),
       fetch('/api/admin/products', { credentials: 'include' }).then((r) => r.json()),
+      fetch('/api/admin/periods', { credentials: 'include' }).then((r) => r.json()),
     ]);
     setWarehouses(whRes.warehouses ?? []);
     setStock(stockRes.stock ?? []);
     setMovements(mvRes.movements ?? []);
     setProducts(prodRes.products ?? []);
+    setPeriods(periodRes.periods ?? []);
+    setPeriodEvents(periodRes.events ?? []);
     if (!selWH && whRes.warehouses?.[0]) setSelWH(whRes.warehouses[0].id);
     setLoading(false);
   }
@@ -148,6 +156,27 @@ export function AdminStockDashboard() {
     void load();
   }
 
+
+  async function periodAction(action: 'close' | 'reopen' | 'cancel_close', period: Period) {
+    if (!periodReason.trim()) {
+      setNotice('❌ กรุณาระบุเหตุผลเพื่อบันทึก audit');
+      return;
+    }
+    setSaving(true); setNotice(null);
+    const res = await fetch('/api/admin/periods', {
+      credentials: 'include',
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, id: period.id, reason: periodReason.trim() || null }),
+    });
+    const d = (await res.json()) as { ok?: boolean; error?: string };
+    setSaving(false);
+    if (!res.ok) { setNotice(`❌ ${d.error ?? 'ทำรายการงวดไม่สำเร็จ'}`); return; }
+    setPeriodReason('');
+    setNotice(action === 'close' ? '✅ ปิดงวดและล็อกรายการสต๊อกแล้ว' : '✅ ปรับสถานะงวดแล้ว');
+    void load();
+  }
+
   if (loading) return <LoadingState label="กำลังโหลดสต๊อก…" />;
 
   return (
@@ -171,6 +200,12 @@ export function AdminStockDashboard() {
         <a href="/admin/stock-closing" className="admin-btn admin-btn--secondary" style={{ textDecoration: 'none' }}>🧾 ปิดงวดรายเดือน</a>
       </div>
 
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
+        <a href="/admin/stock/monthly-closing" className="admin-btn admin-btn--secondary" style={{ textDecoration: 'none' }}>
+          🔒 ไปหน้าปิดงวดรายเดือน
+        </a>
+      </div>
+
       {/* tabs */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 16, borderBottom: '1px solid #e0e0e0', paddingBottom: 8 }}>
         {([
@@ -178,6 +213,7 @@ export function AdminStockDashboard() {
           { key: 'receive',   label: '📥 รับเข้า' },
           { key: 'transfer',  label: '📤 โอน' },
           { key: 'movements', label: '📊 เคลื่อนไหว' },
+          { key: 'periods',   label: '🔒 ปิดงวด' },
         ] as const).map((t) => (
           <button key={t.key} onClick={() => setTab(t.key)}
             style={{ padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 13, background: tab === t.key ? 'var(--primary)' : '#f0f4f0', color: tab === t.key ? '#fff' : 'inherit' }}>
@@ -276,8 +312,10 @@ export function AdminStockDashboard() {
                   <td style={{ fontSize: 12 }}>{new Date(mv.created_at).toLocaleString('th-TH')}</td>
                   <td>
                     <button className="admin-btn admin-btn--secondary" style={{ fontSize: 12, minHeight: 30, padding: '4px 8px' }}
+                      disabled={mv.is_locked}
+                      title={mv.is_locked ? 'รายการถูกล็อกจากการปิดงวดแล้ว' : undefined}
                       onClick={() => setEditingReceive({ id: mv.id, movement_no: mv.movement_no, qty: String(mv.qty), unit_cost: mv.unit_cost ? String(mv.unit_cost) : '', note: mv.note ?? '' })}>
-                      ✏️ แก้ไข
+                      {mv.is_locked ? '🔒 ล็อก' : '✏️ แก้ไข'}
                     </button>
                   </td>
                 </tr>
@@ -367,6 +405,76 @@ export function AdminStockDashboard() {
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* PERIODS tab */}
+      {tab === 'periods' && (
+        <div style={{ display: 'grid', gap: 12 }}>
+          <div className="kaona-card">
+            <p style={{ margin: '0 0 8px', fontWeight: 800 }}>🔒 ปิดงวดสต๊อก</p>
+            <p style={{ margin: '0 0 12px', color: '#6b7280', fontSize: 13 }}>
+              การปิดงวดจะล็อกรายการรับเข้า ขาย จอง โอน และปรับสต๊อกในช่วงวันที่ของงวดนั้น และบันทึก audit แบบไม่ลบประวัติ
+            </p>
+            <label className="reg-label">เหตุผล / หมายเหตุสำหรับ audit
+              <input className="reg-input" value={periodReason} onChange={(e) => setPeriodReason(e.target.value)} placeholder="เช่น ปิดงวดประจำเดือน, แก้ไขรายการผิดพลาด" />
+            </label>
+          </div>
+
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead><tr><th>งวด</th><th>ช่วงวันที่</th><th>สถานะ</th><th>Audit ล่าสุด</th><th>จัดการ</th></tr></thead>
+              <tbody>
+                {periods.length === 0 && <tr><td colSpan={5} style={{ textAlign: 'center', padding: 24, color: '#9ca3af' }}>ยังไม่มีงวด</td></tr>}
+                {periods.map((period) => (
+                  <tr key={period.id}>
+                    <td style={{ fontWeight: 800 }}>{period.period_year}/{String(period.period_month).padStart(2, '0')}</td>
+                    <td>{period.start_date} → {period.end_date}</td>
+                    <td>
+                      <span style={{ fontWeight: 800, color: period.status === 'closed' ? '#c62828' : period.status === 'closing' ? '#e65100' : period.status === 'review' ? '#1565c0' : '#2e7d32' }}>
+                        {period.status === 'closed' ? '🔒 ปิดแล้ว' : period.status === 'closing' ? '⏳ กำลังปิด' : period.status === 'review' ? '🔎 Review' : '🟢 เปิด'}
+                      </span>
+                    </td>
+                    <td style={{ fontSize: 12, color: '#6b7280' }}>
+                      {period.closed_at && <div>ปิด: {new Date(period.closed_at).toLocaleString('th-TH')}</div>}
+                      {period.reopened_at && <div>เปิดใหม่: {new Date(period.reopened_at).toLocaleString('th-TH')}</div>}
+                      {(period.reason || period.close_reason || period.reopen_reason) && <div>เหตุผล: {period.reason ?? period.reopen_reason ?? period.close_reason}</div>}
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        {period.status !== 'closed' && (
+                          <button className="admin-btn admin-btn--primary" disabled={saving} onClick={() => periodAction('close', period)}>🔒 ปิดงวด</button>
+                        )}
+                        {period.status === 'closed' && (
+                          <button className="admin-btn admin-btn--secondary" disabled={saving} onClick={() => periodAction('reopen', period)}>🔓 เปิดงวดใหม่</button>
+                        )}
+                        {period.status === 'closing' && (
+                          <button className="admin-btn admin-btn--secondary" disabled={saving} onClick={() => periodAction('cancel_close', period)}>↩️ ยกเลิกปิดงวด</button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead><tr><th>เวลา</th><th>Action</th><th>สถานะ</th><th>เหตุผล</th></tr></thead>
+              <tbody>
+                {periodEvents.length === 0 && <tr><td colSpan={4} style={{ textAlign: 'center', padding: 20, color: '#9ca3af' }}>ยังไม่มีประวัติการปิดงวด</td></tr>}
+                {periodEvents.slice(0, 20).map((event) => (
+                  <tr key={event.id}>
+                    <td style={{ fontSize: 12 }}>{new Date(event.created_at).toLocaleString('th-TH')}</td>
+                    <td style={{ fontWeight: 800 }}>{event.action === 'close' ? '🔒 close' : event.action === 'reopen' ? '🔓 reopen' : '↩️ cancel close'}</td>
+                    <td>{event.previous_status ?? '—'} → {event.new_status}</td>
+                    <td>{event.reason ?? '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
