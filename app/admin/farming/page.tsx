@@ -5,12 +5,13 @@ import { AdminWebShell }          from '@/shared/components/admin-web-shell';
 import { FarmingMap }             from '@/features/admin-farming/farming-map';
 import { HarvestCalendarPanel }   from '@/features/admin-farming/harvest-calendar-panel';
 import { YieldConfigPanel }       from '@/features/admin-farming/yield-config-panel';
+import { AdminNoBurnList }        from '@/features/admin-no-burn/admin-no-burn-list';
 import { AdminPlotsList }         from '@/features/admin-plots/admin-plots-list';
 import { AdminPlotsMapView }      from '@/features/admin-plots/admin-plots-map-view';
 
 import { AdminPlantingTracker }   from '@/features/admin-farming/admin-planting-tracker';
 
-type Tab = 'map' | 'plots' | 'plots-map' | 'tracker' | 'calendar' | 'config';
+type Tab = 'map' | 'plots' | 'plots-map' | 'tracker' | 'calendar' | 'config' | 'no-burn';
 
 const TABS: { key:Tab; icon:string; label:string }[] = [
   { key:'map',       icon:'🗺️', label:'แผนที่แปลง'        },
@@ -19,6 +20,7 @@ const TABS: { key:Tab; icon:string; label:string }[] = [
   { key:'tracker',   icon:'📋', label:'ติดตามรอบปลูก'      },
   { key:'calendar',  icon:'📅', label:'ปฏิทินเก็บเกี่ยว'   },
   { key:'config',    icon:'⚙️', label:'ตั้งค่า Yield / ราคา' },
+  { key:'no-burn',   icon:'🌿', label:'งดเผา' },
 ];
 
 export default function AdminFarmingPage() {
@@ -44,6 +46,7 @@ export default function AdminFarmingPage() {
       {activeTab === 'tracker'   && <AdminPlantingTracker />}
       {activeTab === 'calendar'  && <HarvestCalendarPanel />}
       {activeTab === 'config'    && <YieldConfigPanel />}
+      {activeTab === 'no-burn'   && <AdminNoBurnList />}
     </AdminWebShell>
   );
 }
