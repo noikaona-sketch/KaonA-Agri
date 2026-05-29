@@ -6,6 +6,8 @@ export type NavTab = {
   label: string;
   href: string;
   iconKey: NavIconKey;
+  color?: string;
+  activeBg?: string;
 };
 
 export type RoleNavConfig = {
@@ -35,10 +37,11 @@ const PENDING_NAV: RoleNavConfig = {
 const ROLE_NAV_MAP: Record<AppRole, RoleNavConfig> = {
   farmer: {
     tabs: [
-      { label: 'หน้าแรก',   href: '/',                     iconKey: '🏠' },
-      { label: 'งาน/แจ้งเตือน', href: '/notifications', iconKey: '📋' },
-      { label: 'แบบสำรวจ', href: '/member/surveys', iconKey: '📝' },
-      { label: 'โปรไฟล์',  href: '/profile',              iconKey: '👤' },
+      { label: 'แปลงของฉัน',     href: '/plots',                iconKey: '🗺️', color: '#2E7D32', activeBg: '#EAF7E7' },
+      { label: 'ฤดูปลูก',        href: '/planting-cycles',      iconKey: '🌽', color: '#B7791F', activeBg: '#FFF6D6' },
+      { label: 'จองเมล็ดพันธุ์', href: '/service/reservations', iconKey: '🌱', color: '#EA580C', activeBg: '#FFF0E3' },
+      { label: 'ไม่เผา',         href: '/no-burn',              iconKey: '🔥', color: '#7C3AED', activeBg: '#F3ECFF' },
+      { label: 'โปรไฟล์',        href: '/profile',              iconKey: '👤', color: '#2563EB', activeBg: '#EAF2FF' },
     ],
   },
   leader: {
