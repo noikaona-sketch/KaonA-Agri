@@ -272,6 +272,10 @@ function QuickActionPill({ href, children, tone }: { href: string; children: Rea
   );
 }
 
+function plotScopedHref(path: string, plotId?: string | null) {
+  return plotId ? `${path}?plot_id=${encodeURIComponent(plotId)}` : path;
+}
+
 function PlotProgressCards({ plots, cycles, noBurnRequests, bookings }: {
   plots: FarmerPlotSummary[]; cycles: FarmerCycleSummary[]; noBurnRequests: FarmerNoBurnSummary[]; bookings: FarmerHarvestBookingSummary[];
 }) {
@@ -309,9 +313,9 @@ function PlotProgressCards({ plots, cycles, noBurnRequests, bookings }: {
                 <span style={{ color: booking ? '#1D4ED8' : '#6b7280' }}>{booking ? '📅 มีนัดขายแล้ว' : '📅 ยังไม่มีนัดขาย'}</span>
               </div>
               <div style={{ display: 'flex', gap: 8, overflowX: 'auto', marginTop: 12, paddingBottom: 2 }}>
-                {!cycle && <QuickActionPill href="/planting-cycles/new" tone="warn">สร้างรอบปลูก</QuickActionPill>}
-                <QuickActionPill href="/service/reservations" tone="seed">จองเมล็ดพันธุ์</QuickActionPill>
-                {!noBurn && <QuickActionPill href="/no-burn" tone="fire">สมัครไม่เผา</QuickActionPill>}
+                {!cycle && <QuickActionPill href={plotScopedHref('/planting-cycles/new', plot.id)} tone="warn">สร้างรอบปลูก</QuickActionPill>}
+                <QuickActionPill href={plotScopedHref('/service/reservations', plot.id)} tone="seed">จองเมล็ดพันธุ์</QuickActionPill>
+                {!noBurn && <QuickActionPill href={plotScopedHref('/no-burn', plot.id)} tone="fire">สมัครไม่เผา</QuickActionPill>}
                 <QuickActionPill href="/plots" tone="info">ดูรายละเอียดแปลง</QuickActionPill>
               </div>
             </div>
@@ -442,6 +446,9 @@ function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: stri
   const plotIdsWithNoBurn = new Set(noBurnRequests.map((req) => req.plot_id).filter(Boolean));
   const plotsWithoutCycles = plotCards.filter((plot) => !plotIdsWithCycles.has(plot.id));
   const plotsWithoutNoBurn = plotCards.filter((plot) => !plotIdsWithNoBurn.has(plot.id));
+  const firstPlot = plotCards[0];
+  const firstPlotWithoutCycle = plotsWithoutCycles[0];
+  const firstPlotWithoutNoBurn = plotsWithoutNoBurn[0];
   const nextBooking = bookings.find((booking) => daysUntil(booking.scheduled_date) !== null && (daysUntil(booking.scheduled_date) ?? 999) >= 0);
   const nextBookingDays = daysUntil(nextBooking?.scheduled_date ?? null);
   const harvestSoonCycle = cycles.find((cycle) => {
@@ -452,11 +459,11 @@ function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: stri
   const reminders: FarmerReminder[] = [
     ...(plotsWithoutCycles.length > 0 ? [{
       id: 'missing-cycle', priority: 10, icon: '⚠️', title: `ยังไม่สร้างรอบปลูก ${plotsWithoutCycles.length} แปลง`,
-      desc: 'สร้างรอบปลูกเพื่อเริ่มติดตามฤดูปลูกและวันเก็บเกี่ยว', href: '/planting-cycles/new', cta: 'สร้าง', tone: 'warn' as const,
+      desc: 'สร้างรอบปลูกเพื่อเริ่มติดตามฤดูปลูกและวันเก็บเกี่ยว', href: plotScopedHref('/planting-cycles/new', firstPlotWithoutCycle?.id), cta: 'สร้าง', tone: 'warn' as const,
     }] : []),
     ...(plotsWithoutNoBurn.length > 0 ? [{
       id: 'missing-no-burn', priority: 20, icon: '🔥', title: `สมัครไม่เผาได้ ${plotsWithoutNoBurn.length} แปลง`,
-      desc: 'ยื่นคำขอโครงการไม่เผาจากแปลงที่ลงทะเบียนแล้ว', href: '/no-burn', cta: 'สมัคร', tone: 'fire' as const,
+      desc: 'ยื่นคำขอโครงการไม่เผาจากแปลงที่ลงทะเบียนแล้ว', href: plotScopedHref('/no-burn', firstPlotWithoutNoBurn?.id), cta: 'สมัคร', tone: 'fire' as const,
     }] : []),
     ...(nextBooking && nextBookingDays !== null && nextBookingDays <= 30 ? [{
       id: 'upcoming-sale', priority: 30, icon: '📅', title: `นัดขายอีก ${Math.max(0, nextBookingDays)} วัน`,
@@ -464,7 +471,7 @@ function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: stri
     }] : []),
     ...(plotCards.length > 0 && !hasSeedReservation ? [{
       id: 'seed-eligible', priority: 40, icon: '🌽', title: 'มีสิทธิ์จองเมล็ดพันธุ์',
-      desc: 'เลือกพันธุ์ข้าวโพดและจำนวนถุงสำหรับฤดูปลูกถัดไป', href: '/service/reservations', cta: 'จอง', tone: 'seed' as const,
+      desc: 'เลือกพันธุ์ข้าวโพดและจำนวนถุงสำหรับฤดูปลูกถัดไป', href: plotScopedHref('/service/reservations', firstPlot?.id), cta: 'จอง', tone: 'seed' as const,
     }] : []),
     ...(harvestSoonCycle && harvestSoonDays !== null ? [{
       id: 'harvest-soon', priority: 50, icon: '⏳', title: 'รอบปลูกใกล้เก็บเกี่ยว',
