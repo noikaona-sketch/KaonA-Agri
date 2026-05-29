@@ -9,8 +9,6 @@ import { CompletenessReminder }           from '@/shared/components/completeness
 import { NoBurnStatsBanner }              from '@/features/no-burn-community/no-burn-stats-banner';
 import { LoadingState }                   from '@/shared/components/loading-state';
 import { ProtectedRoute }                 from '@/shared/components/protected-route';
-import { useMemberPlots }                  from '@/features/member-mobile/use-member-plots';
-import { INVALID_PLOT_ID_MESSAGE, MISSING_PLOT_MESSAGE } from '@/features/member-mobile/plot-context';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -26,6 +24,7 @@ type NoBurnRequest = {
   planting_cycles: { crop_name: string; season_year: number }[] | null;
 };
 
+type Plot  = { id: string; name: string; province: string | null };
 type Cycle = { id: string; crop_name: string; season_year: number; status: string };
 type Timing = 'before_planting' | 'after_planting';
 
@@ -134,10 +133,10 @@ function NoBurnPageContent() {
   const member   = useCurrentMember();
   const searchParams = useSearchParams();
   const selectedPlotId = searchParams.get('plot_id') ?? '';
-  const { plots, loading: plotsLoading, warning: plotWarning, invalidPlotId, selectedPlot: contextPlot } = useMemberPlots({ selectedPlotId });
   const fileId   = useId();
 
   const [requests,  setRequests]  = useState<NoBurnRequest[]>([]);
+  const [plots,     setPlots]     = useState<Plot[]>([]);
   const [cycles,    setCycles]    = useState<Cycle[]>([]);
   const [loading,   setLoading]   = useState(true);
 
@@ -157,31 +156,36 @@ function NoBurnPageContent() {
     setLoading(true);
     const token = await getBearerToken();
     const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
-    const reqRes = await fetch('/api/member/no-burn', { headers });
+    const requestParams = new URLSearchParams(member?.line_user_id ? { line_user_id: member.line_user_id } : {});
+    const reqRes = await fetch(`/api/member/no-burn?${requestParams.toString()}`, { headers });
     if (reqRes.ok) {
       const j = (await reqRes.json()) as { requests?: NoBurnRequest[] };
       setRequests(j.requests ?? []);
     }
     const sb = tryCreateSupabaseBrowserClient();
     if (member?.member_id) {
-      const cyclesRes = sb
-        ? await sb.from('planting_cycles').select('id,crop_name,season_year,status')
+      const plotParams = new URLSearchParams({ line_user_id: member.line_user_id });
+      const plotPromise = fetch(`/api/member/plots?${plotParams.toString()}`, { headers })
+        .then(async (r) => ({ ok: r.ok, payload: (await r.json()) as { plots?: Plot[]; error?: string } }));
+      const cyclePromise = sb
+        ? sb.from('planting_cycles').select('id,crop_name,season_year,status')
           .eq('member_id', member.member_id)
           .in('status', ['pending','active','confirmed','growing'])
-        : { data: [] as Cycle[] };
+        : Promise.resolve({ data: [] as Cycle[] });
+      const [plotsRes, cyclesRes] = await Promise.all([plotPromise, cyclePromise]);
+      if (!plotsRes.ok) setError(plotsRes.payload.error ?? 'ไม่สามารถโหลดแปลงได้');
+      const loadedPlots = plotsRes.payload.plots ?? [];
+      setPlots(loadedPlots);
+      if (selectedPlotId && loadedPlots.some((plot) => plot.id === selectedPlotId)) {
+        setSelectedPlot(selectedPlotId);
+        setShowForm(true);
+      }
       setCycles((cyclesRes.data ?? []) as Cycle[]);
     }
     setLoading(false);
-  }, [member?.member_id]);
+  }, [member?.member_id, member?.line_user_id, selectedPlotId]);
 
   useEffect(() => { void load(); }, [load]);
-
-  useEffect(() => {
-    if (contextPlot) {
-      setSelectedPlot(contextPlot.id);
-      setShowForm(true);
-    }
-  }, [contextPlot]);
 
   function resetForm() {
     setShowForm(false); setSelectedPlot(''); setTiming('after_planting');
@@ -238,7 +242,7 @@ function NoBurnPageContent() {
     resetForm(); void load();
   }
 
-  if (loading || plotsLoading) return <LoadingState label="กำลังโหลด…" />;
+  if (loading) return <LoadingState label="กำลังโหลด…" />;
 
   // ─── Render ──────────────────────────────────────────────────────────────────
   return (
@@ -295,19 +299,6 @@ function NoBurnPageContent() {
         </div>
       )}
 
-      {plotWarning && (
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 10,
-          background: '#FAEEDA', border: '1px solid #854F0B', borderRadius: 12,
-          padding: '12px 14px', marginBottom: 12,
-        }}>
-          <span style={{ fontSize: 16 }}>⚠️</span>
-          <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#633806', flex: 1 }}>
-            {invalidPlotId ? INVALID_PLOT_ID_MESSAGE : plotWarning}
-          </p>
-        </div>
-      )}
-
       {/* ── CTA gate: ต้องมีแปลง + รอบปลูกก่อน ── */}
       {!showForm && (
         <>
@@ -322,7 +313,7 @@ function NoBurnPageContent() {
                 <div style={{ flex: 1 }}>
                   <p style={{ margin: '0 0 2px', fontWeight: 800, fontSize: 14, color: '#633806' }}>ขั้นตอนที่ 1 — เพิ่มแปลงเกษตร</p>
                   <p style={{ margin: 0, fontSize: 12, color: '#854F0B', lineHeight: 1.5 }}>
-                    {MISSING_PLOT_MESSAGE}
+                    ต้องลงทะเบียนแปลงก่อนจึงจะสมัครโครงการงดเผาได้
                   </p>
                 </div>
               </div>
