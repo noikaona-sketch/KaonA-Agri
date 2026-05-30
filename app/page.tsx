@@ -171,6 +171,9 @@ function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: stri
   const [quota,         setQuota]         = useState<number | null>(null);
   const [cycleStatus,   setCycleStatus]   = useState<string | null>(null);   // active cycle status
   const [noBurnStatus,  setNoBurnStatus]  = useState<string | null>(null);   // latest no-burn status
+  const [summary,       setSummary]       = useState<{
+    plotCount: number; activeCycle: boolean; noBurnOk: boolean; quotaKg: number | null;
+  } | null>(null);
 
   useEffect(() => {
     // plots count — browser client, RLS controls access by auth.uid()
@@ -198,6 +201,17 @@ function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: stri
       ]);
       if (cycleRes.data?.status)  setCycleStatus(cycleRes.data.status);
       if (noBurnRes.data?.status) setNoBurnStatus(noBurnRes.data.status);
+
+      // Summary numbers
+      const { data: quotaData } = await s.from('planting_cycles')
+        .select('quota_kg').eq('member_id', memberId)
+        .not('status','in','(harvested,cancelled)').limit(1).maybeSingle();
+      setSummary({
+        plotCount:   plotsCount ?? 0,
+        activeCycle: !!cycleRes.data,
+        noBurnOk:    ['approved','completed'].includes(noBurnRes.data?.status ?? ''),
+        quotaKg:     quotaData?.quota_kg ?? null,
+      });
 
       // ดึง quota ถ้ามี session (ใช้ token ที่ได้จากด้านบน)
       const accessToken = sessionRes.data.session?.access_token;
@@ -242,7 +256,7 @@ function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: stri
       items: [
         { href: '/service/reservations', icon: '🌽', label: 'จองเมล็ดพันธุ์', desc: 'สั่งข้าวโพด', accent: true },
         { href: '/planting-cycles/new',  icon: '🌱', label: 'แจ้งปลูกใหม่',   desc: 'เปิดรอบปลูก' },
-        { href: '/planting-cycles',      icon: '🌾', label: 'ไร่ของฉัน',        desc: 'ติดตาม+บันทึก', badge: cycleBadge },
+        { href: '/plots',                icon: '🌾', label: 'ไร่ของฉัน',        desc: 'แปลง+กิจกรรม',  badge: cycleBadge },
         { href: '/plots',                icon: '🗺️', label: 'แปลงของฉัน',     desc: 'ข้อมูลแปลง' },
       ],
     },
@@ -251,9 +265,9 @@ function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: stri
       accentColor: '#1565c0',
       items: [
         { href: '/harvest/book',       icon: '🚜', label: 'แจ้งวันเกี่ยว',   desc: 'จองคิวรับซื้อ' },
-        { href: '/plots',              icon: '📅', label: 'นัดวันขาย',        desc: 'จองคิวขาย' },
+        { href: '/harvest/book',       icon: '📅', label: 'นัดวันขาย',        desc: 'จองคิวขาย' },
         { href: '/harvest/calculator', icon: '💧', label: 'คำนวณชื้น/บาท',   desc: 'ขายเลย vs รอแห้ง' },
-        { href: '/planting-cycles',    icon: '📊', label: 'ประวัติยอดขาย',   desc: 'สรุปรายได้' },
+        { href: '/planting-cycles',    icon: '📊', label: 'ประวัติ/รายงาน',  desc: 'สรุปรายได้' },
       ],
     },
     {
@@ -270,6 +284,30 @@ function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: stri
     <MobileAppShell title="" subtitle="">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <HeroCard name={name} memberId={memberId} primaryRole="farmer" allRoles={allRoles} plots={plots} price={null} quota={quota} />
+
+        {/* ── Summary strip ── */}
+        {summary && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8, marginBottom: 4 }}>
+            {[
+              { label: 'แปลง',    value: String(summary.plotCount),                     icon: '🗺️', href: '/plots',           ok: summary.plotCount > 0 },
+              { label: 'รอบปลูก', value: summary.activeCycle ? 'Active' : '—',          icon: '🌱', href: '/planting-cycles',  ok: summary.activeCycle },
+              { label: 'งดเผา',   value: summary.noBurnOk ? '✓' : '—',                  icon: '🌿', href: '/no-burn',          ok: summary.noBurnOk },
+              { label: 'โควต้า',  value: summary.quotaKg ? `${(summary.quotaKg/1000).toFixed(1)}ต` : '—', icon: '⚖️', href: '/planting-cycles', ok: !!summary.quotaKg },
+            ].map(({ label, value, icon, href, ok }) => (
+              <Link key={label} href={href} style={{ textDecoration: 'none' }}>
+                <div style={{
+                  background: '#fff', borderRadius: 12, padding: '10px 8px',
+                  border: `1px solid ${ok ? '#a5d6a760' : '#e5e7eb'}`,
+                  textAlign: 'center',
+                }}>
+                  <p style={{ margin: 0, fontSize: 16 }}>{icon}</p>
+                  <p style={{ margin: '2px 0 0', fontSize: 14, fontWeight: 900, color: ok ? '#1b5e20' : '#9ca3af' }}>{value}</p>
+                  <p style={{ margin: 0, fontSize: 9, color: '#9ca3af', fontWeight: 600 }}>{label}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
 
         {/* เมนูแยกกลุ่ม */}
         {FARMER_MENU_GROUPS.map((grp) => (

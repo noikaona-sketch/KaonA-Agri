@@ -18,9 +18,9 @@ function PlantingCyclesContent() {
 
   const TABS = [
     { key: 'cycles', label: '🌱 รอบปลูก'   },
-    { key: 'sales',  label: '💰 ประวัติขาย' },
-    { key: 'report', label: '📊 รายงาน'     },
     { key: 'notif',  label: '🔔 แจ้งเตือน'  },
+    { key: 'sales',  label: '💰 ประวัติ'    },
+    { key: 'report', label: '📊 รายงาน'     },
   ] as const;
 
   return (
