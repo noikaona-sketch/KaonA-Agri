@@ -9,6 +9,7 @@ import { useCurrentMember }              from '@/providers/auth-provider';
 import { MobileAppShell }                from '@/shared/components/mobile-app-shell';
 import { LoadingState }                  from '@/shared/components/loading-state';
 import { ProtectedRoute }                from '@/shared/components/protected-route';
+import { Weather7Day }                   from '@/features/weather/weather-widget';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -17,6 +18,7 @@ type Plot = {
   id: string; name: string; area_rai: number;
   province: string | null; status: string;
   land_doc_type: string | null;
+  lat: number | null; lng: number | null;
 };
 
 type ActiveCycle = {
@@ -264,6 +266,16 @@ function PlotCard({
           </Link>
         )}
       </div>
+    {/* 7-day weather */}
+      {plot.lat && plot.lng && (
+        <div style={{ padding: '0 14px 14px' }}>
+          <Weather7Day
+            lat={plot.lat}
+            lng={plot.lng}
+            location={plot.province ?? plot.name}
+          />
+        </div>
+      )}
     </div>
   );
 }

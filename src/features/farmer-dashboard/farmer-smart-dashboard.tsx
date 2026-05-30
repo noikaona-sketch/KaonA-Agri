@@ -3,12 +3,14 @@
 import Link      from 'next/link';
 import { useEffect, useState } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import { WeatherTodayStrip }           from '@/features/weather/weather-widget';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 type PlotData = {
   id: string; name: string; area_rai: number;
+  lat: number | null; lng: number | null;
   hasCycle:    boolean;
   cycleStatus: string | null;
   cycleId:     string | null;
@@ -234,7 +236,7 @@ export function FarmerSmartDashboard({ name, memberId }: { name: string; memberI
 
       // Parallel fetch: plots + cycles + no-burn + sale appointments
       const [plotsRes, cyclesRes, noBurnRes, saleRes, reserveRes] = await Promise.all([
-        s.from('plots').select('id,name,area_rai').eq('member_id', memberId).is('deleted_at', null),
+        s.from('plots').select('id,name,area_rai,lat,lng,province').eq('member_id', memberId).is('deleted_at', null),
         s.from('planting_cycles')
           .select('id,plot_id,status,expected_harvest_at')
           .eq('member_id', memberId)
@@ -254,7 +256,7 @@ export function FarmerSmartDashboard({ name, memberId }: { name: string; memberI
           .select('id').eq('type', 'seed_reservation').eq('status', 'active').limit(1),
       ]);
 
-      const rawPlots  = (plotsRes.data  ?? []) as { id: string; name: string; area_rai: number }[];
+      const rawPlots  = (plotsRes.data  ?? []) as { id: string; name: string; area_rai: number; lat: number | null; lng: number | null; province: string | null }[];
       const rawCycles = (cyclesRes.data ?? []) as { id: string; plot_id: string | null; status: string; expected_harvest_at: string | null }[];
       const rawNoBurn = (noBurnRes.data ?? []) as { plot_id: string; status: string }[];
       const rawSales  = (saleRes.data   ?? []) as { plot_id: string | null; appointment_date: string }[];
@@ -272,6 +274,8 @@ export function FarmerSmartDashboard({ name, memberId }: { name: string; memberI
           id:             plot.id,
           name:           plot.name,
           area_rai:       plot.area_rai,
+          lat:            plot.lat ?? null,
+          lng:            plot.lng ?? null,
           hasCycle:       !!cycle,
           cycleStatus:    cycle?.status ?? null,
           cycleId:        cycle?.id ?? null,
@@ -298,6 +302,15 @@ export function FarmerSmartDashboard({ name, memberId }: { name: string; memberI
       <p style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#1b5e20' }}>
         {greet(name)}
       </p>
+
+      {/* Weather today — use first plot's coordinates */}
+      {plots[0]?.lat && plots[0]?.lng && (
+        <WeatherTodayStrip
+          lat={plots[0].lat}
+          lng={plots[0].lng}
+          location={plots[0].name}
+        />
+      )}
 
       {/* ── สิ่งที่ต้องทำ ── */}
       {todos.length > 0 && (
