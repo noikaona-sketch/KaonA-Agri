@@ -39,7 +39,7 @@ const STATUS_CFG: Record<string, { icon: string; label: string; color: string; b
 
 type Screen = 'shop' | 'history' | 'success';
 
-export function SeedReservationFlow() {
+export function SeedReservationFlow({ initialPlotId }: { initialPlotId?: string | null } = {}) {
   const member = useCurrentMember();
 
   // ── helper ดึง Supabase session token (refresh ถ้าหมดอายุ) ──
@@ -73,6 +73,15 @@ export function SeedReservationFlow() {
   const [filterSupplier, setFilterSupplier] = useState('');
   const [search, setSearch]   = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [plotName, setPlotName]     = useState<string | null>(null);
+
+  // ── load plot name from initialPlotId ──────────────────────────────
+  useEffect(() => {
+    if (!initialPlotId) return;
+    const sb = createSupabaseBrowserClient();
+    void sb.from('plots').select('name').eq('id', initialPlotId).maybeSingle()
+      .then(({ data }) => { if (data?.name) setPlotName(data.name); });
+  }, [initialPlotId]);
 
   // ── load ─────────────────────────────────────────────────────────
   async function load() {
@@ -249,6 +258,20 @@ export function SeedReservationFlow() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingBottom: totalBags > 0 ? 140 : 0 }}>
+
+      {/* Plot context banner */}
+      {plotName && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '9px 14px', borderRadius: 10,
+          background: '#e8f5e9', border: '1px solid #a5d6a7',
+        }}>
+          <span style={{ fontSize: 16 }}>🌾</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#1b5e20' }}>
+            จองสำหรับแปลง: {plotName}
+          </span>
+        </div>
+      )}
 
       {/* filter bar */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
