@@ -57,3 +57,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }
 }
+
+export async function GET(request: Request) {
+  try {
+    const s      = createServerSupabaseClient();
+    const caller = await resolveApprovedMember(request, s);
+    if (!caller.ok) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { data, error } = await s
+      .from('planting_cycles')
+      .select('id,crop_name,season_year,status,planted_at,expected_harvest_at,plot_id')
+      .eq('member_id', caller.memberId)
+      .not('status', 'in', '(harvested,cancelled)')
+      .order('created_at', { ascending: false });
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ cycles: data ?? [] });
+  } catch (e) {
+    return NextResponse.json({ error: String(e) }, { status: 500 });
+  }
+}

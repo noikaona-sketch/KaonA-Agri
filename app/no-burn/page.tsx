@@ -165,9 +165,10 @@ function NoBurnPageContent() {
       const plotPromise = fetch(`/api/member/plots?${plotParams.toString()}`, { headers })
         .then(async (r) => ({ ok: r.ok, payload: (await r.json()) as { plots?: Plot[]; error?: string } }));
       const cyclePromise = sb
-        ? sb.from('planting_cycles').select('id,crop_name,season_year,status')
-          .eq('member_id', member.member_id)
-          .in('status', ['pending','active','confirmed','growing'])
+        ? fetch(`/api/member/planting-cycles?member_id=${member.member_id}`, { headers })
+          .then(r => r.ok ? r.json().then((j: { cycles?: Cycle[] }) =>
+            ({ data: (j.cycles ?? []).filter(c => ['pending','active','confirmed','growing','flowering','maturing'].includes(c.status)), error: null }))
+            : ({ data: [], error: null }))
         : Promise.resolve({ data: [] as Cycle[] });
       const [plotsRes, cyclesRes] = await Promise.all([plotPromise, cyclePromise]);
       if (!plotsRes.ok) setError(plotsRes.payload.error ?? 'ไม่สามารถโหลดแปลงได้');
