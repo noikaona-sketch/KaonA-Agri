@@ -5,6 +5,7 @@ import { useEffect, useState }                     from 'react';
 import { useRouter }                               from 'next/navigation';
 import { useAuth, useCurrentMember, useEffectiveRole } from '@/providers/auth-provider';
 import { createSupabaseBrowserClient }             from '@/lib/supabase/client';
+import { FarmerSmartDashboard }                    from '@/features/farmer-dashboard/farmer-smart-dashboard';
 import { LoadingState }                            from '@/shared/components/loading-state';
 import { MobileAppShell }                          from '@/shared/components/mobile-app-shell';
 import type { AppRole }                            from '@/shared/auth/auth-types';
@@ -284,6 +285,9 @@ function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: stri
     <MobileAppShell title="" subtitle="">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <HeroCard name={name} memberId={memberId} primaryRole="farmer" allRoles={allRoles} plots={plots} price={null} quota={quota} />
+
+        {/* ── Smart dashboard: greeting + todos + plot cards ── */}
+        <FarmerSmartDashboard name={name} memberId={memberId} />
 
         {/* ── Summary strip ── */}
         {summary && (
