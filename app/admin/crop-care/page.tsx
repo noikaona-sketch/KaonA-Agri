@@ -87,7 +87,7 @@ export default function CropCarePage() {
           <CareScheduleBuilder
             value={json}
             onChange={setJson}
-            label={`Care Schedule — ${editing?.crop_type ?? newType || 'พืช'}`}
+            label={`Care Schedule — ${editing?.crop_type ?? (newType || 'พืช')}`}
           />
 
           <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
