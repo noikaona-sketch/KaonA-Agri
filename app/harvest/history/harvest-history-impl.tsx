@@ -178,7 +178,7 @@ function HarvestHistoryContent() {
 
                 {b.status === 'completed' && !b.has_rating && (
                   <button onClick={() => setRating(b)}
-                    style={{ marginTop: 10, width: '100%', padding: '9px', borderRadius: 10, border: 'none', background: '#fff8e1', color: '#e65100', fontSize: 13, fontWeight: 700, cursor: 'pointer', border: '1px solid #ffe082' } as React.CSSProperties}>
+                    style={{ marginTop: 10, width: '100%', padding: '9px', borderRadius: 10, border: '1px solid #ffe082', background: '#fff8e1', color: '#e65100', fontSize: 13, fontWeight: 700, cursor: 'pointer' } as React.CSSProperties}>
                     ⭐ ให้คะแนนบริการ
                   </button>
                 )}
