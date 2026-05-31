@@ -50,20 +50,21 @@ comment on table public.crop_care_defaults is
 insert into public.crop_care_defaults (crop_type, care_schedule) values (
   'ข้าวโพด',
   '[
-    {"day":0,  "activity":"plant",        "label":"วันปลูก",          "icon":"🌱", "note":"ระยะปลูก 75×25 ซม. ลึก 3-5 ซม."},
-    {"day":5,  "activity":"check",        "label":"ตรวจการงอก",       "icon":"🔍", "note":"ควรงอก 80% ขึ้นไป"},
-    {"day":10, "activity":"water",        "label":"ให้น้ำครั้งแรก",   "icon":"💧", "note":"ถ้าฝนไม่ตก ให้น้ำให้ชุ่ม"},
-    {"day":14, "activity":"fertilize",   "label":"ปุ๋ยรอบ 1",        "icon":"🌿", "note":"ยูเรีย 46-0-0 อัตรา 25 กก./ไร่ รองพื้น", "warning_days":2},
-    {"day":21, "activity":"pest_check",  "label":"ตรวจแมลง",         "icon":"🐛", "note":"ระวังหนอนกระทู้ข้าวโพด"},
-    {"day":25, "activity":"growth_check","label":"วัดความสูง",        "icon":"📏", "note":"ควรสูง 30-40 ซม. (V5-V6)"},
-    {"day":30, "activity":"fertilize",   "label":"ปุ๋ยรอบ 2",        "icon":"🌿", "note":"สูตร 15-15-15 อัตรา 30 กก./ไร่ แต่งหน้า", "warning_days":2},
-    {"day":40, "activity":"water",       "label":"ให้น้ำช่วงออกดอก",  "icon":"💧", "note":"สำคัญมาก อย่าให้ขาดน้ำ"},
-    {"day":45, "activity":"check",       "label":"ออกดอก/ผสมเกสร",   "icon":"🌸", "note":"ระยะ VT-R1 สำคัญที่สุด"},
-    {"day":55, "activity":"growth_check","label":"ตรวจฝัก",           "icon":"🌽", "note":"ควรเห็นฝักชัดเจน"},
-    {"day":65, "activity":"pest_check",  "label":"ตรวจโรคราและแมลง", "icon":"🔍", "note":"ระวังโรคราน้ำค้าง"},
-    {"day":75, "activity":"check",       "label":"ประเมินความแก่",    "icon":"⏳", "note":"ดูสีไหมข้าวโพดเริ่มแห้ง"},
-    {"day":85, "activity":"harvest",     "label":"เตรียมเก็บเกี่ยว", "icon":"🚜", "note":"ความชื้นควร 25-30%", "warning_days":3},
-    {"day":90, "activity":"harvest",     "label":"เก็บเกี่ยว",        "icon":"✅", "note":"ความชื้นมาตรฐาน 14.5%"}
+    {"day":0,   "activity":"plant",        "label":"วันปลูก",               "icon":"🌱", "note":"ระยะ 70-75×20-25 ซม. เมล็ด 3-3.5 กก./ไร่ ลึก 3-5 ซม."},
+    {"day":2,   "activity":"check",        "label":"ฉีดยาคุมวัชพืช",        "icon":"🌿", "note":"ฉีดภายใน 2-3 วันหลังปลูก ขณะดินยังชื้น"},
+    {"day":7,   "activity":"check",        "label":"ตรวจการงอก",            "icon":"🔍", "note":"ควรงอก 80% ขึ้นไป"},
+    {"day":22,  "activity":"fertilize",    "label":"ปุ๋ยรอบ 1 + กำจัดวัชพืช","icon":"🌿", "note":"16-20-0 หรือ 15-15-15 อัตรา 30-50 กก./ไร่ พร้อมกำจัดวัชพืช", "warning_days":2},
+    {"day":25,  "activity":"growth_check", "label":"วัดความสูง",             "icon":"📏", "note":"ควรสูง 30-40 ซม."},
+    {"day":20,  "activity":"pest_check",   "label":"เฝ้าระวังหนอนกระทู้",   "icon":"🐛", "note":"อายุ 15-40 วัน อ่อนแอต่อ Fall Armyworm มาก ตรวจยอดทุกวัน"},
+    {"day":42,  "activity":"fertilize",    "label":"ปุ๋ยรอบ 2 + พูนโคน",    "icon":"🌿", "note":"ยูเรีย 46-0-0 อัตรา 25-30 กก./ไร่ พร้อมพูนโคนต้น", "warning_days":2},
+    {"day":50,  "activity":"water",        "label":"เพิ่มน้ำช่วงวิกฤต",     "icon":"💧", "note":"D50-80 ออกดอก+ผสมเกสร ห้ามขาดน้ำเด็ดขาด ผลผลิตลดหากขาดน้ำ"},
+    {"day":53,  "activity":"check",        "label":"ออกดอก (แปซิฟิค 339)",  "icon":"🌸", "note":"พันธุ์นี้ออกดอก ~D53 ระยะ VT-R1 สำคัญที่สุด"},
+    {"day":65,  "activity":"pest_check",   "label":"ตรวจโรครา/แมลง",        "icon":"🔍", "note":"ระวังโรคราน้ำค้าง ตรวจฝักพัฒนาดีไหม"},
+    {"day":80,  "activity":"water",        "label":"ลดการให้น้ำ",            "icon":"💧", "note":"ฝักเริ่มแข็ง ลดน้ำลงได้"},
+    {"day":100, "activity":"check",        "label":"ตรวจจุดดำ (Black Layer)","icon":"⏳", "note":"แป้งแข็งแล้ว ความชื้น ~35-38% ยังเก็บเกี่ยวแบบสดได้", "warning_days":3},
+    {"day":105, "activity":"harvest",      "label":"เก็บเกี่ยวแบบหักสด",     "icon":"🌽", "note":"ความชื้น ~30-33% มีจุดดำที่โคนเมล็ด เหมาะถ้ามีตู้อบ", "warning_days":3},
+    {"day":115, "activity":"harvest",      "label":"เก็บเกี่ยวแบบหักแห้ง",   "icon":"✅", "note":"ความชื้น ~15-20% เปลือกแห้งน้ำตาล เมล็ดสนิท ดีที่สุด", "warning_days":3},
+    {"day":120, "activity":"harvest",      "label":"เก็บเกี่ยวด่วน",          "icon":"🚜", "note":"ความชื้น ~14.5% เก็บได้เลย อย่าปล่อยนานเกิน"}
   ]'::jsonb
 )
 on conflict (crop_type) do update
@@ -92,3 +93,10 @@ on conflict (crop_type) do update
 alter table public.farm_activity_logs
   add constraint if not exists farm_activity_logs_cycle_scheduled_day_unique
     unique (planting_cycle_id, scheduled_day);
+
+-- อัปเดตถ้า already inserted (re-run safe)
+update public.crop_care_defaults
+set care_schedule = (
+  select care_schedule from public.crop_care_defaults where crop_type = 'ข้าวโพด' limit 1
+)
+where crop_type = 'ข้าวโพด';

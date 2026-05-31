@@ -108,24 +108,23 @@ export function rainRisk(prob: number): 'low' | 'medium' | 'high' {
 // อ้างอิงข้อมูลภาคสนามพันธุ์ไร่ (อายุเก็บเกี่ยว 90-110 วัน)
 // ─────────────────────────────────────────────────────────────────────────────
 export function estimateMoistureByAge(daysSincePlanted: number): number {
-  // Curve: moisture ลดลงแบบ linear หลังวันที่ 60
-  // D60  = ~35% (ออกดอก)
-  // D75  = ~30%
-  // D85  = ~26%
-  // D90  = ~23%
-  // D100 = ~18%
-  // D110 = ~14.5% (mature)
-  if (daysSincePlanted <= 60)  return 35;
-  if (daysSincePlanted >= 110) return 14.5;
+  // Curve อ้างอิงพันธุ์แปซิฟิค 339 (ข้าวโพดเลี้ยงสัตว์ไร่ อายุเก็บ 105-120 วัน)
+  // D≤60  = ~38% (ก่อนออกดอก)
+  // D100  = 35-38% (แป้งแข็ง)
+  // D105  = 30-33% (สุกแก่สรีรวิทยา Black Layer)
+  // D110  = 25-28%
+  // D115  = 18-20%
+  // D120+ = 14.5%
+  if (daysSincePlanted <= 60)  return 38;
+  if (daysSincePlanted >= 120) return 14.5;
 
-  // Linear interpolation between key points
   const curve = [
-    { day: 60,  pct: 35 },
-    { day: 75,  pct: 30 },
-    { day: 85,  pct: 26 },
-    { day: 90,  pct: 23 },
-    { day: 100, pct: 18 },
-    { day: 110, pct: 14.5 },
+    { day: 60,  pct: 38 },
+    { day: 100, pct: 36.5 },  // midpoint 35-38%
+    { day: 105, pct: 31.5 },  // midpoint 30-33%
+    { day: 110, pct: 26.5 },  // midpoint 25-28%
+    { day: 115, pct: 19.0 },  // midpoint 15-20% (หักแห้ง)
+    { day: 120, pct: 14.5 },  // mature
   ];
 
   for (let i = 0; i < curve.length - 1; i++) {
@@ -140,13 +139,16 @@ export function estimateMoistureByAge(daysSincePlanted: number): number {
 
 // แปลงอายุเป็น label ขั้นการเจริญเติบโต
 export function growthStageLabel(daysSincePlanted: number): { label: string; icon: string; color: string } {
-  if (daysSincePlanted < 10)  return { label: 'งอก',           icon: '🌱', color: '#6b7280' };
-  if (daysSincePlanted < 30)  return { label: 'ตั้งต้น',       icon: '🌿', color: '#2e7d32' };
-  if (daysSincePlanted < 45)  return { label: 'เจริญเติบโต',   icon: '🌾', color: '#2e7d32' };
-  if (daysSincePlanted < 55)  return { label: 'ออกดอก',        icon: '🌸', color: '#7b1fa2' };
-  if (daysSincePlanted < 70)  return { label: 'ติดฝัก',        icon: '🌽', color: '#e65100' };
-  if (daysSincePlanted < 85)  return { label: 'ฝักพัฒนา',      icon: '🌽', color: '#e65100' };
-  if (daysSincePlanted < 95)  return { label: 'ใกล้แก่',       icon: '⏳', color: '#c62828' };
-  if (daysSincePlanted < 105) return { label: 'แก่จัด พร้อมเก็บ', icon: '✅', color: '#c62828' };
-  return { label: 'สุกเกินไป', icon: '⚠️', color: '#9e9e9e' };
+  // อ้างอิงแปซิฟิค 339 — ออกดอก D53, เก็บเกี่ยว D105-120
+  if (daysSincePlanted < 7)   return { label: 'งอก',               icon: '🌱', color: '#6b7280' };
+  if (daysSincePlanted < 20)  return { label: 'ตั้งต้น (V3-V5)',   icon: '🌿', color: '#2e7d32' };
+  if (daysSincePlanted < 40)  return { label: 'เจริญเติบโต (V6+)', icon: '🌾', color: '#2e7d32' };
+  if (daysSincePlanted < 53)  return { label: 'เตรียมออกดอก',      icon: '⚠️', color: '#e65100' }; // ระวัง: ปุ๋ยรอบ2 + น้ำ
+  if (daysSincePlanted < 65)  return { label: 'ออกดอก/ผสมเกสร',    icon: '🌸', color: '#7b1fa2' }; // วิกฤต: ห้ามขาดน้ำ
+  if (daysSincePlanted < 80)  return { label: 'ติดเมล็ด/ฝักพัฒนา', icon: '🌽', color: '#e65100' };
+  if (daysSincePlanted < 100) return { label: 'เมล็ดสะสมแป้ง',     icon: '🌽', color: '#e65100' };
+  if (daysSincePlanted < 105) return { label: 'แป้งแข็ง (~36%ชื้น)',icon: '⏳', color: '#c62828' };
+  if (daysSincePlanted < 110) return { label: 'Black Layer (พร้อมหัก)', icon: '✅', color: '#2e7d32' };
+  if (daysSincePlanted < 120) return { label: 'หักแห้ง (~20%ชื้น)', icon: '✅', color: '#1565c0' };
+  return { label: 'แห้งสนิท เก็บเกี่ยวได้', icon: '🚜', color: '#1b5e20' };
 }
