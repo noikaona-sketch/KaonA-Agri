@@ -165,7 +165,19 @@ function PlotCard({
   memberId: string;
   onLogged: (plotId: string, type: string) => void;
 }) {
-  const st          = cycle ? (CYCLE_STATUS_TH[cycle.status] ?? CYCLE_STATUS_TH.active) : null;
+  const router = useRouter();
+  const [notice, setNotice] = useState<string | null>(null);
+
+  function goTo(path: string, plotId: string) {
+    router.push(`${path}?plot_id=${plotId}`);
+  }
+
+  function showPhotoNotice(plotName: string) {
+    setNotice(`ส่งรูปของแปลง ${plotName} ได้ที่เมนูงดเผา`);
+    setTimeout(() => setNotice(null), 3000);
+  }
+
+  const st = cycle ? (CYCLE_STATUS_TH[cycle.status] ?? CYCLE_STATUS_TH.active) : null;
   const noBurnCfg   = noBurnStatus ? NO_BURN_TH[noBurnStatus] : null;
   const hasCycle    = !!cycle;
 
@@ -308,16 +320,7 @@ function PlotsContent() {
   const [noBurnMap,   setNoBurnMap]   = useState<Record<string, string>>({});
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState<string | null>(null);
-  const [notice,      setNotice]      = useState<string | null>(null);
 
-  function goTo(path: string, plotId: string) {
-    router.push(`${path}?plot_id=${plotId}`);
-  }
-
-  function showPhotoNotice(plotName: string) {
-    setNotice(`ส่งรูปหลักฐานของแปลง ${plotName} ได้ที่เมนู "ส่งรูปหลักฐาน" ในหน้างดเผาค่ะ`);
-    setTimeout(() => setNotice(null), 4000);
-  }
 
   async function load() {
     if (!member?.member_id) return;
