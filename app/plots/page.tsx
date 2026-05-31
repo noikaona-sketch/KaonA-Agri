@@ -308,6 +308,16 @@ function PlotsContent() {
   const [noBurnMap,   setNoBurnMap]   = useState<Record<string, string>>({});
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState<string | null>(null);
+  const [notice,      setNotice]      = useState<string | null>(null);
+
+  function goTo(path: string, plotId: string) {
+    router.push(`${path}?plot_id=${plotId}`);
+  }
+
+  function showPhotoNotice(plotName: string) {
+    setNotice(`ส่งรูปหลักฐานของแปลง ${plotName} ได้ที่เมนู "ส่งรูปหลักฐาน" ในหน้างดเผาค่ะ`);
+    setTimeout(() => setNotice(null), 4000);
+  }
 
   async function load() {
     if (!member?.member_id) return;
