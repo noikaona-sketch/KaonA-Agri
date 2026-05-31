@@ -87,3 +87,8 @@ insert into public.crop_care_defaults (crop_type, care_schedule) values (
 on conflict (crop_type) do update
   set care_schedule = excluded.care_schedule,
       updated_at    = now();
+
+-- Unique constraint for upsert idempotency
+alter table public.farm_activity_logs
+  add constraint if not exists farm_activity_logs_cycle_scheduled_day_unique
+    unique (planting_cycle_id, scheduled_day);

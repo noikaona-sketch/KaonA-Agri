@@ -143,11 +143,12 @@ export function FarmJournal({ cycleId, plotId, plantedAt, cropType, daysToHarves
       const isRelevant  = item.day <= daysSincePlanted + warningDays + 3;
       if (!isRelevant && item.day > (daysToHarvest ?? 120)) continue;
 
-      // Find matching log
+      // Find matching log — ต้องเป็น log ที่ user บันทึกจริง (ไม่ใช่ auto-seeded placeholder)
       const matchLog = logs.find(l =>
-        l.scheduled_day === item.day ||
-        (l.activity_type === item.activity &&
-          Math.abs(new Date(l.recorded_at).getTime() - dueDate.getTime()) < 5 * 86400000),
+        (l.scheduled_day === item.day || (
+          l.activity_type === item.activity &&
+          Math.abs(new Date(l.recorded_at).getTime() - dueDate.getTime()) < 5 * 86400000
+        )) && !l.is_scheduled  // is_scheduled=true = placeholder, ยังไม่นับว่าทำแล้ว
       );
 
       const now = new Date();

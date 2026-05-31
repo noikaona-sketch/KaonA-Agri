@@ -52,7 +52,55 @@ export async function POST(request: Request) {
       .single();
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ ok:true, id: (data as { id:string }).id });
+
+    const cycleId   = (data as { id: string }).id;
+    const plantedAt = body.planted_at ? new Date(body.planted_at) : null;
+
+    // ── Seed scheduled reminder logs from care_defaults (best-effort) ─────────
+    if (plantedAt) {
+      void (async () => {
+        try {
+          const { data: careData } = await s
+            .from('crop_care_defaults')
+            .select('care_schedule')
+            .eq('crop_type', body.crop_name)
+            .maybeSingle();
+
+          const schedule = (careData?.care_schedule as {
+            day: number; activity: string; label: string; icon: string;
+            note?: string; warning_days?: number;
+          }[]) ?? [];
+
+          if (schedule.length > 0) {
+            const rows = schedule.map(item => {
+              const dueDate = new Date(plantedAt);
+              dueDate.setDate(dueDate.getDate() + item.day);
+              return {
+                planting_cycle_id: cycleId,
+                member_id:         caller.memberId,
+                plot_id:           body.plot_id || null,
+                activity_type:     item.activity === 'harvest' ? 'other' : item.activity,
+                note:              `${item.icon} ${item.label}${item.note ? ` — ${item.note}` : ''}`,
+                scheduled_day:     item.day,
+                reminder_due_at:   dueDate.toISOString(),
+                is_scheduled:      true,
+                reminder_sent:     false,
+                recorded_at:       dueDate.toISOString(),
+              };
+            });
+            // Insert only if not already seeded (idempotent)
+            await s.from('farm_activity_logs').upsert(rows, {
+              onConflict: 'planting_cycle_id,scheduled_day',
+              ignoreDuplicates: true,
+            });
+          }
+        } catch (e) {
+          console.warn('[CYCLE_CREATE] failed to seed reminder logs:', e);
+        }
+      })();
+    }
+
+    return NextResponse.json({ ok:true, id: cycleId });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }
