@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import { createSupabaseBrowserClient }
+import { CareScheduleBuilder } from '@/features/admin-care-schedule/care-schedule-builder'; from '@/lib/supabase/client';
 import { LoadingState } from '@/shared/components/loading-state';
 import { ErrorState } from '@/shared/components/error-state';
 
@@ -25,7 +26,7 @@ const EMPTY = {
   planting_spacing: '', season: '', bag_weight_kg: '1',
   price_per_bag: '', yield_ratio: '600',
   planting_guide: '', notes: '',
-  mentor_name: '', mentor_phone: '', planting_steps_json: '[]',
+  mentor_name: '', mentor_phone: '', planting_steps_json: '[]', care_schedule_json: '[]',
   image_url: '',
   active_status: 'active', show_to_farmer: true, sort_order: '0',
 } as {
@@ -34,7 +35,7 @@ const EMPTY = {
   planting_spacing: string; season: string; bag_weight_kg: string;
   price_per_bag: string; yield_ratio: string;
   planting_guide: string; notes: string;
-  mentor_name: string; mentor_phone: string; planting_steps_json: string;
+  mentor_name: string; mentor_phone: string; planting_steps_json: string; care_schedule_json: string;
   image_url: string;
   active_status: string; show_to_farmer: boolean; sort_order: string;
 };
@@ -68,7 +69,7 @@ export function AdminSeedVarieties() {
   function startAdd() { setEditId(null); setForm(EMPTY); setShowForm(true); }
   function startEdit(v: Variety) {
     setEditId(v.id);
-    setForm({ variety_name: v.variety_name, crop_type: v.crop_type, supplier_id: v.supplier_id ?? '', days_to_harvest: String(v.days_to_harvest ?? ''), seed_per_rai_kg: String(v.seed_per_rai_kg ?? ''), yield_per_rai: String(v.yield_per_rai ?? ''), planting_spacing: v.planting_spacing ?? '', season: v.season ?? '', bag_weight_kg: String(v.bag_weight_kg), price_per_bag: String(v.price_per_bag ?? ''), yield_ratio: String(v.yield_ratio ?? 600), planting_guide: v.planting_guide ?? '', notes: v.notes ?? '', mentor_name: v.mentor_name as string ?? '', mentor_phone: v.mentor_phone as string ?? '', planting_steps_json: JSON.stringify((v as Record<string,unknown>).planting_steps ?? []), image_url: v.image_url ?? '', active_status: v.active_status, show_to_farmer: v.show_to_farmer, sort_order: String(v.sort_order) });
+    setForm({ variety_name: v.variety_name, crop_type: v.crop_type, supplier_id: v.supplier_id ?? '', days_to_harvest: String(v.days_to_harvest ?? ''), seed_per_rai_kg: String(v.seed_per_rai_kg ?? ''), yield_per_rai: String(v.yield_per_rai ?? ''), planting_spacing: v.planting_spacing ?? '', season: v.season ?? '', bag_weight_kg: String(v.bag_weight_kg), price_per_bag: String(v.price_per_bag ?? ''), yield_ratio: String(v.yield_ratio ?? 600), planting_guide: v.planting_guide ?? '', notes: v.notes ?? '', mentor_name: v.mentor_name as string ?? '', mentor_phone: v.mentor_phone as string ?? '', planting_steps_json: JSON.stringify((v as Record<string,unknown>).planting_steps ?? []), care_schedule_json: JSON.stringify((v as Record<string,unknown>).care_schedule ?? []), image_url: v.image_url ?? '', active_status: v.active_status, show_to_farmer: v.show_to_farmer, sort_order: String(v.sort_order) });
     setShowForm(true);
   }
 
@@ -92,6 +93,10 @@ export function AdminSeedVarieties() {
       mentor_name:  form.mentor_name  || null,
       mentor_phone: form.mentor_phone || null,
       image_url:    form.image_url    || null,
+      care_schedule: (() => {
+        try { return JSON.parse(form.care_schedule_json ?? '[]'); }
+        catch { return []; }
+      })(),
       planting_steps: (() => {
         try { return JSON.parse(form.planting_steps_json ?? '[]'); }
         catch { return []; }
@@ -231,6 +236,13 @@ export function AdminSeedVarieties() {
                 <label className="reg-label" style={{ gridColumn: '1/-1' }}>หมายเหตุ
                   <textarea className="reg-input reg-textarea" rows={2} value={form.notes} onChange={set('notes')} placeholder="คำแนะนำพิเศษ..." />
                 </label>
+
+                {/* Care Schedule Builder */}
+                <CareScheduleBuilder
+                  value={form.care_schedule_json}
+                  onChange={(json) => setForm((p) => ({ ...p, care_schedule_json: json }))}
+                  label="ตารางดูแลพืช (Care Schedule) — ใช้สร้างแจ้งเตือนสมาชิก"
+                />
               </div>
             </div>
             <div className="admin-modal__footer">
