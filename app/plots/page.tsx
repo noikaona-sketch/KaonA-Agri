@@ -125,15 +125,6 @@ function QuickLogBar({
     setTimeout(() => setDone(null), 2000);
   }
 
-  function goTo(path: string, plotId: string) {
-    const params = new URLSearchParams({ plot_id: plotId });
-    router.push(`${path}?${params.toString()}`);
-  }
-
-  function showPhotoNotice(plotName: string) {
-    setNotice(`การจัดการรูปภาพของแปลง ${plotName} จะแยกทำใน PR ถัดไปหลังตรวจ RLS/storage policy`);
-  }
-
   return (
     <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
       {QUICK_LOG.map((q) => {
