@@ -246,20 +246,23 @@ export function FarmerSmartDashboard({ name, memberId }: { name: string; memberI
           .eq('member_id', memberId)
           .is('deleted_at', null)
           .not('status', 'in', '(rejected)'),
-        s.from('appointments')
-          .select('plot_id,appointment_date')
+        s.from('sale_appointments')
+          .select('plot_id,scheduled_date')
           .eq('member_id', memberId)
-          .gte('appointment_date', new Date().toISOString().split('T')[0])
-          .order('appointment_date').limit(10),
-        // Check if seed reservation is open
-        s.from('campaigns')
-          .select('id').eq('type', 'seed_reservation').eq('status', 'active').limit(1),
+          .gte('scheduled_date', new Date().toISOString().split('T')[0])
+          .order('scheduled_date').limit(10),
+        // Check if seed reservation campaign is announced
+        s.from('campaign_announcements')
+          .select('id').eq('type', 'general').eq('is_active', true)
+          .lte('start_date', new Date().toISOString().split('T')[0])
+          .gte('end_date',   new Date().toISOString().split('T')[0])
+          .limit(1),
       ]);
 
       const rawPlots  = (plotsRes.data  ?? []) as { id: string; name: string; area_rai: number; lat: number | null; lng: number | null; province: string | null }[];
       const rawCycles = (cyclesRes.data ?? []) as { id: string; plot_id: string | null; status: string; expected_harvest_at: string | null }[];
       const rawNoBurn = (noBurnRes.data ?? []) as { plot_id: string; status: string }[];
-      const rawSales  = (saleRes.data   ?? []) as { plot_id: string | null; appointment_date: string }[];
+      const rawSales  = (saleRes.data   ?? []) as { plot_id: string | null; scheduled_date: string }[];
       const canReserve = (reserveRes.data ?? []).length > 0;
 
       // Build per-plot data
@@ -268,7 +271,7 @@ export function FarmerSmartDashboard({ name, memberId }: { name: string; memberI
         const noBurn     = rawNoBurn.find(n => n.plot_id === plot.id) ?? null;
         const saleAppt   = rawSales.find(s => s.plot_id === plot.id) ?? null;
         const harvestDay = daysFromNow(cycle?.expected_harvest_at ?? null);
-        const saleDays   = daysFromNow(saleAppt?.appointment_date ? `${saleAppt.appointment_date}T00:00:00` : null);
+        const saleDays   = daysFromNow(saleAppt?.scheduled_date ? `${saleAppt.scheduled_date}T00:00:00` : null);
 
         return {
           id:             plot.id,
