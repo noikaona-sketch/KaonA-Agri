@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useCurrentMember } from '@/providers/auth-provider';
 import { MobileAppShell } from '@/shared/components/mobile-app-shell';
 import { LoadingState } from '@/shared/components/loading-state';
@@ -34,7 +34,7 @@ export default function FieldPage() {
   const [tasks,   setTasks]   = useState<InspectionTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [today]               = useState(new Date().toISOString().slice(0, 10));
-  const [tab, setTab] = useState<'tasks' | 'reservation' | 'map'>(() => {
+  const [tab, setTab] = useState<'tasks' | 'reservation' | 'map' | 'register'>(() => {
     if (typeof window !== 'undefined' && window.location.hash === '#reservation') return 'reservation';
     return 'tasks';
   });
@@ -52,6 +52,7 @@ export default function FieldPage() {
   const TABS = [
     { key: 'tasks',       label: `📋 งานตรวจ (${tasks.length})` },
     { key: 'reservation', label: '🌽 จองเมล็ด' },
+    { key: 'register',    label: '➕ สมัครสมาชิก' },
     { key: 'map',         label: '🗺️ แผนที่' },
   ] as const;
 
@@ -63,7 +64,7 @@ export default function FieldPage() {
         {/* Hero */}
         <div style={{ ...S.card, padding: '16px' }}>
           <p style={{ margin: '0 0 4px', fontSize: 16, fontWeight: 500, color: 'var(--color-text-primary,#111)' }}>ทีมภาคสนาม</p>
-          <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-secondary,#888)' }}>จองเมล็ด · งานตรวจ · แผนที่สมาชิก</p>
+          <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-secondary,#888)' }}>สมัครสมาชิก · จองเมล็ด · งานตรวจ · แผนที่</p>
           <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
             <div style={{ flex: 1, background: 'var(--color-background-secondary,#f9fafb)', borderRadius: 10, padding: '10px', textAlign: 'center' }}>
               <p style={{ margin: 0, fontSize: 20, fontWeight: 500 }}>{todayTasks.length}</p>
@@ -137,6 +138,21 @@ export default function FieldPage() {
 
         {tab === 'reservation' && <FieldSeedReservation />}
         {tab === 'map'         && <FieldTeamMap />}
+        {tab === 'register'    && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ ...S.card, padding: '14px 16px' }}>
+              <p style={{ margin: 0, fontWeight: 600, fontSize: 14 }}>➕ ลงทะเบียนแทนสมาชิก</p>
+              <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-text-secondary,#888)', lineHeight: 1.6 }}>
+                สร้างบัญชีและ PIN 6 หลักให้สมาชิกในพื้นที่<br />
+                รองรับเพิ่มแปลง + GPS ณ จุดนั้นเลย
+              </p>
+              <Link href="/field/assist-registration"
+                style={{ display: 'block', marginTop: 10, padding: '11px 16px', background: 'var(--primary,#2e7d32)', color: '#fff', borderRadius: 10, fontSize: 14, fontWeight: 600, textDecoration: 'none', textAlign: 'center' }}>
+                เริ่มลงทะเบียน →
+              </Link>
+            </div>
+          </div>
+        )}
       </div>
     </MobileAppShell>
     </ProtectedRoute>
