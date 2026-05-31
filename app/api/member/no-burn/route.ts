@@ -19,14 +19,12 @@ import { resolveApprovedMember } from '../_auth';
 //   accuracy          string   optional
 //   photo_0..3        File     optional (uploaded to member-photos bucket)
 //
-// member_id resolved from Bearer token only — never from body.
+// member_id may be passed in form data as fallback when token is expired.
 // Photo failure does NOT roll back the no_burn_request row.
 // ─────────────────────────────────────────────────────────────────────────────
 export async function POST(request: Request) {
   try {
-    const s      = createServerSupabaseClient();
-    const caller = await resolveApprovedMember(request, s);
-    if (!caller.ok) return caller.response;
+    const s = createServerSupabaseClient();
 
     // ── Parse multipart form ──────────────────────────────────────────────────
     let form: FormData;
@@ -38,6 +36,11 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
+
+    // ── Resolve member (token first, then member_id from form) ────────────────
+    const formMemberId = (form.get('member_id') as string | null)?.trim() || undefined;
+    const caller = await resolveApprovedMember(request, s, formMemberId);
+    if (!caller.ok) return caller.response;
 
     const plotId          = (form.get('plot_id')           as string | null)?.trim() ?? '';
     const consentRaw      = (form.get('consent_accepted')  as string | null) ?? '';

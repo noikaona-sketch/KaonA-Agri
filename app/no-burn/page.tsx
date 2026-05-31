@@ -225,6 +225,7 @@ function NoBurnPageContent() {
 
     const token = await getBearerToken();
     const form  = new FormData();
+    if (member?.member_id) form.append('member_id', member.member_id);
     form.append('plot_id', selectedPlot); form.append('consent_accepted', 'true'); form.append('timing', timing);
     if (selectedCycle)   form.append('planting_cycle_id', selectedCycle);
     if (formNote.trim()) form.append('note', formNote.trim());
