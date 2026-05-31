@@ -14,6 +14,7 @@ type CycleBasic = {
   products: {
     fertilizer_guide: string | null;
     planting_guide:   string | null;
+    pest_guide?:      string | null;
   } | null;
 };
 
@@ -45,7 +46,7 @@ function ActivityPageContent({ params }: Props) {
     : (cycle?.plots as { name: string } | null)?.name ?? '';
 
   const products = Array.isArray(cycle?.products)
-    ? (cycle?.products as { fertilizer_guide: string | null; planting_guide: string | null }[])[0]
+    ? (cycle?.products as { fertilizer_guide: string | null; planting_guide: string | null; pest_guide?: string | null }[])[0]
     : cycle?.products;
 
   return (
