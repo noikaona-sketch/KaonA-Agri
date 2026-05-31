@@ -17,12 +17,21 @@ type GeoLocation = {
   accuracy: number;
 };
 
+type ReverseGeoResult = {
+  subdistrict: string;
+  district: string;
+  province: string;
+  fullAddress: string;
+};
+
 type MemberDraft = {
   full_name: string;
   phone: string;
   citizen_id: string;
   address: string;
   province: string;
+  district: string;
+  subdistrict: string;
 };
 
 type PlotDraft = {
@@ -135,16 +144,18 @@ function GPSButton({
 }: {
   geo: GeoLocation | null;
   capturing: boolean;
+  geocoding?: boolean;
   onCapture: () => void;
 }) {
   return (
     <div style={{ display: 'grid', gap: 6 }}>
       <UIButton onClick={onCapture} disabled={capturing} fullWidth>
-        {capturing ? '⏳ กำลังจับพิกัด…' : geo ? `📍 จับพิกัดใหม่` : '📍 จับพิกัด GPS ณ แปลง'}
+        {capturing ? '⏳ กำลังจับพิกัด…' : geocoding ? '🔍 กำลังค้นที่อยู่…' : geo ? '📍 จับพิกัดใหม่' : '📍 จับพิกัด GPS ณ แปลง'}
       </UIButton>
       {geo && (
         <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary, #4e5a53)', textAlign: 'center' }}>
           ✅ {geo.latitude.toFixed(5)}, {geo.longitude.toFixed(5)} · ±{Math.round(geo.accuracy)} ม.
+          {geocoding && <span style={{ color: '#e65100' }}> · กำลังค้นที่อยู่…</span>}
         </p>
       )}
       {!geo && (
@@ -167,9 +178,10 @@ export default function FieldAssistRegistrationPage() {
   const [result, setResult] = useState<DoneResult | null>(null);
   const [copied, setCopied] = useState(false);
   const [capturingGeo, setCapturingGeo] = useState(false);
+  const [geocoding, setGeocoding] = useState(false);
 
   const [mem, setMem] = useState<MemberDraft>({
-    full_name: '', phone: '', citizen_id: '', address: '', province: '',
+    full_name: '', phone: '', citizen_id: '', address: '', province: '', district: '', subdistrict: '',
   });
 
   const [plot, setPlot] = useState<PlotDraft>({
@@ -181,6 +193,16 @@ export default function FieldAssistRegistrationPage() {
     plot.name.trim().length > 0 && Number(plot.area_rai) > 0 && plot.geo !== null
   );
 
+  async function reverseGeocode(lat: number, lng: number): Promise<ReverseGeoResult | null> {
+    try {
+      const res = await fetch(`/api/geocode/reverse?lat=${lat}&lng=${lng}`);
+      if (!res.ok) return null;
+      return (await res.json()) as ReverseGeoResult;
+    } catch {
+      return null;
+    }
+  }
+
   function captureGPS() {
     setError(null);
     if (!navigator?.geolocation) {
@@ -190,11 +212,28 @@ export default function FieldAssistRegistrationPage() {
     setCapturingGeo(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setPlot((p) => ({
-          ...p,
-          geo: { latitude: pos.coords.latitude, longitude: pos.coords.longitude, accuracy: pos.coords.accuracy },
-        }));
+        const { latitude, longitude, accuracy } = pos.coords;
+        setPlot((p) => ({ ...p, geo: { latitude, longitude, accuracy } }));
         setCapturingGeo(false);
+
+        // Auto-fill address from GPS coordinates
+        setGeocoding(true);
+        void reverseGeocode(latitude, longitude).then((geo) => {
+          setGeocoding(false);
+          if (!geo) return;
+          setPlot((p) => ({
+            ...p,
+            province: p.province || geo.province,
+          }));
+          // Auto-fill member address fields if still empty
+          setMem((m) => ({
+            ...m,
+            province:    m.province    || geo.province,
+            district:    m.district    || geo.district,
+            subdistrict: m.subdistrict || geo.subdistrict,
+            address:     m.address     || [geo.subdistrict, geo.district, geo.province].filter(Boolean).join(' '),
+          }));
+        });
       },
       (e) => { setError(e.message || 'ไม่สามารถจับพิกัดได้'); setCapturingGeo(false); },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
@@ -212,6 +251,8 @@ export default function FieldAssistRegistrationPage() {
         citizen_id: mem.citizen_id.trim() || undefined,
         address: mem.address.trim() || undefined,
         province: mem.province || undefined,
+        district: mem.district || undefined,
+        subdistrict: mem.subdistrict || undefined,
         plot: plot.enabled && plot.geo ? {
           name: plot.name.trim(),
           area_rai: Number(plot.area_rai),
@@ -256,7 +297,7 @@ export default function FieldAssistRegistrationPage() {
 
   function reset() {
     setStep('member');
-    setMem({ full_name: '', phone: '', citizen_id: '', address: '', province: '' });
+    setMem({ full_name: '', phone: '', citizen_id: '', address: '', province: '', district: '', subdistrict: '' });
     setPlot({ enabled: true, name: '', area_rai: '', province: '', description: '', geo: null });
     setResult(null);
     setError(null);
@@ -300,18 +341,39 @@ export default function FieldAssistRegistrationPage() {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <label style={S.label}>
+                  ตำบล
+                  <input style={S.input} value={mem.subdistrict}
+                    onChange={(e) => setMem((m) => ({ ...m, subdistrict: e.target.value }))}
+                    placeholder="ตำบล" />
+                </label>
+                <label style={S.label}>
+                  อำเภอ
+                  <input style={S.input} value={mem.district}
+                    onChange={(e) => setMem((m) => ({ ...m, district: e.target.value }))}
+                    placeholder="อำเภอ" />
+                </label>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <label style={S.label}>
                   จังหวัด
                   <input style={S.input} value={mem.province}
                     onChange={(e) => setMem((m) => ({ ...m, province: e.target.value }))}
-                    placeholder="เช่น อุบลราชธานี" />
+                    placeholder="จังหวัด" />
                 </label>
                 <label style={S.label}>
-                  ที่อยู่
+                  บ้านเลขที่/หมู่
                   <input style={S.input} value={mem.address}
                     onChange={(e) => setMem((m) => ({ ...m, address: e.target.value }))}
                     placeholder="บ้านเลขที่/หมู่" />
                 </label>
               </div>
+
+              {(mem.subdistrict || mem.district || mem.province) && (
+                <p style={{ margin: 0, fontSize: 12, color: 'var(--primary, #2e7d32)', background: '#f0fdf4', borderRadius: 8, padding: '7px 10px' }}>
+                  📍 ที่อยู่จาก GPS: {[mem.subdistrict, mem.district, mem.province].filter(Boolean).join(' › ')}
+                </p>
+              )}
 
               <UIButton fullWidth disabled={!memberValid} onClick={() => { setError(null); setStep('plot'); }}>
                 ถัดไป: แปลง →
@@ -363,7 +425,7 @@ export default function FieldAssistRegistrationPage() {
                       placeholder="จุดสังเกต ทางเข้า เป็นต้น" />
                   </label>
 
-                  <GPSButton geo={plot.geo} capturing={capturingGeo} onCapture={captureGPS} />
+                  <GPSButton geo={plot.geo} capturing={capturingGeo} geocoding={geocoding} onCapture={captureGPS} />
                 </>
               )}
 
@@ -393,7 +455,11 @@ export default function FieldAssistRegistrationPage() {
                 <p style={{ margin: 0, fontWeight: 700 }}>{mem.full_name}</p>
                 {mem.phone && <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary, #4e5a53)' }}>📞 {mem.phone}</p>}
                 {mem.citizen_id && <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary, #4e5a53)' }}>🪪 ***{mem.citizen_id.slice(-4)}</p>}
-                {mem.province && <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary, #4e5a53)' }}>📍 {mem.province}</p>}
+                {(mem.subdistrict || mem.district || mem.province) && (
+                  <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary, #4e5a53)' }}>
+                    📍 {[mem.subdistrict, mem.district, mem.province].filter(Boolean).join(' › ')}
+                  </p>
+                )}
               </div>
 
               {plot.enabled && plot.geo && (
