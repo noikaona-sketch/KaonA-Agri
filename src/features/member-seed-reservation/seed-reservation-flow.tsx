@@ -40,7 +40,7 @@ const STATUS_CFG: Record<string, { icon: string; label: string; color: string; b
 
 type Screen = 'shop' | 'history' | 'success';
 
-export function SeedReservationFlow({ selectedPlotId }: { selectedPlotId?: string } = {}) {
+export function SeedReservationFlow({ initialPlotId }: { initialPlotId?: string | null } = {}) {
   const member = useCurrentMember();
 
   // ── helper ดึง Supabase session token (refresh ถ้าหมดอายุ) ──
@@ -74,7 +74,15 @@ export function SeedReservationFlow({ selectedPlotId }: { selectedPlotId?: strin
   const [filterSupplier, setFilterSupplier] = useState('');
   const [search, setSearch]   = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [selectedPlot, setSelectedPlot] = useState<Plot | null>(null);
+  const [plotName, setPlotName]     = useState<string | null>(null);
+
+  // ── load plot name from initialPlotId ──────────────────────────────
+  useEffect(() => {
+    if (!initialPlotId) return;
+    const sb = createSupabaseBrowserClient();
+    void sb.from('plots').select('name').eq('id', initialPlotId).maybeSingle()
+      .then(({ data }) => { if (data?.name) setPlotName(data.name); });
+  }, [initialPlotId]);
 
   // ── load ─────────────────────────────────────────────────────────
   async function load() {
@@ -259,6 +267,20 @@ export function SeedReservationFlow({ selectedPlotId }: { selectedPlotId?: strin
       {selectedPlotId && (
         <div style={{ background: '#E6F1FB', border: '1px solid #185FA544', borderRadius: 14, padding: '12px 14px', color: '#0C447C', fontSize: 13, lineHeight: 1.6 }}>
           <strong>แปลงที่เลือก:</strong> {selectedPlot ? `${selectedPlot.name}${selectedPlot.province ? ` · ${selectedPlot.province}` : ''}` : 'ใช้แปลงที่เลือกจากหน้าแปลงของฉัน'}
+        </div>
+      )}
+
+      {/* Plot context banner */}
+      {plotName && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '9px 14px', borderRadius: 10,
+          background: '#e8f5e9', border: '1px solid #a5d6a7',
+        }}>
+          <span style={{ fontSize: 16 }}>🌾</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#1b5e20' }}>
+            จองสำหรับแปลง: {plotName}
+          </span>
         </div>
       )}
 

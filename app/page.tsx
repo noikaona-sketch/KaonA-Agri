@@ -5,6 +5,7 @@ import { useEffect, useState }                     from 'react';
 import { useRouter }                               from 'next/navigation';
 import { useAuth, useCurrentMember, useEffectiveRole } from '@/providers/auth-provider';
 import { createSupabaseBrowserClient }             from '@/lib/supabase/client';
+import { FarmerSmartDashboard }                    from '@/features/farmer-dashboard/farmer-smart-dashboard';
 import { LoadingState }                            from '@/shared/components/loading-state';
 import { MobileAppShell }                          from '@/shared/components/mobile-app-shell';
 import type { AppRole }                            from '@/shared/auth/auth-types';
@@ -194,6 +195,9 @@ function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: stri
   const [quota,         setQuota]         = useState<number | null>(null);
   const [cycleStatus,   setCycleStatus]   = useState<string | null>(null);   // active cycle status
   const [noBurnStatus,  setNoBurnStatus]  = useState<string | null>(null);   // latest no-burn status
+  const [summary,       setSummary]       = useState<{
+    plotCount: number; activeCycle: boolean; noBurnOk: boolean; quotaKg: number | null;
+  } | null>(null);
 
   useEffect(() => {
     // plots count — browser client, RLS controls access by auth.uid()
@@ -221,6 +225,17 @@ function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: stri
       ]);
       if (cycleRes.data?.status)  setCycleStatus(cycleRes.data.status);
       if (noBurnRes.data?.status) setNoBurnStatus(noBurnRes.data.status);
+
+      // Summary numbers
+      const { data: quotaData } = await s.from('planting_cycles')
+        .select('quota_kg').eq('member_id', memberId)
+        .not('status','in','(harvested,cancelled)').limit(1).maybeSingle();
+      setSummary({
+        plotCount:   plots,
+        activeCycle: !!cycleRes.data,
+        noBurnOk:    ['approved','completed'].includes(noBurnRes.data?.status ?? ''),
+        quotaKg:     quotaData?.quota_kg ?? null,
+      });
 
       // ดึง quota ถ้ามี session (ใช้ token ที่ได้จากด้านบน)
       const accessToken = sessionRes.data.session?.access_token;
@@ -299,6 +314,33 @@ function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: stri
     <MobileAppShell title="" subtitle="">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         <HeroCard name={name} memberId={memberId} primaryRole="farmer" allRoles={allRoles} plots={plots} price={null} quota={quota} />
+
+        {/* ── Smart dashboard: greeting + todos + plot cards ── */}
+        <FarmerSmartDashboard name={name} memberId={memberId} />
+
+        {/* ── Summary strip ── */}
+        {summary && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8, marginBottom: 4 }}>
+            {[
+              { label: 'แปลง',    value: String(summary.plotCount),                     icon: '🗺️', href: '/plots',           ok: summary.plotCount > 0 },
+              { label: 'รอบปลูก', value: summary.activeCycle ? 'Active' : '—',          icon: '🌱', href: '/planting-cycles',  ok: summary.activeCycle },
+              { label: 'งดเผา',   value: summary.noBurnOk ? '✓' : '—',                  icon: '🌿', href: '/no-burn',          ok: summary.noBurnOk },
+              { label: 'โควต้า',  value: summary.quotaKg ? `${(summary.quotaKg/1000).toFixed(1)}ต` : '—', icon: '⚖️', href: '/planting-cycles', ok: !!summary.quotaKg },
+            ].map(({ label, value, icon, href, ok }) => (
+              <Link key={label} href={href} style={{ textDecoration: 'none' }}>
+                <div style={{
+                  background: '#fff', borderRadius: 12, padding: '10px 8px',
+                  border: `1px solid ${ok ? '#a5d6a760' : '#e5e7eb'}`,
+                  textAlign: 'center',
+                }}>
+                  <p style={{ margin: 0, fontSize: 16 }}>{icon}</p>
+                  <p style={{ margin: '2px 0 0', fontSize: 14, fontWeight: 900, color: ok ? '#1b5e20' : '#9ca3af' }}>{value}</p>
+                  <p style={{ margin: 0, fontSize: 9, color: '#9ca3af', fontWeight: 600 }}>{label}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
 
         {/* เมนูแยกกลุ่ม */}
         {FARMER_MENU_GROUPS.map((grp) => (
