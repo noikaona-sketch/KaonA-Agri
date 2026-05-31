@@ -208,7 +208,7 @@ function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: stri
         .select('quota_kg').eq('member_id', memberId)
         .not('status','in','(harvested,cancelled)').limit(1).maybeSingle();
       setSummary({
-        plotCount:   plotsCount ?? 0,
+        plotCount:   plots,
         activeCycle: !!cycleRes.data,
         noBurnOk:    ['approved','completed'].includes(noBurnRes.data?.status ?? ''),
         quotaKg:     quotaData?.quota_kg ?? null,
