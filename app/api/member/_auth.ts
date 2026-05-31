@@ -70,11 +70,8 @@ export async function resolveApprovedMember(
         return { ok: false, response: NextResponse.json({ error: 'กรุณาเปิดแอปใหม่' }, { status: 401 }) };
       }
 
-      const explicitResolvedMemberId = await resolveExplicitMember(s, context);
-      if (explicitResolvedMemberId && explicitResolvedMemberId !== tokenMemberId) {
-        return { ok: false, response: NextResponse.json({ error: 'สมาชิกไม่ตรงกับบัญชี LINE ปัจจุบัน' }, { status: 403 }) };
-      }
-
+      // Bearer token is the source of truth — member_id param is a hint only.
+      // Do NOT reject if they differ; token wins.
       return { ok: true, memberId: tokenMemberId };
     } catch {
       return { ok: false, response: NextResponse.json({ error: 'กรุณาเปิดแอปใหม่' }, { status: 401 }) };

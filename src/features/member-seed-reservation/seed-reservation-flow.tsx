@@ -95,8 +95,8 @@ export function SeedReservationFlow({ initialPlotId }: { initialPlotId?: string 
         ? fetch(`/api/member/seed-reservation?member_id=${member.member_id}`, { headers }).then((r) => r.json()) as Promise<{ reservations: Reservation[] }>
         : Promise.resolve({ reservations: [] }),
       fetch('/api/member/pickup-slots', { headers }).then((r) => r.json()) as Promise<{ slots: Slot[] }>,
-      member?.line_user_id && initialPlotId
-        ? fetch(`/api/member/plots?line_user_id=${encodeURIComponent(member.line_user_id)}`, { headers }).then((r) => r.json()) as Promise<{ plots?: Plot[] }>
+      member?.member_id && initialPlotId
+        ? fetch(`/api/member/plots?member_id=${member.member_id}`, { headers }).then((r) => r.json()) as Promise<{ plots?: Plot[] }>
         : Promise.resolve({ plots: [] }),
     ]);
 
@@ -119,7 +119,7 @@ export function SeedReservationFlow({ initialPlotId }: { initialPlotId?: string 
     setLoading(false);
   }
 
-  useEffect(() => { void load(); }, [member?.member_id, member?.line_user_id, initialPlotId]);
+  useEffect(() => { void load(); }, [member?.member_id, initialPlotId]);
 
   // ── cart ─────────────────────────────────────────────────────────
   function setQty(variety: Variety, qty: number) {

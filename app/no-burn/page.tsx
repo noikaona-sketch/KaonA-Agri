@@ -156,7 +156,7 @@ function NoBurnPageContent() {
     setLoading(true);
     const token = await getBearerToken();
     const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
-    const requestParams = new URLSearchParams(member?.line_user_id ? { line_user_id: member.line_user_id } : {});
+    const requestParams = new URLSearchParams(member?.member_id ? { member_id: member.member_id } : {});
     const reqRes = await fetch(`/api/member/no-burn?${requestParams.toString()}`, { headers });
     if (reqRes.ok) {
       const j = (await reqRes.json()) as { requests?: NoBurnRequest[] };
@@ -164,7 +164,7 @@ function NoBurnPageContent() {
     }
     const sb = tryCreateSupabaseBrowserClient();
     if (member?.member_id) {
-      const plotParams = new URLSearchParams({ line_user_id: member.line_user_id });
+      const plotParams = new URLSearchParams({ member_id: member.member_id });
       const plotPromise = fetch(`/api/member/plots?${plotParams.toString()}`, { headers })
         .then(async (r) => ({ ok: r.ok, payload: (await r.json()) as { plots?: Plot[]; error?: string } }));
       const cyclePromise = sb
@@ -184,7 +184,7 @@ function NoBurnPageContent() {
       setCycles((cyclesRes.data ?? []) as Cycle[]);
     }
     setLoading(false);
-  }, [member?.member_id, member?.line_user_id, selectedPlotId]);
+  }, [member?.member_id]);
 
   useEffect(() => { void load(); }, [load]);
 
