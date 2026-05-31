@@ -121,10 +121,11 @@ function RoleCard({ href, icon, label, desc }: { href: string; icon: string; lab
 // Hero card — shared across all roles
 // ─────────────────────────────────────────────────────────────────────
 function HeroCard({
-  name, memberId, primaryRole, allRoles, plots, price, quota = null,
+  name, memberId, primaryRole, allRoles, plots, price, quota = null, pictureUrl = null,
 }: {
   name: string; memberId: string; primaryRole: AppRole;
   allRoles: AppRole[]; plots: number; price: number | null; quota?: number | null;
+  pictureUrl?: string | null;
 }) {
   const memberNo = `KF${memberId.slice(-6).toUpperCase()}`;
   const pr = ROLE_COLOR[primaryRole];
@@ -133,8 +134,11 @@ function HeroCard({
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         {/* avatar + name */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ width: 52, height: 52, borderRadius: '50%', background: pr.bg, border: `2px solid ${pr.text}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 500, color: pr.text }}>
-            {name[0]}
+          <div style={{ width: 56, height: 56, borderRadius: '50%', background: pr.bg, border: `2px solid ${pr.text}40`, overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 700, color: pr.text }}>
+            {pictureUrl
+              ? <img src={pictureUrl} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} referrerPolicy="no-referrer" />
+              : name[0]
+            }
           </div>
           <div>
             <p style={{ margin: 0, fontWeight: 500, fontSize: 17, color: '#111' }}>{name}</p>
@@ -191,6 +195,7 @@ function SecondaryRoleCards({ primaryRole, allRoles }: { primaryRole: AppRole; a
 // FARMER HOME
 // ─────────────────────────────────────────────────────────────────────
 function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: string; allRoles: AppRole[] }) {
+  const member = useCurrentMember();
   const [plots,         setPlots]         = useState(0);
   const [quota,         setQuota]         = useState<number | null>(null);
   const [cycleStatus,   setCycleStatus]   = useState<string | null>(null);   // active cycle status
@@ -284,7 +289,7 @@ function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: stri
       group: '🌱 การปลูก',
       accentColor: '#2e7d32',
       items: [
-        { href: '/plots',                icon: '🗺️', label: 'แปลงของฉัน',     desc: 'ดูข้อมูลแปลงและพิกัด', badge: plotBadge, tone: FARMER_CARD_TONES.field },
+        { href: '/plots',                icon: '🗺️', label: 'แปลงของฉัน',     desc: plots > 0 ? `${plots} แปลง` : 'ดูข้อมูลแปลงและพิกัด', badge: plotBadge, tone: FARMER_CARD_TONES.field },
         { href: '/planting-cycles',      icon: '🌽', label: 'ฤดูปลูก',         desc: 'ติดตามรอบปลูกล่าสุด', badge: cycleBadge, tone: FARMER_CARD_TONES.cycle },
         { href: '/service/reservations', icon: '🌱', label: 'จองเมล็ดพันธุ์', desc: 'เลือกพันธุ์และจำนวนถุง', accent: true, tone: FARMER_CARD_TONES.seed },
         { href: '/planting-cycles/new',  icon: '➕', label: 'แจ้งปลูกใหม่',   desc: 'สร้างรอบปลูกได้ทันที', tone: FARMER_CARD_TONES.cycle },
@@ -313,34 +318,12 @@ function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: stri
   return (
     <MobileAppShell title="" subtitle="">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-        <HeroCard name={name} memberId={memberId} primaryRole="farmer" allRoles={allRoles} plots={plots} price={null} quota={quota} />
+        <HeroCard name={name} memberId={memberId} primaryRole="farmer" allRoles={allRoles} plots={plots} price={null} quota={quota} pictureUrl={member?.picture_url ?? null} />
 
         {/* ── Smart dashboard: greeting + todos + plot cards ── */}
         <FarmerSmartDashboard name={name} memberId={memberId} />
 
-        {/* ── Summary strip ── */}
-        {summary && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8, marginBottom: 4 }}>
-            {[
-              { label: 'แปลง',    value: String(summary.plotCount),                     icon: '🗺️', href: '/plots',           ok: summary.plotCount > 0 },
-              { label: 'รอบปลูก', value: summary.activeCycle ? 'Active' : '—',          icon: '🌱', href: '/planting-cycles',  ok: summary.activeCycle },
-              { label: 'งดเผา',   value: summary.noBurnOk ? '✓' : '—',                  icon: '🌿', href: '/no-burn',          ok: summary.noBurnOk },
-              { label: 'โควต้า',  value: summary.quotaKg ? `${(summary.quotaKg/1000).toFixed(1)}ต` : '—', icon: '⚖️', href: '/planting-cycles', ok: !!summary.quotaKg },
-            ].map(({ label, value, icon, href, ok }) => (
-              <Link key={label} href={href} style={{ textDecoration: 'none' }}>
-                <div style={{
-                  background: '#fff', borderRadius: 12, padding: '10px 8px',
-                  border: `1px solid ${ok ? '#a5d6a760' : '#e5e7eb'}`,
-                  textAlign: 'center',
-                }}>
-                  <p style={{ margin: 0, fontSize: 16 }}>{icon}</p>
-                  <p style={{ margin: '2px 0 0', fontSize: 14, fontWeight: 900, color: ok ? '#1b5e20' : '#9ca3af' }}>{value}</p>
-                  <p style={{ margin: 0, fontSize: 9, color: '#9ca3af', fontWeight: 600 }}>{label}</p>
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
+
 
         {/* เมนูแยกกลุ่ม */}
         {FARMER_MENU_GROUPS.map((grp) => (

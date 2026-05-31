@@ -96,5 +96,6 @@ export function normalizeMember(
     effective_role:   effectiveRole,
     roles,
     rejection_reason: (member as unknown as { rejection_reason?: string | null }).rejection_reason ?? null,
+    picture_url:      (member as unknown as { line_picture_url?: string | null }).line_picture_url ?? null,
   };
 }

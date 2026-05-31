@@ -184,6 +184,7 @@ export async function POST(request: Request) {
           auth_user_id:   null,
           line_user_id:   'dev-mock-line-id',
           full_name:      `Dev ${role}`,
+          picture_url:    null,
           status:         'approved',
           is_approved:    true,
           effective_role: role,
@@ -220,7 +221,7 @@ export async function POST(request: Request) {
     // ── 2. Load or create member ──────────────────────────────────────────────
     const existing = await supabase
       .from('members')
-      .select('id, auth_user_id, line_user_id, status, full_name, rejection_reason')
+      .select('id, auth_user_id, line_user_id, status, full_name, rejection_reason, line_picture_url')
       .eq('line_user_id', verifyData.sub)
       .maybeSingle();
 
@@ -252,7 +253,7 @@ export async function POST(request: Request) {
           citizen_id_masked: 'PENDING',
           status:            'pending',
         })
-        .select('id, auth_user_id, line_user_id, status, full_name')
+        .select('id, auth_user_id, line_user_id, status, full_name, line_picture_url')
         .single();
 
       // Fallback: retry without optional LINE columns if they don't exist yet
@@ -266,7 +267,7 @@ export async function POST(request: Request) {
             citizen_id_masked: 'PENDING',
             status:            'pending',
           })
-          .select('id, auth_user_id, line_user_id, status, full_name')
+          .select('id, auth_user_id, line_user_id, status, full_name, line_picture_url')
           .single();
       }
 
