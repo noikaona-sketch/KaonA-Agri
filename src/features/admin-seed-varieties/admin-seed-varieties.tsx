@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createSupabaseBrowserClient }
-import { CareScheduleBuilder } from '@/features/admin-care-schedule/care-schedule-builder'; from '@/lib/supabase/client';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import { CareScheduleBuilder } from '@/features/admin-care-schedule/care-schedule-builder';
 import { LoadingState } from '@/shared/components/loading-state';
 import { ErrorState } from '@/shared/components/error-state';
 
