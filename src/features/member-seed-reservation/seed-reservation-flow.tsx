@@ -95,7 +95,7 @@ export function SeedReservationFlow({ initialPlotId }: { initialPlotId?: string 
         ? fetch(`/api/member/seed-reservation?member_id=${member.member_id}`, { headers }).then((r) => r.json()) as Promise<{ reservations: Reservation[] }>
         : Promise.resolve({ reservations: [] }),
       fetch('/api/member/pickup-slots', { headers }).then((r) => r.json()) as Promise<{ slots: Slot[] }>,
-      member?.line_user_id && selectedPlotId
+      member?.line_user_id && initialPlotId
         ? fetch(`/api/member/plots?line_user_id=${encodeURIComponent(member.line_user_id)}`, { headers }).then((r) => r.json()) as Promise<{ plots?: Plot[] }>
         : Promise.resolve({ plots: [] }),
     ]);
@@ -115,11 +115,11 @@ export function SeedReservationFlow({ initialPlotId }: { initialPlotId?: string 
     })));
     setReservations(resRes.reservations ?? []);
     setSlots(slotRes.slots ?? []);
-    setSelectedPlot((plotRes.plots ?? []).find((plot) => plot.id === selectedPlotId) ?? null);
+    setSelectedPlot((plotRes.plots ?? []).find((plot) => plot.id === initialPlotId) ?? null);
     setLoading(false);
   }
 
-  useEffect(() => { void load(); }, [member?.member_id, member?.line_user_id, selectedPlotId]);
+  useEffect(() => { void load(); }, [member?.member_id, member?.line_user_id, initialPlotId]);
 
   // ── cart ─────────────────────────────────────────────────────────
   function setQty(variety: Variety, qty: number) {
@@ -264,7 +264,7 @@ export function SeedReservationFlow({ initialPlotId }: { initialPlotId?: string 
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingBottom: totalBags > 0 ? 140 : 0 }}>
-      {selectedPlotId && (
+      {initialPlotId && (
         <div style={{ background: '#E6F1FB', border: '1px solid #185FA544', borderRadius: 14, padding: '12px 14px', color: '#0C447C', fontSize: 13, lineHeight: 1.6 }}>
           <strong>แปลงที่เลือก:</strong> {selectedPlot ? `${selectedPlot.name}${selectedPlot.province ? ` · ${selectedPlot.province}` : ''}` : 'ใช้แปลงที่เลือกจากหน้าแปลงของฉัน'}
         </div>
