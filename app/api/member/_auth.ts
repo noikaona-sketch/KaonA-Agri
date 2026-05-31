@@ -66,15 +66,13 @@ export async function resolveApprovedMember(
   if (token) {
     try {
       const tokenMemberId = await resolveMemberIdFromBearer(token, s);
-      if (!tokenMemberId) {
-        return { ok: false, response: NextResponse.json({ error: 'กรุณาเปิดแอปใหม่' }, { status: 401 }) };
+      if (tokenMemberId) {
+        // Bearer token is valid — it's the source of truth; member_id param is hint only.
+        return { ok: true, memberId: tokenMemberId };
       }
-
-      // Bearer token is the source of truth — member_id param is a hint only.
-      // Do NOT reject if they differ; token wins.
-      return { ok: true, memberId: tokenMemberId };
+      // Token present but could not resolve member — fall through to explicit member_id
     } catch {
-      return { ok: false, response: NextResponse.json({ error: 'กรุณาเปิดแอปใหม่' }, { status: 401 }) };
+      // Token invalid/expired — fall through to explicit member_id
     }
   }
 

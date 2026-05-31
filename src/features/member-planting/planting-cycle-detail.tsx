@@ -12,7 +12,7 @@ import { MemberHarvestBookingForm }  from '@/features/member-harvest/harvest-boo
 import { SaleAppointmentForm } from './sale-appointment-form';
 import { ErrorState } from '@/shared/components/error-state';
 
-type ProductRef = { name: string; seed_variety: string | null; days_to_harvest: number | null; planting_guide: string | null; fertilizer_guide: string | null; pest_guide: string | null };
+type ProductRef = { name: string; seed_variety: string | null; days_to_harvest: number | null; planting_guide: string | null; fertilizer_guide: string | null };
 type PlotRef = { id: string; name: string; province: string | null };
 
 type Cycle = {
@@ -112,7 +112,7 @@ export function PlantingCycleDetail({ cycleId }: { cycleId: string }) {
     const s = createSupabaseBrowserClient();
     const [cRes, pRes, plotsRes] = await Promise.all([
       s.from('planting_cycles')
-        .select('id,crop_name,season_year,status,planted_at,expected_harvest_at,area_planted_rai,estimated_yield_kg,quota_kg,source,confirmed_at,member_note,seed_qty_used,burn_practice,burn_practice_note,expected_yield_per_rai_kg,expected_price_per_kg,expected_cost_per_rai,expected_cost_per_rai_burn,expected_cost_per_rai_no_burn,products(name,seed_variety,days_to_harvest,planting_guide,fertilizer_guide,pest_guide),plots(id,name,province)')
+        .select('id,crop_name,season_year,status,planted_at,expected_harvest_at,area_planted_rai,estimated_yield_kg,quota_kg,source,confirmed_at,member_note,seed_qty_used,burn_practice,burn_practice_note,expected_yield_per_rai_kg,expected_price_per_kg,expected_cost_per_rai,expected_cost_per_rai_burn,expected_cost_per_rai_no_burn,products(name,seed_variety,days_to_harvest,planting_guide,fertilizer_guide),plots(id,name,province)')
         .eq('id', cycleId).maybeSingle(),
       s.from('planting_cycle_progress')
         .select('id,stage,description,recorded_at')
@@ -352,7 +352,6 @@ export function PlantingCycleDetail({ cycleId }: { cycleId: string }) {
           plotId={cycle.plots?.id ?? null}
           seedHint={cycle.products ? {
             fertilizer_guide: cycle.products.fertilizer_guide,
-            pest_guide:       cycle.products.pest_guide,
             planting_guide:   cycle.products.planting_guide,
           } : null}
         />
