@@ -24,9 +24,9 @@ type Log = {
 };
 
 type SeedHint = {
-  fertilizer_guide: string | null;
-  pest_guide:       string | null;
-  planting_guide:   string | null;
+  fertilizer_guide: string | null | undefined;
+  pest_guide?:      string | null | undefined;
+  planting_guide:   string | null | undefined;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
