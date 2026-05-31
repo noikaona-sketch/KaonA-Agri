@@ -102,3 +102,51 @@ export function nearestDeduction(moisture: number, deductions: Deduction[]): Ded
 export function rainRisk(prob: number): 'low' | 'medium' | 'high' {
   return prob >= 60 ? 'high' : prob >= 30 ? 'medium' : 'low';
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// อายุข้าวโพด → ความชื้นโดยประมาณ
+// อ้างอิงข้อมูลภาคสนามพันธุ์ไร่ (อายุเก็บเกี่ยว 90-110 วัน)
+// ─────────────────────────────────────────────────────────────────────────────
+export function estimateMoistureByAge(daysSincePlanted: number): number {
+  // Curve: moisture ลดลงแบบ linear หลังวันที่ 60
+  // D60  = ~35% (ออกดอก)
+  // D75  = ~30%
+  // D85  = ~26%
+  // D90  = ~23%
+  // D100 = ~18%
+  // D110 = ~14.5% (mature)
+  if (daysSincePlanted <= 60)  return 35;
+  if (daysSincePlanted >= 110) return 14.5;
+
+  // Linear interpolation between key points
+  const curve = [
+    { day: 60,  pct: 35 },
+    { day: 75,  pct: 30 },
+    { day: 85,  pct: 26 },
+    { day: 90,  pct: 23 },
+    { day: 100, pct: 18 },
+    { day: 110, pct: 14.5 },
+  ];
+
+  for (let i = 0; i < curve.length - 1; i++) {
+    const a = curve[i], b = curve[i + 1];
+    if (daysSincePlanted >= a.day && daysSincePlanted <= b.day) {
+      const t = (daysSincePlanted - a.day) / (b.day - a.day);
+      return Math.round((a.pct + t * (b.pct - a.pct)) * 10) / 10;
+    }
+  }
+  return 14.5;
+}
+
+// แปลงอายุเป็น label ขั้นการเจริญเติบโต
+export function growthStageLabel(daysSincePlanted: number): { label: string; icon: string; color: string } {
+  if (daysSincePlanted < 10)  return { label: 'งอก',           icon: '🌱', color: '#6b7280' };
+  if (daysSincePlanted < 30)  return { label: 'ตั้งต้น',       icon: '🌿', color: '#2e7d32' };
+  if (daysSincePlanted < 45)  return { label: 'เจริญเติบโต',   icon: '🌾', color: '#2e7d32' };
+  if (daysSincePlanted < 55)  return { label: 'ออกดอก',        icon: '🌸', color: '#7b1fa2' };
+  if (daysSincePlanted < 70)  return { label: 'ติดฝัก',        icon: '🌽', color: '#e65100' };
+  if (daysSincePlanted < 85)  return { label: 'ฝักพัฒนา',      icon: '🌽', color: '#e65100' };
+  if (daysSincePlanted < 95)  return { label: 'ใกล้แก่',       icon: '⏳', color: '#c62828' };
+  if (daysSincePlanted < 105) return { label: 'แก่จัด พร้อมเก็บ', icon: '✅', color: '#c62828' };
+  return { label: 'สุกเกินไป', icon: '⚠️', color: '#9e9e9e' };
+}
