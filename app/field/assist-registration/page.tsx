@@ -140,7 +140,7 @@ function StepBar({ step }: { step: Step }) {
 }
 
 function GPSButton({
-  geo, capturing, onCapture,
+  geo, capturing, geocoding, onCapture,
 }: {
   geo: GeoLocation | null;
   capturing: boolean;
