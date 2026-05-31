@@ -13,7 +13,6 @@ type CycleBasic = {
   plots:    { id: string; name: string } | null;
   products: {
     fertilizer_guide: string | null;
-    pest_guide:       string | null;
     planting_guide:   string | null;
   } | null;
 };
@@ -28,7 +27,7 @@ function ActivityPageContent({ params }: Props) {
     void (async () => {
       const sb = createSupabaseBrowserClient();
       const { data } = await sb.from('planting_cycles')
-        .select('id,crop_name,season_year,status,plots(id,name),products(fertilizer_guide,pest_guide,planting_guide)')
+        .select('id,crop_name,season_year,status,plots(id,name),products(fertilizer_guide,planting_guide)')
         .eq('id', params.id).maybeSingle();
       setCycle(data as unknown as CycleBasic);
       setLoading(false);
@@ -46,7 +45,7 @@ function ActivityPageContent({ params }: Props) {
     : (cycle?.plots as { name: string } | null)?.name ?? '';
 
   const products = Array.isArray(cycle?.products)
-    ? (cycle?.products as { fertilizer_guide: string | null; pest_guide: string | null; planting_guide: string | null }[])[0]
+    ? (cycle?.products as { fertilizer_guide: string | null; planting_guide: string | null }[])[0]
     : cycle?.products;
 
   return (
