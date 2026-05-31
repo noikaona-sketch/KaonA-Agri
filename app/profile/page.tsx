@@ -172,6 +172,9 @@ export default function ProfilePage() {
   return (
     <ProtectedRoute allowPending>
     <MobileAppShell title="" subtitle="">
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
+        <Link href="/profile/edit" style={{ fontSize: 13, fontWeight: 700, color: "var(--primary)", textDecoration: "none", padding: "6px 14px", borderRadius: 10, background: "#f0fdf4", border: "1px solid #a5d6a7" }}>✏️ แก้ไขข้อมูล</Link>
+      </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingBottom: 16 }}>
 
         <MemberAnnouncementsList />

@@ -64,12 +64,32 @@ export async function GET(request: Request) {
 
   const { data, error } = await s
     .from('harvest_bookings')
-    .select('id, expected_date_from, expected_date_to, estimated_tonnage, estimated_moisture, requires_dryer, note, status, created_at')
+    .select('id, expected_date_from, expected_date_to, estimated_tonnage, estimated_moisture, requires_dryer, note, status, created_at, scheduled_date, actual_weight_kg, truck_owner_member_id')
     .eq('member_id', auth.memberId)
     .order('created_at', { ascending: false });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ bookings: data ?? [] });
+
+  // Check which bookings have ratings
+  const bookingIds = (data ?? []).map((b: { id: string }) => b.id);
+  let ratedSet = new Set<string>();
+  if (bookingIds.length > 0) {
+    const { data: ratings } = await s
+      .from('service_provider_ratings')
+      .select('harvest_booking_id')
+      .in('harvest_booking_id', bookingIds)
+      .eq('rated_by_member_id', auth.memberId);
+    ratedSet = new Set((ratings ?? []).map((r: { harvest_booking_id: string }) => r.harvest_booking_id));
+  }
+
+  const bookings = (data ?? []).map((b: Record<string, unknown>) => ({
+    ...b,
+    has_rating:          ratedSet.has(b.id as string),
+    provider_member_id:  b.truck_owner_member_id ?? null,
+    provider_name:       null, // loaded separately if needed
+  }));
+
+  return NextResponse.json({ bookings });
 }
 
 type PatchBody = {

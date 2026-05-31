@@ -1,32 +1,24 @@
-import { NextResponse } from 'next/server';
+import { NextResponse }               from 'next/server';
 import { createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
-import { resolveApprovedMember } from '../_auth';
+import { resolveApprovedMember }      from '../_auth';
+
+export const dynamic = 'force-dynamic';
 
 export async function PATCH(request: Request) {
   try {
-    const body = (await request.json()) as {
-      fullName?: string;
-      phone?: string | null;
-      address?: string | null;
-      citizenIdMasked?: string | null;
-    };
-
-    if (!body.fullName?.trim()) {
-      return NextResponse.json({ error: 'ข้อมูลไม่ครบ' }, { status: 400 });
-    }
-
-    const s = createServerSupabaseClient();
+    const s      = createServerSupabaseClient();
     const caller = await resolveApprovedMember(request, s);
     if (!caller.ok) return caller.response;
 
-    const { error } = await s.from('members').update({
-      full_name:          body.fullName.trim(),
-      phone:              body.phone ?? null,
-      address:            body.address ?? null,
-      citizen_id_masked:  body.citizenIdMasked ?? null,
-      updated_at:         new Date().toISOString(),
-    }).eq('id', caller.memberId);
+    const body = (await request.json()) as { full_name?: string; phone?: string | null };
+    const update: Record<string, string | null> = {};
+    if (body.full_name?.trim()) update.full_name = body.full_name.trim();
+    if ('phone' in body)        update.phone      = body.phone?.trim() || null;
 
+    if (!Object.keys(update).length)
+      return NextResponse.json({ error: 'ไม่มีข้อมูลที่จะอัปเดต' }, { status: 400 });
+
+    const { error } = await s.from('members').update(update).eq('id', caller.memberId);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ ok: true });
   } catch (e) {
