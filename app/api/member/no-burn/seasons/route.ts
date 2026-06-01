@@ -10,7 +10,7 @@ export async function GET() {
 
   const { data, error } = await s
     .from('no_burn_seasons')
-    .select('id,name,season_year,starts_at,ends_at,bonus_type,bonus_value')
+    .select('id,name,season_year,starts_at,ends_at,crop_type,bonus_type,bonus_value')
     .eq('is_active', true)
     .lte('starts_at', today)
     .gte('ends_at', today)
