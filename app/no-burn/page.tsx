@@ -27,7 +27,7 @@ type NoBurnRequest = {
 type Season = {
   id: string; name: string; season_year: number;
   starts_at: string; ends_at: string;
-  bonus_type: 'per_ton' | 'per_rai'; bonus_value: number;
+  crop_type: string | null; bonus_type: 'per_ton' | 'per_rai'; bonus_value: number;
 };
 
 type Plot  = { id: string; name: string; province: string | null; area_rai?: number | null };
@@ -467,7 +467,9 @@ function NoBurnPageContent() {
                     <option value="">เลือกรอบโครงการ…</option>
                     {seasons.map((s) => (
                       <option key={s.id} value={s.id}>
-                        {s.name} — โบนัส {s.bonus_value} บาท/{s.bonus_type === 'per_ton' ? 'ตัน' : 'ไร่'}
+                        {s.name}
+                        {s.crop_type === 'corn' ? ' 🌽' : s.crop_type ? ' 🌿' : ''}
+                        {' '}— {s.bonus_value} บาท/{s.bonus_type === 'per_ton' ? 'ตัน' : 'ไร่'}
                       </option>
                     ))}
                   </select>
@@ -512,14 +514,17 @@ function NoBurnPageContent() {
                       </div>
                       {s.bonus_type === 'per_ton' && (
                         <p style={{ margin:0, fontSize:11, color:'#6b7280', lineHeight:1.5 }}>
-                          ⚖️ โบนัสบาท/ตัน คำนวณอัตโนมัติเมื่อชั่งน้ำหนักขายจริง — ยิ่งขายมาก ยิ่งได้มาก
+                          ⚖️ คำนวณจากน้ำหนักที่ขายจริง — ยิ่งขายมาก ยิ่งได้มาก
                         </p>
                       )}
                       {s.bonus_type === 'per_rai' && bonusEst != null && (
                         <p style={{ margin:0, fontSize:11, color:'#6b7280', lineHeight:1.5 }}>
-                          🗺️ โบนัส {s.bonus_value} บาท × {areaRai} ไร่ = {bonusEst.toLocaleString()} บาท — ได้ทันทีที่ตรวจผ่าน
+                          🗺️ {s.bonus_value} บาท × {areaRai} ไร่ = {bonusEst.toLocaleString()} บาท — ได้ทันทีที่ตรวจผ่าน
                         </p>
                       )}
+                      <p style={{ margin:0, fontSize:11, color:'#059669', fontWeight:600 }}>
+                        🔒 ราคานี้จะถูกล็อคทันทีที่คุณส่งคำขอ — ไม่เปลี่ยนแม้ราคาจะปรับทีหลัง
+                      </p>
                     </div>
                   );
                 })()}
