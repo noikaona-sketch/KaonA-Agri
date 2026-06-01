@@ -24,7 +24,13 @@ type NoBurnRequest = {
   planting_cycles: { crop_name: string; season_year: number }[] | null;
 };
 
-type Plot  = { id: string; name: string; province: string | null };
+type Season = {
+  id: string; name: string; season_year: number;
+  starts_at: string; ends_at: string;
+  bonus_type: 'per_ton' | 'per_rai'; bonus_value: number;
+};
+
+type Plot  = { id: string; name: string; province: string | null; area_rai?: number | null };
 type Cycle = { id: string; crop_name: string; season_year: number; status: string };
 type Timing = 'before_planting' | 'after_planting';
 
@@ -139,8 +145,10 @@ function NoBurnPageContent() {
   const [plots,     setPlots]     = useState<Plot[]>([]);
   const [cycles,    setCycles]    = useState<Cycle[]>([]);
   const [loading,   setLoading]   = useState(true);
+  const [seasons,   setSeasons]   = useState<Season[]>([]);
 
   const [showForm,       setShowForm]       = useState(false);
+  const [selectedSeason, setSelectedSeason] = useState('');
   const [selectedPlot,   setSelectedPlot]   = useState('');
   const [timing,         setTiming]         = useState<Timing>('after_planting');
   const [selectedCycle,  setSelectedCycle]  = useState('');
@@ -154,6 +162,14 @@ function NoBurnPageContent() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    // ดึง seasons ที่เปิดอยู่
+    void fetch('/api/member/no-burn/seasons')
+      .then(r => r.ok ? r.json() : { seasons: [] })
+      .then((d: { seasons?: Season[] }) => {
+        const list = d.seasons ?? [];
+        setSeasons(list);
+        if (list.length === 1) setSelectedSeason(list[0].id);
+      });
     const token = await getBearerToken();
     const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
     const requestParams = new URLSearchParams(member?.member_id ? { member_id: member.member_id } : {});
@@ -191,7 +207,7 @@ function NoBurnPageContent() {
   function resetForm() {
     setShowForm(false); setSelectedPlot(''); setTiming('after_planting');
     setSelectedCycle(''); setConsentChecked(false); setFormNote('');
-    setPhotoFiles([]); setError(null);
+    setPhotoFiles([]); setError(null); setSelectedSeason('');
   }
 
   function handleTimingChange(t: Timing) {
@@ -228,6 +244,7 @@ function NoBurnPageContent() {
     if (member?.member_id) form.append('member_id', member.member_id);
     form.append('plot_id', selectedPlot); form.append('consent_accepted', 'true'); form.append('timing', timing);
     if (selectedCycle)   form.append('planting_cycle_id', selectedCycle);
+    if (selectedSeason)  form.append('season_id', selectedSeason);
     if (formNote.trim()) form.append('note', formNote.trim());
     if (gpsLat !== null) form.append('lat', String(gpsLat));
     if (gpsLng !== null) form.append('lng', String(gpsLng));
@@ -263,9 +280,19 @@ function NoBurnPageContent() {
         <h2 style={{ margin: '0 0 4px', fontSize: 22, fontWeight: 900, color: '#fff', letterSpacing: '-0.3px' }}>
           โครงการไม่เผา
         </h2>
-        <p style={{ margin: 0, fontSize: 13, color: 'rgba(255,255,255,0.75)', lineHeight: 1.5 }}>
-          รับโบนัส <strong style={{ color: '#a5d6a7' }}>+100 บาท/ตัน</strong> สำหรับสมาชิกที่งดเผาตอซัง
-        </p>
+        {seasons.length > 0 ? (
+          <p style={{ margin: 0, fontSize: 13, color: 'rgba(255,255,255,0.75)', lineHeight: 1.5 }}>
+            รับโบนัส{' '}
+            <strong style={{ color: '#a5d6a7' }}>
+              +{seasons[0].bonus_value.toLocaleString()} บาท/{seasons[0].bonus_type === 'per_ton' ? 'ตัน' : 'ไร่'}
+            </strong>
+            {' '}· {seasons[0].name}
+          </p>
+        ) : (
+          <p style={{ margin: 0, fontSize: 13, color: 'rgba(255,255,255,0.75)', lineHeight: 1.5 }}>
+            สมาชิกที่งดเผาตอซังรับโบนัสพิเศษ
+          </p>
+        )}
         <div style={{ marginTop: 14 }}>
           <NoBurnStatsBanner />
         </div>
@@ -426,9 +453,82 @@ function NoBurnPageContent() {
 
             </div>
 
-            {/* ── Step 2: Timing ── */}
+            {/* ── Step 1.5: Season ── */}
+            {seasons.length > 0 && (
+              <div style={{ marginBottom: 20 }}>
+                <FieldLabel step={2}>รอบโครงการที่เข้าร่วม</FieldLabel>
+                <div style={{ position: 'relative' }}>
+                  <select value={selectedSeason} onChange={(e) => setSelectedSeason(e.target.value)}
+                    disabled={submitting}
+                    style={{ width:'100%', padding:'12px 40px 12px 14px', borderRadius:12,
+                      border:`1.5px solid ${selectedSeason ? '#2e7d32' : '#d1d5db'}`,
+                      background:'#fff', fontSize:14, appearance:'none', WebkitAppearance:'none',
+                      cursor:'pointer', outline:'none', fontFamily:'inherit' }}>
+                    <option value="">เลือกรอบโครงการ…</option>
+                    {seasons.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name} — โบนัส {s.bonus_value} บาท/{s.bonus_type === 'per_ton' ? 'ตัน' : 'ไร่'}
+                      </option>
+                    ))}
+                  </select>
+                  <span style={{ position:'absolute', right:14, top:'50%', transform:'translateY(-50%)', pointerEvents:'none', color:'#6b7280', fontSize:12 }}>▾</span>
+                </div>
+
+                {/* ROI panel */}
+                {selectedSeason && (() => {
+                  const s = seasons.find((x) => x.id === selectedSeason);
+                  const plot = plots.find((p) => p.id === selectedPlot);
+                  if (!s) return null;
+                  const areaRai = (plot as { area_rai?: number | null } | undefined)?.area_rai ?? null;
+                  const bonusEst = s.bonus_type === 'per_rai' && areaRai
+                    ? s.bonus_value * areaRai
+                    : null;
+                  return (
+                    <div style={{ marginTop:10, background:'#f0fdf4', border:'1px solid #bbf7d0', borderRadius:12, padding:'12px 14px', display:'grid', gap:8 }}>
+                      <p style={{ margin:0, fontWeight:700, fontSize:13, color:'#14532d' }}>
+                        💰 ประโยชน์ที่คุณจะได้รับ
+                      </p>
+                      <div style={{ display:'grid', gap:6 }}>
+                        <div style={{ display:'flex', justifyContent:'space-between', fontSize:13 }}>
+                          <span style={{ color:'#374151' }}>
+                            🌿 โบนัสไม่เผา ({s.bonus_type === 'per_ton' ? 'บาท/ตัน' : 'บาท/ไร่'})
+                          </span>
+                          <span style={{ fontWeight:700, color:'#14532d' }}>
+                            {bonusEst != null
+                              ? `+${bonusEst.toLocaleString()} บาท`
+                              : `+${s.bonus_value} บาท/${s.bonus_type === 'per_ton' ? 'ตัน' : 'ไร่'}`}
+                          </span>
+                        </div>
+                        <div style={{ display:'flex', justifyContent:'space-between', fontSize:13 }}>
+                          <span style={{ color:'#374151' }}>🪱 ปุ๋ยจากอินทรียวัตถุในดิน</span>
+                          <span style={{ fontWeight:700, color:'#14532d' }}>
+                            {areaRai ? `~${Math.round(areaRai * 200)}–${Math.round(areaRai * 500)} บาท` : 'ประหยัดปุ๋ย'}
+                          </span>
+                        </div>
+                        <div style={{ display:'flex', justifyContent:'space-between', fontSize:13 }}>
+                          <span style={{ color:'#374151' }}>💧 ดินอุ้มน้ำดีขึ้น</span>
+                          <span style={{ fontWeight:600, color:'#059669' }}>ลดค่าน้ำ/แรงงาน</span>
+                        </div>
+                      </div>
+                      {s.bonus_type === 'per_ton' && (
+                        <p style={{ margin:0, fontSize:11, color:'#6b7280', lineHeight:1.5 }}>
+                          ⚖️ โบนัสบาท/ตัน คำนวณอัตโนมัติเมื่อชั่งน้ำหนักขายจริง — ยิ่งขายมาก ยิ่งได้มาก
+                        </p>
+                      )}
+                      {s.bonus_type === 'per_rai' && bonusEst != null && (
+                        <p style={{ margin:0, fontSize:11, color:'#6b7280', lineHeight:1.5 }}>
+                          🗺️ โบนัส {s.bonus_value} บาท × {areaRai} ไร่ = {bonusEst.toLocaleString()} บาท — ได้ทันทีที่ตรวจผ่าน
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
+            {/* ── Step 3: Timing (renumbered) ── */}
             <div style={{ marginBottom: 20 }}>
-              <FieldLabel step={2}>จะงดเผาตอนไหน?</FieldLabel>
+              <FieldLabel step={seasons.length > 0 ? 3 : 2}>จะงดเผาตอนไหน?</FieldLabel>
               <div style={{ display: 'flex', gap: 10 }}>
                 <TimingCard value="before_planting" selected={timing === 'before_planting'} onSelect={() => handleTimingChange('before_planting')} disabled={submitting} />
                 <TimingCard value="after_planting"  selected={timing === 'after_planting'}  onSelect={() => handleTimingChange('after_planting')}  disabled={submitting} />
