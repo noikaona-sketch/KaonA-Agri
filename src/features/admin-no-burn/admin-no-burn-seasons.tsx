@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 type Season = {
   id: string; name: string; season_year: number;
   starts_at: string; ends_at: string;
-  bonus_type: 'per_ton' | 'per_rai'; bonus_value: number;
+  crop_type: string | null; bonus_type: 'per_ton' | 'per_rai'; bonus_value: number;
   is_active: boolean; note: string | null;
 };
 
@@ -33,6 +33,7 @@ export function AdminNoBurnSeasons() {
   const [year,       setYear]       = useState(String(new Date().getFullYear() + 543));
   const [startsAt,   setStartsAt]   = useState('');
   const [endsAt,     setEndsAt]     = useState('');
+  const [cropType,   setCropType]   = useState('');
   const [bonusType,  setBonusType]  = useState<'per_ton' | 'per_rai'>('per_ton');
   const [bonusValue, setBonusValue] = useState('');
   const [note,       setNote]       = useState('');
@@ -52,7 +53,7 @@ export function AdminNoBurnSeasons() {
     setEditId(null);
     setName(''); setYear(String(new Date().getFullYear() + 543));
     setStartsAt(''); setEndsAt('');
-    setBonusType('per_ton'); setBonusValue('');
+    setCropType(''); setBonusType('per_ton'); setBonusValue('');
     setNote(''); setIsActive(true);
     setShowForm(true);
   }
@@ -61,7 +62,7 @@ export function AdminNoBurnSeasons() {
     setEditId(s.id);
     setName(s.name); setYear(String(s.season_year));
     setStartsAt(s.starts_at); setEndsAt(s.ends_at);
-    setBonusType(s.bonus_type); setBonusValue(String(s.bonus_value));
+    setCropType(s.crop_type ?? ''); setBonusType(s.bonus_type); setBonusValue(String(s.bonus_value));
     setNote(s.note ?? ''); setIsActive(s.is_active);
     setShowForm(true);
   }
@@ -83,7 +84,7 @@ export function AdminNoBurnSeasons() {
         id: editId,
         name: name.trim(), season_year: Number(year),
         starts_at: startsAt, ends_at: endsAt,
-        bonus_type: bonusType, bonus_value: Number(bonusValue),
+        crop_type: cropType || null, bonus_type: bonusType, bonus_value: Number(bonusValue),
         is_active: isActive, note: note.trim() || null,
       }),
     });
@@ -156,6 +157,24 @@ export function AdminNoBurnSeasons() {
               <input style={S.input} type="date" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} />
             </label>
           </div>
+
+          {/* Crop type */}
+          <label style={S.label}>
+            ประเภทสินค้า (กำหนด bonus_type อัตโนมัติ)
+            <select style={S.input} value={cropType} onChange={(e) => {
+              setCropType(e.target.value);
+              // auto-set bonus_type
+              if (e.target.value === 'corn') setBonusType('per_ton');
+              else if (e.target.value) setBonusType('per_rai');
+            }}>
+              <option value="">— ไม่ระบุ (เลือก bonus_type เอง) —</option>
+              <option value="corn">🌽 ข้าวโพด → per_ton อัตโนมัติ</option>
+              <option value="cassava">🥔 มันสำปะหลัง → per_rai อัตโนมัติ</option>
+              <option value="sugarcane">🎋 อ้อย → per_rai อัตโนมัติ</option>
+              <option value="rice">🌾 ข้าว → per_rai อัตโนมัติ</option>
+              <option value="other">🌿 อื่นๆ → per_rai อัตโนมัติ</option>
+            </select>
+          </label>
 
           {/* Bonus type — radio cards */}
           <div style={{ display: 'grid', gap: 6 }}>
@@ -266,6 +285,11 @@ export function AdminNoBurnSeasons() {
             </div>
           </div>
 
+          {s.crop_type && (
+            <span style={{ fontSize: 12, padding: '2px 9px', borderRadius: 20, background: '#f0f9ff', border: '1px solid #bae6fd', color: '#0369a1' }}>
+              {s.crop_type === 'corn' ? '🌽 ข้าวโพด' : s.crop_type === 'cassava' ? '🥔 มัน' : s.crop_type === 'sugarcane' ? '🎋 อ้อย' : s.crop_type === 'rice' ? '🌾 ข้าว' : '🌿 อื่นๆ'}
+            </span>
+          )}
           {s.note && <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>📝 {s.note}</p>}
         </div>
       ))}
