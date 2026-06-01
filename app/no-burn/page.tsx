@@ -7,6 +7,7 @@ import { tryCreateSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useCurrentMember }               from '@/providers/auth-provider';
 import { CompletenessReminder }           from '@/shared/components/completeness-reminder';
 import { NoBurnStatsBanner }              from '@/features/no-burn-community/no-burn-stats-banner';
+import { NoBurnTimeline }                  from '@/features/no-burn-community/no-burn-timeline';
 import { LoadingState }                   from '@/shared/components/loading-state';
 import { ProtectedRoute }                 from '@/shared/components/protected-route';
 
@@ -20,7 +21,13 @@ type NoBurnRequest = {
   submitted_at:    string;
   review_note:     string | null;
   note:            string | null;
-  plots:           { name: string; province: string | null }[] | null;
+  bonus_type:      string | null;
+  bonus_value:     number | null;
+  bonus_amount:    number | null;
+  bonus_locked_at: string | null;
+  review_note:     string | null;
+  planting_seasons: { name: string } [] | null;
+  plots:           { name: string; province: string | null; area_rai: number | null }[] | null;
   planting_cycles: { crop_name: string; season_year: number }[] | null;
 };
 
@@ -295,6 +302,10 @@ function NoBurnPageContent() {
         )}
         <div style={{ marginTop: 14 }}>
           <NoBurnStatsBanner />
+          <a href="/no-burn/why" style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background:'#f0fdf4', border:'1px solid #86efac', borderRadius:10, padding:'10px 14px', textDecoration:'none', marginTop:4 }}>
+            <span style={{ fontSize:13, fontWeight:700, color:'#14532d' }}>🌿 ทำไมต้องไม่เผา? คำนวณผลประโยชน์ของคุณ</span>
+            <span style={{ color:'#14532d', fontSize:16 }}>›</span>
+          </a>
         </div>
       </div>
 
