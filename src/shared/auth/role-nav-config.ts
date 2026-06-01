@@ -54,10 +54,10 @@ const ROLE_NAV_MAP: Record<AppRole, RoleNavConfig> = {
   },
   inspector: {
     tabs: [
-      { label: 'หน้าแรก',   href: '/',                     iconKey: '🏠' },
-      { label: 'งาน/แจ้งเตือน', href: '/notifications', iconKey: '📋' },
-      { label: 'แบบสำรวจ', href: '/member/surveys', iconKey: '📝' },
-      { label: 'โปรไฟล์',  href: '/profile',              iconKey: '👤' },
+      { label: 'งานตรวจ',   href: '/inspection/tasks',  iconKey: '🔍', color: '#534AB7', activeBg: '#EEEDFE' },
+      { label: 'ภาคสนาม',  href: '/field',              iconKey: '🗺️', color: '#2E7D32', activeBg: '#EAF7E7' },
+      { label: 'แจ้งเตือน', href: '/notifications',      iconKey: '📋' },
+      { label: 'โปรไฟล์',  href: '/profile',             iconKey: '👤' },
     ],
   },
   truck_owner: {
