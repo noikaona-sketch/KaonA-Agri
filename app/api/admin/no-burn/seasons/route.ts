@@ -12,7 +12,7 @@ export async function GET(request: Request) {
   const s = createServerSupabaseClient();
   const { data, error } = await s
     .from('no_burn_seasons')
-    .select('id,name,season_year,starts_at,ends_at,bonus_type,bonus_value,is_active,note,created_at')
+    .select('id,name,season_year,starts_at,ends_at,crop_type,bonus_type,bonus_value,is_active,note,created_at')
     .order('starts_at', { ascending: false });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -25,6 +25,7 @@ type SeasonPayload = {
   season_year  : number;
   starts_at    : string;
   ends_at      : string;
+  crop_type?   : string | null;
   bonus_type   : 'per_ton' | 'per_rai';
   bonus_value  : number;
   is_active?   : boolean;
@@ -51,6 +52,7 @@ export async function POST(request: Request) {
   const { data, error } = await s.from('no_burn_seasons').insert({
     name: body.name.trim(), season_year: body.season_year,
     starts_at: body.starts_at, ends_at: body.ends_at,
+    crop_type: body.crop_type ?? null,
     bonus_type: body.bonus_type, bonus_value: body.bonus_value,
     is_active: body.is_active ?? true,
     note: body.note ?? null,
@@ -72,6 +74,7 @@ export async function PATCH(request: Request) {
   const { error } = await s.from('no_burn_seasons').update({
     name: body.name.trim(), season_year: body.season_year,
     starts_at: body.starts_at, ends_at: body.ends_at,
+    crop_type: body.crop_type ?? null,
     bonus_type: body.bonus_type, bonus_value: body.bonus_value,
     is_active: body.is_active ?? true,
     note: body.note ?? null,
