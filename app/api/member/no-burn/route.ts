@@ -87,6 +87,30 @@ export async function POST(request: Request) {
     const lng      = Number(lngRaw)      || null;
     const accuracy = Number(accuracyRaw) || null;
 
+    // ── Snapshot bonus จาก season ตอนนี้เลย (ราคาล็อคตอน submit) ────────────────
+    let snapshotBonusType:  string | null = null;
+    let snapshotBonusValue: number | null = null;
+
+    if (seasonId) {
+      const { data: season } = await s
+        .from('no_burn_seasons')
+        .select('bonus_type, bonus_value, crop_type')
+        .eq('id', seasonId)
+        .maybeSingle();
+
+      if (season) {
+        // ถ้า season ระบุ crop_type → bonus_type ตาม crop
+        // corn → per_ton, อื่นๆ → per_rai
+        // ถ้าไม่ระบุ crop_type → ใช้ bonus_type ที่ admin ตั้งใน season
+        if (season.crop_type) {
+          snapshotBonusType  = season.crop_type === 'corn' ? 'per_ton' : 'per_rai';
+        } else {
+          snapshotBonusType  = season.bonus_type;
+        }
+        snapshotBonusValue = season.bonus_value;
+      }
+    }
+
     // ── Insert no_burn_request ─────────────────────────────────────────────────
     const { data: newRequest, error: insertError } = await s
       .from('no_burn_requests')
@@ -95,6 +119,9 @@ export async function POST(request: Request) {
         plot_id:           plotId,
         planting_cycle_id: plantingCycleId,
         season_id:         seasonId,
+        bonus_type:        snapshotBonusType,
+        bonus_value:       snapshotBonusValue,
+        bonus_locked_at:   seasonId ? new Date().toISOString() : null,
         timing,
         status:            'submitted',
         consent_accepted:  true,
