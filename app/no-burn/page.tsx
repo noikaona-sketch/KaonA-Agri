@@ -25,8 +25,7 @@ type NoBurnRequest = {
   bonus_value:     number | null;
   bonus_amount:    number | null;
   bonus_locked_at: string | null;
-  review_note:     string | null;
-  planting_seasons: { name: string } [] | null;
+  planting_seasons: { name: string }[] | null;
   plots:           { name: string; province: string | null; area_rai: number | null }[] | null;
   planting_cycles: { crop_name: string; season_year: number }[] | null;
 };
