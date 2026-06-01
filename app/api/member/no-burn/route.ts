@@ -12,6 +12,7 @@ import { resolveApprovedMember } from '../_auth';
 // Accepts multipart/form-data:
 //   plot_id           string   required
 //   consent_accepted  string   required — must be 'true'
+//   season_id         string   optional — รอบโครงการไม่เผา
 //   planting_cycle_id string   optional
 //   note              string   optional
 //   lat               string   optional (GPS at time of request)
@@ -45,6 +46,7 @@ export async function POST(request: Request) {
     const plotId          = (form.get('plot_id')           as string | null)?.trim() ?? '';
     const consentRaw      = (form.get('consent_accepted')  as string | null) ?? '';
     const plantingCycleId = (form.get('planting_cycle_id') as string | null)?.trim() || null;
+    const seasonId        = (form.get('season_id')          as string | null)?.trim() || null;
     const note            = (form.get('note')              as string | null)?.trim() || null;
     const timingRaw       = (form.get('timing')            as string | null)?.trim() || null;
     const timing          = (timingRaw === 'before_planting' || timingRaw === 'after_planting')
@@ -92,6 +94,7 @@ export async function POST(request: Request) {
         member_id:         caller.memberId,
         plot_id:           plotId,
         planting_cycle_id: plantingCycleId,
+        season_id:         seasonId,
         timing,
         status:            'submitted',
         consent_accepted:  true,
