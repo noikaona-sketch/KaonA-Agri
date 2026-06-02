@@ -16,6 +16,7 @@ import { CompletenessChecklistPanel } from './panels/completeness-checklist-pane
 import { BankAccountPanel }           from './panels/bank-account-panel';
 import { ReturnRejectModal }           from './panels/return-reject-modal';
 import { ApprovalHistoryPanel }        from './panels/approval-history-panel';
+import { AdminMember360Tabs }          from './admin-member-360-tabs';
 
 type MemberDetail = {
   id: string; full_name: string; phone: string | null;
