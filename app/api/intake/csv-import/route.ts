@@ -117,7 +117,7 @@ export async function POST(request: Request) {
           deduct_pct:         result.deduct_pct,
           deduct_kg:          result.deduct_kg,
           net_weight_kg:      result.net_weight_kg,
-          price_per_kg:       result.price_per_kg,
+          price_per_kg:       result.final_price,
           gross_amount:       result.gross_amount,
           net_amount:         result.net_amount,
           quality_grade:      row.quality_grade ?? null,
