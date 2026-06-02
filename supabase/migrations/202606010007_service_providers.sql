@@ -73,8 +73,7 @@ alter table public.service_bookings
     references public.service_providers(id) on delete set null,
   add column if not exists provider_vehicle_id uuid
     references public.provider_vehicles(id) on delete set null,
-  add column if not exists planting_season_id  uuid
-    references public.planting_seasons(id) on delete set null,
+  add column if not exists planting_season_id  uuid,
   add column if not exists plot_id             uuid
     references public.plots(id) on delete set null,
   add column if not exists area_rai            numeric(8,2),
@@ -82,7 +81,8 @@ alter table public.service_bookings
   add column if not exists member_note         text;    -- รวม note เดิม
 
 -- ─── 4. RLS: provider อ่าน booking ของตัวเองได้ ─────────────────────────────
-create policy if not exists sb_provider_select
+drop policy if exists sb_provider_select on public.service_bookings;
+create policy sb_provider_select
   on public.service_bookings
   for select
   using (
@@ -92,6 +92,20 @@ create policy if not exists sb_provider_select
       where m.auth_user_id = auth.uid()
     )
   );
+
+-- Add FK to planting_seasons only if that table exists
+do $$ begin
+  if exists (select 1 from information_schema.tables where table_schema='public' and table_name='planting_seasons') then
+    if not exists (
+      select 1 from information_schema.table_constraints
+      where constraint_name = 'service_bookings_planting_season_id_fkey'
+    ) then
+      alter table public.service_bookings
+        add constraint service_bookings_planting_season_id_fkey
+          foreign key (planting_season_id) references public.planting_seasons(id) on delete set null;
+    end if;
+  end if;
+end $$;
 
 -- ─── 5. Indexes ───────────────────────────────────────────────────────────────
 create index if not exists idx_service_bookings_provider
