@@ -1,19 +1,138 @@
-import { NextResponse } from 'next/server';
+import { NextResponse }               from 'next/server';
 import { createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
 import { requireAdminPermission, isForbidden } from '../../admin/members/_admin-auth';
-import { calculateIntake } from '@/lib/intake/calculate-intake';
-import { findOrCreateBooking, resolveMemberId } from '@/lib/intake/find-booking';
-import { sendIntakeReceipt } from '@/lib/intake/send-intake-receipt';
+import { resolveMemberId, findOrCreateBooking } from '@/lib/intake/find-booking';
+import { calculateIntake }            from '@/lib/intake/calculate-intake';
+import { sendIntakeReceipt }          from '@/lib/intake/send-intake-receipt';
+
 export const dynamic = 'force-dynamic';
-type R={scale_ticket_no:string;member_phone:string;gross_weight_kg:number;moisture_pct:number;weigh_at:string;location_name:string;quality_grade:'A'|'B'|'C'|'reject'}; type E={row:number;scale_ticket_no:string;reason:'member_not_found'|'duplicate_ticket'|'invalid_moisture'|'missing_field'|'location_not_found'|'invalid_weight'|'invalid_datetime'|'invalid_quality_grade'|'commit_failed'|'invalid_header'|'unsupported_csv';detail:string};
-const H='scale_ticket_no,member_phone,gross_weight_kg,moisture_pct,weigh_at,location_name,quality_grade', G=new Set(['A','B','C','reject']);
-const parse=(csv:string)=>{const [h,...ls]=csv.trim().split(/\r?\n/); if(h?.trim()!==H) return {err:'invalid_header'} as const; if(csv.includes('"')) return {err:'unsupported_csv'} as const; const k=h.split(','); return {rows:ls.filter(Boolean).map((l,i)=>{const v=l.split(',').map(s=>s.trim()); const o:Record<string,string>={}; k.forEach((x,j)=>o[x]=v[j]??''); return {i:i+2,o};})} as const;};
-export async function POST(req:Request){const s=createServerSupabaseClient(); try{const ar=await requireAdminPermission('service.write'); if(isForbidden(ar)) return ar.forbidden; const q=new URL(req.url).searchParams.get('action'); const {csv}=await req.json() as {csv:string}; if(!csv) return NextResponse.json({error:'csv required'},{status:400});
-const pr=parse(csv); if('err' in pr) return NextResponse.json({ok:true,valid:[],errors:[{row:1,scale_ticket_no:'',reason:pr.err,detail:pr.err==='invalid_header'?`required: ${H}`:'quoted CSV unsupported'}]}); const rows=pr.rows;
-const names=[...new Set(rows.map(r=>r.o.location_name).filter(Boolean))], tickets=[...new Set(rows.map(r=>r.o.scale_ticket_no).filter(Boolean))]; const [{data:locs},{data:dup}]=await Promise.all([names.length?s.from('pickup_locations').select('id,name').in('name',names):Promise.resolve({data:[]}),tickets.length?s.from('harvest_bookings').select('scale_ticket_no').in('scale_ticket_no',tickets):Promise.resolve({data:[]})]);
-const lmap=new Map((locs??[]).map(l=>[String(l.name),String(l.id)])), dset=new Set((dup??[]).map(d=>String(d.scale_ticket_no))), seen=new Set<string>(), valid:(R&{row:number;member_id:string;location_id:string})[]=[], errors:E[]=[];
-for(const r of rows){const o=r.o,t=o.scale_ticket_no,m=Number(o.moisture_pct),w=Number(o.gross_weight_kg),dt=new Date(o.weigh_at.replace(' ','T')); if(!o.scale_ticket_no||!o.member_phone||!o.gross_weight_kg||!o.moisture_pct||!o.weigh_at||!o.location_name||!o.quality_grade){errors.push({row:r.i,scale_ticket_no:t,reason:'missing_field',detail:'required fields missing'});continue;} if(!Number.isFinite(w)||w<=0){errors.push({row:r.i,scale_ticket_no:t,reason:'invalid_weight',detail:o.gross_weight_kg});continue;} if(!Number.isFinite(m)||m<0||m>100){errors.push({row:r.i,scale_ticket_no:t,reason:'invalid_moisture',detail:o.moisture_pct});continue;} if(Number.isNaN(dt.getTime())){errors.push({row:r.i,scale_ticket_no:t,reason:'invalid_datetime',detail:o.weigh_at});continue;} if(!G.has(o.quality_grade)){errors.push({row:r.i,scale_ticket_no:t,reason:'invalid_quality_grade',detail:o.quality_grade});continue;} const lid=lmap.get(o.location_name); if(!lid){errors.push({row:r.i,scale_ticket_no:t,reason:'location_not_found',detail:o.location_name});continue;} if(dset.has(t)||seen.has(t)){errors.push({row:r.i,scale_ticket_no:t,reason:'duplicate_ticket',detail:t});continue;} const mid=await resolveMemberId(o.member_phone,s); if(!mid){errors.push({row:r.i,scale_ticket_no:t,reason:'member_not_found',detail:o.member_phone});continue;} seen.add(t); valid.push({row:r.i,scale_ticket_no:t,member_phone:o.member_phone,gross_weight_kg:w,moisture_pct:m,weigh_at:o.weigh_at,location_name:o.location_name,quality_grade:o.quality_grade as R['quality_grade'],member_id:mid,location_id:lid}); }
-if(q==='preview') return NextResponse.json({ok:true,valid,errors}); if(q!=='commit') return NextResponse.json({error:'action must be preview|commit'},{status:400}); if(valid.length===0) return NextResponse.json({ok:true,committed:0,errors});
-const dc=await s.from('harvest_bookings').select('scale_ticket_no').in('scale_ticket_no',valid.map(v=>v.scale_ticket_no)); if((dc.data??[]).length) return NextResponse.json({error:'duplicate ticket before commit',duplicates:dc.data},{status:409}); let committed=0, commitErrors:E[]=[];
-for(const v of valid){const b=await findOrCreateBooking(v.member_id,v.location_id,new Date(v.weigh_at.replace(' ','T')),s); if(!b.found){commitErrors.push({row:v.row,scale_ticket_no:v.scale_ticket_no,reason:'commit_failed',detail:b.error});continue;} const r=await calculateIntake({gross_weight_kg:v.gross_weight_kg,moisture_pct:v.moisture_pct,member_id:v.member_id,location_id:v.location_id,weigh_at:new Date(v.weigh_at.replace(' ','T'))},s); const u=await s.from('harvest_bookings').update({status:v.quality_grade==='reject'?'rejected':'completed',actual_completed_at:new Date().toISOString(),intake_source:'csv_import',intake_by:ar.admin.adminUserId,intake_location_id:v.location_id,scale_ticket_no:v.scale_ticket_no,quality_grade:v.quality_grade,gross_weight_kg:r.gross_weight_kg,deduct_pct:r.deduct_pct,net_weight_kg:r.net_weight_kg,actual_received_kg:r.net_weight_kg,actual_moisture_pct:v.moisture_pct,price_per_kg:r.final_price,bonus_per_kg:r.total_bonus,gross_amount:r.gross_amount,net_amount:r.net_amount}).eq('id',b.booking.id); if(u.error){commitErrors.push({row:v.row,scale_ticket_no:v.scale_ticket_no,reason:'commit_failed',detail:u.error.message});continue;} committed++; const {data:m}=await s.from('members').select('line_uid,line_user_id').eq('id',v.member_id).maybeSingle(); const uid=(m?.line_uid??m?.line_user_id) as string|undefined; if(uid) void sendIntakeReceipt({lineUid:uid,result:r,bookingId:b.booking.id,scaleTicketNo:v.scale_ticket_no,locationName:v.location_name}).catch(()=>{}); }
-return NextResponse.json({ok:true,committed,errors,commitErrors});}catch(e){return NextResponse.json({error:String(e)},{status:500});}}
+
+type CsvRow = {
+  scale_ticket_no : string;
+  member_phone    : string;
+  gross_weight_kg : number;
+  moisture_pct    : number;
+  weigh_at        : string;
+  location_name   : string;
+  quality_grade?  : 'A' | 'B' | 'C' | 'reject';
+};
+
+type ErrorRow = {
+  row: number; scale_ticket_no: string;
+  reason: 'member_not_found' | 'duplicate_ticket' | 'invalid_moisture' | 'missing_field' | 'location_not_found';
+  detail: string;
+};
+
+function parseCsv(text: string): CsvRow[] {
+  const lines = text.trim().split('\n').filter(Boolean);
+  if (lines.length < 2) return [];
+  const header = lines[0].split(',').map((h) => h.trim().toLowerCase());
+  return lines.slice(1).map((line) => {
+    const vals = line.split(',').map((v) => v.trim());
+    const obj: Record<string, string> = {};
+    header.forEach((h, i) => { obj[h] = vals[i] ?? ''; });
+    return {
+      scale_ticket_no: obj['scale_ticket_no'] ?? '',
+      member_phone:    obj['member_phone']    ?? '',
+      gross_weight_kg: Number(obj['gross_weight_kg'] || 0),
+      moisture_pct:    Number(obj['moisture_pct']    || 0),
+      weigh_at:        obj['weigh_at']  ?? new Date().toISOString(),
+      location_name:   obj['location_name'] ?? '',
+      quality_grade:   (obj['quality_grade'] as CsvRow['quality_grade']) || undefined,
+    };
+  });
+}
+
+export async function POST(request: Request) {
+  try {
+    const _ar = await requireAdminPermission('service.write');
+    if (isForbidden(_ar)) return _ar.forbidden;
+
+    const url    = new URL(request.url);
+    const action = url.searchParams.get('action') ?? 'preview'; // preview | commit
+
+    const body   = await request.json() as { csv?: string; location_id?: string; rows?: CsvRow[] };
+    const s      = createServerSupabaseClient();
+
+    // ── PREVIEW ──────────────────────────────────────────────────────────────
+    if (action === 'preview') {
+      if (!body.csv || !body.location_id)
+        return NextResponse.json({ error: 'csv และ location_id จำเป็น' }, { status: 400 });
+
+      const rows   = parseCsv(body.csv);
+      const valid: (CsvRow & { member_id: string })[] = [];
+      const errors: ErrorRow[] = [];
+
+      // ตรวจ duplicate ticket ภายใน CSV ก่อน
+      const seen = new Set<string>();
+      for (const [i, row] of rows.entries()) {
+        const rowNo = i + 2;
+        if (!row.scale_ticket_no || !row.member_phone || !row.gross_weight_kg) {
+          errors.push({ row: rowNo, scale_ticket_no: row.scale_ticket_no, reason: 'missing_field', detail: 'ข้อมูลไม่ครบ' }); continue;
+        }
+        if (row.moisture_pct < 8 || row.moisture_pct > 45) {
+          errors.push({ row: rowNo, scale_ticket_no: row.scale_ticket_no, reason: 'invalid_moisture', detail: `ความชื้น ${row.moisture_pct}% ผิดช่วง 8–45%` }); continue;
+        }
+        if (seen.has(row.scale_ticket_no)) {
+          errors.push({ row: rowNo, scale_ticket_no: row.scale_ticket_no, reason: 'duplicate_ticket', detail: 'เลขบัตรซ้ำใน CSV' }); continue;
+        }
+        seen.add(row.scale_ticket_no);
+
+        // ตรวจ duplicate ใน DB
+        const { data: dup } = await s.from('intake_transactions').select('id').eq('scale_ticket_no', row.scale_ticket_no).maybeSingle();
+        if (dup) { errors.push({ row: rowNo, scale_ticket_no: row.scale_ticket_no, reason: 'duplicate_ticket', detail: 'เลขบัตรนี้รับซื้อแล้ว' }); continue; }
+
+        // resolve member
+        const memberId = await resolveMemberId(row.member_phone, s);
+        if (!memberId) { errors.push({ row: rowNo, scale_ticket_no: row.scale_ticket_no, reason: 'member_not_found', detail: `ไม่พบเบอร์ ${row.member_phone}` }); continue; }
+
+        valid.push({ ...row, member_id: memberId });
+      }
+
+      return NextResponse.json({ ok: true, valid, errors, location_id: body.location_id });
+    }
+
+    // ── COMMIT ────────────────────────────────────────────────────────────────
+    if (!body.rows?.length || !body.location_id)
+      return NextResponse.json({ error: 'rows และ location_id จำเป็น' }, { status: 400 });
+
+    let successCount = 0;
+    const commitErrors: { scale_ticket_no: string; error: string }[] = [];
+
+    for (const row of body.rows as (CsvRow & { member_id: string })[]) {
+      try {
+        const weighAt  = new Date(row.weigh_at);
+        const booking  = await findOrCreateBooking({ member_id: row.member_id, location_id: body.location_id, weigh_at: weighAt }, s);
+        if (!booking.found) { commitErrors.push({ scale_ticket_no: row.scale_ticket_no, error: booking.error }); continue; }
+
+        const result = await calculateIntake({ gross_weight_kg: row.gross_weight_kg, moisture_pct: row.moisture_pct, member_id: row.member_id, location_id: body.location_id, weigh_at: weighAt }, s);
+
+        await s.from('intake_transactions').insert({
+          harvest_booking_id: booking.booking.id,
+          member_id:          row.member_id,
+          location_id:        body.location_id,
+          scale_ticket_no:    row.scale_ticket_no,
+          gross_weight_kg:    row.gross_weight_kg,
+          moisture_pct:       row.moisture_pct,
+          deduct_pct:         result.deduct_pct,
+          deduct_kg:          result.deduct_kg,
+          net_weight_kg:      result.net_weight_kg,
+          price_per_kg:       result.price_per_kg,
+          gross_amount:       result.gross_amount,
+          net_amount:         result.net_amount,
+          quality_grade:      row.quality_grade ?? null,
+          weigh_at:           row.weigh_at,
+          import_source:      'csv',
+        });
+
+        successCount++;
+        // LINE push — fail silently
+        const { data: m } = await s.from('members').select('line_uid,line_user_id').eq('id', row.member_id).maybeSingle();
+        const lineId = m?.line_uid ?? m?.line_user_id;
+        if (lineId) void sendIntakeReceipt({ lineUid: lineId, result, bookingId: booking.booking.id, scaleTicketNo: row.scale_ticket_no, locationName: row.location_name }).catch(() => {});
+      } catch (e) { commitErrors.push({ scale_ticket_no: row.scale_ticket_no, error: String(e) }); }
+    }
+
+    return NextResponse.json({ ok: true, successCount, errors: commitErrors });
+  } catch (e) { return NextResponse.json({ error: String(e) }, { status: 500 }); }
+}
