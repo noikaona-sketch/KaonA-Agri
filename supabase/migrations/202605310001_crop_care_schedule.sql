@@ -90,9 +90,16 @@ on conflict (crop_type) do update
       updated_at    = now();
 
 -- Unique constraint for upsert idempotency
-alter table public.farm_activity_logs
-  add constraint if not exists farm_activity_logs_cycle_scheduled_day_unique
-    unique (planting_cycle_id, scheduled_day);
+do $$ begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'farm_activity_logs_cycle_scheduled_day_unique'
+  ) then
+    alter table public.farm_activity_logs
+      add constraint farm_activity_logs_cycle_scheduled_day_unique
+        unique (planting_cycle_id, scheduled_day);
+  end if;
+end $$;
 
 -- อัปเดตถ้า already inserted (re-run safe)
 update public.crop_care_defaults
