@@ -321,7 +321,7 @@ export function ServiceBrowse({ memberId, plotId }: { memberId?: string; plotId?
       </p>
 
       {filtered.length === 0
-        ? <EmptyState title="ไม่พบผู้ให้บริการ" detail="ลองเปลี่ยน filter หรือติดต่อ admin" />
+        ? <EmptyState title="ไม่พบผู้ให้บริการ" />
         : filtered.map((p) => (
           <ProviderCard key={p.id} provider={p} memberId={memberId} plotId={plotId} />
         ))
