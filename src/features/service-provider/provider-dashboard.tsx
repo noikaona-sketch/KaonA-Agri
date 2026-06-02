@@ -19,7 +19,7 @@ type Booking = {
   id: string; scheduled_date: string; scheduled_end_date: string | null;
   area_rai: number | null; member_note: string | null; status: string; created_at: string;
   members: { full_name: string; phone: string | null }[] | null;
-  provider_vehicles: { vehicle_type: string; brand: string | null } | null;
+  provider_vehicles: { vehicle_type: string; brand: string | null }[] | null;
 };
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -188,7 +188,7 @@ export function ProviderDashboard() {
           .limit(50),
       ]);
       setVehicles((vRes.data as Vehicle[]) ?? []);
-      setBookings((bRes.data as Booking[]) ?? []);
+      setBookings((bRes.data as unknown as Booking[]) ?? []);
     }
     setLoading(false);
   }
@@ -291,7 +291,7 @@ export function ProviderDashboard() {
           )}
           {bookings.map((b) => {
             const st = STATUS_CFG[b.status] ?? STATUS_CFG.pending;
-            const farmer = Array.isArray(b.members) ? b.members[0] : (b.members as { full_name: string; phone: string | null } | null);
+            const farmer = b.members?.[0] ?? null;
             return (
               <div key={b.id} style={{ ...S.section, borderLeft: `3px solid ${st.color}` }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
