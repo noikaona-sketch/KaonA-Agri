@@ -106,7 +106,7 @@ function PlantingPanel({ memberId }: { memberId: string }) {
     void s.from('planting_cycles')
       .select('id,crop_name,season_year,planted_at,expected_harvest_at,status,plots(name)')
       .eq('member_id', memberId).order('season_year', { ascending: false }).limit(20)
-      .then(({ data }) => { setRows((data as PlantingRow[]) ?? []); setLoading(false); });
+      .then(({ data }) => { setRows((data as unknown as PlantingRow[]) ?? []); setLoading(false); });
   }, [memberId]);
 
   if (loading) return <p style={{ padding: 16, color: '#9ca3af', fontSize: 13 }}>กำลังโหลด…</p>;
@@ -138,7 +138,7 @@ function HarvestPanel({ memberId }: { memberId: string }) {
     void s.from('harvest_bookings')
       .select('id,scheduled_date,status,estimated_tonnage,actual_received_kg,actual_moisture_pct,quality_grade')
       .eq('member_id', memberId).order('scheduled_date', { ascending: false }).limit(20)
-      .then(({ data }) => { setRows((data as HarvestRow[]) ?? []); setLoading(false); });
+      .then(({ data }) => { setRows((data as unknown as HarvestRow[]) ?? []); setLoading(false); });
   }, [memberId]);
 
   if (loading) return <p style={{ padding: 16, color: '#9ca3af', fontSize: 13 }}>กำลังโหลด…</p>;
@@ -181,7 +181,7 @@ function NoBurnPanel({ memberId }: { memberId: string }) {
     void s.from('no_burn_requests')
       .select('id,status,timing,submitted_at,bonus_type,bonus_value,bonus_amount,plots(name),planting_seasons(name)')
       .eq('member_id', memberId).order('submitted_at', { ascending: false }).limit(20)
-      .then(({ data }) => { setRows((data as NoBurnRow[]) ?? []); setLoading(false); });
+      .then(({ data }) => { setRows((data as unknown as NoBurnRow[]) ?? []); setLoading(false); });
   }, [memberId]);
 
   if (loading) return <p style={{ padding: 16, color: '#9ca3af', fontSize: 13 }}>กำลังโหลด…</p>;
@@ -221,7 +221,7 @@ function InspectionPanel({ memberId }: { memberId: string }) {
     void s.from('inspections')
       .select('id,result_status,assigned_at,visited_at,result_note,cert_agency,lab_submitted,plots(name)')
       .eq('member_id', memberId).order('assigned_at', { ascending: false }).limit(20)
-      .then(({ data }) => { setRows((data as InspectionRow[]) ?? []); setLoading(false); });
+      .then(({ data }) => { setRows((data as unknown as InspectionRow[]) ?? []); setLoading(false); });
   }, [memberId]);
 
   if (loading) return <p style={{ padding: 16, color: '#9ca3af', fontSize: 13 }}>กำลังโหลด…</p>;
@@ -261,7 +261,7 @@ function SeedPanel({ memberId }: { memberId: string }) {
     void s.from('seed_reservations')
       .select('id,reservation_no,status,created_at,qty_reserved,qty_received,seed_varieties(variety_name)')
       .eq('member_id', memberId).order('created_at', { ascending: false }).limit(20)
-      .then(({ data }) => { setRows((data as SeedRow[]) ?? []); setLoading(false); });
+      .then(({ data }) => { setRows((data as unknown as SeedRow[]) ?? []); setLoading(false); });
   }, [memberId]);
 
   if (loading) return <p style={{ padding: 16, color: '#9ca3af', fontSize: 13 }}>กำลังโหลด…</p>;
