@@ -53,7 +53,7 @@ function IntakeContent() {
 
         {tab === 'queue' && locationId && <IntakeQueueBoard locationId={locationId} />}
         {tab === 'form'  && <StaffIntakeForm onSuccess={() => setTab('queue')} />}
-        {tab === 'csv'   && <IntakeCsvPreview />}
+        {tab === 'csv'   && <IntakeCsvPreview locationId={locationId} />}
       </div>
     </MobileAppShell>
   );
