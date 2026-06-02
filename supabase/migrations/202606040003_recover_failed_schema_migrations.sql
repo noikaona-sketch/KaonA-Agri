@@ -10,9 +10,10 @@
 create extension if not exists pgcrypto;
 
 -- 1) Create farm_activity_logs with a valid owner FK in the current schema.
--- App writes/reads farm_activity_logs.member_id for farmer/member activity, so use
--- public.farmers(id) when available; fall back to public.profiles(id) only if the
--- farmers table is absent.
+-- App writes/reads farm_activity_logs.member_id from the same runtime member/farmer
+-- identity used by planting_cycles.member_id. Prefer the existing FK target of
+-- planting_cycles.member_id when it points at farmers/profiles, then fall back to
+-- farmers before profiles for partially constrained legacy databases.
 do $$
 declare
   owner_table text;
@@ -20,9 +21,28 @@ declare
   cycle_id_type text;
 begin
   if to_regclass('public.farm_activity_logs') is null then
-    if to_regclass('public.farmers') is not null then
+    if to_regclass('public.planting_cycles') is not null then
+      select c.confrelid::regclass::text
+        into owner_table
+      from pg_constraint c
+      join pg_attribute a
+        on a.attrelid = c.conrelid
+       and a.attnum = any(c.conkey)
+      where c.conrelid = 'public.planting_cycles'::regclass
+        and c.contype = 'f'
+        and a.attname = 'member_id'
+        and c.confrelid in (to_regclass('public.farmers'), to_regclass('public.profiles'))
+      order by case c.confrelid::regclass::text
+        when 'public.farmers' then 1
+        when 'public.profiles' then 2
+        else 3
+      end
+      limit 1;
+    end if;
+
+    if owner_table is null and to_regclass('public.farmers') is not null then
       owner_table := 'public.farmers';
-    elsif to_regclass('public.profiles') is not null then
+    elsif owner_table is null and to_regclass('public.profiles') is not null then
       owner_table := 'public.profiles';
     end if;
 
@@ -85,9 +105,28 @@ declare
   cycle_id_type text;
 begin
   if to_regclass('public.farm_activity_logs') is not null then
-    if to_regclass('public.farmers') is not null then
+    if to_regclass('public.planting_cycles') is not null then
+      select c.confrelid::regclass::text
+        into owner_table
+      from pg_constraint c
+      join pg_attribute a
+        on a.attrelid = c.conrelid
+       and a.attnum = any(c.conkey)
+      where c.conrelid = 'public.planting_cycles'::regclass
+        and c.contype = 'f'
+        and a.attname = 'member_id'
+        and c.confrelid in (to_regclass('public.farmers'), to_regclass('public.profiles'))
+      order by case c.confrelid::regclass::text
+        when 'public.farmers' then 1
+        when 'public.profiles' then 2
+        else 3
+      end
+      limit 1;
+    end if;
+
+    if owner_table is null and to_regclass('public.farmers') is not null then
       owner_table := 'public.farmers';
-    elsif to_regclass('public.profiles') is not null then
+    elsif owner_table is null and to_regclass('public.profiles') is not null then
       owner_table := 'public.profiles';
     end if;
 
