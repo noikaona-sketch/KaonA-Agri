@@ -37,10 +37,10 @@ const PENDING_NAV: RoleNavConfig = {
 const ROLE_NAV_MAP: Record<AppRole, RoleNavConfig> = {
   farmer: {
     tabs: [
-      { label: 'แปลงของฉัน',     href: '/plots',                iconKey: '🗺️', color: '#2E7D32', activeBg: '#EAF7E7' },
-      { label: 'ฤดูปลูก',        href: '/planting-cycles',      iconKey: '🌽', color: '#B7791F', activeBg: '#FFF6D6' },
+      { label: 'หน้าแรก',        href: '/',                     iconKey: '🏠', color: '#2E7D32', activeBg: '#EAF7E7' },
+      { label: 'แปลงของฉัน',    href: '/plots',                iconKey: '🗺️', color: '#2E7D32', activeBg: '#EAF7E7' },
       { label: 'จองเมล็ดพันธุ์', href: '/service/reservations', iconKey: '🌱', color: '#EA580C', activeBg: '#FFF0E3' },
-      { label: 'ไม่เผา',         href: '/no-burn',              iconKey: '🔥', color: '#7C3AED', activeBg: '#F3ECFF' },
+      { label: 'ไม่เผา',         href: '/no-burn',              iconKey: '🌿', color: '#7C3AED', activeBg: '#F3ECFF' },
       { label: 'โปรไฟล์',        href: '/profile',              iconKey: '👤', color: '#2563EB', activeBg: '#EAF2FF' },
     ],
   },
