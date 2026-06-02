@@ -102,7 +102,7 @@ export async function POST(request: Request) {
     for (const row of body.rows as (CsvRow & { member_id: string })[]) {
       try {
         const weighAt  = new Date(row.weigh_at);
-        const booking  = await findOrCreateBooking({ member_id: row.member_id, location_id: body.location_id, weigh_at: weighAt }, s);
+        const booking  = await findOrCreateBooking(row.member_id, body.location_id, weighAt, s);
         if (!booking.found) { commitErrors.push({ scale_ticket_no: row.scale_ticket_no, error: booking.error }); continue; }
 
         const result = await calculateIntake({ gross_weight_kg: row.gross_weight_kg, moisture_pct: row.moisture_pct, member_id: row.member_id, location_id: body.location_id, weigh_at: weighAt }, s);
