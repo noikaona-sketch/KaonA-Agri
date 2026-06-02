@@ -8,12 +8,13 @@ import { LoadingState } from '@/shared/components/loading-state';
 import { FieldTeamMap } from '@/features/field-team-map/field-team-map';
 import { FieldSeedReservation } from '@/features/field-seed-reservation/field-seed-reservation';
 import { ProtectedRoute } from '@/shared/components/protected-route';
+import { tryCreateSupabaseBrowserClient } from '@/lib/supabase/client';
 
 type InspectionTask = {
   id: string; status: string; result_status: string;
   assigned_at: string | null; completed_at: string | null;
   members: { full_name: string; phone: string | null }[];
-  plots: { lat: number; lng: number; village: string | null; rai: number }[];
+  plots: { lat: number | null; lng: number | null; name: string | null; area_rai: number | null }[];
 };
 
 const S = {
@@ -41,9 +42,14 @@ export default function FieldPage() {
 
   useEffect(() => {
     if (!member?.member_id) return;
-    void fetch(`/api/inspection/tasks?assignee_id=${member.member_id}`)
-      .then((r) => r.json())
-      .then((d: { tasks?: InspectionTask[] }) => { setTasks(d.tasks ?? []); setLoading(false); });
+    const sb = tryCreateSupabaseBrowserClient();
+    if (!sb) { setLoading(false); return; }
+    void sb.from('inspections')
+      .select('id,result_status,assigned_at,members:member_id(full_name,phone),plots(lat,lng,name,area_rai)')
+      .eq('inspector_member_id', member.member_id)
+      .order('assigned_at', { ascending: false })
+      .limit(50)
+      .then(({ data }) => { setTasks((data as unknown as InspectionTask[]) ?? []); setLoading(false); });
   }, [member?.member_id]);
 
   const todayTasks   = tasks.filter((t) => t.assigned_at?.startsWith(today));
@@ -107,7 +113,7 @@ export default function FieldPage() {
                   <div style={{ padding: '12px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div style={{ flex: 1 }}>
                       <p style={{ margin: 0, fontWeight: 500, fontSize: 14, color: 'var(--color-text-primary,#111)' }}>{m?.full_name ?? '—'}</p>
-                      {pl && <p style={{ margin: '3px 0 0', fontSize: 12, color: 'var(--color-text-secondary,#888)' }}>📍 {pl.village ?? ''} · {pl.rai} ไร่</p>}
+                      {pl && <p style={{ margin: '3px 0 0', fontSize: 12, color: 'var(--color-text-secondary,#888)' }}>📍 {pl.name ?? ''} · {pl.area_rai ?? 0} ไร่</p>}
                       {t.assigned_at && <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--color-text-secondary,#888)' }}>📅 {new Date(t.assigned_at).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}</p>}
                     </div>
                     <span style={{ fontSize: 11, fontWeight: 500, padding: '3px 9px', borderRadius: 20, background: st.bg, color: st.color, flexShrink: 0 }}>{st.label}</span>
