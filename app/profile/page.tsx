@@ -11,7 +11,7 @@ import { MemberAnnouncementsList } from '@/features/member-announcements/member-
 
 const ROLE_TH: Record<string, string> = {
   farmer: '🌽 เกษตรกร', truck_owner: '🚛 ทีมบริการ',
-  inspector: '🔍 ผู้ตรวจสอบ', staff: '👷 เจ้าหน้าที่',
+  inspector: '🔍 ผู้ตรวจสอบ', staff: '👷 พนักงาน',
   leader: '👥 หัวหน้ากลุ่ม', admin: '⚙️ แอดมิน',
 };
 const ROLE_COLOR: Record<string, { bg: string; text: string }> = {

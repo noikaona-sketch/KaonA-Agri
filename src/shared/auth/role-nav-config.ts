@@ -16,7 +16,8 @@ export type RoleNavConfig = {
 
 // ─── Primary role definitions ─────────────────────────────────────────────────
 
-const PRIMARY_ROLES = new Set<AppRole>(['farmer','staff','truck_owner','admin']);
+const PRIMARY_ROLE_VALUES = ['farmer', 'staff', 'truck_owner', 'admin'] as const;
+const PRIMARY_ROLES = new Set<AppRole>(PRIMARY_ROLE_VALUES);
 const SUB_ROLES     = new Set<AppRole>(['inspector','leader']);
 
 // ─── Base tabs per PRIMARY role ───────────────────────────────────────────────
@@ -49,6 +50,13 @@ const ADMIN_TABS: NavTab[] = [
   { label: 'แจ้งเตือน', href: '/notifications', iconKey: '📋' },
   { label: 'โปรไฟล์',  href: '/profile',        iconKey: '👤' },
 ];
+
+export const ROLE_NAV_TABS: Record<(typeof PRIMARY_ROLE_VALUES)[number], readonly NavTab[]> = {
+  farmer: FARMER_TABS,
+  staff: STAFF_TABS,
+  truck_owner: TRUCK_TABS,
+  admin: ADMIN_TABS,
+};
 
 // ─── Sub role extra tabs ───────────────────────────────────────────────────────
 
@@ -84,16 +92,13 @@ const PENDING_NAV: RoleNavConfig = {
 
 // ─── Main nav builder ─────────────────────────────────────────────────────────
 
+function isAppRole(value: unknown): value is AppRole {
+  return typeof value === 'string' && (PRIMARY_ROLES.has(value as AppRole) || SUB_ROLES.has(value as AppRole));
+}
+
 function buildTabs(primaryRole: AppRole, allRoles: AppRole[]): readonly NavTab[] {
   // Base tabs จาก primary role
-  let base: NavTab[];
-  switch (primaryRole) {
-    case 'farmer':     base = [...FARMER_TABS]; break;
-    case 'staff':      base = [...STAFF_TABS];  break;
-    case 'truck_owner':base = [...TRUCK_TABS];  break;
-    case 'admin':      base = [...ADMIN_TABS];  break;
-    default:           base = [...FARMER_TABS]; break;
-  }
+  const base = [...(ROLE_NAV_TABS[primaryRole as keyof typeof ROLE_NAV_TABS] ?? FARMER_TABS)];
 
   const hasSub = (r: AppRole) => allRoles.includes(r);
 
@@ -126,12 +131,24 @@ export function getNavConfigForRole(role: AppRole | null): RoleNavConfig {
   return { tabs: buildTabs(role, [role]) };
 }
 
+export function getNavConfig(role: AppRole | null): RoleNavConfig;
 export function getNavConfig(
   status   : AuthStatus,
   role     : AppRole | null,
   pathname?: string,
   allRoles?: AppRole[],
+): RoleNavConfig;
+export function getNavConfig(
+  statusOrRole: AuthStatus | AppRole | null,
+  role?: AppRole | null,
+  pathname?: string,
+  allRoles?: AppRole[],
 ): RoleNavConfig {
+  if (role === undefined && (statusOrRole === null || isAppRole(statusOrRole))) {
+    return getNavConfigForRole(statusOrRole);
+  }
+
+  const status = statusOrRole as AuthStatus;
   if (pathname?.startsWith('/register')) {
     if (status === 'pending_approval' || status === 'rejected' || status === 'suspended') return PENDING_NAV;
     return GUEST_NAV;

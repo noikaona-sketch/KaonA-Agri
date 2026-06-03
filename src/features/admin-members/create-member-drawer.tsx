@@ -12,7 +12,7 @@ type Props = {
 
 const ROLES = [
   { value:'farmer',     label:'🌾 เกษตรกร' },
-  { value:'staff',      label:'👷 เจ้าหน้าที่' },
+  { value:'staff',      label:'👷 พนักงาน' },
   { value:'inspector',  label:'🔍 ผู้ตรวจแปลง' },
   { value:'leader',     label:'👥 หัวหน้ากลุ่ม' },
   { value:'truck_owner',label:'🚛 รถร่วม' },

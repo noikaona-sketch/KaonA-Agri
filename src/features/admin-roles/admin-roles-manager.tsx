@@ -23,7 +23,7 @@ const ROLE_LABELS: Record<AppRole, string> = {
   farmer: '🌾 สมาชิกเกษตรกร',
   truck_owner: '🚛 ทีมบริการ',
   inspector: '🔍 ผู้ตรวจสอบ',
-  staff: '👷 เจ้าหน้าที่',
+  staff: '👷 พนักงาน',
   leader: '👥 หัวหน้ากลุ่ม',
   admin: '⚙️ แอดมิน',
 };

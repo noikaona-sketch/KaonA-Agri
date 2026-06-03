@@ -5,7 +5,7 @@ export const ROLE_LABELS_TH: Record<AppRole, string> = {
   leader: 'ผู้นำชุมชน',
   inspector: 'ผู้ตรวจสอบ',
   truck_owner: 'เจ้าของรถขนส่ง',
-  staff: 'เจ้าหน้าที่',
+  staff: 'พนักงาน',
   admin: 'ผู้ดูแลระบบ',
 };
 

@@ -12,7 +12,7 @@ const TTL_OPTS = [
   { value:168, label:'168 ชั่วโมง (7 วัน)' },
 ];
 const ROLE_LABELS: Record<string,string> = {
-  farmer:'🌾 เกษตรกร', staff:'👷 เจ้าหน้าที่', inspector:'🔍 ผู้ตรวจ',
+  farmer:'🌾 เกษตรกร', staff:'👷 พนักงาน', inspector:'🔍 ผู้ตรวจ',
   leader:'👥 หัวหน้ากลุ่ม', truck_owner:'🚛 รถร่วม',
 };
 

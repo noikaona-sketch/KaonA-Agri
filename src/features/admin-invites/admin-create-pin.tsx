@@ -11,7 +11,7 @@ const ROLES = [
   { value: 'farmer',      label: 'สมาชิกเกษตรกร 🌾' },
   { value: 'truck_owner', label: 'ทีมบริการ 🚛' },
   { value: 'inspector',   label: 'ผู้ตรวจสอบ 🔍' },
-  { value: 'staff',       label: 'เจ้าหน้าที่ภาคสนาม 👷' },
+  { value: 'staff',       label: 'พนักงาน 👷' },
   { value: 'leader',      label: 'หัวหน้ากลุ่ม 👥' },
   { value: 'admin',       label: 'แอดมิน ⚙️' },
 ];
