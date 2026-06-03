@@ -11,7 +11,7 @@ const ROLE_CONFIG: Record<AppRole, { icon: string; label: string; color: string;
   farmer:      { icon: '🌾', label: 'สมาชิกเกษตรกร',   color: '#e8f5e9', border: '#a5d6a7' },
   truck_owner: { icon: '🚛', label: 'ทีมบริการ',        color: '#fff3e0', border: '#ffcc80' },
   inspector:   { icon: '🔍', label: 'ผู้ตรวจสอบภาคสนาม', color: '#e3f2fd', border: '#90caf9' },
-  staff:       { icon: '👷', label: 'พนักงาน',         color: '#f3e5f5', border: '#ce93d8' },
+  staff:       { icon: '👷', label: 'เจ้าหน้าที่',     color: '#f3e5f5', border: '#ce93d8' },
   leader:      { icon: '👥', label: 'หัวหน้ากลุ่ม',    color: '#e0f2f1', border: '#80cbc4' },
   admin:       { icon: '⚙️', label: 'แอดมิน',          color: '#fce4ec', border: '#f48fb1' },
 };
@@ -125,60 +125,41 @@ export function MemberRoleManager({ memberId, memberName, currentRoles, onRolesU
         </div>
       </div>
 
-      {/* ปุ่มลัด */}
-      {(addableRoles.includes('inspector') || addableRoles.includes('leader') || addableRoles.includes('staff')) && (
+      {/* สิทธิ์พิเศษ (sub roles) */}
+      {(addableRoles.includes('inspector') || addableRoles.includes('leader')) && (
         <div style={{ marginBottom: 14 }}>
-          <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 600, color: '#4a6741' }}>เพิ่มสิทธิ์พิเศษ</p>
+          <p style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 600, color: '#4a6741' }}>เพิ่มสิทธิ์พิเศษ</p>
+          <p style={{ margin: '0 0 8px', fontSize: 11, color: '#9ca3af' }}>ต้องมีสิทธิ์หลักก่อน (farmer / staff / truck_owner)</p>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {addableRoles.includes('inspector') && (
-              <button
-                className="admin-btn admin-btn--secondary"
-                onClick={() => addRole('inspector')}
-                disabled={acting !== null}
-                style={{ borderColor: '#90caf9', color: '#1565c0', background: '#e3f2fd' }}
-              >
+              <button className="admin-btn admin-btn--secondary"
+                onClick={() => addRole('inspector')} disabled={acting !== null}
+                style={{ borderColor: '#90caf9', color: '#1565c0', background: '#e3f2fd' }}>
                 {acting === 'add-inspector' ? '…' : '🔍 เพิ่มเป็นผู้ตรวจสอบ'}
               </button>
             )}
             {addableRoles.includes('leader') && (
-              <button
-                className="admin-btn admin-btn--secondary"
-                onClick={() => addRole('leader')}
-                disabled={acting !== null}
-                style={{ borderColor: '#80cbc4', color: '#00695c', background: '#e0f2f1' }}
-              >
+              <button className="admin-btn admin-btn--secondary"
+                onClick={() => addRole('leader')} disabled={acting !== null}
+                style={{ borderColor: '#80cbc4', color: '#00695c', background: '#e0f2f1' }}>
                 {acting === 'add-leader' ? '…' : '👥 เพิ่มเป็นหัวหน้ากลุ่ม'}
-              </button>
-            )}
-            {addableRoles.includes('staff') && (
-              <button
-                className="admin-btn admin-btn--secondary"
-                onClick={() => addRole('staff')}
-                disabled={acting !== null}
-                style={{ borderColor: '#ce93d8', color: '#6a1b9a', background: '#f3e5f5' }}
-              >
-                {acting === 'add-staff' ? '…' : '👷 เพิ่มเป็นพนักงาน'}
               </button>
             )}
           </div>
         </div>
       )}
 
-      {/* เพิ่ม role อื่น */}
-      {addableRoles.filter((r) => !['inspector', 'leader', 'staff'].includes(r)).length > 0 && (
-        <div>
-          <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 600, color: '#4a6741' }}>เพิ่ม role อื่น</p>
+      {/* เปลี่ยนสิทธิ์หลัก */}
+      {addableRoles.filter((r) => ['farmer','staff','truck_owner'].includes(r)).length > 0 && (
+        <div style={{ marginBottom: 14 }}>
+          <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 600, color: '#4a6741' }}>เปลี่ยนสิทธิ์หลัก</p>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {addableRoles.filter((r) => !['inspector', 'leader', 'staff'].includes(r)).map((role) => {
+            {addableRoles.filter((r) => ['farmer','staff','truck_owner'].includes(r)).map((role) => {
               const cfg = ROLE_CONFIG[role];
               return (
-                <button
-                  key={role}
-                  className="admin-btn admin-btn--secondary"
-                  onClick={() => addRole(role)}
-                  disabled={acting !== null}
-                  style={{ borderColor: cfg.border, color: '#333', background: cfg.color }}
-                >
+                <button key={role} className="admin-btn admin-btn--secondary"
+                  onClick={() => addRole(role, true)} disabled={acting !== null}
+                  style={{ borderColor: cfg.border, color: '#333', background: cfg.color }}>
                   {acting === `add-${role}` ? '…' : `${cfg.icon} ${cfg.label}`}
                 </button>
               );
@@ -186,6 +167,20 @@ export function MemberRoleManager({ memberId, memberName, currentRoles, onRolesU
           </div>
         </div>
       )}
+
+      {/* Admin — section แยก */}
+      {addableRoles.includes('admin') && (
+        <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: 12, marginTop: 4 }}>
+          <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 600, color: '#9ca3af' }}>สิทธิ์ระบบ</p>
+          <button className="admin-btn admin-btn--secondary"
+            onClick={() => { if (window.confirm('ให\'้สิทธิ์ admin — ยืนยัน?')) void addRole('admin', true); }}
+            disabled={acting !== null}
+            style={{ borderColor: '#f48fb1', color: '#880e4f', background: '#fce4ec' }}>
+            {acting === 'add-admin' ? '…' : '⚙️ แอดมิน'}
+          </button>
+        </div>
+      )}
+
     </section>
   );
 }
