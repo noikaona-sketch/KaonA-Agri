@@ -113,6 +113,7 @@ function dayLabel(dateStr: string, i: number): string {
 export function WeatherTodayStrip({ lat, lng, location }: { lat: number; lng: number; location: string }) {
   const [wx, setWx] = useState<WeatherData | null>(null);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     void fetchWeatherCached(lat, lng, location).then(setWx);
   }, [lat, lng]);
@@ -163,6 +164,7 @@ export function Weather7Day({ lat, lng, location }: { lat: number; lng: number; 
   const [wx,      setWx]      = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     void fetchWeatherCached(lat, lng, location).then((data) => {
       setWx(data);
