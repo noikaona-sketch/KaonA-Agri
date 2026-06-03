@@ -1,22 +1,49 @@
 import { NextResponse } from 'next/server';
-import { createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
+import { createClient } from '@supabase/supabase-js';
+
+import { createAnonSupabaseClient } from '../../auth/line/line-auth-helpers';
+
+type UserScopedSupabaseClient = ReturnType<typeof createAnonSupabaseClient>;
+
+function getBearerToken(request: Request) {
+  const authorization = request.headers.get('Authorization') ?? '';
+  return authorization.replace(/^Bearer\s+/i, '').trim() || null;
+}
+
+function createUserScopedSupabaseClient(token: string): UserScopedSupabaseClient {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey =
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
+    process.env.SUPABASE_ANON_KEY ??
+    process.env.SUPABASE_PUBLISHABLE_KEY;
+
+  if (!supabaseUrl || !anonKey) {
+    throw new Error('Missing Supabase anon environment variables');
+  }
+
+  return createClient(supabaseUrl, anonKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+    global: { headers: { Authorization: `Bearer ${token}` } },
+  });
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared helper: resolve member row from Bearer token
 // ─────────────────────────────────────────────────────────────────────────────
 async function resolveCaller(
   request: Request,
-  s: ReturnType<typeof createServerSupabaseClient>,
+  s: UserScopedSupabaseClient,
 ): Promise<
   | { ok: true;  memberId: string; memberStatus: string }
   | { ok: false; response: ReturnType<typeof NextResponse.json> }
 > {
-  const token = (request.headers.get('Authorization') ?? '').replace('Bearer ', '').trim();
+  const token = getBearerToken(request);
   if (!token) {
     return { ok: false, response: NextResponse.json({ error: 'กรุณาเข้าสู่ระบบก่อน' }, { status: 401 }) };
   }
 
-  const { data: { user }, error: userError } = await s.auth.getUser(token);
+  const authClient = createAnonSupabaseClient();
+  const { data: { user }, error: userError } = await authClient.auth.getUser(token);
   if (userError || !user) {
     return { ok: false, response: NextResponse.json({ error: 'session ไม่ถูกต้อง' }, { status: 401 }) };
   }
@@ -28,7 +55,7 @@ async function resolveCaller(
     .maybeSingle();
 
   if (!member) {
-    return { ok: false, response: NextResponse.json({ error: 'ไม่พบข้อมูลสมาชิก' }, { status: 403 }) };
+    return { ok: false, response: NextResponse.json({ error: 'ไม่พบข้อมูลสมาชิกหรือ session ไม่ตรงกับสมาชิกปัจจุบัน' }, { status: 403 }) };
   }
 
   return { ok: true, memberId: member.id, memberStatus: member.status };
@@ -51,7 +78,11 @@ async function resolveCaller(
 // ─────────────────────────────────────────────────────────────────────────────
 export async function POST(request: Request) {
   try {
-    const s = createServerSupabaseClient();
+    const token = getBearerToken(request);
+    if (!token) {
+      return NextResponse.json({ error: 'กรุณาเข้าสู่ระบบก่อน' }, { status: 401 });
+    }
+    const s = createUserScopedSupabaseClient(token);
 
     const caller = await resolveCaller(request, s);
     if (!caller.ok) return caller.response;
@@ -97,25 +128,45 @@ export async function POST(request: Request) {
     }
     const accuracy = Number(accuracyRaw) || null;
 
-    // ── Call RPC (sets status = pending_review internally) ────────────────────
-    const { data: plotId, error: rpcError } = await s.rpc('add_registration_plot', {
-      p_member_id:       caller.memberId,
-      p_name:            name,
-      p_area_rai:        areaRai,
-      p_lat:             lat,
-      p_lng:             lng,
-      p_accuracy:        accuracy,
-      p_province:        province,
-      p_description:     description,
-      p_land_doc_type:   null,
-      p_land_doc_number: null,
-      p_district:        null,
+    // ── Insert with the caller's user-scoped session so RLS validates auth.uid()
+    //    against members.auth_user_id. member_id is populated from the verified
+    //    session mapping only; it is never accepted from form data.
+    const insertPayload = {
+      member_id:        caller.memberId,
+      name,
+      area_rai:         areaRai,
+      lat,
+      lng,
+      accuracy,
+      land_doc_type:    null,
+      land_doc_number:  null,
+      province,
+      district:         null,
+      description,
+      status:           'pending_review',
+      created_by:       caller.memberId,
+      role_used:        'farmer',
+      timestamp:        new Date().toISOString(),
+    };
+
+    console.info('[PLOT_REG] inserting plot via user-scoped RLS session', {
+      member_id: insertPayload.member_id,
+      created_by: insertPayload.created_by,
+      status: insertPayload.status,
     });
 
-    if (rpcError) {
-      console.error('[PLOT_REG] RPC error:', rpcError.message);
-      return NextResponse.json({ error: rpcError.message }, { status: 500 });
+    const { data: insertedPlot, error: insertError } = await s
+      .from('plots')
+      .insert(insertPayload)
+      .select('id')
+      .single();
+
+    if (insertError || !insertedPlot) {
+      console.error('[PLOT_REG] plot insert error:', insertError?.message);
+      return NextResponse.json({ error: insertError?.message ?? 'ไม่สามารถสร้างแปลงได้' }, { status: 500 });
     }
+
+    const plotId = insertedPlot.id as string;
 
     // ── Photo upload + metadata (best-effort per approved scope) ──────────────
     const photoWarnings: string[] = [];
@@ -126,7 +177,7 @@ export async function POST(request: Request) {
       if (!(photo instanceof File) || photo.size === 0) continue;
 
       const ext  = photo.name.split('.').pop()?.toLowerCase() ?? 'jpg';
-      const path = `${caller.memberId}/plots/${plotId as string}_photo${i}_${Date.now()}.${ext}`;
+      const path = `${caller.memberId}/plots/${plotId}_photo${i}_${Date.now()}.${ext}`;
 
       // Step 1: upload to storage
       const { error: uploadError } = await s.storage
@@ -143,7 +194,7 @@ export async function POST(request: Request) {
       // Step 2: upload succeeded → insert public.photos metadata
       const { error: metaError } = await s.from('photos').insert({
         member_id:    caller.memberId,
-        plot_id:      plotId as string,
+        plot_id:      plotId,
         storage_path: path,
         photo_type:   'plot',
         lat,
@@ -163,7 +214,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         ok:             true,
-        plot_id:        plotId as string,
+        plot_id:        plotId,
         photo_warnings: photoWarnings.length > 0 ? photoWarnings : undefined,
       },
       { status: 201 },
@@ -192,7 +243,11 @@ export async function POST(request: Request) {
 // ─────────────────────────────────────────────────────────────────────────────
 export async function PATCH(request: Request) {
   try {
-    const s = createServerSupabaseClient();
+    const token = getBearerToken(request);
+    if (!token) {
+      return NextResponse.json({ error: 'กรุณาเข้าสู่ระบบก่อน' }, { status: 401 });
+    }
+    const s = createUserScopedSupabaseClient(token);
 
     const caller = await resolveCaller(request, s);
     if (!caller.ok) return caller.response;

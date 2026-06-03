@@ -73,6 +73,16 @@ function withBridgeMessage(message: string): LiffBridgeDiagnostics {
   };
 }
 
+async function hasUsableSupabaseSessionForMember(member: AuthBootstrapResult): Promise<boolean> {
+  if (!member.auth_user_id) return false;
+
+  const supabase = tryCreateSupabaseBrowserClient();
+  if (!supabase) return false;
+
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.user.id === member.auth_user_id;
+}
+
 export function AuthProvider({ children }: AuthProviderProps) {
   const pathname = usePathname();
   const [status, setStatus] = useState<AuthStatus>('loading');
@@ -112,12 +122,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
             const { member, status: cachedStatus, ts } = JSON.parse(cached) as {
               member: AuthBootstrapResult; status: string; ts: number;
             };
-            if (Date.now() - ts < CACHE_TTL && member && cachedStatus === 'approved') {
+            if (
+              Date.now() - ts < CACHE_TTL &&
+              member &&
+              cachedStatus === 'approved' &&
+              await hasUsableSupabaseSessionForMember(member)
+            ) {
               setMember(member);
               setStatus('approved');
               cacheHit = true;
-              // cache ยังสด — ข้าม bootstrap ไปได้เลย
-              // จะ refresh ใน background ครั้งหน้า (background flag ไม่บล็อก UI)
+              // cache ยังสดและ browser Supabase session ยังตรงกับ members.auth_user_id
+              // จึงปล่อยให้ API/RLS calls ใช้ bearer token เดิมต่อได้อย่างปลอดภัย
             }
           } catch { sessionStorage.removeItem(CACHE_KEY); }
         }
@@ -208,6 +223,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         setMember(bootstrapResult);
         setErrorMessage(null);
+
+        if (bootstrapResult.is_approved && !payload.session) {
+          setStatus('error');
+          setErrorMessage('Supabase session is not linked to this LINE member. Please contact support to relink your account.');
+          setBridgeDiagnostics(withBridgeMessage('Supabase session is missing for approved LINE member'));
+          try { sessionStorage.removeItem('kaona_auth_cache'); } catch { /* ignore */ }
+          return;
+        }
 
         // บันทึก cache สำหรับ approved member
         if (bootstrapResult.is_approved) {
