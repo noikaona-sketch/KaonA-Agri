@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-import { useAuth, useEffectiveRole } from '@/providers/auth-provider';
+import { useAuth, useEffectiveRole, useRoles } from '@/providers/auth-provider';
 import { getNavConfig, type NavTab } from '@/shared/auth/role-nav-config';
 import { iconPaths } from '@/shared/design/icon-tokens';
 
@@ -65,7 +65,8 @@ export function MobileBottomNav() {
   const pathname = usePathname();
   const { status } = useAuth();
   const effectiveRole = useEffectiveRole();
-  const { tabs } = getNavConfig(status, effectiveRole, pathname);
+  const allRoles = useRoles();
+  const { tabs } = getNavConfig(status, effectiveRole, pathname, allRoles);
 
   return (
     <nav className="mobile-bottom-nav" aria-label="เมนูหลัก" style={{ ...NAV_STYLE, gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
