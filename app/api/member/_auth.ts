@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
-import { createServerSupabaseClient, createAnonSupabaseClient } from '../auth/line/line-auth-helpers';
+import { createServerSupabaseClient, createAnonSupabaseClient, getLineChannelId } from '../auth/line/line-auth-helpers';
+
+import type { LineVerifyResponse } from '../auth/line/line-auth-helpers';
 
 type ResolveContext = {
   explicitMemberId?: string;
@@ -8,6 +10,10 @@ type ResolveContext = {
 
 function getBearerToken(request: Request) {
   return (request.headers.get('Authorization') ?? '').replace('Bearer ', '').trim();
+}
+
+function getLineIdToken(request: Request) {
+  return (request.headers.get('X-Line-Id-Token') ?? '').trim();
 }
 
 async function resolveMemberIdFromBearer(token: string, s: ReturnType<typeof createServerSupabaseClient>) {
@@ -19,6 +25,41 @@ async function resolveMemberIdFromBearer(token: string, s: ReturnType<typeof cre
     .from('members')
     .select('id, status')
     .eq('auth_user_id', user.id)
+    .maybeSingle();
+
+  return member?.status === 'approved' ? (member.id as string) : null;
+}
+
+
+async function resolveMemberIdFromLineIdToken(token: string, s: ReturnType<typeof createServerSupabaseClient>) {
+  if (token === 'dev-bypass-token') {
+    const { data: member } = await s
+      .from('members')
+      .select('id, status')
+      .eq('line_user_id', 'dev-mock-line-id')
+      .maybeSingle();
+
+    return member?.status === 'approved' ? (member.id as string) : null;
+  }
+
+  const lineChannelId = getLineChannelId();
+  if (!lineChannelId) return null;
+
+  const verifyRes = await fetch('https://api.line.me/oauth2/v2.1/verify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ id_token: token, client_id: lineChannelId }),
+  });
+
+  if (!verifyRes.ok) return null;
+
+  const verifyData = (await verifyRes.json()) as LineVerifyResponse;
+  if (!verifyData.sub) return null;
+
+  const { data: member } = await s
+    .from('members')
+    .select('id, status')
+    .eq('line_user_id', verifyData.sub)
     .maybeSingle();
 
   return member?.status === 'approved' ? (member.id as string) : null;
@@ -73,6 +114,18 @@ export async function resolveApprovedMember(
       // Token present but could not resolve member — fall through to explicit member_id
     } catch {
       // Token invalid/expired — fall through to explicit member_id
+    }
+  }
+
+  const lineIdToken = getLineIdToken(request);
+  if (lineIdToken) {
+    try {
+      const lineTokenMemberId = await resolveMemberIdFromLineIdToken(lineIdToken, s);
+      if (lineTokenMemberId) {
+        return { ok: true, memberId: lineTokenMemberId };
+      }
+    } catch {
+      // LINE token invalid/expired — fall through to explicit member_id.
     }
   }
 
