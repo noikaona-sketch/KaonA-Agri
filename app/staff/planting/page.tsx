@@ -183,9 +183,17 @@ function StaffPlantingInner() {
   );
 }
 
-export default function StaffPlantingPage() {
+function StaffPlantingInner() {
   return (
     <Suspense fallback={<div style={{ padding: 24, textAlign: 'center', color: '#9ca3af' }}>กำลังโหลด…</div>}>
+      <StaffPlantingInner />
+    </Suspense>
+  );
+}
+
+export default function StaffPlantingPage() {
+  return (
+    <Suspense fallback={<div style={{ padding: 32, textAlign: 'center', color: '#9ca3af' }}>กำลังโหลด…</div>}>
       <StaffPlantingInner />
     </Suspense>
   );
