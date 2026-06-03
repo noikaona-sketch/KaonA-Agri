@@ -509,7 +509,19 @@ export function AdminMemberDetail({ memberId }: { memberId: string }) {
         </div>
       )}
 
-      {/* ── ประวัติ ── */}
+      {/* ── 360 View — ประวัติครบวงจร ── */}
+      <div style={{ background:'#fff', border:'1px solid #E5E7EB', borderRadius:12, overflow:'hidden', boxShadow:'0 1px 3px rgba(0,0,0,.04)' }}>
+        <div style={{ padding:'13px 18px', background:'#F9FAFB', borderBottom:'1px solid #E5E7EB', display:'flex', alignItems:'center', gap:8 }}>
+          <span style={{ fontSize:15 }}>📋</span>
+          <span style={{ fontSize:13, fontWeight:700, color:'#374151' }}>ประวัติครบวงจร</span>
+          <span style={{ fontSize:11, padding:'1px 7px', borderRadius:99, background:'#ECFDF5', color:'#065F46', fontWeight:600 }}>360°</span>
+        </div>
+        <div style={{ padding:'0 4px 8px' }}>
+          <AdminMember360Tabs memberId={memberId} />
+        </div>
+      </div>
+
+      {/* ── ประวัติการอนุมัติ ── */}
       <ApprovalHistoryPanel logs={logs} />
     </div>
   );
