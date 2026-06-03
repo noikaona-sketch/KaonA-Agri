@@ -42,6 +42,19 @@ type SeedRow = {
   seed_varieties: { variety_name: string } | null;
 };
 
+type VisitRow = {
+  id: string; visit_purpose: string; visit_purpose_note: string | null;
+  note: string | null; follow_up: string | null; visited_at: string;
+  staff: { full_name: string } | null;
+  plots: { name: string } | null;
+};
+
+const PURPOSE_TH: Record<string, string> = {
+  follow_up: '🌱 ติดตามปลูก', no_burn_advice: '🌿 แนะนำไม่เผา',
+  soil_check: '🪱 ตรวจดิน', pest_advice: '🐛 ศัตรูพืช',
+  registration: '📋 ลงทะเบียน', problem_solve: '🔧 แก้ปัญหา', other: '💬 อื่นๆ',
+};
+
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const S = {
@@ -288,9 +301,48 @@ function SeedPanel({ memberId }: { memberId: string }) {
   );
 }
 
+function VisitPanel({ memberId }: { memberId: string }) {
+  const [rows, setRows] = useState<VisitRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const s = createSupabaseBrowserClient();
+    void s.from('field_visit_logs')
+      .select('id,visit_purpose,visit_purpose_note,note,follow_up,visited_at,staff:staff_member_id(full_name),plots(name)')
+      .eq('member_id', memberId).order('visited_at', { ascending: false }).limit(20)
+      .then(({ data }) => { setRows((data as unknown as VisitRow[]) ?? []); setLoading(false); });
+  }, [memberId]);
+
+  if (loading) return <p style={{ padding: 16, color: '#9ca3af', fontSize: 13 }}>กำลังโหลด…</p>;
+  if (!rows.length) return <div style={{ textAlign: 'center', padding: '28px 0', color: '#9ca3af', fontSize: 13 }}>ยังไม่มีบันทึกการเยี่ยม</div>;
+
+  return (
+    <div>
+      {rows.map((r) => (
+        <div key={r.id} style={{ padding: '10px 14px', borderBottom: '1px solid #f3f4f6' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+            <div style={{ flex: 1 }}>
+              <p style={{ margin: 0, fontWeight: 600, fontSize: 13 }}>
+                {PURPOSE_TH[r.visit_purpose] ?? r.visit_purpose}
+                {r.visit_purpose_note ? ` — ${r.visit_purpose_note}` : ''}
+              </p>
+              <p style={{ margin: '2px 0 0', fontSize: 12, color: '#6b7280' }}>
+                📅 {fmtDate(r.visited_at)} · 👤 {r.staff?.full_name ?? '—'}
+                {r.plots?.name ? ` · 🌱 ${r.plots.name}` : ''}
+              </p>
+              {r.note && <p style={{ margin: '4px 0 0', fontSize: 12, color: '#374151' }}>📝 {r.note}</p>}
+              {r.follow_up && <p style={{ margin: '3px 0 0', fontSize: 12, color: '#d97706', background: '#fffbeb', padding: '3px 8px', borderRadius: 6 }}>⚡ {r.follow_up}</p>}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
-type Tab360 = 'planting' | 'harvest' | 'noburn' | 'inspection' | 'seed';
+type Tab360 = 'planting' | 'harvest' | 'noburn' | 'inspection' | 'seed' | 'visit';
 
 const TABS: { key: Tab360; label: string }[] = [
   { key: 'planting',   label: '🌱 ปลูก'    },
@@ -298,6 +350,7 @@ const TABS: { key: Tab360; label: string }[] = [
   { key: 'noburn',     label: '🌿 ไม่เผา' },
   { key: 'inspection', label: '🔍 ตรวจ'   },
   { key: 'seed',       label: '🛒 เมล็ด'  },
+  { key: 'visit',      label: '🤝 เยี่ยม'  },
 ];
 
 export function AdminMember360Tabs({ memberId }: { memberId: string }) {
@@ -322,6 +375,7 @@ export function AdminMember360Tabs({ memberId }: { memberId: string }) {
         {tab === 'noburn'     && <NoBurnPanel     memberId={memberId} />}
         {tab === 'inspection' && <InspectionPanel memberId={memberId} />}
         {tab === 'seed'       && <SeedPanel       memberId={memberId} />}
+        {tab === 'visit'      && <VisitPanel      memberId={memberId} />}
       </div>
     </div>
   );
