@@ -196,6 +196,21 @@ function SecondaryRoleCards({ primaryRole, allRoles }: { primaryRole: AppRole; a
 // ─────────────────────────────────────────────────────────────────────
 function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: string; allRoles: AppRole[] }) {
   const member = useCurrentMember();
+  const [wxGeo, setWxGeo] = useState<{ lat: number; lng: number; loc: string } | null>(null);
+
+  // ── GPS สำหรับ weather — ดึงครั้งเดียวตอน mount ──────────────────────────
+  useEffect(() => {
+    if (!navigator?.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (p) => setWxGeo({ lat: p.coords.latitude, lng: p.coords.longitude, loc: member?.province ?? 'ตำแหน่งปัจจุบัน' }),
+      () => {
+        // fallback: ใช้จังหวัดของสมาชิก (บุรีรัมย์ default)
+        setWxGeo({ lat: 14.9950, lng: 103.1116, loc: member?.province ?? 'บุรีรัมย์' });
+      },
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 },
+    );
+  }, [member?.province]);
+
   const [plots,         setPlots]         = useState(0);
   const [quota,         setQuota]         = useState<number | null>(null);
   const [cycleStatus,   setCycleStatus]   = useState<string | null>(null);   // active cycle status
@@ -327,6 +342,13 @@ function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: stri
 
 
         {/* เมนูแยกกลุ่ม */}
+        {/* Weather strip — compact top of home */}
+        {wxGeo && (
+          <div style={{ margin: '0 0 4px' }}>
+            <WeatherTodayStrip lat={wxGeo.lat} lng={wxGeo.lng} location={wxGeo.loc} />
+          </div>
+        )}
+
         {FARMER_MENU_GROUPS.map((grp) => (
           <div key={grp.group}>
             {/* Group header */}
