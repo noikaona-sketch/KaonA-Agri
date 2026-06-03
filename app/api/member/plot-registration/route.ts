@@ -68,8 +68,9 @@ async function resolveCaller(
 //   name, area_rai, lat, lng  — required
 //   accuracy, province, description, photo_0..3  — optional
 //
-// member_id is NEVER read from request body — always from Bearer token.
-// RPC add_registration_plot sets status = 'pending_review' internally.
+// member_id is NEVER read from request body — always from the verified
+// auth.uid() -> members.auth_user_id mapping. The insert runs with the caller's
+// Bearer token so public.plots RLS remains the database enforcement layer.
 //
 // Photo handling (per approved scope):
 //   1. Upload file to member-photos storage.
