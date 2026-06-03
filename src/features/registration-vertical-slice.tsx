@@ -91,6 +91,7 @@ function useRoleRequests(type: RoleRequestType) {
     setItems(mapped);
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     void reload();
   }, [type]);
