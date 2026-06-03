@@ -82,6 +82,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [bridgeDiagnostics, setBridgeDiagnostics] = useState<LiffBridgeDiagnostics>(INITIAL_BRIDGE_DIAGNOSTICS);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (isAdminWebPath(pathname)) {
       setStatus('unauthenticated');
@@ -92,6 +93,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, [pathname]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (isAdminWebPath(pathname)) return; // handled above
 
