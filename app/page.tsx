@@ -405,6 +405,7 @@ function StaffHome({ name, memberId, primaryRole, allRoles }: { name: string; me
     { href: '/member/plots',              icon: '🌱', label: 'แปลงสมาชิก',    desc: 'ดูข้อมูลแปลง' },
     { href: '/harvest/intake?tab=calc',   icon: '💧', label: 'คำนวณความชื้น', desc: 'ตารางหักน้ำหนัก' },
     { href: '/service/vehicles',          icon: '🚜', label: 'คุณภาพรถ',      desc: 'ติดตามรถบริการ' },
+    { href: '/staff/planting',                icon: '🌽', label: 'รอบการปลูก',    desc: 'เลือกสมาชิก→ดูรอบ' },
   ];
 
   return (
