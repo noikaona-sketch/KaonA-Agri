@@ -173,6 +173,10 @@ export async function POST(request: Request) {
 
     // ── DEV BYPASS ───────────────────────────────────────────────────────────
     if (body.idToken === 'dev-bypass-token') {
+      if (process.env.NODE_ENV === 'production' || process.env.NEXT_PUBLIC_DEV_BYPASS_LINE !== 'true') {
+        return NextResponse.json({ error: 'LINE token verification failed' }, { status: 401 });
+      }
+
       const role = (body as Record<string, string>).devRole ?? 'farmer';
       const staffRoles = ['staff', 'admin', 'inspector', 'leader'];
       const devMemberId = staffRoles.includes(role)

@@ -1,11 +1,17 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient, createAnonSupabaseClient, getLineChannelId } from '../auth/line/line-auth-helpers';
+import { decideApprovedMemberAuth } from './member-auth-decision';
 
 import type { LineVerifyResponse } from '../auth/line/line-auth-helpers';
+import type { MemberAuthDecision, MemberAuthResolution } from './member-auth-decision';
 
 type ResolveContext = {
   explicitMemberId?: string;
   explicitLineUserId?: string;
+};
+
+type ResolveApprovedMemberOptions = {
+  allowExplicitIdentity?: boolean;
 };
 
 function getBearerToken(request: Request) {
@@ -16,10 +22,14 @@ function getLineIdToken(request: Request) {
   return (request.headers.get('X-Line-Id-Token') ?? '').trim();
 }
 
-async function resolveMemberIdFromBearer(token: string, s: ReturnType<typeof createServerSupabaseClient>) {
+function isNonProductionDevBypassEnabled() {
+  return process.env.NODE_ENV !== 'production' && process.env.NEXT_PUBLIC_DEV_BYPASS_LINE === 'true';
+}
+
+async function resolveMemberIdFromBearer(token: string, s: ReturnType<typeof createServerSupabaseClient>): Promise<MemberAuthResolution> {
   const anon = createAnonSupabaseClient();
   const { data: { user }, error: userError } = await anon.auth.getUser(token);
-  if (userError || !user) return null;
+  if (userError || !user) return { kind: 'invalid' };
 
   const { data: member } = await s
     .from('members')
@@ -27,23 +37,28 @@ async function resolveMemberIdFromBearer(token: string, s: ReturnType<typeof cre
     .eq('auth_user_id', user.id)
     .maybeSingle();
 
-  return member?.status === 'approved' ? (member.id as string) : null;
+  return member?.status === 'approved'
+    ? { kind: 'approved', memberId: member.id as string }
+    : { kind: 'unapproved' };
 }
 
-
-async function resolveMemberIdFromLineIdToken(token: string, s: ReturnType<typeof createServerSupabaseClient>) {
+async function resolveMemberIdFromLineIdToken(token: string, s: ReturnType<typeof createServerSupabaseClient>): Promise<MemberAuthResolution> {
   if (token === 'dev-bypass-token') {
+    if (!isNonProductionDevBypassEnabled()) return { kind: 'invalid' };
+
     const { data: member } = await s
       .from('members')
       .select('id, status')
       .eq('line_user_id', 'dev-mock-line-id')
       .maybeSingle();
 
-    return member?.status === 'approved' ? (member.id as string) : null;
+    return member?.status === 'approved'
+      ? { kind: 'approved', memberId: member.id as string }
+      : { kind: 'unapproved' };
   }
 
   const lineChannelId = getLineChannelId();
-  if (!lineChannelId) return null;
+  if (!lineChannelId) return { kind: 'invalid' };
 
   const verifyRes = await fetch('https://api.line.me/oauth2/v2.1/verify', {
     method: 'POST',
@@ -51,10 +66,10 @@ async function resolveMemberIdFromLineIdToken(token: string, s: ReturnType<typeo
     body: new URLSearchParams({ id_token: token, client_id: lineChannelId }),
   });
 
-  if (!verifyRes.ok) return null;
+  if (!verifyRes.ok) return { kind: 'invalid' };
 
   const verifyData = (await verifyRes.json()) as LineVerifyResponse;
-  if (!verifyData.sub) return null;
+  if (!verifyData.sub) return { kind: 'invalid' };
 
   const { data: member } = await s
     .from('members')
@@ -62,13 +77,15 @@ async function resolveMemberIdFromLineIdToken(token: string, s: ReturnType<typeo
     .eq('line_user_id', verifyData.sub)
     .maybeSingle();
 
-  return member?.status === 'approved' ? (member.id as string) : null;
+  return member?.status === 'approved'
+    ? { kind: 'approved', memberId: member.id as string }
+    : { kind: 'unapproved' };
 }
 
 async function resolveExplicitMember(
   s: ReturnType<typeof createServerSupabaseClient>,
   context: ResolveContext,
-) {
+): Promise<MemberAuthResolution | undefined> {
   if (context.explicitLineUserId) {
     const { data: member } = await s
       .from('members')
@@ -76,7 +93,9 @@ async function resolveExplicitMember(
       .eq('line_user_id', context.explicitLineUserId)
       .maybeSingle();
 
-    return member?.status === 'approved' ? (member.id as string) : null;
+    return member?.status === 'approved'
+      ? { kind: 'approved', memberId: member.id as string }
+      : { kind: 'unapproved' };
   }
 
   if (context.explicitMemberId) {
@@ -86,16 +105,23 @@ async function resolveExplicitMember(
       .eq('id', context.explicitMemberId)
       .maybeSingle();
 
-    return member?.status === 'approved' ? (member.id as string) : null;
+    return member?.status === 'approved'
+      ? { kind: 'approved', memberId: member.id as string }
+      : { kind: 'unapproved' };
   }
 
-  return null;
+  return undefined;
+}
+
+function jsonFromDecision(decision: Extract<MemberAuthDecision, { ok: false }>) {
+  return NextResponse.json({ error: decision.error }, { status: decision.status });
 }
 
 export async function resolveApprovedMember(
   request: Request,
   s: ReturnType<typeof createServerSupabaseClient>,
   explicitMemberId?: string,
+  options: ResolveApprovedMemberOptions = {},
 ): Promise<{ ok: true; memberId: string } | { ok: false; response: ReturnType<typeof NextResponse.json> }> {
   const url = new URL(request.url);
   const context: ResolveContext = {
@@ -104,41 +130,26 @@ export async function resolveApprovedMember(
   };
 
   const token = getBearerToken(request);
-  if (token) {
-    try {
-      const tokenMemberId = await resolveMemberIdFromBearer(token, s);
-      if (tokenMemberId) {
-        // Bearer token is valid — it's the source of truth; member_id param is hint only.
-        return { ok: true, memberId: tokenMemberId };
-      }
-      // Token present but could not resolve member — fall through to explicit member_id
-    } catch {
-      // Token invalid/expired — fall through to explicit member_id
-    }
-  }
+  const bearer = token ? await resolveMemberIdFromBearer(token, s) : undefined;
 
-  const lineIdToken = getLineIdToken(request);
-  if (lineIdToken) {
-    try {
-      const lineTokenMemberId = await resolveMemberIdFromLineIdToken(lineIdToken, s);
-      if (lineTokenMemberId) {
-        return { ok: true, memberId: lineTokenMemberId };
-      }
-    } catch {
-      // LINE token invalid/expired — fall through to explicit member_id.
-    }
-  }
+  const lineIdTokenValue = getLineIdToken(request);
+  const lineIdToken = !bearer && lineIdTokenValue
+    ? await resolveMemberIdFromLineIdToken(lineIdTokenValue, s)
+    : undefined;
 
-  const explicitResolvedMemberId = await resolveExplicitMember(s, context);
-  if (explicitResolvedMemberId) {
-    return { ok: true, memberId: explicitResolvedMemberId };
-  }
+  const allowExplicitIdentity = options.allowExplicitIdentity ?? true;
+  const explicit = !bearer && !lineIdToken && allowExplicitIdentity
+    ? await resolveExplicitMember(s, context)
+    : undefined;
 
-  if (context.explicitMemberId || context.explicitLineUserId) {
-    return { ok: false, response: NextResponse.json(
-      { error: 'สมาชิกไม่ถูกต้องหรือยังไม่ได้รับอนุมัติ' }, { status: 403 }
-    )};
-  }
+  const decision = decideApprovedMemberAuth({
+    bearer,
+    lineIdToken,
+    explicit,
+    hasExplicitIdentity: Boolean(context.explicitMemberId || context.explicitLineUserId),
+    allowExplicitIdentity,
+  });
 
-  return { ok: false, response: NextResponse.json({ error: 'กรุณาเข้าสู่ระบบก่อน' }, { status: 401 }) };
+  if (decision.ok) return { ok: true, memberId: decision.memberId };
+  return { ok: false, response: jsonFromDecision(decision) };
 }
