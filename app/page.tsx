@@ -169,8 +169,8 @@ function HeroCard({
 // ─────────────────────────────────────────────────────────────────────
 const SECONDARY_ROLE_CARDS: Partial<Record<AppRole, { icon: string; label: string; desc: string; href: string }>> = {
   staff:      { icon: '👷', label: 'ทีมภาคสนาม',    desc: 'จองให้สมาชิก · งานตรวจ',         href: '/field#reservation' },
-  inspector:  { icon: '🔍', label: 'งานตรวจสอบ',    desc: 'รายการงานตรวจ · บันทึกผล',        href: '/inspection/tasks' },
-  leader:     { icon: '👥', label: 'หัวหน้าทีม',     desc: 'ลูกทีม · สรุปพื้นที่ · ติดตาม',   href: '/leader/team' },
+  inspector:  { icon: '🔍', label: 'งานตรวจสอบ',  desc: 'บันทึกการตรวจแปลง · สมาชิกที่รอตรวจ', href: '/inspection/tasks' },
+  leader:     { icon: '👨‍👩‍👧', label: 'หัวหน้าทีม',   desc: 'ดูลูกทีม · สรุปพื้นที่ · ติดตาม',      href: '/leader/team' },
   truck_owner:{ icon: '🚛', label: 'ทีมบริการรถ',   desc: 'งานรถ · ตารางว่าง',               href: '/truck' },
   admin:      { icon: '⚙️', label: 'แผงแอดมิน',     desc: 'จัดการระบบ',                      href: '/admin/sales' },
 };
@@ -383,8 +383,8 @@ function useLeaderGroup(memberId: string, isLeader: boolean) {
 
 function StaffHome({ name, memberId, primaryRole, allRoles }: { name: string; memberId: string; primaryRole: AppRole; allRoles: AppRole[] }) {
   const [plots, setPlots] = useState(0);
-  const isLeader   = primaryRole === 'leader' || allRoles.includes('leader');
-  const isInspector = primaryRole === 'inspector' || allRoles.includes('inspector');
+  const isLeader    = allRoles.includes('leader');
+  const isInspector = allRoles.includes('inspector');
   const { summary: leaderSummary, groupName } = useLeaderGroup(memberId, isLeader);
 
   useEffect(() => {
@@ -395,11 +395,16 @@ function StaffHome({ name, memberId, primaryRole, allRoles }: { name: string; me
   }, [memberId]);
 
   const STAFF_MENU = [
-    { href: '/harvest/intake',    icon: '⚖️', label: 'บันทึกรับซื้อ',  desc: 'กรอกน้ำหนัก/ความชื้น', accent: true },
-    { href: '/field#reservation', icon: '🌽', label: 'จองเมล็ด',       desc: 'จองให้สมาชิก' },
-    { href: '/inspection/tasks',  icon: '🔍', label: 'งานตรวจ',        desc: isInspector ? 'งานของคุณ' : 'รายการงาน' },
-    { href: '/field',             icon: '🗺️', label: 'แผนที่',         desc: 'สมาชิกในพื้นที่' },
-    { href: '/admin/sales',       icon: '📋', label: 'คิวจอง',         desc: 'อนุมัติการจอง' },
+    { href: '/field/assist-registration', icon: '👤', label: 'สมัครสมาชิก',    desc: 'ลงทะเบียนแทนสมาชิก',     accent: true },
+    { href: '/field#reservation',         icon: '🌽', label: 'จองเมล็ด',       desc: 'จองให้สมาชิก' },
+    { href: '/field?tab=visit',           icon: '🤝', label: 'เยี่ยมสมาชิก',   desc: 'บันทึกการเยี่ยมแปลง' },
+    { href: '/field',                     icon: '🗺️', label: 'แผนที่สมาชิก',  desc: 'สมาชิกในพื้นที่' },
+    { href: '/field#reservation',         icon: '📋', label: 'จองนัดขาย',      desc: 'จองขายให้สมาชิก' },
+    { href: '/harvest/intake',            icon: '⚖️', label: 'บันทึกรับซื้อ',  desc: 'กรอกน้ำหนัก/ความชื้น' },
+    { href: '/admin/sales',               icon: '🛒', label: 'คิวจอง',         desc: 'อนุมัติการจอง' },
+    { href: '/member/plots',              icon: '🌱', label: 'แปลงสมาชิก',    desc: 'ดูข้อมูลแปลง' },
+    { href: '/harvest/intake?tab=calc',   icon: '💧', label: 'คำนวณความชื้น', desc: 'ตารางหักน้ำหนัก' },
+    { href: '/service/vehicles',          icon: '🚜', label: 'คุณภาพรถ',      desc: 'ติดตามรถบริการ' },
   ];
 
   return (
@@ -450,8 +455,9 @@ function StaffHome({ name, memberId, primaryRole, allRoles }: { name: string; me
 // ─────────────────────────────────────────────────────────────────────
 function TruckHome({ name, memberId, allRoles }: { name: string; memberId: string; allRoles: AppRole[] }) {
   const TRUCK_MENU = [
-    { href: '/truck',   icon: '🚜', label: 'งานรถ',   desc: 'งานที่ได้รับ' },
-    { href: '/no-burn', icon: '🔥', label: 'งดเผา',   desc: 'คำของดเผา'    },
+    { href: '/truck',                    icon: '🚜', label: 'งานรถ',        desc: 'งานที่ได้รับ',       accent: true },
+    { href: '/service/vehicles',         icon: '📊', label: 'ประวัติรถ',   desc: 'คุณภาพและ rating' },
+    { href: '/notifications',            icon: '🔔', label: 'แจ้งเตือน',   desc: 'งานใหม่และสถานะ' },
   ];
   return (
     <MobileAppShell title="" subtitle="">
@@ -605,6 +611,6 @@ export default function HomePage() {
   const primaryRole: AppRole = (effectiveRole ?? allRoles[0] ?? 'farmer') as AppRole;
 
   if (primaryRole === 'truck_owner') return <TruckHome name={name} memberId={memberId} allRoles={allRoles} />;
-  if (['staff','inspector','leader'].includes(primaryRole)) return <StaffHome name={name} memberId={memberId} primaryRole={primaryRole} allRoles={allRoles} />;
+  if (primaryRole === 'staff') return <StaffHome name={name} memberId={memberId} primaryRole={primaryRole} allRoles={allRoles} />;
   return <FarmerHome name={name} memberId={memberId} allRoles={allRoles} />;
 }
