@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-import { useAuth, useEffectiveRole, useRoles } from '@/providers/auth-provider';
+import { useAuth, useEffectiveRole } from '@/providers/auth-provider';
 import { getNavConfig, type NavTab } from '@/shared/auth/role-nav-config';
 import { iconPaths } from '@/shared/design/icon-tokens';
 
@@ -63,9 +63,9 @@ function NavIcon({ iconKey }: { iconKey: string }) {
 
 export function MobileBottomNav() {
   const pathname = usePathname();
-  const { status } = useAuth();
+  const { status, member } = useAuth();
   const effectiveRole = useEffectiveRole();
-  const allRoles = useRoles();
+  const allRoles = member?.roles ?? [];
   const { tabs } = getNavConfig(status, effectiveRole, pathname, allRoles);
 
   return (
