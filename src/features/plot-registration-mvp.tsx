@@ -75,6 +75,9 @@ export function PlotRegistrationMVP() {
   const [areaRai,       setAreaRai]       = useState('');
   const [plotNote,      setPlotNote]      = useState('');
   const [province,      setProvince]      = useState('');
+  const [district,      setDistrict]      = useState('');
+  const [subdistrict,   setSubdistrict]   = useState('');
+  const [geocoding,     setGeocoding]     = useState(false);
   const [geo,           setGeo]           = useState<GeoLocation | null>(null);
   const [gpsExplicit,   setGpsExplicit]   = useState(false); // true only after captureGPS
   const [photoFiles,    setPhotoFiles]    = useState<File[]>([]);
@@ -102,9 +105,21 @@ export function PlotRegistrationMVP() {
   );
 
   // ── Photo selection ─────────────────────────────────────────────────────────
-  function onSelectPhotos(event: ChangeEvent<HTMLInputElement>) {
+  async function onSelectPhotos(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? []);
     setPhotoFiles((prev) => [...prev, ...files].slice(0, 4));
+    // ดึง GPS จาก EXIF ถ้ายังไม่มี GPS
+    if (!geo) {
+      for (const file of files) {
+        const exifGps = await extractExifGps(file);
+        if (exifGps) {
+          setGeo({ latitude: exifGps.lat, longitude: exifGps.lng, accuracy: 999, capturedAt: new Date().toISOString() });
+          setGpsExplicit(true);
+          void reverseGeocode(exifGps.lat, exifGps.lng);
+          break;
+        }
+      }
+    }
     event.target.value = '';
   }
 
@@ -123,14 +138,12 @@ export function PlotRegistrationMVP() {
     setCapturingGeo(true);
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        setGeo({
-          latitude:   position.coords.latitude,
-          longitude:  position.coords.longitude,
-          accuracy:   position.coords.accuracy,
-          capturedAt: new Date(position.timestamp).toISOString(),
-        });
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        setGeo({ latitude: lat, longitude: lng, accuracy: position.coords.accuracy, capturedAt: new Date(position.timestamp).toISOString() });
         setGpsExplicit(true);
         setCapturingGeo(false);
+        void reverseGeocode(lat, lng); // auto-fill district/province
       },
       (geoError) => {
         setError(geoError.message || 'ไม่สามารถจับพิกัด GPS ได้ กรุณาลองใหม่');
@@ -138,6 +151,82 @@ export function PlotRegistrationMVP() {
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
     );
+  }
+
+  // ── Reverse geocode from lat/lng ─────────────────────────────────────────────
+  async function reverseGeocode(lat: number, lng: number) {
+    setGeocoding(true);
+    try {
+      const res = await fetch(`/api/geocode/reverse?lat=${lat}&lng=${lng}`);
+      const d   = (await res.json()) as { subdistrict: string; district: string; province: string };
+      if (d.province)    setProvince(d.province);
+      if (d.district)    setDistrict(d.district);
+      if (d.subdistrict) setSubdistrict(d.subdistrict);
+    } catch { /* fail silently */ }
+    setGeocoding(false);
+  }
+
+  // ── Extract GPS from photo EXIF ───────────────────────────────────────────
+  function extractExifGps(file: File): Promise<{ lat: number; lng: number } | null> {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const buf = e.target?.result as ArrayBuffer;
+        if (!buf) { resolve(null); return; }
+        const view    = new DataView(buf);
+        const isJpeg  = view.getUint16(0) === 0xFFD8;
+        if (!isJpeg) { resolve(null); return; }
+        // scan for EXIF marker 0xFFE1
+        let offset = 2;
+        while (offset < buf.byteLength - 4) {
+          const marker = view.getUint16(offset);
+          const size   = view.getUint16(offset + 2);
+          if (marker === 0xFFE1) {
+            const exifBuf = buf.slice(offset + 4, offset + 4 + size - 2);
+            const exifView = new DataView(exifBuf);
+            const isLE = exifView.getUint16(6) === 0x4949;
+            // basic EXIF GPS extraction
+            try {
+              const ifdOffset   = exifView.getUint32(10, isLE) + 6;
+              const numEntries  = exifView.getUint16(ifdOffset, isLE);
+              let gpsOffset: number | null = null;
+              for (let i = 0; i < numEntries; i++) {
+                const tag = exifView.getUint16(ifdOffset + 2 + i * 12, isLE);
+                if (tag === 0x8825) {
+                  gpsOffset = exifView.getUint32(ifdOffset + 2 + i * 12 + 8, isLE) + 6;
+                }
+              }
+              if (gpsOffset === null) { resolve(null); return; }
+              const gpsEntries = exifView.getUint16(gpsOffset, isLE);
+              let latRef = 'N'; let lngRef = 'E';
+              let latVal: number | null = null; let lngVal: number | null = null;
+              for (let i = 0; i < gpsEntries; i++) {
+                const base = gpsOffset + 2 + i * 12;
+                const tag  = exifView.getUint16(base, isLE);
+                const vOff = exifView.getUint32(base + 8, isLE) + 6;
+                if (tag === 1) latRef = String.fromCharCode(exifView.getUint8(vOff));
+                if (tag === 3) lngRef = String.fromCharCode(exifView.getUint8(vOff));
+                if (tag === 2 || tag === 4) {
+                  const deg = exifView.getUint32(vOff, isLE)     / exifView.getUint32(vOff + 4, isLE);
+                  const min = exifView.getUint32(vOff + 8, isLE) / exifView.getUint32(vOff + 12, isLE);
+                  const sec = exifView.getUint32(vOff + 16, isLE)/ exifView.getUint32(vOff + 20, isLE);
+                  const val = deg + min/60 + sec/3600;
+                  if (tag === 2) latVal = val;
+                  else           lngVal = val;
+                }
+              }
+              if (latVal !== null && lngVal !== null) {
+                resolve({ lat: latRef === 'S' ? -latVal : latVal, lng: lngRef === 'W' ? -lngVal : lngVal });
+              } else { resolve(null); }
+            } catch { resolve(null); }
+            return;
+          }
+          offset += 2 + size;
+        }
+        resolve(null);
+      };
+      reader.readAsArrayBuffer(file.slice(0, 65536)); // read first 64KB only
+    });
   }
 
   // ── Load my plots ───────────────────────────────────────────────────────────
@@ -189,6 +278,8 @@ export function PlotRegistrationMVP() {
     setAreaRai(String(plot.area_rai));
     setPlotNote(plot.description ?? '');
     setProvince(plot.province ?? '');
+    setDistrict((plot as {district?: string|null}).district ?? '');
+    setSubdistrict((plot as {subdistrict?: string|null}).subdistrict ?? '');
     // Restore GPS from saved values — shown as read-only until explicitly recaptured
     setGeo(
       plot.lat !== null && plot.lng !== null
@@ -266,7 +357,9 @@ export function PlotRegistrationMVP() {
         form.append('lng',      String(geo.longitude));
         form.append('accuracy', String(geo.accuracy));
         if (plotNote.trim())  form.append('description', plotNote.trim());
-        if (province.trim())  form.append('province',    province.trim());
+        if (province.trim())    form.append('province',    province.trim());
+        if (district.trim())    form.append('district',    district.trim());
+        if (subdistrict.trim()) form.append('subdistrict', subdistrict.trim());
         photoFiles.forEach((file, i) => form.append(`photo_${i}`, file));
 
         const res = await fetch('/api/member/plot-registration', {

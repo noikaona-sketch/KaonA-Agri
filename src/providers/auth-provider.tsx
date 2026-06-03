@@ -6,12 +6,14 @@ import { usePathname } from 'next/navigation';
 
 import { ensureLiffIdToken, getLiffBridgeDiagnostics, getLiffBridgeSnapshot } from '@/lib/liff/init-liff';
 import { getSupabaseClientDiagnostics, tryCreateSupabaseBrowserClient } from '@/lib/supabase/client';
+import { applySupabaseSession } from '@/lib/supabase/set-supabase-session';
 import type {
   AppRole,
   AuthBootstrapResult,
   AuthStatus,
   LiffBridgeDiagnostics,
   MemberStatus,
+  SupabaseSession,
 } from '@/shared/auth/auth-types';
 import { isAdminWebPath } from '@/shared/auth/admin-web-path';
 
@@ -80,6 +82,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [bridgeDiagnostics, setBridgeDiagnostics] = useState<LiffBridgeDiagnostics>(INITIAL_BRIDGE_DIAGNOSTICS);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (isAdminWebPath(pathname)) {
       setStatus('unauthenticated');
@@ -90,6 +93,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, [pathname]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (isAdminWebPath(pathname)) return; // handled above
 
@@ -109,10 +113,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
         let cacheHit = false;
         if (cached) {
           try {
-            const { member, status: cachedStatus, ts } = JSON.parse(cached) as {
-              member: AuthBootstrapResult; status: string; ts: number;
+            const { member, status: cachedStatus, session, ts } = JSON.parse(cached) as {
+              member: AuthBootstrapResult; status: string; session?: SupabaseSession | null; ts: number;
             };
             if (Date.now() - ts < CACHE_TTL && member && cachedStatus === 'approved') {
+              await applySupabaseSession(session ?? undefined);
               setMember(member);
               setStatus('approved');
               cacheHit = true;
@@ -167,7 +172,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const payload = (await response.json()) as {
           error?: string;
           member?: AuthBootstrapResult;
-          session?: { access_token: string; refresh_token: string } | null;
+          session?: SupabaseSession | null;
         };
 
         if (!response.ok || !payload.member) {
@@ -213,7 +218,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         if (bootstrapResult.is_approved) {
           try {
             sessionStorage.setItem('kaona_auth_cache', JSON.stringify({
-              member: bootstrapResult, status: 'approved', ts: Date.now(),
+              member: bootstrapResult, status: 'approved', session: payload.session ?? null, ts: Date.now(),
             }));
           } catch { /* sessionStorage full */ }
         }
