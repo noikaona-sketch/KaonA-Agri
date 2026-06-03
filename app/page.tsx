@@ -15,7 +15,7 @@ import type { AppRole }                            from '@/shared/auth/auth-type
 // ─────────────────────────────────────────────────────────────────────
 const ROLE_TH: Record<AppRole, string> = {
   farmer:     '🌽 เกษตรกร',
-  staff:      '👷 เจ้าหน้าที่',
+  staff:      '👷 พนักงาน',
   inspector:  '🔍 ผู้ตรวจสอบ',
   leader:     '👥 หัวหน้ากลุ่ม',
   truck_owner:'🚛 ทีมบริการ',

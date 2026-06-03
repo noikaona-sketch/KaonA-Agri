@@ -17,7 +17,7 @@ type Stats = {
 
 const ROLE_CFG: { key:string; label:string; icon:string; color:string; bg:string }[] = [
   { key:'farmer',     label:'เกษตรกร',  icon:'🌾', color:'#065F46', bg:'#ECFDF5' },
-  { key:'staff',      label:'เจ้าหน้าที่', icon:'👷', color:'#1E40AF', bg:'#EFF6FF' },
+  { key:'staff',      label:'พนักงาน', icon:'👷', color:'#1E40AF', bg:'#EFF6FF' },
   { key:'inspector',  label:'ผู้ตรวจ',  icon:'🔍', color:'#5B21B6', bg:'#F5F3FF' },
   { key:'leader',     label:'หัวหน้ากลุ่ม', icon:'👥', color:'#92400E', bg:'#FFFBEB' },
   { key:'truck_owner',label:'รถร่วม',   icon:'🚛', color:'#7C3AED', bg:'#EDE9FE' },

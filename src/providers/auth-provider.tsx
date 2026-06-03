@@ -292,6 +292,10 @@ export function useCurrentRoles() {
   return useAuth().member?.roles ?? [];
 }
 
+export function useRoles() {
+  return useCurrentRoles();
+}
+
 export function useEffectiveRole(): AppRole | null {
   return useAuth().member?.effective_role ?? null;
 }

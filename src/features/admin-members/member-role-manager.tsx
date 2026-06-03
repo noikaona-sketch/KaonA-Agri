@@ -11,7 +11,7 @@ const ROLE_CONFIG: Record<AppRole, { icon: string; label: string; color: string;
   farmer:      { icon: '🌾', label: 'สมาชิกเกษตรกร',   color: '#e8f5e9', border: '#a5d6a7' },
   truck_owner: { icon: '🚛', label: 'ทีมบริการ',        color: '#fff3e0', border: '#ffcc80' },
   inspector:   { icon: '🔍', label: 'ผู้ตรวจสอบภาคสนาม', color: '#e3f2fd', border: '#90caf9' },
-  staff:       { icon: '👷', label: 'เจ้าหน้าที่',     color: '#f3e5f5', border: '#ce93d8' },
+  staff:       { icon: '👷', label: 'พนักงาน',         color: '#f3e5f5', border: '#ce93d8' },
   leader:      { icon: '👥', label: 'หัวหน้ากลุ่ม',    color: '#e0f2f1', border: '#80cbc4' },
   admin:       { icon: '⚙️', label: 'แอดมิน',          color: '#fce4ec', border: '#f48fb1' },
 };
@@ -126,7 +126,7 @@ export function MemberRoleManager({ memberId, memberName, currentRoles, onRolesU
       </div>
 
       {/* ปุ่มลัด */}
-      {(addableRoles.includes('inspector') || addableRoles.includes('leader')) && (
+      {(addableRoles.includes('inspector') || addableRoles.includes('leader') || addableRoles.includes('staff')) && (
         <div style={{ marginBottom: 14 }}>
           <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 600, color: '#4a6741' }}>เพิ่มสิทธิ์พิเศษ</p>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -157,7 +157,7 @@ export function MemberRoleManager({ memberId, memberName, currentRoles, onRolesU
                 disabled={acting !== null}
                 style={{ borderColor: '#ce93d8', color: '#6a1b9a', background: '#f3e5f5' }}
               >
-                {acting === 'add-staff' ? '…' : '👷 เพิ่มเป็นเจ้าหน้าที่'}
+                {acting === 'add-staff' ? '…' : '👷 เพิ่มเป็นพนักงาน'}
               </button>
             )}
           </div>

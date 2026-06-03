@@ -21,7 +21,7 @@ type Props = {
 /* ── Helpers ── */
 const ROLE_CFG: Record<string, { icon:string; label:string; color:string; bg:string }> = {
   farmer:     { icon:'🌾', label:'เกษตรกร',    color:'#065F46', bg:'#ECFDF5' },
-  staff:      { icon:'👷', label:'เจ้าหน้าที่', color:'#1E40AF', bg:'#EFF6FF' },
+  staff:      { icon:'👷', label:'พนักงาน', color:'#1E40AF', bg:'#EFF6FF' },
   inspector:  { icon:'🔍', label:'ผู้ตรวจ',    color:'#5B21B6', bg:'#F5F3FF' },
   leader:     { icon:'👑', label:'หัวหน้ากลุ่ม',color:'#92400E', bg:'#FFFBEB' },
   truck_owner:{ icon:'🚛', label:'รถร่วม',     color:'#7C3AED', bg:'#EDE9FE' },

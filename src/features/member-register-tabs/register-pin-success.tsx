@@ -2,7 +2,7 @@ import { UIButton } from '@/shared/components/ui-button';
 
 const ROLE_LABELS: Record<string, { icon: string; label: string; desc: string }> = {
   inspector: { icon: '🔍', label: 'ผู้ตรวจสอบ', desc: 'คุณสามารถรับงานตรวจแปลงและบันทึกผลได้แล้ว' },
-  staff:     { icon: '👷', label: 'เจ้าหน้าที่ภาคสนาม', desc: 'คุณสามารถช่วยลงทะเบียนและจัดการสมาชิกได้แล้ว' },
+  staff:     { icon: '👷', label: 'พนักงาน', desc: 'คุณสามารถช่วยลงทะเบียนและจัดการสมาชิกได้แล้ว' },
   leader:    { icon: '👥', label: 'หัวหน้ากลุ่ม', desc: 'คุณสามารถดูแลและติดตามทีมของคุณได้แล้ว' },
   truck_owner: { icon: '🚛', label: 'ทีมบริการ', desc: 'คุณสามารถรับงานขนส่งและบริการได้แล้ว' },
 };
