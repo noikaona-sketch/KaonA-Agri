@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams }      from 'next/navigation';
 import { ProtectedRoute }       from '@/shared/components/protected-route';
 import { MobileAppShell }       from '@/shared/components/mobile-app-shell';
@@ -27,7 +27,7 @@ const S = {
   input: { padding: '10px 14px', border: '1.5px solid #e5e7eb', borderRadius: 10, fontSize: 14, width: '100%', background: '#fff' } as React.CSSProperties,
 };
 
-export default function StaffPlantingPage() {
+function StaffPlantingInner() {
   const searchParams  = useSearchParams();
   const initMemberId  = searchParams.get('member_id') ?? '';
 
@@ -180,5 +180,13 @@ export default function StaffPlantingPage() {
         </div>
       </MobileAppShell>
     </ProtectedRoute>
+  );
+}
+
+export default function StaffPlantingPage() {
+  return (
+    <Suspense fallback={<div style={{ padding: 24, textAlign: 'center', color: '#9ca3af' }}>กำลังโหลด…</div>}>
+      <StaffPlantingInner />
+    </Suspense>
   );
 }
