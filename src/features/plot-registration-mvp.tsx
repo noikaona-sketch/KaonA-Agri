@@ -146,10 +146,10 @@ export function PlotRegistrationMVP() {
         void reverseGeocode(lat, lng); // auto-fill district/province
       },
       (geoError) => {
-        setError(geoError.message || 'ไม่สามารถจับพิกัด GPS ได้ กรุณาลองใหม่');
+        setError('จับพิกัด GPS ไม่ได้ — กรุณาอนุญาต Location ใน LINE: ตั้งค่า → แอปพลิเคชัน → KaonA → ตำแหน่ง หรือบันทึกแปลงโดยไม่มี GPS ได้เลย');
         setCapturingGeo(false);
       },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 },
     );
   }
 
