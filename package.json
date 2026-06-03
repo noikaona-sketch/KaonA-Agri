@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "export:branding": "node scripts/export-branding-assets.mjs"
+    "export:branding": "node scripts/export-branding-assets.mjs",
+    "test:member-auth": "node --no-warnings --test tests/member-auth-decision.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.8",
