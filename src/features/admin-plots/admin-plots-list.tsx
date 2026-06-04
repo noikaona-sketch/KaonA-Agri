@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ErrorState }   from '@/shared/components/error-state';
 import { LoadingState } from '@/shared/components/loading-state';
+import { PlotMap }      from '@/shared/components/plot-map';
 
 type PlotRow = {
-  id: string; name: string; area_rai: number;
+  id: string; member_id: string | null; name: string; area_rai: number;
   lat: number | null; lng: number | null; accuracy: number | null;
   status: string; created_at: string;
   province: string | null; district: string | null;
@@ -13,10 +14,10 @@ type PlotRow = {
   land_doc_type: string | null; land_doc_number: string | null;
   description: string | null;
   boundary_geojson: object | null; area_rai_calculated: number | null;
-  member: { id: string; full_name: string; phone: string | null } | null;
+  member: { id: string; full_name: string; phone: string | null; line_display_name?: string | null } | null;
 };
 
-type MemberOption = { id: string; full_name: string; phone: string | null };
+type MemberOption = { id: string; member_id?: string; full_name: string; phone: string | null; line_display_name?: string | null };
 
 const LAND_DOC_TYPES = [
   { value: 'title_deed', label: 'โฉนด (นส.4)' },
@@ -29,10 +30,19 @@ const LAND_DOC_TYPES = [
 const LAND_DOC_TH: Record<string, string> = Object.fromEntries(LAND_DOC_TYPES.map(t => [t.value, t.label]));
 
 const STATUS_OPTIONS = [
-  { value: 'active',         label: 'ใช้งาน' },
-  { value: 'pending_review', label: 'รอตรวจสอบ' },
-  { value: 'inactive',       label: 'ไม่ใช้งาน' },
+  { value: 'pending_review', label: 'รออนุมัติ' },
+  { value: 'verified',       label: 'ตรวจสอบแล้ว' },
+  { value: 'approved',       label: 'อนุมัติแล้ว' },
+  { value: 'rejected',       label: 'ไม่อนุมัติ' },
 ];
+const STATUS_META: Record<string, { label: string; bg: string; color: string }> = {
+  pending_review: { label: 'รออนุมัติ', bg: '#FEF3C7', color: '#92400E' },
+  verified:       { label: 'ตรวจสอบแล้ว', bg: '#DBEAFE', color: '#1E40AF' },
+  approved:       { label: 'อนุมัติแล้ว', bg: '#D1FAE5', color: '#065F46' },
+  rejected:       { label: 'ไม่อนุมัติ', bg: '#FEE2E2', color: '#991B1B' },
+  active:         { label: 'อนุมัติแล้ว', bg: '#D1FAE5', color: '#065F46' },
+  inactive:       { label: 'ไม่ใช้งาน', bg: '#F3F4F6', color: '#6B7280' },
+};
 
 const INPUT = {
   padding: '9px 12px', border: '1.5px solid #E5E7EB', borderRadius: 8,
@@ -46,7 +56,7 @@ function emptyForm() {
     member_id: '', name: '', area_rai: '',
     province: 'อุบลราชธานี', district: '', subdistrict: '', village: '',
     land_doc_type: '', land_doc_number: '', description: '',
-    status: 'active', lat: '', lng: '',
+    status: 'pending_review', lat: '', lng: '',
   };
 }
 
@@ -54,7 +64,7 @@ type FormState = ReturnType<typeof emptyForm>;
 
 function plotToForm(p: PlotRow): FormState {
   return {
-    member_id:       p.member?.id ?? '',
+    member_id:       p.member_id ?? p.member?.id ?? '',
     name:            p.name,
     area_rai:        String(p.area_rai),
     province:        p.province        ?? '',
@@ -72,26 +82,36 @@ function plotToForm(p: PlotRow): FormState {
 
 // ── Drawer component ──────────────────────────────────────────────────────────
 function PlotDrawer({
-  title, form, setForm, members, saving, error, onSave, onClose,
+  title, form, setForm, members, saving, error, editTarget, onSave, onClose, onSaveBoundary,
 }: {
   title: string;
   form: FormState;
   setForm: (f: FormState) => void;
   members: MemberOption[];
   saving: boolean;
+  editTarget: PlotRow | null;
   error: string | null;
   onSave: () => void;
   onClose: () => void;
+  onSaveBoundary: (plotId: string, geojson: object, areaRai: number) => Promise<void>;
 }) {
+  const [memberQuery, setMemberQuery] = useState('');
+  const [drawing, setDrawing] = useState(false);
   const set = (k: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setForm({ ...form, [k]: e.target.value });
+  const selectedMember = members.find(m => (m.id || m.member_id) === form.member_id);
+  const filteredMembers = members.filter(m => {
+    const q = memberQuery.trim().toLowerCase();
+    if (!q) return true;
+    return [m.full_name, m.phone, m.line_display_name].filter(Boolean).join(' ').toLowerCase().includes(q);
+  }).slice(0, 80);
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex' }}>
       {/* Backdrop */}
       <div style={{ flex: 1, background: 'rgba(0,0,0,.4)' }} onClick={onClose} />
       {/* Panel */}
-      <div style={{ width: 480, background: '#fff', overflowY: 'auto', boxShadow: '-4px 0 24px rgba(0,0,0,.15)', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ width: 560, maxWidth: '100vw', background: '#fff', overflowY: 'auto', boxShadow: '-4px 0 24px rgba(0,0,0,.15)', display: 'flex', flexDirection: 'column' }}>
         {/* Header */}
         <div style={{ padding: '18px 24px', borderBottom: '1px solid #E5E7EB', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#F9FAFB' }}>
           <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{title}</h2>
@@ -103,14 +123,23 @@ function PlotDrawer({
           {error && <div style={{ padding: '10px 14px', borderRadius: 8, background: '#FEE2E2', color: '#991B1B', fontSize: 13 }}>{error}</div>}
 
           {/* สมาชิก */}
-          <label style={LABEL}>สมาชิก *
+          <div style={{ display: 'grid', gap: 8 }}>
+            <label style={LABEL}>เจ้าของ / สมาชิก (ไม่บังคับ)
+              <input style={INPUT} value={memberQuery} onChange={e => setMemberQuery(e.target.value)} placeholder="ค้นหาชื่อ เบอร์โทร หรือ LINE…" />
+            </label>
             <select style={INPUT} value={form.member_id} onChange={set('member_id')}>
-              <option value="">— เลือกสมาชิก —</option>
-              {members.map(m => (
-                <option key={m.id} value={m.id}>{m.full_name}{m.phone ? ` · ${m.phone}` : ''}</option>
-              ))}
+              <option value="">— ยังไม่ระบุสมาชิก —</option>
+              {filteredMembers.map(m => {
+                const id = m.id || m.member_id!;
+                return <option key={id} value={id}>{m.full_name}{m.phone ? ` · ${m.phone}` : ''}{m.line_display_name ? ` · LINE: ${m.line_display_name}` : ''}</option>;
+              })}
             </select>
-          </label>
+            <div style={{ padding: '9px 12px', borderRadius: 8, background: form.member_id ? '#F0FDF4' : '#FFFBEB', border: `1px solid ${form.member_id ? '#BBF7D0' : '#FDE68A'}`, fontSize: 12, color: form.member_id ? '#166534' : '#92400E' }}>
+              {selectedMember ? (
+                <>👤 {selectedMember.full_name}{selectedMember.phone ? ` · ${selectedMember.phone}` : ''}{selectedMember.line_display_name ? ` · LINE: ${selectedMember.line_display_name}` : ''}</>
+              ) : 'ยังไม่ระบุสมาชิก'}
+            </div>
+          </div>
 
           {/* ชื่อแปลง + พื้นที่ */}
           <label style={LABEL}>ชื่อแปลง *
@@ -120,7 +149,7 @@ function PlotDrawer({
             <label style={LABEL}>พื้นที่ (ไร่) *
               <input style={INPUT} type="number" min="0" step="0.25" value={form.area_rai} onChange={set('area_rai')} placeholder="0.00" />
             </label>
-            <label style={LABEL}>สถานะ
+            <label style={LABEL}>สถานะอนุมัติ
               <select style={INPUT} value={form.status} onChange={set('status')}>
                 {STATUS_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
               </select>
@@ -169,6 +198,38 @@ function PlotDrawer({
             </label>
           </div>
 
+          <div style={{ padding: 12, borderRadius: 10, border: '1px solid #E5E7EB', background: '#F9FAFB' }}>
+            <p style={{ margin: '0 0 8px', fontWeight: 800, fontSize: 12, color: '#374151' }}>🔎 การอนุมัติแปลง</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 6 }}>
+              {STATUS_OPTIONS.map(t => (
+                <button key={t.value} type="button" onClick={() => setForm({ ...form, status: t.value })}
+                  style={{ padding: '7px 6px', borderRadius: 8, border: `1.5px solid ${form.status === t.value ? (STATUS_META[t.value]?.color ?? '#2D6A4F') : '#E5E7EB'}`, background: form.status === t.value ? (STATUS_META[t.value]?.bg ?? '#F0FDF4') : '#fff', color: STATUS_META[t.value]?.color ?? '#374151', fontSize: 11, fontWeight: 800, cursor: 'pointer' }}>
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {editTarget && (
+            <div style={{ display: 'grid', gap: 8, border: '1px solid #E5E7EB', borderRadius: 10, padding: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center' }}>
+                <p style={{ margin: 0, fontWeight: 800, fontSize: 12, color: '#374151' }}>🗺️ วาดขอบเขต</p>
+                <button type="button" onClick={() => setDrawing(d => !d)}
+                  style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid #D1D5DB', background: drawing ? '#FFFBEB' : '#fff', color: drawing ? '#92400E' : '#374151', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                  {drawing ? 'ปิดโหมดวาด' : 'วาดขอบเขต'}
+                </button>
+              </div>
+              <PlotMap
+                plots={[{ ...editTarget, sub_district: editTarget.subdistrict, member: editTarget.member }]}
+                selectedId={editTarget.id}
+                onSelect={() => undefined}
+                editMode={drawing}
+                onSaveBoundary={onSaveBoundary}
+                height={300}
+              />
+            </div>
+          )}
+
           {/* หมายเหตุ */}
           <label style={LABEL}>หมายเหตุ
             <textarea style={{ ...INPUT, resize: 'vertical' }} rows={2}
@@ -201,6 +262,7 @@ export function AdminPlotsList() {
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState<string | null>(null);
   const [search,   setSearch]   = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
 
   // Drawer state
   const [drawerMode,  setDrawerMode]  = useState<'create' | 'edit' | null>(null);
@@ -220,7 +282,7 @@ export function AdminPlotsList() {
     const md = (await membersRes.json()) as { members?: MemberOption[]; error?: string };
     if (!plotsRes.ok) setError(pd.error ?? 'โหลดแปลงไม่สำเร็จ');
     else setPlots(pd.plots ?? []);
-    setMembers((md.members ?? []) as MemberOption[]);
+    setMembers(((md.members ?? []) as MemberOption[]).map(m => ({ ...m, id: m.id ?? m.member_id! })).filter(m => m.id));
     setLoading(false);
   }
 
@@ -239,13 +301,12 @@ export function AdminPlotsList() {
   function closeDrawer() { setDrawerMode(null); setEditTarget(null); }
 
   async function handleSave() {
-    if (!form.member_id) { setFormError('กรุณาเลือกสมาชิก'); return; }
     if (!form.name.trim()) { setFormError('กรุณาระบุชื่อแปลง'); return; }
     if (!form.area_rai || Number(form.area_rai) <= 0) { setFormError('กรุณาระบุพื้นที่ (ไร่)'); return; }
     setSaving(true); setFormError(null);
 
     const payload = {
-      member_id:       form.member_id,
+      member_id:       form.member_id || null,
       name:            form.name.trim(),
       area_rai:        Number(form.area_rai),
       lat:             form.lat  ? Number(form.lat)  : null,
@@ -285,19 +346,35 @@ export function AdminPlotsList() {
     setTimeout(() => setNotice(null), 3000);
   }
 
+  async function saveBoundaryFromDrawer(plotId: string, geojson: object, areaRai: number) {
+    const res = await fetch('/api/admin/plots', {
+      method: 'PATCH', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plot_id: plotId, boundary_geojson: geojson, area_rai_calculated: areaRai }),
+    });
+    const d = (await res.json()) as { ok?: boolean; error?: string };
+    if (!res.ok) throw new Error(d.error ?? 'บันทึกขอบเขตไม่สำเร็จ');
+    setNotice(`✅ บันทึกขอบเขตแล้ว (${areaRai} ไร่)`);
+    setEditTarget(p => p && p.id === plotId ? { ...p, boundary_geojson: geojson, area_rai_calculated: areaRai } : p);
+    setPlots(ps => ps.map(p => p.id === plotId ? { ...p, boundary_geojson: geojson, area_rai_calculated: areaRai } : p));
+  }
+
   if (loading) return <LoadingState label="กำลังโหลดแปลง…" />;
   if (error)   return <ErrorState title="โหลดไม่สำเร็จ" detail={error} />;
 
   const filtered = plots.filter(p => {
+    if (statusFilter && p.status !== statusFilter) return false;
     if (!search) return true;
     const q = search.toLowerCase();
     return p.name.toLowerCase().includes(q)
-      || (p.member?.full_name ?? '').toLowerCase().includes(q)
+      || (p.member?.full_name ?? 'ยังไม่ระบุสมาชิก').toLowerCase().includes(q)
+      || (STATUS_META[p.status]?.label ?? p.status).toLowerCase().includes(q)
       || (p.province ?? '').toLowerCase().includes(q)
       || (p.district ?? '').toLowerCase().includes(q);
   });
 
   const totalRai = filtered.reduce((s, p) => s + Number(p.area_rai), 0);
+  const pendingCount = plots.filter(p => p.status === 'pending_review').length;
 
   return (
     <div>
@@ -315,8 +392,13 @@ export function AdminPlotsList() {
             value={search} onChange={e => setSearch(e.target.value)}
             style={{ width: '100%', padding: '8px 12px 8px 32px', borderRadius: 8, border: '1.5px solid #E5E7EB', fontSize: 13, boxSizing: 'border-box' }} />
         </div>
+        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
+          style={{ padding: '8px 12px', borderRadius: 8, border: '1.5px solid #E5E7EB', fontSize: 13, background: '#fff' }}>
+          <option value="">ทุกสถานะ</option>
+          {STATUS_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+        </select>
         <span style={{ fontSize: 12, color: '#9CA3AF', whiteSpace: 'nowrap' }}>
-          {filtered.length} แปลง · {totalRai.toLocaleString('th-TH', { maximumFractionDigits: 1 })} ไร่รวม
+          {filtered.length} แปลง · {totalRai.toLocaleString('th-TH', { maximumFractionDigits: 1 })} ไร่รวม · รออนุมัติ {pendingCount}
         </span>
         <button onClick={openCreate}
           style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#2D6A4F', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
@@ -352,7 +434,7 @@ export function AdminPlotsList() {
                       <p style={{ margin: 0, fontWeight: 600, fontSize: 13 }}>{p.name}</p>
                       {p.village && <p style={{ margin: '1px 0 0', fontSize: 11, color: '#9CA3AF' }}>{p.village}</p>}
                     </td>
-                    <td style={{ padding: '11px 12px', fontSize: 12, color: '#374151' }}>{p.member?.full_name ?? '—'}</td>
+                    <td style={{ padding: '11px 12px', fontSize: 12, color: '#374151' }}>{p.member ? `${p.member.full_name}${p.member.phone ? ` · ${p.member.phone}` : ''}${p.member.line_display_name ? ` · LINE: ${p.member.line_display_name}` : ''}` : 'ยังไม่ระบุสมาชิก'}</td>
                     <td style={{ padding: '11px 12px', fontSize: 13, fontWeight: 700, color: '#2D6A4F', whiteSpace: 'nowrap' }}>
                       {Number(p.area_rai).toLocaleString('th-TH', { maximumFractionDigits: 1 })}
                     </td>
@@ -368,10 +450,10 @@ export function AdminPlotsList() {
                     <td style={{ padding: '11px 12px' }}>
                       <span style={{
                         fontSize: 11, padding: '2px 8px', borderRadius: 99, fontWeight: 600,
-                        background: p.status === 'active' ? '#D1FAE5' : p.status === 'pending_review' ? '#FEF3C7' : '#F3F4F6',
-                        color: p.status === 'active' ? '#065F46' : p.status === 'pending_review' ? '#92400E' : '#6B7280',
+                        background: STATUS_META[p.status]?.bg ?? '#F3F4F6',
+                        color: STATUS_META[p.status]?.color ?? '#6B7280',
                       }}>
-                        {p.status === 'active' ? 'ใช้งาน' : p.status === 'pending_review' ? 'รอตรวจ' : p.status}
+                        {STATUS_META[p.status]?.label ?? p.status}
                       </span>
                     </td>
                     <td style={{ padding: '11px 12px', fontSize: 11, color: '#9CA3AF', whiteSpace: 'nowrap' }}>
@@ -394,14 +476,16 @@ export function AdminPlotsList() {
       {/* Drawer */}
       {drawerMode && (
         <PlotDrawer
-          title={drawerMode === 'create' ? '➕ เพิ่มแปลงให้สมาชิก' : `✏️ แก้ไข: ${editTarget?.name}`}
+          title={drawerMode === 'create' ? '➕ เพิ่มแปลง (ระบุสมาชิกภายหลังได้)' : `✏️ แก้ไข: ${editTarget?.name}`}
           form={form}
           setForm={setForm}
           members={members}
           saving={saving}
           error={formError}
+          editTarget={editTarget}
           onSave={handleSave}
           onClose={closeDrawer}
+          onSaveBoundary={saveBoundaryFromDrawer}
         />
       )}
     </div>

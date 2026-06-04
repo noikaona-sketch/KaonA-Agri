@@ -268,11 +268,11 @@ export function AdminMemberList({ roleFilter, groupFilter }: { roleFilter?: stri
 
                       {/* Actions */}
                       <td style={{ padding:'12px 16px', textAlign:'right' }}>
-                        <Link href={`/admin/members/${m.member_id}`}
+                        <Link href={`/admin/members/${m.member_id}?edit=1`}
                           style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'5px 12px', borderRadius:7, border:'1px solid #E5E7EB', background:'#fff', color:'#374151', fontSize:12, fontWeight:600, textDecoration:'none', whiteSpace:'nowrap', transition:'all .1s' }}
                           onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor='#2D6A4F'; (e.currentTarget as HTMLElement).style.color='#2D6A4F'; }}
                           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor='#E5E7EB'; (e.currentTarget as HTMLElement).style.color='#374151'; }}>
-                          ดูรายละเอียด →
+                          แก้ไข / รายละเอียด →
                         </Link>
                       </td>
                     </tr>

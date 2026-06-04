@@ -110,6 +110,7 @@ export function AdminMemberDetail({ memberId }: { memberId: string }) {
       readinessReason: payload.readinessReason ?? [],
     });
     setLoading(false);
+    setEditingMember(typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('edit') === '1');
     setMemberForm({
       full_name: payload.member?.full_name ?? '',
       phone: payload.member?.phone ?? '',
@@ -189,8 +190,17 @@ export function AdminMemberDetail({ memberId }: { memberId: string }) {
       setError('เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก');
       return;
     }
-    const { citizen_id, ...rest } = memberForm;
-    const memberPayload = citizenDigits.length > 0 ? { ...rest, citizen_id: citizenDigits } : rest;
+    const memberPayload = {
+      full_name:   memberForm.full_name,
+      phone:       memberForm.phone,
+      address:     memberForm.address,
+      house_no:    memberForm.house_no,
+      moo:         memberForm.moo,
+      subdistrict: memberForm.subdistrict,
+      district:    memberForm.district,
+      province:    memberForm.province,
+      ...(citizenDigits.length > 0 ? { citizen_id: citizenDigits } : {}),
+    };
     setActing(true);
     const res = await fetch(`/api/admin/members/${memberId}`, {
       method: 'PATCH', credentials: 'include', headers: { 'Content-Type': 'application/json' },
@@ -372,8 +382,7 @@ export function AdminMemberDetail({ memberId }: { memberId: string }) {
             {editingMember && (
               <div style={{ padding:'12px 18px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, borderBottom:'1px solid #F3F4F6', background:'#FAFAFA' }}>
                 {Object.entries({
-                  full_name:'ชื่อ-นามสกุล', phone:'เบอร์โทร', citizen_id:'เลขบัตรประชาชน (13 หลัก)', address:'ที่อยู่ตามทะเบียน', house_no:'บ้านเลขที่', moo:'หมู่', subdistrict:'ตำบล', district:'อำเภอ', province:'จังหวัด',
-                  bank_name:'ธนาคาร', bank_account_number:'เลขบัญชี', bank_account_name:'ชื่อบัญชี',
+                  full_name:'ชื่อ-นามสกุล', phone:'เบอร์โทร', address:'ที่อยู่ตามทะเบียน', house_no:'บ้านเลขที่', moo:'หมู่', subdistrict:'ตำบล', district:'อำเภอ', province:'จังหวัด',
                 }).map(([key, label]) => (
                   <input key={key} value={memberForm[key as keyof typeof memberForm]} onChange={(e) => setMemberForm((p) => ({ ...p, [key]: key === 'citizen_id' ? e.target.value.replace(/\D/g, '').slice(0, 13) : e.target.value }))} placeholder={label} inputMode={key === 'citizen_id' ? 'numeric' : undefined} style={{ padding:'8px 10px', border:'1px solid #D1D5DB', borderRadius:8 }} />
                 ))}
