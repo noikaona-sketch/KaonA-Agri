@@ -17,7 +17,7 @@ const REGISTERED_PLOTS_STATUS_FILTER = 'non_deleted:any_status';
 export async function GET(request: Request) {
   try {
     const s = createServerSupabaseClient();
-    const caller = await resolveApprovedMember(request, s);
+    const caller = await resolveApprovedMember(request, s, undefined, { allowExplicitIdentity: false });
     if (!caller.ok) return caller.response;
 
     const { data, error } = await s

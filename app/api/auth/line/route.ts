@@ -37,7 +37,7 @@ import type { LineVerifyResponse, MemberRow, RoleRow } from './line-auth-helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
 type SessionResult =
-  | { ok: true;  authUserId: string; accessToken: string; refreshToken: string }
+  | { ok: true;  authUserId: string; accessToken: string; refreshToken: string; repairedFromAuthUserId?: string }
   | { ok: false; reason: string };
 
 async function resolveSession(
@@ -48,7 +48,7 @@ async function resolveSession(
   const syntheticEmail = `line-${memberId}@kaona.internal`;
 
   // ── Helper: exchange a hashed_token for a verified session ───────────────
-  async function issueSessionViaLink(expectedUserId: string): Promise<SessionResult> {
+  async function issueSessionViaLink(expectedUserId?: string): Promise<SessionResult> {
     const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
       type: 'magiclink',
       email: syntheticEmail,
@@ -67,73 +67,35 @@ async function resolveSession(
       return { ok: false, reason: `verifyOtp failed: ${verifyError?.message ?? 'no session'}` };
     }
 
-    // ── BLOCKER FIX 1 & 4: validate session user matches expected ──────────
-    if (verifyData.user.id !== expectedUserId) {
-      console.error(
-        '[LINE_AUTH] session user mismatch:',
-        `got=${verifyData.user.id} expected=${expectedUserId}`,
-        '— refusing to return session',
+    // The session user is the database auth.uid() the browser will use for RLS.
+    // If an older LINE member row points at a different auth user, return the
+    // actual session user so the caller can repair members.auth_user_id to match.
+    const repairedFromAuthUserId = expectedUserId && verifyData.user.id !== expectedUserId
+      ? expectedUserId
+      : undefined;
+
+    if (repairedFromAuthUserId) {
+      console.warn(
+        '[LINE_AUTH] repairing auth_user_id mismatch:',
+        `member=${memberId} old=${expectedUserId} session=${verifyData.user.id}`,
       );
-      return {
-        ok:     false,
-        reason: `session_user_mismatch: synthetic email maps to a different auth user`,
-      };
     }
 
     return {
-      ok:           true,
-      authUserId:   verifyData.user.id,
-      accessToken:  verifyData.session.access_token,
-      refreshToken: verifyData.session.refresh_token,
+      ok:                     true,
+      authUserId:             verifyData.user.id,
+      accessToken:            verifyData.session.access_token,
+      refreshToken:           verifyData.session.refresh_token,
+      repairedFromAuthUserId,
     };
   }
 
   // ── CASE A & B: member already has an auth_user_id ───────────────────────
   if (existingAuthUserId) {
-    const { data: authUserData, error: authUserError } = await supabase.auth.admin.getUserById(existingAuthUserId);
-    if (authUserError || !authUserData?.user) {
-      return { ok: false, reason: `getUserById failed: ${authUserError?.message ?? 'no user'}` };
-    }
-
-    const authUser = authUserData.user as typeof authUserData.user & { is_anonymous?: boolean };
-    const currentEmail = authUser.email ?? null;
-
-    // Old LINE sessions were linked to anonymous auth users whose auth.uid() was
-    // stored in members.auth_user_id, but those auth users did not own the
-    // deterministic LINE synthetic email. generateLink(syntheticEmail) then
-    // created or found a different auth user, so RLS saw auth.uid() !=
-    // members.auth_user_id and plot INSERT/SELECT became inconsistent.
-    //
-    // Repair only safe LINE-owned auth rows: anonymous/no-email users or an
-    // existing KaonA synthetic email. Never rewrite real staff/admin emails.
-    if (currentEmail !== syntheticEmail) {
-      const canAdoptSyntheticEmail =
-        authUser.is_anonymous === true ||
-        currentEmail === null ||
-        currentEmail.endsWith('@kaona.internal');
-
-      if (!canAdoptSyntheticEmail) {
-        return {
-          ok: false,
-          reason: `auth_user_email_mismatch: refusing to rewrite real email for ${existingAuthUserId}`,
-        };
-      }
-
-      const { error: updateError } = await supabase.auth.admin.updateUserById(existingAuthUserId, {
-        email:         syntheticEmail,
-        email_confirm: true,
-        user_metadata: {
-          ...(authUser.user_metadata ?? {}),
-          source:    'line',
-          member_id: memberId,
-        },
-      });
-
-      if (updateError) {
-        return { ok: false, reason: `updateUserById failed: ${updateError.message}` };
-      }
-    }
-
+    // Always issue the browser session from the deterministic LINE email.  The
+    // verified session user is the auth.uid() RLS will see; if the member row was
+    // linked to an older anonymous/stale auth user, the caller repairs the row to
+    // this returned user id instead of returning a mismatched session.
     return issueSessionViaLink(existingAuthUserId);
   }
 
@@ -327,18 +289,21 @@ export async function POST(request: Request) {
         refresh_token: sessionResult.refreshToken,
       };
 
-      // Link auth_user_id if this member didn't have one yet (CASE C)
-      if (!member.auth_user_id) {
-        const { error: linkError } = await supabase
+      // Link/repair auth_user_id to the exact auth.uid() returned to the client.
+      if (member.auth_user_id !== sessionResult.authUserId) {
+        const updateQuery = supabase
           .from('members')
           .update({ auth_user_id: sessionResult.authUserId })
-          .eq('id', member.id)
-          .is('auth_user_id', null); // guard against races
+          .eq('id', member.id);
+
+        const { error: linkError } = member.auth_user_id
+          ? await updateQuery.eq('auth_user_id', member.auth_user_id)
+          : await updateQuery.is('auth_user_id', null);
 
         if (linkError) {
           console.error('[LINE_AUTH] failed to link auth_user_id:', linkError.message);
-          // Session is still valid; auth_user_id link failed — non-fatal for this request,
-          // next login will retry (member.auth_user_id is still null in DB).
+          // Session is still valid; the client must not use a stale member id/session pair.
+          session = null;
         } else {
           finalAuthUserId = sessionResult.authUserId;
         }

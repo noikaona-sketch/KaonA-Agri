@@ -56,7 +56,8 @@ export default function AddPlotPage() {
     }
     setSubmitting(true); setError(null);
     const s = createSupabaseBrowserClient();
-    const { error: err } = await s.from('plots').insert({
+    const { data: { user }, error: userError } = await s.auth.getUser();
+    const insertPayload = {
       member_id:       member.member_id,
       name:            name.trim(),
       area_rai:        Number(areaRai),
@@ -68,7 +69,22 @@ export default function AddPlotPage() {
       created_by:      member.member_id,
       role_used:       'farmer',
       timestamp:       new Date().toISOString(),
+    };
+
+    console.info('[PLOT_INSERT_DIAGNOSTIC]', {
+      member_id: insertPayload.member_id,
+      created_by: insertPayload.created_by,
+      auth_uid: user?.id ?? null,
+      auth_error: userError?.message ?? null,
     });
+
+    if (!user?.id) {
+      setSubmitting(false);
+      setError('ไม่พบ Supabase session สำหรับบันทึกแปลง กรุณาปิดและเปิด LINE ใหม่อีกครั้ง');
+      return;
+    }
+
+    const { error: err } = await s.from('plots').insert(insertPayload);
     setSubmitting(false);
     if (err) { setError(err.message); return; }
     router.replace('/plots');

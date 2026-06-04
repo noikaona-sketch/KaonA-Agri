@@ -110,32 +110,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const CACHE_KEY = 'kaona_auth_cache';
         const CACHE_TTL  = 30 * 60 * 1000; // 30 นาที (เพิ่มจาก 10)
         const cached = sessionStorage.getItem(CACHE_KEY);
-        let cacheHit = false;
         if (cached) {
           try {
             const { member, status: cachedStatus, session, ts } = JSON.parse(cached) as {
               member: AuthBootstrapResult; status: string; session?: SupabaseSession | null; ts: number;
             };
-            if (Date.now() - ts < CACHE_TTL && member && cachedStatus === 'approved') {
-              await applySupabaseSession(session ?? undefined);
+            if (Date.now() - ts < CACHE_TTL && member && cachedStatus === 'approved' && session) {
+              await applySupabaseSession(session);
               setMember(member);
               setStatus('approved');
-              cacheHit = true;
-              // cache ยังสด — ข้าม bootstrap ไปได้เลย
-              // จะ refresh ใน background ครั้งหน้า (background flag ไม่บล็อก UI)
+              // cache ยังสด — แสดง UI ได้ทันที แล้ว bootstrap ต่อเพื่อ refresh/repair session
+            } else if (member && cachedStatus === 'approved' && !session) {
+              sessionStorage.removeItem(CACHE_KEY);
             }
           } catch { sessionStorage.removeItem(CACHE_KEY); }
-        }
-
-        // ถ้า cache hit และ cache อายุ < 5 นาที → skip POST /api/auth/line ทั้งหมด
-        const FRESH_TTL = 5 * 60 * 1000; // 5 นาที = ไม่ต้อง re-verify เลย
-        let cacheTs = 0;
-        if (cached) {
-          try { cacheTs = (JSON.parse(cached) as { ts: number }).ts; } catch { /* */ }
-        }
-        if (cacheHit && Date.now() - cacheTs < FRESH_TTL) {
-          // cache สดมาก — return ทันทีไม่ต้อง bootstrap
-          return;
         }
 
         const snapshot = await getLiffBridgeSnapshot();
@@ -187,6 +175,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
           setStatus('error');
           setErrorMessage(payload.error ?? 'Authentication bootstrap failed');
           setBridgeDiagnostics(withBridgeMessage(payload.error ?? 'Authentication bootstrap failed'));
+          return;
+        }
+
+        if (payload.member.is_approved && !payload.session) {
+          setMember(null);
+          setStatus('error');
+          setErrorMessage('LINE session could not be linked to your member account. Please reopen LINE and try again.');
+          setBridgeDiagnostics(withBridgeMessage('Missing Supabase session for approved LINE member'));
           return;
         }
 
