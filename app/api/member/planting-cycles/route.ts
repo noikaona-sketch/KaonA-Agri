@@ -33,6 +33,7 @@ export async function POST(request: Request) {
         request_member_id_body: body.member_id ?? null,
         request_plot_id_body: body.plot_id ?? null,
         cached_member_id: request.headers.get('X-Cached-Member-Id'),
+        row_count_returned: 0,
         resolver_ok: false,
       });
       return appendDiagnosticToJsonResponse(caller.response, diagnosticRequestId);
@@ -130,6 +131,7 @@ export async function POST(request: Request) {
       request_plot_id_body: body.plot_id ?? null,
       cached_member_id: request.headers.get('X-Cached-Member-Id'),
       resolved_member_id_sql: caller.memberId,
+      row_count_returned: 1,
       created_planting_cycle_id: cycleId,
     });
 
