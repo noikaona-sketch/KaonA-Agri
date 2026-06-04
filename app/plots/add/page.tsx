@@ -32,65 +32,53 @@ export default function AddPlotPage() {
   const [submitting,  setSubmitting]  = useState(false);
   const [error,       setError]       = useState<string | null>(null);
 
-  // ── Wait for auth to finish loading — same pattern as planting-cycles ────────
+  // Wait for auth — same pattern as planting-cycle new page
   if (status === 'loading') {
     return <LoadingState label="กำลังโหลด…" />;
   }
 
   async function handleSubmit() {
-    if (!member?.member_id) { setError('กรุณาเข้าสู่ระบบก่อน'); return; }
+    // Distinct error messages to identify if error is client-side or server-side
+    if (!member?.member_id) {
+      setError(`[client] member ยังไม่พร้อม — status: ${status}`);
+      return;
+    }
     if (!name.trim() || !areaRai) {
       setError('กรุณากรอกชื่อแปลงและพื้นที่ให้ครบ'); return;
     }
     setSubmitting(true); setError(null);
 
-    // ── Get Supabase Bearer token (set by auth-provider after LINE login) ─────
+    // Get Supabase session access_token
     const supabase = tryCreateSupabaseBrowserClient();
     const sessionData = supabase ? await supabase.auth.getSession() : null;
     const accessToken = sessionData?.data?.session?.access_token ?? null;
 
-    // ── Diagnostic: compare auth resolution approaches ────────────────────────
-    console.log('[ADD_PLOT] pre-submit diagnostics', {
-      'member.member_id':                      member.member_id,
-      'member.line_user_id':                   member.line_user_id,
-      'member.auth_user_id':                   member.auth_user_id ?? null,
-      'supabase session access_token present': accessToken !== null,
-      'access_token preview': accessToken ? `${accessToken.slice(0, 20)}…` : null,
-      'auth.status': status,
-      'resolve order': accessToken
-        ? '1. Bearer token → resolveApprovedMember (same as planting-cycle)'
-        : '2. line_user_id fallback → resolveApprovedMember',
+    console.log('[ADD_PLOT] submit', {
+      memberId:      member.member_id,
+      lineUserId:    member.line_user_id,
+      authUserId:    member.auth_user_id,
+      hasToken:      !!accessToken,
+      authStatus:    status,
     });
 
-    // ── Build FormData ────────────────────────────────────────────────────────
-    // GPS is disabled — lat/lng are not included.
     const form = new FormData();
     form.append('name',     name.trim());
     form.append('area_rai', areaRai);
-    if (province)    form.append('province',         province);
-    if (landDocType) form.append('land_doc_type',    landDocType);
-    if (landDocNum)  form.append('land_doc_number',  landDocNum);
+    if (province)    form.append('province',        province);
+    if (landDocType) form.append('land_doc_type',   landDocType);
+    if (landDocNum)  form.append('land_doc_number', landDocNum);
 
-    // ── Build request headers ─────────────────────────────────────────────────
-    // Bearer token → resolveApprovedMember uses it as source of truth.
-    // If no Bearer (LIFF session not bridged to Supabase yet), the route
-    // falls back to line_user_id query param — same fallback planting-cycles uses.
+    // Bearer token if available; line_user_id as URL fallback
     const headers: Record<string, string> = {};
     if (accessToken) {
       headers['Authorization'] = `Bearer ${accessToken}`;
     }
 
-    // Build URL with line_user_id fallback (matches resolveApprovedMember fallback)
     const url = new URL('/api/member/plot-registration', window.location.origin);
-    if (!accessToken && member.line_user_id) {
+    // Always send line_user_id as fallback — resolveApprovedMember uses it when Bearer absent
+    if (member.line_user_id) {
       url.searchParams.set('line_user_id', member.line_user_id);
     }
-
-    console.log('[ADD_PLOT] sending request', {
-      url: url.pathname + url.search,
-      hasBearer: !!accessToken,
-      hasFallbackLineUserId: !accessToken && !!member.line_user_id,
-    });
 
     const res = await fetch(url.toString(), {
       method:  'POST',
@@ -99,20 +87,15 @@ export default function AddPlotPage() {
     });
 
     const data = (await res.json()) as {
-      ok?: boolean; plot_id?: string; error?: string; photo_warnings?: string[];
+      ok?: boolean; plot_id?: string; error?: string;
     };
     setSubmitting(false);
 
     if (!res.ok) {
-      console.error('[ADD_PLOT] server error', { status: res.status, error: data.error });
-      setError(data.error ?? 'บันทึกไม่สำเร็จ');
+      // Prefix [server] so we know this came from the API route
+      setError(`[server ${res.status}] ${data.error ?? 'บันทึกไม่สำเร็จ'}`);
       return;
     }
-
-    console.log('[ADD_PLOT] success', {
-      plotId: data.plot_id,
-      photoWarnings: data.photo_warnings ?? [],
-    });
 
     router.replace('/plots');
   }
@@ -155,7 +138,6 @@ export default function AddPlotPage() {
           </label>
         )}
 
-        {/* GPS temporarily disabled for LINE mobile users. */}
         <p style={{ fontSize: 12, color: 'var(--text-secondary)', textAlign: 'center', margin: '6px 0 0' }}>
           ระบบจะบันทึกแปลงโดยยังไม่ต้องจับพิกัด GPS ชั่วคราว
         </p>
