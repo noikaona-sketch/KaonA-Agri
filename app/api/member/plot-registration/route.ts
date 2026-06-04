@@ -52,6 +52,9 @@ export async function POST(request: Request) {
     const accuracyRaw = (form.get('accuracy')    as string | null) ?? '';
     const province    = (form.get('province')    as string | null)?.trim() || null;
     const description = (form.get('description') as string | null)?.trim() || null;
+    const district    = (form.get('district')     as string | null)?.trim() || null;
+    const subdistrict = (form.get('subdistrict')  as string | null)?.trim() || null;
+    const village     = (form.get('village')      as string | null)?.trim() || null;
     const landDocType = (form.get('land_doc_type')   as string | null)?.trim() || null;
     const landDocNum  = (form.get('land_doc_number') as string | null)?.trim() || null;
 
@@ -106,7 +109,9 @@ export async function POST(request: Request) {
       p_description:     description,
       p_land_doc_type:   landDocType,
       p_land_doc_number: landDocNum,
-      p_district:        null,
+      p_district:        district,
+      p_subdistrict:     subdistrict,
+      p_village:         village,
     });
 
     if (rpcError) {
@@ -320,3 +325,4 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }
 }
+
