@@ -90,38 +90,50 @@ async function resolveSession(
 
   // ── CASE A & B: member already has an auth_user_id ───────────────────────
   if (existingAuthUserId) {
-    // Check whether the synthetic email is already registered and who owns it.
-    // We do this by attempting generateLink; the resulting user.id tells us
-    // whether the email is already provisioned for this exact auth user.
+    const { data: authUserData, error: authUserError } = await supabase.auth.admin.getUserById(existingAuthUserId);
+    if (authUserError || !authUserData?.user) {
+      return { ok: false, reason: `getUserById failed: ${authUserError?.message ?? 'no user'}` };
+    }
+
+    const authUser = authUserData.user as typeof authUserData.user & { is_anonymous?: boolean };
+    const currentEmail = authUser.email ?? null;
+
+    // Old LINE sessions were linked to anonymous auth users whose auth.uid() was
+    // stored in members.auth_user_id, but those auth users did not own the
+    // deterministic LINE synthetic email. generateLink(syntheticEmail) then
+    // created or found a different auth user, so RLS saw auth.uid() !=
+    // members.auth_user_id and plot INSERT/SELECT became inconsistent.
     //
-    // BLOCKER FIX 2: do NOT assume the synthetic email maps to existingAuthUserId.
-    // Old anon-linked members have a random auth.uid that was never tied to
-    // the synthetic email.  generateLink would create or retrieve a DIFFERENT
-    // auth user for that email, giving us a mismatched session.
-    //
-    // Strategy: call issueSessionViaLink and let the mismatch check inside it
-    // reject the session if the email belongs to a different user.
-    //
-    // BLOCKER FIX 3 (backfill note):
-    //   Members whose auth_user_id was set by the old signInAnonymously() flow
-    //   will hit case B (mismatch).  They will receive session: null in the
-    //   response.  The client still gets their member record and can navigate
-    //   as far as the API-route-guarded pages allow (service_role on server
-    //   routes), but client-side Supabase queries that rely on auth.uid() will
-    //   fail until the row is backfilled.
-    //
-    //   Backfill options (ops / admin task, not automated here):
-    //     Option 1 — Reset: UPDATE members SET auth_user_id = NULL
-    //                WHERE auth_user_id IN (
-    //                  SELECT id FROM auth.users WHERE is_anonymous = true
-    //                );
-    //                On next login the member enters CASE C and gets a proper
-    //                synthetic-email auth user.
-    //     Option 2 — Reprovision: For each affected member run
-    //                admin.updateUserById(existingAuthUserId, { email: syntheticEmail })
-    //                so the existing anon user gains the synthetic email and
-    //                generateLink starts returning the correct user.
-    //     The migration 202605180001 documents Option 1 as the safe default.
+    // Repair only safe LINE-owned auth rows: anonymous/no-email users or an
+    // existing KaonA synthetic email. Never rewrite real staff/admin emails.
+    if (currentEmail !== syntheticEmail) {
+      const canAdoptSyntheticEmail =
+        authUser.is_anonymous === true ||
+        currentEmail === null ||
+        currentEmail.endsWith('@kaona.internal');
+
+      if (!canAdoptSyntheticEmail) {
+        return {
+          ok: false,
+          reason: `auth_user_email_mismatch: refusing to rewrite real email for ${existingAuthUserId}`,
+        };
+      }
+
+      const { error: updateError } = await supabase.auth.admin.updateUserById(existingAuthUserId, {
+        email:         syntheticEmail,
+        email_confirm: true,
+        user_metadata: {
+          ...(authUser.user_metadata ?? {}),
+          source:    'line',
+          member_id: memberId,
+        },
+      });
+
+      if (updateError) {
+        return { ok: false, reason: `updateUserById failed: ${updateError.message}` };
+      }
+    }
+
     return issueSessionViaLink(existingAuthUserId);
   }
 
