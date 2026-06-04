@@ -4,11 +4,11 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 import { useAuth, useCurrentMember } from '@/providers/auth-provider';
-import { tryCreateSupabaseBrowserClient } from '@/lib/supabase/client';
-import { MobileAppShell } from '@/shared/components/mobile-app-shell';
-import { UIButton } from '@/shared/components/ui-button';
-import { ErrorState } from '@/shared/components/error-state';
-import { LoadingState } from '@/shared/components/loading-state';
+import { getAuthHeaders }            from '@/lib/auth/get-auth-headers';
+import { MobileAppShell }            from '@/shared/components/mobile-app-shell';
+import { UIButton }                  from '@/shared/components/ui-button';
+import { ErrorState }                from '@/shared/components/error-state';
+import { LoadingState }              from '@/shared/components/loading-state';
 
 const LAND_DOC_TYPES = [
   { value: 'title_deed', label: 'โฉนดที่ดิน (นส.4)' },
@@ -20,9 +20,9 @@ const LAND_DOC_TYPES = [
 ];
 
 export default function AddPlotPage() {
-  const router = useRouter();
+  const router  = useRouter();
   const { status } = useAuth();
-  const member = useCurrentMember();
+  const member  = useCurrentMember();
 
   const [name,        setName]        = useState('');
   const [areaRai,     setAreaRai]     = useState('');
@@ -32,34 +32,14 @@ export default function AddPlotPage() {
   const [submitting,  setSubmitting]  = useState(false);
   const [error,       setError]       = useState<string | null>(null);
 
-  // Wait for auth — same pattern as planting-cycle new page
-  if (status === 'loading') {
-    return <LoadingState label="กำลังโหลด…" />;
-  }
+  if (status === 'loading') return <LoadingState label="กำลังโหลด…" />;
 
   async function handleSubmit() {
-    // Distinct error messages to identify if error is client-side or server-side
-    if (!member?.member_id) {
-      setError(`[client] member ยังไม่พร้อม — status: ${status}`);
-      return;
-    }
-    if (!name.trim() || !areaRai) {
-      setError('กรุณากรอกชื่อแปลงและพื้นที่ให้ครบ'); return;
-    }
+    if (!member?.member_id) { setError('กรุณาเข้าสู่ระบบก่อน'); return; }
+    if (!name.trim() || !areaRai) { setError('กรุณากรอกชื่อแปลงและพื้นที่ให้ครบ'); return; }
     setSubmitting(true); setError(null);
 
-    // Get Supabase session access_token
-    const supabase = tryCreateSupabaseBrowserClient();
-    const sessionData = supabase ? await supabase.auth.getSession() : null;
-    const accessToken = sessionData?.data?.session?.access_token ?? null;
-
-    console.log('[ADD_PLOT] submit', {
-      memberId:      member.member_id,
-      lineUserId:    member.line_user_id,
-      authUserId:    member.auth_user_id,
-      hasToken:      !!accessToken,
-      authStatus:    status,
-    });
+    const { headers, url } = await getAuthHeaders(member, '/api/member/plot-registration');
 
     const form = new FormData();
     form.append('name',     name.trim());
@@ -68,42 +48,17 @@ export default function AddPlotPage() {
     if (landDocType) form.append('land_doc_type',   landDocType);
     if (landDocNum)  form.append('land_doc_number', landDocNum);
 
-    // Bearer token if available; line_user_id as URL fallback
-    const headers: Record<string, string> = {};
-    if (accessToken) {
-      headers['Authorization'] = `Bearer ${accessToken}`;
-    }
-
-    const url = new URL('/api/member/plot-registration', window.location.origin);
-    // Always send line_user_id as fallback — resolveApprovedMember uses it when Bearer absent
-    if (member.line_user_id) {
-      url.searchParams.set('line_user_id', member.line_user_id);
-    }
-
-    const res = await fetch(url.toString(), {
-      method:  'POST',
-      headers,
-      body:    form,
-    });
-
-    const data = (await res.json()) as {
-      ok?: boolean; plot_id?: string; error?: string;
-    };
+    const res = await fetch(url, { method: 'POST', headers, body: form });
+    const data = (await res.json()) as { ok?: boolean; plot_id?: string; error?: string };
     setSubmitting(false);
 
-    if (!res.ok) {
-      // Prefix [server] so we know this came from the API route
-      setError(`[server ${res.status}] ${data.error ?? 'บันทึกไม่สำเร็จ'}`);
-      return;
-    }
-
+    if (!res.ok) { setError(data.error ?? 'บันทึกไม่สำเร็จ'); return; }
     router.replace('/plots');
   }
 
   return (
     <MobileAppShell title="เพิ่มแปลงใหม่" subtitle="ลงทะเบียนแปลงเกษตรของคุณ">
       <div className="mobile-stack" style={{ paddingBottom: 24 }}>
-
         {error && <ErrorState title="เกิดข้อผิดพลาด" detail={error} />}
 
         <label className="reg-label">ชื่อแปลง <span className="reg-required">*</span>
@@ -142,18 +97,11 @@ export default function AddPlotPage() {
           ระบบจะบันทึกแปลงโดยยังไม่ต้องจับพิกัด GPS ชั่วคราว
         </p>
 
-        <UIButton
-          fullWidth
-          onClick={handleSubmit}
-          loading={submitting}
-          disabled={submitting || !name.trim() || !areaRai || !member?.member_id}
-        >
+        <UIButton fullWidth onClick={handleSubmit} loading={submitting}
+          disabled={submitting || !name.trim() || !areaRai || !member?.member_id}>
           ✅ บันทึกแปลง
         </UIButton>
-
-        <UIButton variant="ghost" fullWidth onClick={() => router.back()}>
-          ← ยกเลิก
-        </UIButton>
+        <UIButton variant="ghost" fullWidth onClick={() => router.back()}>← ยกเลิก</UIButton>
       </div>
     </MobileAppShell>
   );
