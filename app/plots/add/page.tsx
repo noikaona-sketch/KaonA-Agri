@@ -53,12 +53,17 @@ export default function AddPlotPage() {
       role_used:       'farmer',
       timestamp:       new Date().toISOString(),
     };
-    const { data: { user } } = await s.auth.getUser();
-    console.log('[plot insert diagnostics] before insert', {
-      authUserId: user?.id,
-      currentMemberId: member.member_id,
-      payloadMemberId: payload.member_id,
-      payloadCreatedBy: payload.created_by,
+    const [{ data: { user } }, currentMemberResult] = await Promise.all([
+      s.auth.getUser(),
+      s.rpc('current_member_id'),
+    ]);
+    console.log('[plot insert diagnostics] before plots insert', {
+      'auth.uid()': user?.id ?? null,
+      'current_member_id()': (currentMemberResult.data as string | null) ?? null,
+      'current_member_id() error': currentMemberResult.error?.message ?? null,
+      'member.member_id': member.member_id,
+      'payload.member_id': payload.member_id,
+      'payload.created_by': payload.created_by,
     });
     const { error: err } = await s.from('plots').insert(payload);
     setSubmitting(false);
