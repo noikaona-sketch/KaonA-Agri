@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server';
 
 import { createAnonSupabaseClient, createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
 
+// Temporary diagnostic endpoint for LINE/mobile auth and plot ownership resolution.
+// Keep the production response masked: no raw tokens, auth_user_id, or line_user_id.
 export const dynamic = 'force-dynamic';
 
 type MemberDebugRow = {
@@ -35,6 +37,26 @@ function createBearerSupabaseClient(token: string) {
   });
 }
 
+function maskId(value: string | null | undefined) {
+  if (!value) return null;
+  if (value.length <= 8) return `${value.slice(0, 2)}…${value.slice(-2)}`;
+  return `${value.slice(0, 4)}…${value.slice(-4)}`;
+}
+
+function safeMember(row: MemberDebugRow | null) {
+  if (!row) return null;
+  return {
+    id_masked: maskId(row.id),
+    auth_user_id_present: Boolean(row.auth_user_id),
+    auth_user_id_masked: maskId(row.auth_user_id),
+    line_user_id_present: Boolean(row.line_user_id),
+    line_user_id_masked: maskId(row.line_user_id),
+    line_display_name_present: Boolean(row.line_display_name),
+    full_name_present: Boolean(row.full_name),
+    status: row.status,
+  };
+}
+
 async function countPlotsByMember(
   s: ReturnType<typeof createServerSupabaseClient>,
   memberId: string | null,
@@ -57,10 +79,8 @@ export async function GET(request: Request) {
 
   if (!token) {
     return NextResponse.json({
-      error: 'no bearer token',
-      tokenLength: 0,
-      selected_member_id: selectedMemberId,
-      selected_line_user_id: selectedLineUserId,
+      error: 'authenticated bearer token required',
+      authenticated: false,
     }, { status: 401 });
   }
 
@@ -114,20 +134,41 @@ export async function GET(request: Request) {
         .is('deleted_at', null),
     ]);
 
+    const effectiveMember = memberByResolved ?? memberByAuthUid ?? null;
+    const selectedKnownMemberId = selectedMember?.id ?? selectedMemberId;
+
     return NextResponse.json({
-      tokenLength: token.length,
-      tokenPrefix: token.slice(0, 20),
-      auth_uid: authUid,
-      auth_user: userData.user ? { id: userData.user.id, email: userData.user.email ?? null } : null,
+      authenticated: Boolean(authUid),
+      auth_uid_present: Boolean(authUid),
+      auth_uid_masked: maskId(authUid),
       auth_error: userError?.message ?? null,
-      current_member_id: currentMemberId,
+      current_member_id_resolved: Boolean(currentMemberId),
+      current_member_id_masked: maskId(currentMemberId),
       current_member_id_error: currentMemberError?.message ?? null,
-      member_row: memberByResolved ?? memberByAuthUid ?? null,
-      member_by_resolved_error: memberByResolvedError?.message ?? null,
-      member_by_auth_uid: memberByAuthUid,
-      member_by_auth_uid_error: memberByAuthUidError?.message ?? null,
-      selected_member: selectedMember,
-      selected_member_error: selectedMemberError?.message ?? null,
+      selected_member_supplied: Boolean(selectedMemberId || selectedLineUserId),
+      selected_member_found: Boolean(selectedMember),
+      selected_member_matches_resolved: Boolean(
+        currentMemberId && selectedKnownMemberId && currentMemberId === selectedKnownMemberId,
+      ),
+      mismatch_flags: {
+        auth_uid_without_member: Boolean(authUid && !memberByAuthUid),
+        resolved_member_differs_from_auth_member: Boolean(
+          memberByResolved && memberByAuthUid && memberByResolved.id !== memberByAuthUid.id,
+        ),
+        selected_member_differs_from_resolved: Boolean(
+          currentMemberId && selectedKnownMemberId && currentMemberId !== selectedKnownMemberId,
+        ),
+        member_auth_user_id_differs_from_auth_uid: Boolean(
+          effectiveMember?.auth_user_id && authUid && effectiveMember.auth_user_id !== authUid,
+        ),
+      },
+      member_row: safeMember(effectiveMember),
+      selected_member: safeMember(selectedMember),
+      errors: {
+        member_by_resolved: memberByResolvedError?.message ?? null,
+        member_by_auth_uid: memberByAuthUidError?.message ?? null,
+        selected_member: selectedMemberError?.message ?? null,
+      },
       plot_counts: {
         by_resolved_member_id: plotsByResolved,
         by_known_or_selected_member_id: plotsBySelected,

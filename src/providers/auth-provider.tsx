@@ -161,6 +161,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           error?: string;
           member?: AuthBootstrapResult;
           session?: SupabaseSession | null;
+          authDiagnostic?: { session_error?: string | null } | null;
         };
 
         if (!response.ok || !payload.member) {
@@ -181,8 +182,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
         if (payload.member.is_approved && !payload.session) {
           setMember(null);
           setStatus('error');
-          setErrorMessage('LINE session could not be linked to your member account. Please reopen LINE and try again.');
-          setBridgeDiagnostics(withBridgeMessage('Missing Supabase session for approved LINE member'));
+          const sessionError = payload.authDiagnostic?.session_error ?? 'Missing Supabase session for approved LINE member';
+          setErrorMessage(`LINE session could not be linked to your member account. ${sessionError}`);
+          setBridgeDiagnostics(withBridgeMessage(sessionError));
           return;
         }
 
