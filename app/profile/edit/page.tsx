@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter }           from 'next/navigation';
-import { useCurrentMember }    from '@/providers/auth-provider';
+import { useAuth, useCurrentMember } from '@/providers/auth-provider';
 import { MobileAppShell }      from '@/shared/components/mobile-app-shell';
 import { ProtectedRoute }      from '@/shared/components/protected-route';
+import { LoadingState }        from '@/shared/components/loading-state';
 import { tryCreateSupabaseBrowserClient } from '@/lib/supabase/client';
 
 const BANKS = [
@@ -14,12 +15,13 @@ const BANKS = [
 ];
 
 const S = {
-  label: { display: 'grid', gap: 5, fontSize: 13, fontWeight: 600, color: '#374151' } as React.CSSProperties,
-  input: { padding: '11px 14px', border: '1.5px solid #e5e7eb', borderRadius: 10, fontSize: 15, width: '100%', background: '#fff', fontFamily: 'inherit' } as React.CSSProperties,
+  label:   { display: 'grid', gap: 5, fontSize: 13, fontWeight: 600, color: '#374151' } as React.CSSProperties,
+  input:   { padding: '11px 14px', border: '1.5px solid #e5e7eb', borderRadius: 10, fontSize: 15, width: '100%', background: '#fff', fontFamily: 'inherit' } as React.CSSProperties,
   section: { fontWeight: 700, fontSize: 14, color: '#1a1f1c', marginTop: 8, marginBottom: 4 } as React.CSSProperties,
 };
 
 function ProfileEditContent() {
+  const { status } = useAuth();
   const member = useCurrentMember();
   const router = useRouter();
 
@@ -46,7 +48,7 @@ function ProfileEditContent() {
       .eq('id', member.member_id).maybeSingle()
       .then(({ data }) => {
         if (!data) return;
-        const d = data as Record<string,string|null>;
+        const d = data as Record<string, string | null>;
         setFullName(d.full_name ?? '');
         setPhone(d.phone ?? '');
         setAddress(d.address ?? '');
@@ -60,12 +62,34 @@ function ProfileEditContent() {
       });
   }, [member?.member_id, loaded]);
 
+  // Wait for auth — same pattern as planting-cycles / add-plot
+  if (status === 'loading') {
+    return <LoadingState label="กำลังโหลด…" />;
+  }
+
   async function save() {
+    if (!member?.member_id) { setError('กรุณาเข้าสู่ระบบก่อน'); return; }
     if (!fullName.trim()) { setError('กรุณากรอกชื่อ-นามสกุล'); return; }
     setSaving(true); setError(null);
-    const res = await fetch('/api/member/profile', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+
+    // ── Bearer token + line_user_id fallback (same pattern as add-plot) ───────
+    const supabase = tryCreateSupabaseBrowserClient();
+    const sessionData = supabase ? await supabase.auth.getSession() : null;
+    const accessToken = sessionData?.data?.session?.access_token ?? null;
+
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (accessToken) {
+      headers['Authorization'] = `Bearer ${accessToken}`;
+    }
+
+    const url = new URL('/api/member/profile', window.location.origin);
+    if (!accessToken && member.line_user_id) {
+      url.searchParams.set('line_user_id', member.line_user_id);
+    }
+
+    const res = await fetch(url.toString(), {
+      method:  'PATCH',
+      headers,
       body: JSON.stringify({
         full_name:           fullName.trim(),
         phone:               phone.trim()       || null,
@@ -78,6 +102,7 @@ function ProfileEditContent() {
         bank_account_name:   bankAccName.trim() || null,
       }),
     });
+
     const j = (await res.json()) as { ok?: boolean; error?: string };
     setSaving(false);
     if (!res.ok) { setError(j.error ?? 'บันทึกไม่สำเร็จ'); return; }
@@ -97,7 +122,6 @@ function ProfileEditContent() {
         {notice && <div style={{ padding: '10px 14px', borderRadius: 10, background: '#e8f5e9', color: '#1b5e20', fontSize: 13, fontWeight: 600 }}>{notice}</div>}
         {error  && <div style={{ padding: '10px 14px', borderRadius: 10, background: '#ffebee', color: '#c62828', fontSize: 13, fontWeight: 600 }}>{error}</div>}
 
-        {/* ข้อมูลส่วนตัว */}
         <p style={S.section}>👤 ข้อมูลส่วนตัว</p>
         <label style={S.label}>
           ชื่อ-นามสกุล *
@@ -108,7 +132,6 @@ function ProfileEditContent() {
           <input style={S.input} type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="0812345678" />
         </label>
 
-        {/* ที่อยู่ */}
         <p style={S.section}>📍 ที่อยู่</p>
         <label style={S.label}>
           บ้านเลขที่ / หมู่
@@ -129,7 +152,6 @@ function ProfileEditContent() {
           <input style={S.input} value={province} onChange={(e) => setProvince(e.target.value)} placeholder="จังหวัด" />
         </label>
 
-        {/* บัญชีธนาคาร */}
         <p style={S.section}>🏦 บัญชีธนาคาร</p>
         <label style={S.label}>
           ธนาคาร
