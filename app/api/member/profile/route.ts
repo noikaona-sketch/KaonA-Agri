@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 export async function PATCH(request: Request) {
   try {
     const s      = createServerSupabaseClient();
-    const caller = await resolveApprovedMember(request, s, undefined, { allowExplicitIdentity: false });
+    const caller = await resolveApprovedMember(request, s);
     if (!caller.ok) return caller.response;
 
     const body = (await request.json()) as {

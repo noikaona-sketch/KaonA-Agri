@@ -8,8 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "export:branding": "node scripts/export-branding-assets.mjs",
-    "test:integration:plot-registration-rls": "node scripts/integration/plot-registration-rls.mjs"
+    "export:branding": "node scripts/export-branding-assets.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.8",

@@ -6,7 +6,6 @@ import { useCurrentMember }    from '@/providers/auth-provider';
 import { MobileAppShell }      from '@/shared/components/mobile-app-shell';
 import { ProtectedRoute }      from '@/shared/components/protected-route';
 import { tryCreateSupabaseBrowserClient } from '@/lib/supabase/client';
-import { getMemberApiAuthHeaders } from '@/shared/auth/member-api-auth';
 
 const BANKS = [
   'ธนาคารกรุงเทพ','ธนาคารกสิกรไทย','ธนาคารกรุงไทย','ธนาคารไทยพาณิชย์',
@@ -64,10 +63,9 @@ function ProfileEditContent() {
   async function save() {
     if (!fullName.trim()) { setError('กรุณากรอกชื่อ-นามสกุล'); return; }
     setSaving(true); setError(null);
-    const authHeaders = await getMemberApiAuthHeaders();
     const res = await fetch('/api/member/profile', {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', ...authHeaders },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         full_name:           fullName.trim(),
         phone:               phone.trim()       || null,

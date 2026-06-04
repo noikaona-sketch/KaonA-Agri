@@ -193,7 +193,6 @@ export function ProviderDashboard() {
     setLoading(false);
   }
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { void load(); }, [member?.member_id]);
 
   if (loading) return <LoadingState label="กำลังโหลด…" />;

@@ -326,15 +326,13 @@ function PlotsContent() {
     if (!member?.member_id) return;
     setLoading(true);
     const token = await getBearerToken();
-    const headers: Record<string, string> = token
-      ? { Authorization: `Bearer ${token}`, 'X-Cached-Member-Id': member.member_id }
-      : { 'X-Cached-Member-Id': member.member_id };
+    const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
 
     // 1) Plots + cycles + no-burn in parallel
     const [plotsRes, cyclesRes] = await Promise.all([
-      fetch('/api/member/plots', { headers })
+      fetch(`/api/member/plots?member_id=${member.member_id}`, { headers })
         .then(r => r.json() as Promise<{ plots?: Plot[] }>),
-      fetch('/api/member/planting-cycles', { headers })
+      fetch(`/api/member/planting-cycles?member_id=${member.member_id}`, { headers })
         .then(r => r.json() as Promise<{ cycles?: ActiveCycle[] }>),
     ]);
 
