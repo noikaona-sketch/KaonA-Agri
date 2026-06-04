@@ -9,32 +9,17 @@ async function resolveStaff(request: Request, s: ReturnType<typeof createServerS
   const token = request.headers.get('Authorization')?.slice(7);
   if (!token) return null;
   const anon = createAnonSupabaseClient();
-
-  // 1. ลอง Supabase JWT ก่อน
   const { data: { user } } = await anon.auth.getUser(token);
   let memberId: string | null = null;
-
   if (user?.id) {
     const { data: m } = await s.from('members').select('id').eq('auth_user_id', user.id).maybeSingle();
     memberId = m?.id ?? null;
+  } else {
+    const { data: sess } = await s.from('sessions').select('member_id').eq('token', token).maybeSingle();
+    memberId = sess?.member_id ?? null;
   }
-
-  // 2. fallback: sessions table (LINE LIFF token)
-  if (!memberId) {
-    const { data: sess } = await s.from('sessions').select('member_id,expires_at')
-      .eq('token', token).maybeSingle();
-    if (sess && new Date(sess.expires_at) > new Date()) {
-      memberId = sess.member_id ?? null;
-    }
-  }
-
   if (!memberId) return null;
-
-  // 3. เช็ค role — staff/admin/inspector/leader ผ่านได้ทั้งหมด
-  const { data: role } = await s.from('member_roles')
-    .select('role').eq('member_id', memberId)
-    .in('role', FIELD_ROLES).limit(1).maybeSingle();
-
+  const { data: role } = await s.from('member_roles').select('role').eq('member_id', memberId).in('role', FIELD_ROLES).limit(1).maybeSingle();
   return role ? memberId : null;
 }
 

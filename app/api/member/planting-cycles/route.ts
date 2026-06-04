@@ -1,120 +1,33 @@
+import { NextResponse }               from 'next/server';
 import { createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
-import { getMemberResolutionDiagnostics, resolveApprovedMember } from '../_auth';
-import { isCornSeedProduct } from '@/lib/products/corn-seed';
+import { resolveApprovedMember }      from '../_auth';
+import { isCornSeedProduct }          from '@/lib/products/corn-seed';
 
 export const dynamic = 'force-dynamic';
 
-// ── Shared diagnostic shape ──────────────────────────────────────────────────
-function makeDiag(
-  method: string,
-  diag: Awaited<ReturnType<typeof getMemberResolutionDiagnostics>>,
-  request: Request,
-  extra: Record<string, unknown> = {},
-) {
-  return {
-    endpoint:            '/api/member/planting-cycles',
-    method,
-    auth_uid:            diag.authUid,
-    current_member_id:   diag.currentMemberId,
-    cached_member_id:    request.headers.get('X-Cached-Member-Id') ?? null,
-    ...extra,
-  };
-}
-
-// ── GET /api/member/planting-cycles ─────────────────────────────────────────
-export async function GET(request: Request) {
-  const s    = createServerSupabaseClient();
-  const diag = await getMemberResolutionDiagnostics(request);
-
-  const caller = await resolveApprovedMember(request, s, undefined, { allowExplicitIdentity: false });
-
-  if (!caller.ok) {
-    console.info('[MEMBER_ENDPOINT_DIAGNOSTIC]', makeDiag('GET', diag, request, {
-      resolved_member_id_sql: null,
-      row_count_returned:     0,
-      resolver_ok:            false,
-    }));
-    return caller.response;
-  }
-
+export async function POST(request: Request) {
   try {
-    const { data, error } = await s
-      .from('planting_cycles')
-      .select('id,crop_name,season_year,status,planted_at,expected_harvest_at,plot_id')
-      .eq('member_id', caller.memberId)
-      .not('status', 'in', '(harvested,cancelled)')
-      .order('created_at', { ascending: false });
+    const body = (await request.json()) as {
+      member_id:string; crop_name:string; plot_id:string;
+      product_id?:string|null; planted_at:string;
+      expected_harvest_at?:string|null; area_planted_rai?:number|null;
+      season_year?:number; quota_kg?:number|null;
+      status?:string; source?:string; member_note?:string|null;
+      confirmed_at?:string;
+    };
 
-    if (error) {
-      console.error('[MEMBER_ENDPOINT_DIAGNOSTIC_ERROR]', makeDiag('GET', diag, request, {
-        resolved_member_id_sql: caller.memberId,
-        row_count_returned:     0,
-        error:                  error.message,
-      }));
-      return Response.json({ error: error.message }, { status: 500 });
+    const s      = createServerSupabaseClient();
+    const caller = await resolveApprovedMember(request, s, body.member_id);
+    if (!caller.ok) return caller.response;
+
+    if (!body.plot_id) {
+      return NextResponse.json({ error: 'กรุณาเลือกแปลงก่อนสร้างรอบปลูก' }, { status: 400 });
+    }
+    if (!body.expected_harvest_at) {
+      return NextResponse.json({ error: 'กรุณาระบุวันที่คาดว่าจะเก็บเกี่ยว' }, { status: 400 });
     }
 
-    console.info('[MEMBER_ENDPOINT_DIAGNOSTIC]', makeDiag('GET', diag, request, {
-      resolved_member_id_sql: caller.memberId,
-      row_count_returned:     data?.length ?? 0,
-      resolver_ok:            true,
-    }));
-
-    return Response.json({ cycles: data ?? [] });
-
-  } catch (e) {
-    console.error('[MEMBER_ENDPOINT_DIAGNOSTIC_ERROR]', makeDiag('GET', diag, request, {
-      resolved_member_id_sql: caller.memberId,
-      row_count_returned:     0,
-      error:                  String(e),
-    }));
-    return Response.json({ error: String(e) }, { status: 500 });
-  }
-}
-
-// ── POST /api/member/planting-cycles ────────────────────────────────────────
-export async function POST(request: Request) {
-  const diag = await getMemberResolutionDiagnostics(request);
-
-  let body: {
-    member_id?: string; crop_name: string; plot_id: string;
-    product_id?: string | null; planted_at: string;
-    expected_harvest_at?: string | null; area_planted_rai?: number | null;
-    season_year?: number; quota_kg?: number | null;
-    status?: string; source?: string; member_note?: string | null;
-    confirmed_at?: string;
-  };
-
-  try {
-    body = (await request.json()) as typeof body;
-  } catch {
-    return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
-  }
-
-  const s      = createServerSupabaseClient();
-  const caller = await resolveApprovedMember(request, s, undefined, { allowExplicitIdentity: false });
-
-  if (!caller.ok) {
-    console.info('[MEMBER_ENDPOINT_DIAGNOSTIC]', makeDiag('POST', diag, request, {
-      resolved_member_id_sql: null,
-      row_count_returned:     0,
-      resolver_ok:            false,
-    }));
-    return caller.response;
-  }
-
-  if (!body.plot_id) {
-    return Response.json({ error: 'กรุณาเลือกแปลงก่อนสร้างรอบปลูก' }, { status: 400 });
-  }
-  if (!body.expected_harvest_at) {
-    return Response.json({ error: 'กรุณาระบุวันที่คาดว่าจะเก็บเกี่ยว' }, { status: 400 });
-  }
-
-  try {
-    const usesBillFlow = isCornSeedProduct({
-      category: 'seed', product_type: 'seed',
-      crop_type: body.crop_name, name: body.crop_name,
-    });
+    const usesBillFlow = isCornSeedProduct({ category:'seed', product_type:'seed', crop_type:body.crop_name, name:body.crop_name });
 
     const { data, error } = await s
       .from('planting_cycles')
@@ -138,19 +51,12 @@ export async function POST(request: Request) {
       .select('id')
       .single();
 
-    if (error) {
-      console.error('[MEMBER_ENDPOINT_DIAGNOSTIC_ERROR]', makeDiag('POST', diag, request, {
-        resolved_member_id_sql: caller.memberId,
-        row_count_returned:     0,
-        error:                  error.message,
-      }));
-      return Response.json({ error: error.message }, { status: 500 });
-    }
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
     const cycleId   = (data as { id: string }).id;
     const plantedAt = body.planted_at ? new Date(body.planted_at) : null;
 
-    // ── Seed scheduled reminder logs (best-effort) ────────────────────────
+    // ── Seed scheduled reminder logs from care_defaults (best-effort) ─────────
     if (plantedAt) {
       void (async () => {
         try {
@@ -182,6 +88,7 @@ export async function POST(request: Request) {
                 recorded_at:       dueDate.toISOString(),
               };
             });
+            // Insert only if not already seeded (idempotent)
             await s.from('farm_activity_logs').upsert(rows, {
               onConflict: 'planting_cycle_id,scheduled_day',
               ignoreDuplicates: true,
@@ -193,21 +100,26 @@ export async function POST(request: Request) {
       })();
     }
 
-    console.info('[MEMBER_ENDPOINT_DIAGNOSTIC]', makeDiag('POST', diag, request, {
-      resolved_member_id_sql:   caller.memberId,
-      row_count_returned:       1,
-      created_planting_cycle_id: cycleId,
-      resolver_ok:              true,
-    }));
-
-    return Response.json({ ok: true, id: cycleId });
-
+    return NextResponse.json({ ok:true, id: cycleId });
   } catch (e) {
-    console.error('[MEMBER_ENDPOINT_DIAGNOSTIC_ERROR]', makeDiag('POST', diag, request, {
-      resolved_member_id_sql: caller.memberId,
-      row_count_returned:     0,
-      error:                  String(e),
-    }));
-    return Response.json({ error: String(e) }, { status: 500 });
+    return NextResponse.json({ error: String(e) }, { status: 500 });
+  }
+}
+
+export async function GET(request: Request) {
+  try {
+    const s      = createServerSupabaseClient();
+    const caller = await resolveApprovedMember(request, s);
+    if (!caller.ok) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { data, error } = await s
+      .from('planting_cycles')
+      .select('id,crop_name,season_year,status,planted_at,expected_harvest_at,plot_id')
+      .eq('member_id', caller.memberId)
+      .not('status', 'in', '(harvested,cancelled)')
+      .order('created_at', { ascending: false });
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ cycles: data ?? [] });
+  } catch (e) {
+    return NextResponse.json({ error: String(e) }, { status: 500 });
   }
 }
