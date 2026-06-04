@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 import { useCurrentMember } from '@/providers/auth-provider';
-import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import { tryCreateSupabaseBrowserClient } from '@/lib/supabase/client';
 import { MobileAppShell } from '@/shared/components/mobile-app-shell';
 import { UIButton } from '@/shared/components/ui-button';
 import { ErrorState } from '@/shared/components/error-state';
@@ -36,46 +36,72 @@ export default function AddPlotPage() {
       setError('กรุณากรอกชื่อแปลงและพื้นที่ให้ครบ'); return;
     }
     setSubmitting(true); setError(null);
-    const s = createSupabaseBrowserClient();
-    const payload = {
-      member_id:       member.member_id,
-      name:            name.trim(),
-      area_rai:        Number(areaRai),
-      province:        province || null,
-      land_doc_type:   landDocType || null,
-      land_doc_number: landDocNum || null,
-      // TODO: Re-enable GPS after mobile LINE geolocation issue is fixed
-      lat:             null,
-      lng:             null,
-      accuracy:        null,
-      status:          'pending_review',
-      created_by:      member.member_id,
-      role_used:       'farmer',
-      timestamp:       new Date().toISOString(),
-    };
-    const [{ data: { user } }, currentMemberResult] = await Promise.all([
-      s.auth.getUser(),
-      s.rpc('current_member_id'),
-    ]);
-    console.log('[plot insert diagnostics] before plots insert', {
-      'auth.uid()': user?.id ?? null,
-      'current_member_id()': (currentMemberResult.data as string | null) ?? null,
-      'current_member_id() error': currentMemberResult.error?.message ?? null,
-      'member.member_id': member.member_id,
-      'payload.member_id': payload.member_id,
-      'payload.created_by': payload.created_by,
+
+    // ── Diagnostic: log planting-cycle pattern vs add-plot pattern ────────────
+    // planting-cycle uses resolveApprovedMember on server (Bearer token OR
+    // explicit member_id fallback). We must match that pattern here.
+    const supabase = tryCreateSupabaseBrowserClient();
+    const sessionData = supabase ? await supabase.auth.getSession() : null;
+    const accessToken = sessionData?.data?.session?.access_token ?? null;
+
+    // Diagnostic log — compare both auth state on client side
+    console.log('[ADD_PLOT] pre-submit diagnostics', {
+      'member.member_id (from auth-provider)': member.member_id,
+      'member.auth_user_id':                   member.auth_user_id ?? null,
+      'supabase session access_token present': accessToken !== null,
+      'access_token preview': accessToken ? `${accessToken.slice(0, 20)}…` : null,
+      'planting-cycle pattern': 'POST /api/member/planting-cycles with member_id in body + resolveApprovedMember',
+      'add-plot new pattern':   'POST /api/member/plot-registration with FormData + Bearer token + resolveApprovedMember',
+      'add-plot old pattern (REMOVED)': 'supabase.from(plots).insert() direct browser client — bypassed RLS',
     });
-    const { error: err } = await s.from('plots').insert(payload);
-    setSubmitting(false);
-    if (err) {
-      console.log('[plot insert diagnostics] insert error', {
-        code: err.code,
-        message: err.message,
-        details: err.details,
-        hint: err.hint,
-      });
-      setError(err.message); return;
+
+    // ── Build FormData (same endpoint as before, now with Bearer token) ────────
+    // GPS is disabled — lat/lng are not included.
+    const form = new FormData();
+    form.append('name',     name.trim());
+    form.append('area_rai', areaRai);
+    if (province)   form.append('province',    province);
+    if (landDocType) form.append('land_doc_type',   landDocType);
+    if (landDocNum)  form.append('land_doc_number',  landDocNum);
+
+    // ── Send to API route with Bearer token (same as planting-cycle AUTH) ─────
+    // resolveApprovedMember in the route will:
+    //   1. If Bearer token is valid → use token-resolved memberId (most secure)
+    //   2. If no token or token fails → falls back to line_user_id / member_id
+    const headers: Record<string, string> = {};
+    if (accessToken) {
+      headers['Authorization'] = `Bearer ${accessToken}`;
     }
+
+    console.log('[ADD_PLOT] sending to /api/member/plot-registration', {
+      hasBearer: !!accessToken,
+      name: name.trim(),
+      area_rai: areaRai,
+    });
+
+    const res = await fetch('/api/member/plot-registration', {
+      method:  'POST',
+      headers,
+      body:    form,
+    });
+
+    const data = (await res.json()) as { ok?: boolean; plot_id?: string; error?: string; photo_warnings?: string[] };
+    setSubmitting(false);
+
+    if (!res.ok) {
+      console.error('[ADD_PLOT] server error', {
+        status: res.status,
+        error:  data.error,
+      });
+      setError(data.error ?? 'บันทึกไม่สำเร็จ');
+      return;
+    }
+
+    console.log('[ADD_PLOT] success', {
+      plotId: data.plot_id,
+      photoWarnings: data.photo_warnings ?? [],
+    });
+
     router.replace('/plots');
   }
 
