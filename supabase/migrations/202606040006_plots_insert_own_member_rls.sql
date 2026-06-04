@@ -7,7 +7,6 @@ drop policy if exists plots_insert_own_member on public.plots;
 
 create policy plots_insert_own_member
   on public.plots
-  as restrictive
   for insert
   to authenticated
   with check (
