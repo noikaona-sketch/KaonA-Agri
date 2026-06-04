@@ -1,3 +1,4 @@
+import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient, createAnonSupabaseClient, getLineChannelId } from '../auth/line/line-auth-helpers';
 import { decideApprovedMemberAuth } from './member-auth-decision';
@@ -18,6 +19,48 @@ function getBearerToken(request: Request) {
   return (request.headers.get('Authorization') ?? '').replace('Bearer ', '').trim();
 }
 
+
+function createBearerSupabaseClient(token: string) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey =
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
+    process.env.SUPABASE_ANON_KEY ??
+    process.env.SUPABASE_PUBLISHABLE_KEY;
+
+  if (!supabaseUrl || !anonKey) {
+    throw new Error('Missing Supabase anon environment variables');
+  }
+
+  return createClient(supabaseUrl, anonKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+    global: { headers: { Authorization: `Bearer ${token}` } },
+  });
+}
+
+export async function getMemberResolutionDiagnostics(request: Request) {
+  const token = getBearerToken(request);
+  if (!token) {
+    return {
+      authUid: null,
+      authUidError: null,
+      currentMemberId: null,
+      currentMemberIdError: null,
+    };
+  }
+
+  const anon = createAnonSupabaseClient();
+  const bearerClient = createBearerSupabaseClient(token);
+  const { data: userData, error: userError } = await anon.auth.getUser(token);
+  const { data: resolvedMemberId, error: currentMemberError } = await bearerClient.rpc('current_member_id');
+
+  return {
+    authUid: userData.user?.id ?? null,
+    authUidError: userError?.message ?? null,
+    currentMemberId: typeof resolvedMemberId === 'string' ? resolvedMemberId : null,
+    currentMemberIdError: currentMemberError?.message ?? null,
+  };
+}
+
 function getLineIdToken(request: Request) {
   return (request.headers.get('X-Line-Id-Token') ?? '').trim();
 }
@@ -27,14 +70,15 @@ function isNonProductionDevBypassEnabled() {
 }
 
 async function resolveMemberIdFromBearer(token: string, s: ReturnType<typeof createServerSupabaseClient>): Promise<MemberAuthResolution> {
-  const anon = createAnonSupabaseClient();
-  const { data: { user }, error: userError } = await anon.auth.getUser(token);
-  if (userError || !user) return { kind: 'invalid' };
+  const bearerClient = createBearerSupabaseClient(token);
+  const { data: resolvedMemberId, error: currentMemberError } = await bearerClient.rpc('current_member_id');
+  const memberId = typeof resolvedMemberId === 'string' ? resolvedMemberId : null;
+  if (currentMemberError || !memberId) return { kind: 'invalid' };
 
   const { data: member } = await s
     .from('members')
     .select('id, status')
-    .eq('auth_user_id', user.id)
+    .eq('id', memberId)
     .maybeSingle();
 
   return member?.status === 'approved'

@@ -1,6 +1,6 @@
 import { NextResponse }               from 'next/server';
 import { createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
-import { resolveApprovedMember }      from '../_auth';
+import { getMemberResolutionDiagnostics, resolveApprovedMember } from '../_auth';
 import { isCornSeedProduct }          from '@/lib/products/corn-seed';
 
 export const dynamic = 'force-dynamic';
@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as {
-      member_id:string; crop_name:string; plot_id:string;
+      member_id?:string; crop_name:string; plot_id:string;
       product_id?:string|null; planted_at:string;
       expected_harvest_at?:string|null; area_planted_rai?:number|null;
       season_year?:number; quota_kg?:number|null;
@@ -17,7 +17,7 @@ export async function POST(request: Request) {
     };
 
     const s      = createServerSupabaseClient();
-    const caller = await resolveApprovedMember(request, s, body.member_id);
+    const caller = await resolveApprovedMember(request, s, undefined, { allowExplicitIdentity: false });
     if (!caller.ok) return caller.response;
 
     if (!body.plot_id) {
@@ -109,7 +109,9 @@ export async function POST(request: Request) {
 export async function GET(request: Request) {
   try {
     const s      = createServerSupabaseClient();
-    const caller = await resolveApprovedMember(request, s);
+    const url    = new URL(request.url);
+    const authDiagnostics = await getMemberResolutionDiagnostics(request);
+    const caller = await resolveApprovedMember(request, s, undefined, { allowExplicitIdentity: false });
     if (!caller.ok) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const { data, error } = await s
       .from('planting_cycles')
@@ -118,6 +120,17 @@ export async function GET(request: Request) {
       .not('status', 'in', '(harvested,cancelled)')
       .order('created_at', { ascending: false });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    console.info('[MEMBER_ENDPOINT_DIAGNOSTIC]', {
+      endpoint: '/api/member/planting-cycles',
+      auth_uid: authDiagnostics.authUid,
+      auth_uid_error: authDiagnostics.authUidError,
+      current_member_id: authDiagnostics.currentMemberId,
+      current_member_id_error: authDiagnostics.currentMemberIdError,
+      request_member_id_query: url.searchParams.get('member_id'),
+      cached_member_id: request.headers.get('X-Cached-Member-Id'),
+      resolved_member_id_sql: caller.memberId,
+      row_count_returned: data?.length ?? 0,
+    });
     return NextResponse.json({ cycles: data ?? [] });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });

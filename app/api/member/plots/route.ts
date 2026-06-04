@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
-import { resolveApprovedMember } from '../_auth';
+import { getMemberResolutionDiagnostics, resolveApprovedMember } from '../_auth';
 
 // photos(id) gives a count via PostgREST embedded resource.
 // public.photos.plot_id FK → plots.id already exists in schema.
@@ -17,6 +17,8 @@ const REGISTERED_PLOTS_STATUS_FILTER = 'non_deleted:any_status';
 export async function GET(request: Request) {
   try {
     const s = createServerSupabaseClient();
+    const url = new URL(request.url);
+    const authDiagnostics = await getMemberResolutionDiagnostics(request);
     const caller = await resolveApprovedMember(request, s, undefined, { allowExplicitIdentity: false });
     if (!caller.ok) return caller.response;
 
@@ -28,6 +30,18 @@ export async function GET(request: Request) {
       .order('created_at', { ascending: false });
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    console.info('[MEMBER_ENDPOINT_DIAGNOSTIC]', {
+      endpoint: '/api/member/plots',
+      auth_uid: authDiagnostics.authUid,
+      auth_uid_error: authDiagnostics.authUidError,
+      current_member_id: authDiagnostics.currentMemberId,
+      current_member_id_error: authDiagnostics.currentMemberIdError,
+      request_member_id_query: url.searchParams.get('member_id'),
+      cached_member_id: request.headers.get('X-Cached-Member-Id'),
+      resolved_member_id_sql: caller.memberId,
+      row_count_returned: data?.length ?? 0,
+    });
 
     if ((data ?? []).length === 0) {
       console.info('[MEMBER_PLOTS] 0 registered plots', {

@@ -8,6 +8,7 @@ import { UIButton }            from '@/shared/components/ui-button';
 import { ErrorState }          from '@/shared/components/error-state';
 import { LoadingState }        from '@/shared/components/loading-state';
 import { isCornSeedProduct }    from '@/lib/products/corn-seed';
+import { tryCreateSupabaseBrowserClient } from '@/lib/supabase/client';
 
 /* ── Types ── */
 type Plot = { id:string; name:string; province:string|null; area_rai:number };
@@ -28,6 +29,15 @@ const CROP_ICONS: Record<string,string> = {
 
 function calcSeasonYear(harvestDate:string): number {
   return new Date(harvestDate).getFullYear() + 543;
+}
+
+async function getBearerToken(): Promise<string | null> {
+  const sb = tryCreateSupabaseBrowserClient();
+  if (!sb) return null;
+  const { data: r } = await sb.auth.refreshSession();
+  if (r.session?.access_token) return r.session.access_token;
+  const { data: { session } } = await sb.auth.getSession();
+  return session?.access_token ?? null;
 }
 
 function isCornCrop(cropName:string) {
@@ -63,8 +73,12 @@ function NewPlantingCyclePageContent() {
     if (!member?.member_id) return;
     setLoading(true);
     void (async () => {
+      const token = await getBearerToken();
+      const headers: Record<string, string> = token
+        ? { Authorization: `Bearer ${token}`, 'X-Cached-Member-Id': member.member_id }
+        : { 'X-Cached-Member-Id': member.member_id };
       const [pRes, cRes] = await Promise.all([
-        fetch(`/api/member/plots?line_user_id=${encodeURIComponent(member.line_user_id)}`).then(r=>r.json()) as Promise<{plots?:Plot[]}>,
+        fetch('/api/member/plots', { headers }).then(r=>r.json()) as Promise<{plots?:Plot[]}>,
         fetch('/api/member/crop-types').then(r=>r.json()) as Promise<{crops?:CropConfig[]}>,
       ]);
       const loadedPlots = pRes.plots ?? [];
@@ -144,11 +158,15 @@ function NewPlantingCyclePageContent() {
     }
     setSubmitting(true); setError(null);
 
+    const token = await getBearerToken();
+    const headers: Record<string, string> = token
+      ? { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, 'X-Cached-Member-Id': member.member_id }
+      : { 'Content-Type': 'application/json', 'X-Cached-Member-Id': member.member_id };
+
     const res = await fetch('/api/member/planting-cycles', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({
-        member_id:           member.member_id,
         crop_name:           cropName,
         plot_id:             plotId,
         product_id:          primaryProductId,
