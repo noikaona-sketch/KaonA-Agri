@@ -6,6 +6,7 @@ import { useAuth, useCurrentMember } from '@/providers/auth-provider';
 import { MobileAppShell }      from '@/shared/components/mobile-app-shell';
 import { ProtectedRoute }      from '@/shared/components/protected-route';
 import { LoadingState }        from '@/shared/components/loading-state';
+import { getAuthHeaders }      from '@/lib/auth/get-auth-headers';
 import { tryCreateSupabaseBrowserClient } from '@/lib/supabase/client';
 
 const BANKS = [
@@ -62,33 +63,18 @@ function ProfileEditContent() {
       });
   }, [member?.member_id, loaded]);
 
-  // Wait for auth — same pattern as planting-cycles / add-plot
-  if (status === 'loading') {
-    return <LoadingState label="กำลังโหลด…" />;
-  }
+  if (status === 'loading') return <LoadingState label="กำลังโหลด…" />;
 
   async function save() {
     if (!member?.member_id) { setError('กรุณาเข้าสู่ระบบก่อน'); return; }
     if (!fullName.trim()) { setError('กรุณากรอกชื่อ-นามสกุล'); return; }
     setSaving(true); setError(null);
 
-    // ── Bearer token + line_user_id fallback (same pattern as add-plot) ───────
-    const supabase = tryCreateSupabaseBrowserClient();
-    const sessionData = supabase ? await supabase.auth.getSession() : null;
-    const accessToken = sessionData?.data?.session?.access_token ?? null;
+    const { headers, url } = await getAuthHeaders(member, '/api/member/profile');
+    headers['Content-Type'] = 'application/json';
 
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (accessToken) {
-      headers['Authorization'] = `Bearer ${accessToken}`;
-    }
-
-    const url = new URL('/api/member/profile', window.location.origin);
-    if (!accessToken && member.line_user_id) {
-      url.searchParams.set('line_user_id', member.line_user_id);
-    }
-
-    const res = await fetch(url.toString(), {
-      method:  'PATCH',
+    const res = await fetch(url, {
+      method: 'PATCH',
       headers,
       body: JSON.stringify({
         full_name:           fullName.trim(),
@@ -123,51 +109,42 @@ function ProfileEditContent() {
         {error  && <div style={{ padding: '10px 14px', borderRadius: 10, background: '#ffebee', color: '#c62828', fontSize: 13, fontWeight: 600 }}>{error}</div>}
 
         <p style={S.section}>👤 ข้อมูลส่วนตัว</p>
-        <label style={S.label}>
-          ชื่อ-นามสกุล *
+        <label style={S.label}>ชื่อ-นามสกุล *
           <input style={S.input} value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="ชื่อ-นามสกุล" />
         </label>
-        <label style={S.label}>
-          เบอร์โทรศัพท์
+        <label style={S.label}>เบอร์โทรศัพท์
           <input style={S.input} type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="0812345678" />
         </label>
 
         <p style={S.section}>📍 ที่อยู่</p>
-        <label style={S.label}>
-          บ้านเลขที่ / หมู่
+        <label style={S.label}>บ้านเลขที่ / หมู่
           <input style={S.input} value={address} onChange={(e) => setAddress(e.target.value)} placeholder="เลขที่บ้าน หมู่บ้าน" />
         </label>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <label style={S.label}>
-            ตำบล
+          <label style={S.label}>ตำบล
             <input style={S.input} value={subdistrict} onChange={(e) => setSubdistrict(e.target.value)} placeholder="ตำบล" />
           </label>
-          <label style={S.label}>
-            อำเภอ
+          <label style={S.label}>อำเภอ
             <input style={S.input} value={district} onChange={(e) => setDistrict(e.target.value)} placeholder="อำเภอ" />
           </label>
         </div>
-        <label style={S.label}>
-          จังหวัด
+        <label style={S.label}>จังหวัด
           <input style={S.input} value={province} onChange={(e) => setProvince(e.target.value)} placeholder="จังหวัด" />
         </label>
 
         <p style={S.section}>🏦 บัญชีธนาคาร</p>
-        <label style={S.label}>
-          ธนาคาร
+        <label style={S.label}>ธนาคาร
           <select style={S.input} value={bankName} onChange={(e) => setBankName(e.target.value)}>
             <option value="">— เลือกธนาคาร —</option>
             {BANKS.map((b) => <option key={b} value={b}>{b}</option>)}
           </select>
         </label>
-        <label style={S.label}>
-          เลขบัญชี
+        <label style={S.label}>เลขบัญชี
           <input style={S.input} value={bankAccount} inputMode="numeric"
             onChange={(e) => setBankAccount(e.target.value.replace(/\D/g, ''))}
             placeholder="xxxxxxxxxx" />
         </label>
-        <label style={S.label}>
-          ชื่อบัญชี
+        <label style={S.label}>ชื่อบัญชี
           <input style={S.input} value={bankAccName} onChange={(e) => setBankAccName(e.target.value)} placeholder="ชื่อ-นามสกุลเจ้าของบัญชี" />
         </label>
 
