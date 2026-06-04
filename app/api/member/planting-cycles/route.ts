@@ -1,52 +1,120 @@
 import { createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
 import { getMemberResolutionDiagnostics, resolveApprovedMember } from '../_auth';
-import { appendDiagnosticToJsonResponse, createDiagnosticRequestId, jsonWithDiagnostic } from '../_diagnostics';
-import { isCornSeedProduct }          from '@/lib/products/corn-seed';
+import { isCornSeedProduct } from '@/lib/products/corn-seed';
 
 export const dynamic = 'force-dynamic';
 
-export async function POST(request: Request) {
-  const diagnosticRequestId = createDiagnosticRequestId();
+// ── Shared diagnostic shape ──────────────────────────────────────────────────
+function makeDiag(
+  method: string,
+  diag: Awaited<ReturnType<typeof getMemberResolutionDiagnostics>>,
+  request: Request,
+  extra: Record<string, unknown> = {},
+) {
+  return {
+    endpoint:            '/api/member/planting-cycles',
+    method,
+    auth_uid:            diag.authUid,
+    current_member_id:   diag.currentMemberId,
+    cached_member_id:    request.headers.get('X-Cached-Member-Id') ?? null,
+    ...extra,
+  };
+}
+
+// ── GET /api/member/planting-cycles ─────────────────────────────────────────
+export async function GET(request: Request) {
+  const s    = createServerSupabaseClient();
+  const diag = await getMemberResolutionDiagnostics(request);
+
+  const caller = await resolveApprovedMember(request, s, undefined, { allowExplicitIdentity: false });
+
+  if (!caller.ok) {
+    console.info('[MEMBER_ENDPOINT_DIAGNOSTIC]', makeDiag('GET', diag, request, {
+      resolved_member_id_sql: null,
+      row_count_returned:     0,
+      resolver_ok:            false,
+    }));
+    return caller.response;
+  }
 
   try {
-    const body = (await request.json()) as {
-      member_id?:string; crop_name:string; plot_id:string;
-      product_id?:string|null; planted_at:string;
-      expected_harvest_at?:string|null; area_planted_rai?:number|null;
-      season_year?:number; quota_kg?:number|null;
-      status?:string; source?:string; member_note?:string|null;
-      confirmed_at?:string;
-    };
+    const { data, error } = await s
+      .from('planting_cycles')
+      .select('id,crop_name,season_year,status,planted_at,expected_harvest_at,plot_id')
+      .eq('member_id', caller.memberId)
+      .not('status', 'in', '(harvested,cancelled)')
+      .order('created_at', { ascending: false });
 
-    const s      = createServerSupabaseClient();
-    const authDiagnostics = await getMemberResolutionDiagnostics(request);
-    const caller = await resolveApprovedMember(request, s, undefined, { allowExplicitIdentity: false });
-    if (!caller.ok) {
-      console.info('[MEMBER_ENDPOINT_DIAGNOSTIC]', {
-        diagnostic_request_id: diagnosticRequestId,
-        endpoint: '/api/member/planting-cycles',
-        method: 'POST',
-        auth_uid: authDiagnostics.authUid,
-        auth_uid_error: authDiagnostics.authUidError,
-        current_member_id: authDiagnostics.currentMemberId,
-        current_member_id_error: authDiagnostics.currentMemberIdError,
-        request_member_id_body: body.member_id ?? null,
-        request_plot_id_body: body.plot_id ?? null,
-        cached_member_id: request.headers.get('X-Cached-Member-Id'),
-        row_count_returned: 0,
-        resolver_ok: false,
-      });
-      return appendDiagnosticToJsonResponse(caller.response, diagnosticRequestId);
+    if (error) {
+      console.error('[MEMBER_ENDPOINT_DIAGNOSTIC_ERROR]', makeDiag('GET', diag, request, {
+        resolved_member_id_sql: caller.memberId,
+        row_count_returned:     0,
+        error:                  error.message,
+      }));
+      return Response.json({ error: error.message }, { status: 500 });
     }
 
-    if (!body.plot_id) {
-      return jsonWithDiagnostic({ error: 'กรุณาเลือกแปลงก่อนสร้างรอบปลูก' }, diagnosticRequestId, { status: 400 });
-    }
-    if (!body.expected_harvest_at) {
-      return jsonWithDiagnostic({ error: 'กรุณาระบุวันที่คาดว่าจะเก็บเกี่ยว' }, diagnosticRequestId, { status: 400 });
-    }
+    console.info('[MEMBER_ENDPOINT_DIAGNOSTIC]', makeDiag('GET', diag, request, {
+      resolved_member_id_sql: caller.memberId,
+      row_count_returned:     data?.length ?? 0,
+      resolver_ok:            true,
+    }));
 
-    const usesBillFlow = isCornSeedProduct({ category:'seed', product_type:'seed', crop_type:body.crop_name, name:body.crop_name });
+    return Response.json({ cycles: data ?? [] });
+
+  } catch (e) {
+    console.error('[MEMBER_ENDPOINT_DIAGNOSTIC_ERROR]', makeDiag('GET', diag, request, {
+      resolved_member_id_sql: caller.memberId,
+      row_count_returned:     0,
+      error:                  String(e),
+    }));
+    return Response.json({ error: String(e) }, { status: 500 });
+  }
+}
+
+// ── POST /api/member/planting-cycles ────────────────────────────────────────
+export async function POST(request: Request) {
+  const diag = await getMemberResolutionDiagnostics(request);
+
+  let body: {
+    member_id?: string; crop_name: string; plot_id: string;
+    product_id?: string | null; planted_at: string;
+    expected_harvest_at?: string | null; area_planted_rai?: number | null;
+    season_year?: number; quota_kg?: number | null;
+    status?: string; source?: string; member_note?: string | null;
+    confirmed_at?: string;
+  };
+
+  try {
+    body = (await request.json()) as typeof body;
+  } catch {
+    return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
+
+  const s      = createServerSupabaseClient();
+  const caller = await resolveApprovedMember(request, s, undefined, { allowExplicitIdentity: false });
+
+  if (!caller.ok) {
+    console.info('[MEMBER_ENDPOINT_DIAGNOSTIC]', makeDiag('POST', diag, request, {
+      resolved_member_id_sql: null,
+      row_count_returned:     0,
+      resolver_ok:            false,
+    }));
+    return caller.response;
+  }
+
+  if (!body.plot_id) {
+    return Response.json({ error: 'กรุณาเลือกแปลงก่อนสร้างรอบปลูก' }, { status: 400 });
+  }
+  if (!body.expected_harvest_at) {
+    return Response.json({ error: 'กรุณาระบุวันที่คาดว่าจะเก็บเกี่ยว' }, { status: 400 });
+  }
+
+  try {
+    const usesBillFlow = isCornSeedProduct({
+      category: 'seed', product_type: 'seed',
+      crop_type: body.crop_name, name: body.crop_name,
+    });
 
     const { data, error } = await s
       .from('planting_cycles')
@@ -70,12 +138,19 @@ export async function POST(request: Request) {
       .select('id')
       .single();
 
-    if (error) return jsonWithDiagnostic({ error: error.message }, diagnosticRequestId, { status: 500 });
+    if (error) {
+      console.error('[MEMBER_ENDPOINT_DIAGNOSTIC_ERROR]', makeDiag('POST', diag, request, {
+        resolved_member_id_sql: caller.memberId,
+        row_count_returned:     0,
+        error:                  error.message,
+      }));
+      return Response.json({ error: error.message }, { status: 500 });
+    }
 
     const cycleId   = (data as { id: string }).id;
     const plantedAt = body.planted_at ? new Date(body.planted_at) : null;
 
-    // ── Seed scheduled reminder logs from care_defaults (best-effort) ─────────
+    // ── Seed scheduled reminder logs (best-effort) ────────────────────────
     if (plantedAt) {
       void (async () => {
         try {
@@ -107,7 +182,6 @@ export async function POST(request: Request) {
                 recorded_at:       dueDate.toISOString(),
               };
             });
-            // Insert only if not already seeded (idempotent)
             await s.from('farm_activity_logs').upsert(rows, {
               onConflict: 'planting_cycle_id,scheduled_day',
               ignoreDuplicates: true,
@@ -119,87 +193,21 @@ export async function POST(request: Request) {
       })();
     }
 
-    console.info('[MEMBER_ENDPOINT_DIAGNOSTIC]', {
-      diagnostic_request_id: diagnosticRequestId,
-      endpoint: '/api/member/planting-cycles',
-      method: 'POST',
-      auth_uid: authDiagnostics.authUid,
-      auth_uid_error: authDiagnostics.authUidError,
-      current_member_id: authDiagnostics.currentMemberId,
-      current_member_id_error: authDiagnostics.currentMemberIdError,
-      request_member_id_body: body.member_id ?? null,
-      request_plot_id_body: body.plot_id ?? null,
-      cached_member_id: request.headers.get('X-Cached-Member-Id'),
-      resolved_member_id_sql: caller.memberId,
-      row_count_returned: 1,
+    console.info('[MEMBER_ENDPOINT_DIAGNOSTIC]', makeDiag('POST', diag, request, {
+      resolved_member_id_sql:   caller.memberId,
+      row_count_returned:       1,
       created_planting_cycle_id: cycleId,
-    });
+      resolver_ok:              true,
+    }));
 
-    return jsonWithDiagnostic({ ok:true, id: cycleId }, diagnosticRequestId);
+    return Response.json({ ok: true, id: cycleId });
+
   } catch (e) {
-    console.error('[MEMBER_ENDPOINT_DIAGNOSTIC_ERROR]', {
-      diagnostic_request_id: diagnosticRequestId,
-      endpoint: '/api/member/planting-cycles',
-      method: 'POST',
-      error: String(e),
-    });
-    return jsonWithDiagnostic({ error: String(e) }, diagnosticRequestId, { status: 500 });
-  }
-}
-
-export async function GET(request: Request) {
-  const diagnosticRequestId = createDiagnosticRequestId();
-
-  try {
-    const s      = createServerSupabaseClient();
-    const url    = new URL(request.url);
-    const authDiagnostics = await getMemberResolutionDiagnostics(request);
-    const caller = await resolveApprovedMember(request, s, undefined, { allowExplicitIdentity: false });
-    if (!caller.ok) {
-      console.info('[MEMBER_ENDPOINT_DIAGNOSTIC]', {
-        diagnostic_request_id: diagnosticRequestId,
-        endpoint: '/api/member/planting-cycles',
-        method: 'GET',
-        auth_uid: authDiagnostics.authUid,
-        auth_uid_error: authDiagnostics.authUidError,
-        current_member_id: authDiagnostics.currentMemberId,
-        current_member_id_error: authDiagnostics.currentMemberIdError,
-        request_member_id_query: url.searchParams.get('member_id'),
-        request_line_user_id_query: url.searchParams.get('line_user_id'),
-        cached_member_id: request.headers.get('X-Cached-Member-Id'),
-        resolver_ok: false,
-      });
-      return appendDiagnosticToJsonResponse(caller.response, diagnosticRequestId);
-    }
-    const { data, error } = await s
-      .from('planting_cycles')
-      .select('id,crop_name,season_year,status,planted_at,expected_harvest_at,plot_id')
-      .eq('member_id', caller.memberId)
-      .not('status', 'in', '(harvested,cancelled)')
-      .order('created_at', { ascending: false });
-    if (error) return jsonWithDiagnostic({ error: error.message }, diagnosticRequestId, { status: 500 });
-    console.info('[MEMBER_ENDPOINT_DIAGNOSTIC]', {
-      diagnostic_request_id: diagnosticRequestId,
-      endpoint: '/api/member/planting-cycles',
-      method: 'GET',
-      auth_uid: authDiagnostics.authUid,
-      auth_uid_error: authDiagnostics.authUidError,
-      current_member_id: authDiagnostics.currentMemberId,
-      current_member_id_error: authDiagnostics.currentMemberIdError,
-      request_member_id_query: url.searchParams.get('member_id'),
-      request_line_user_id_query: url.searchParams.get('line_user_id'),
-      cached_member_id: request.headers.get('X-Cached-Member-Id'),
+    console.error('[MEMBER_ENDPOINT_DIAGNOSTIC_ERROR]', makeDiag('POST', diag, request, {
       resolved_member_id_sql: caller.memberId,
-      row_count_returned: data?.length ?? 0,
-    });
-    return jsonWithDiagnostic({ cycles: data ?? [] }, diagnosticRequestId);
-  } catch (e) {
-    console.error('[MEMBER_ENDPOINT_DIAGNOSTIC_ERROR]', {
-      diagnostic_request_id: diagnosticRequestId,
-      endpoint: '/api/member/planting-cycles',
-      method: 'GET',
-      error: String(e),
-    });
-    return jsonWithDiagnostic({ error: String(e) }, diagnosticRequestId, { status: 500 });
+      row_count_returned:     0,
+      error:                  String(e),
+    }));
+    return Response.json({ error: String(e) }, { status: 500 });
   }
 }
