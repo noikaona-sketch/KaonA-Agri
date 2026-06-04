@@ -20,7 +20,7 @@ export async function GET(_req: Request, { params }: Params) {
         .select('id,full_name,phone,citizen_id_masked,address,house_no,moo,subdistrict,district,province,status,registration_type,line_user_id,line_display_name,line_picture_url,created_at,updated_at,bank_name,bank_account_number,bank_account_name,bank_verified_status,return_reason,returned_at,rejection_reason')
         .eq('id', id).maybeSingle(),
       s.from('plots')
-        .select('id,name,area_rai,lat,lng,status,province,district,sub_district,description,land_doc_type,land_doc_number')
+        .select('id,member_id,name,area_rai,lat,lng,accuracy,status,province,district,sub_district,description,land_doc_type,land_doc_number,boundary_geojson,area_rai_calculated')
         .eq('member_id', id).is('deleted_at', null),
       s.from('member_vehicles')
         .select('id,vehicle_type,plate_number,brand,model,year_be,province,capacity_ton')
