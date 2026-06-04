@@ -330,7 +330,7 @@ function PlotsContent() {
 
     // 1) Plots + cycles + no-burn in parallel
     const [plotsRes, cyclesRes] = await Promise.all([
-      fetch(`/api/member/plots?member_id=${member.member_id}`, { headers })
+      fetch('/api/member/plots', { headers })
         .then(r => r.json() as Promise<{ plots?: Plot[] }>),
       fetch(`/api/member/planting-cycles?member_id=${member.member_id}`, { headers })
         .then(r => r.json() as Promise<{ cycles?: ActiveCycle[] }>),

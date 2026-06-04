@@ -56,8 +56,25 @@ export default function AddPlotPage() {
     }
     setSubmitting(true); setError(null);
     const s = createSupabaseBrowserClient();
-    const { error: err } = await s.from('plots').insert({
-      member_id:       member.member_id,
+    const { data: { user }, error: userError } = await s.auth.getUser();
+    const { data: resolvedMemberId, error: resolvedMemberError } = await s.rpc('current_member_id');
+    const currentMemberId = typeof resolvedMemberId === 'string' ? resolvedMemberId : null;
+
+    if (!user?.id || !currentMemberId) {
+      console.info('[PLOT_INSERT_DIAGNOSTIC]', {
+        auth_uid: user?.id ?? null,
+        auth_error: userError?.message ?? null,
+        resolved_member_id: currentMemberId,
+        resolved_member_error: resolvedMemberError?.message ?? null,
+        cached_member_id: member.member_id,
+      });
+      setSubmitting(false);
+      setError('ไม่พบ Supabase session หรือสมาชิกปัจจุบันสำหรับบันทึกแปลง กรุณาปิดและเปิด LINE ใหม่อีกครั้ง');
+      return;
+    }
+
+    const insertPayload = {
+      member_id:       currentMemberId,
       name:            name.trim(),
       area_rai:        Number(areaRai),
       province:        province || null,
@@ -65,10 +82,21 @@ export default function AddPlotPage() {
       land_doc_number: landDocNum || null,
       lat, lng, accuracy,
       status:          'pending_review',
-      created_by:      member.member_id,
+      created_by:      currentMemberId,
       role_used:       'farmer',
       timestamp:       new Date().toISOString(),
+    };
+
+    console.info('[PLOT_INSERT_DIAGNOSTIC]', {
+      auth_uid: user.id,
+      resolved_member_id: currentMemberId,
+      payload_member_id: insertPayload.member_id,
+      payload_created_by: insertPayload.created_by,
+      cached_member_id: member.member_id,
+      cached_matches_resolved: member.member_id === currentMemberId,
     });
+
+    const { error: err } = await s.from('plots').insert(insertPayload);
     setSubmitting(false);
     if (err) { setError(err.message); return; }
     router.replace('/plots');
