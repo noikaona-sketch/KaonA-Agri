@@ -1,8 +1,185 @@
-import { NextResponse } from 'next/server';
+import { NextResponse }               from 'next/server';
 import { createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
+import { resolveApprovedMember }      from '../_auth';
+
+export const dynamic = 'force-dynamic';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Shared helper: resolve member row from Bearer token
+// POST /api/member/plot-registration
+//
+// Uses the same resolveApprovedMember pattern as planting-cycles to ensure
+// consistent member resolution on LINE mobile.
+//
+// Accepts multipart/form-data:
+//   name, area_rai         — required
+//   province, description  — optional
+//   lat, lng, accuracy     — optional (GPS disabled for now; pass null or omit)
+//   photo_0..3             — optional
+//
+// member_id is NEVER read from the request body — always resolved from Bearer
+// token (if present) or line_user_id / member_id query param fallback.
+//
+// Diagnostic logs compare:
+//   - add-plot resolved member_id
+//   - auth.uid() at insert time
+//   - current_member_id() at insert time
+//   - insert member_id
+//   - created_by
+// ─────────────────────────────────────────────────────────────────────────────
+export async function POST(request: Request) {
+  try {
+    const s = createServerSupabaseClient();
+
+    // ── Resolve member — same pattern as planting-cycles ─────────────────────
+    const caller = await resolveApprovedMember(request, s);
+    if (!caller.ok) return caller.response;
+
+    // ── Parse form ────────────────────────────────────────────────────────────
+    let form: FormData;
+    try {
+      form = await request.formData();
+    } catch {
+      return NextResponse.json(
+        { error: 'รูปแบบข้อมูลไม่ถูกต้อง (ต้องเป็น multipart/form-data)' },
+        { status: 400 },
+      );
+    }
+
+    const name        = (form.get('name')        as string | null)?.trim() ?? '';
+    const areaRaiRaw  = (form.get('area_rai')    as string | null) ?? '';
+    const latRaw      = (form.get('lat')         as string | null) ?? '';
+    const lngRaw      = (form.get('lng')         as string | null) ?? '';
+    const accuracyRaw = (form.get('accuracy')    as string | null) ?? '';
+    const province    = (form.get('province')    as string | null)?.trim() || null;
+    const description = (form.get('description') as string | null)?.trim() || null;
+    const landDocType = (form.get('land_doc_type')   as string | null)?.trim() || null;
+    const landDocNum  = (form.get('land_doc_number') as string | null)?.trim() || null;
+
+    // ── Validate required fields ───────────────────────────────────────────────
+    if (!name) {
+      return NextResponse.json({ error: 'กรุณาระบุชื่อแปลง' }, { status: 400 });
+    }
+    const areaRai = Number(areaRaiRaw);
+    if (!Number.isFinite(areaRai) || areaRai <= 0) {
+      return NextResponse.json({ error: 'กรุณาระบุพื้นที่ (ไร่) ให้ถูกต้อง' }, { status: 400 });
+    }
+
+    // ── GPS: optional while disabled ──────────────────────────────────────────
+    // lat/lng may be null or missing — skip GPS validation when values absent
+    const lat      = latRaw      ? Number(latRaw)      : null;
+    const lng      = lngRaw      ? Number(lngRaw)      : null;
+    const accuracy = accuracyRaw ? Number(accuracyRaw) : null;
+
+    // If lat/lng provided they must be valid finite numbers
+    if (lat !== null && !Number.isFinite(lat)) {
+      return NextResponse.json({ error: 'lat ไม่ถูกต้อง' }, { status: 400 });
+    }
+    if (lng !== null && !Number.isFinite(lng)) {
+      return NextResponse.json({ error: 'lng ไม่ถูกต้อง' }, { status: 400 });
+    }
+
+    // ── Diagnostic: compare auth state before insert ──────────────────────────
+    const [authResult, memberIdResult] = await Promise.all([
+      s.auth.getUser(),
+      s.rpc('current_member_id'),
+    ]);
+
+    console.log('[ADD_PLOT] pre-insert diagnostics', {
+      'add-plot resolved member_id': caller.memberId,
+      'auth.uid()': authResult.data?.user?.id ?? null,
+      'auth.getUser() error': authResult.error?.message ?? null,
+      'current_member_id()': (memberIdResult.data as string | null) ?? null,
+      'current_member_id() error': memberIdResult.error?.message ?? null,
+      'insert member_id (will use)': caller.memberId,
+      'insert created_by (will use)': caller.memberId,
+    });
+
+    // ── Call RPC (sets status = pending_review internally, SECURITY DEFINER) ──
+    const { data: plotId, error: rpcError } = await s.rpc('add_registration_plot', {
+      p_member_id:       caller.memberId,
+      p_name:            name,
+      p_area_rai:        areaRai,
+      p_lat:             lat,
+      p_lng:             lng,
+      p_accuracy:        accuracy,
+      p_province:        province,
+      p_description:     description,
+      p_land_doc_type:   landDocType,
+      p_land_doc_number: landDocNum,
+      p_district:        null,
+    });
+
+    if (rpcError) {
+      console.error('[ADD_PLOT] RPC error:', rpcError.message, {
+        memberId: caller.memberId,
+        rpcCode: rpcError.code,
+        rpcHint: rpcError.hint,
+        rpcDetails: rpcError.details,
+      });
+      return NextResponse.json({ error: rpcError.message }, { status: 500 });
+    }
+
+    console.log('[ADD_PLOT] insert success', {
+      plotId: plotId as string,
+      memberId: caller.memberId,
+    });
+
+    // ── Photo upload + metadata (best-effort) ─────────────────────────────────
+    const photoWarnings: string[] = [];
+    const capturedAt = new Date().toISOString();
+
+    for (let i = 0; i < 4; i++) {
+      const photo = form.get(`photo_${i}`);
+      if (!(photo instanceof File) || photo.size === 0) continue;
+
+      const ext  = photo.name.split('.').pop()?.toLowerCase() ?? 'jpg';
+      const path = `${caller.memberId}/plots/${plotId as string}_photo${i}_${Date.now()}.${ext}`;
+
+      const { error: uploadError } = await s.storage
+        .from('member-photos')
+        .upload(path, photo, { upsert: true });
+
+      if (uploadError) {
+        console.warn(`[ADD_PLOT] photo ${i} upload failed:`, uploadError.message);
+        photoWarnings.push(`photo_${i}: ${uploadError.message}`);
+        continue;
+      }
+
+      const { error: metaError } = await s.from('photos').insert({
+        member_id:    caller.memberId,
+        plot_id:      plotId as string,
+        storage_path: path,
+        photo_type:   'plot',
+        lat:          lat ?? 0,
+        lng:          lng ?? 0,
+        accuracy:     accuracy ?? 0,
+        captured_at:  capturedAt,
+        uploaded_by:  caller.memberId,
+      });
+
+      if (metaError) {
+        console.warn(`[ADD_PLOT] photo ${i} metadata insert failed:`, metaError.message);
+        photoWarnings.push(`photo_${i} metadata: ${metaError.message}`);
+      }
+    }
+
+    return NextResponse.json(
+      {
+        ok:             true,
+        plot_id:        plotId as string,
+        photo_warnings: photoWarnings.length > 0 ? photoWarnings : undefined,
+      },
+      { status: 201 },
+    );
+  } catch (e) {
+    console.error('[ADD_PLOT] POST exception:', e);
+    return NextResponse.json({ error: String(e) }, { status: 500 });
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PATCH /api/member/plot-registration
+// (unchanged — kept as is, still uses local resolveCaller for Bearer-only auth)
 // ─────────────────────────────────────────────────────────────────────────────
 async function resolveCaller(
   request: Request,
@@ -34,162 +211,6 @@ async function resolveCaller(
   return { ok: true, memberId: member.id, memberStatus: member.status };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// POST /api/member/plot-registration
-//
-// Accepts multipart/form-data:
-//   name, area_rai, lat, lng  — required
-//   accuracy, province, description, photo_0..3  — optional
-//
-// member_id is NEVER read from request body — always from Bearer token.
-// RPC add_registration_plot sets status = 'pending_review' internally.
-//
-// Photo handling (per approved scope):
-//   1. Upload file to member-photos storage.
-//   2. Only on upload success → insert row into public.photos.
-//   3. Upload failure → no plot rollback, no photos row, return photo_warnings.
-// ─────────────────────────────────────────────────────────────────────────────
-export async function POST(request: Request) {
-  try {
-    const s = createServerSupabaseClient();
-
-    const caller = await resolveCaller(request, s);
-    if (!caller.ok) return caller.response;
-
-    if (caller.memberStatus !== 'approved') {
-      return NextResponse.json(
-        { error: 'เฉพาะสมาชิกที่อนุมัติแล้วเท่านั้นที่ลงทะเบียนแปลงได้' },
-        { status: 403 },
-      );
-    }
-
-    // ── Parse form ────────────────────────────────────────────────────────────
-    let form: FormData;
-    try {
-      form = await request.formData();
-    } catch {
-      return NextResponse.json(
-        { error: 'รูปแบบข้อมูลไม่ถูกต้อง (ต้องเป็น multipart/form-data)' },
-        { status: 400 },
-      );
-    }
-
-    const name        = (form.get('name')        as string | null)?.trim() ?? '';
-    const areaRaiRaw  = (form.get('area_rai')    as string | null) ?? '';
-    const latRaw      = (form.get('lat')         as string | null) ?? '';
-    const lngRaw      = (form.get('lng')         as string | null) ?? '';
-    const accuracyRaw = (form.get('accuracy')    as string | null) ?? '';
-    const province    = (form.get('province')    as string | null)?.trim() || null;
-    const description = (form.get('description') as string | null)?.trim() || null;
-
-    // ── Validate ──────────────────────────────────────────────────────────────
-    if (!name) {
-      return NextResponse.json({ error: 'กรุณาระบุชื่อแปลง' }, { status: 400 });
-    }
-    const areaRai = Number(areaRaiRaw);
-    if (!Number.isFinite(areaRai) || areaRai <= 0) {
-      return NextResponse.json({ error: 'กรุณาระบุพื้นที่ (ไร่) ให้ถูกต้อง' }, { status: 400 });
-    }
-    const lat = Number(latRaw);
-    const lng = Number(lngRaw);
-    if (!Number.isFinite(lat) || !Number.isFinite(lng) || (lat === 0 && lng === 0)) {
-      return NextResponse.json({ error: 'กรุณาจับพิกัด GPS ก่อนส่งข้อมูล' }, { status: 400 });
-    }
-    const accuracy = Number(accuracyRaw) || null;
-
-    // ── Call RPC (sets status = pending_review internally) ────────────────────
-    const { data: plotId, error: rpcError } = await s.rpc('add_registration_plot', {
-      p_member_id:       caller.memberId,
-      p_name:            name,
-      p_area_rai:        areaRai,
-      p_lat:             lat,
-      p_lng:             lng,
-      p_accuracy:        accuracy,
-      p_province:        province,
-      p_description:     description,
-      p_land_doc_type:   null,
-      p_land_doc_number: null,
-      p_district:        null,
-    });
-
-    if (rpcError) {
-      console.error('[PLOT_REG] RPC error:', rpcError.message);
-      return NextResponse.json({ error: rpcError.message }, { status: 500 });
-    }
-
-    // ── Photo upload + metadata (best-effort per approved scope) ──────────────
-    const photoWarnings: string[] = [];
-    const capturedAt = new Date().toISOString();
-
-    for (let i = 0; i < 4; i++) {
-      const photo = form.get(`photo_${i}`);
-      if (!(photo instanceof File) || photo.size === 0) continue;
-
-      const ext  = photo.name.split('.').pop()?.toLowerCase() ?? 'jpg';
-      const path = `${caller.memberId}/plots/${plotId as string}_photo${i}_${Date.now()}.${ext}`;
-
-      // Step 1: upload to storage
-      const { error: uploadError } = await s.storage
-        .from('member-photos')
-        .upload(path, photo, { upsert: true });
-
-      if (uploadError) {
-        // Upload failed → no photos row, warn only
-        console.warn(`[PLOT_REG] photo ${i} upload failed:`, uploadError.message);
-        photoWarnings.push(`photo_${i}: ${uploadError.message}`);
-        continue;
-      }
-
-      // Step 2: upload succeeded → insert public.photos metadata
-      const { error: metaError } = await s.from('photos').insert({
-        member_id:    caller.memberId,
-        plot_id:      plotId as string,
-        storage_path: path,
-        photo_type:   'plot',
-        lat,
-        lng,
-        accuracy:     accuracy ?? 0,
-        captured_at:  capturedAt,
-        uploaded_by:  caller.memberId,
-      });
-
-      if (metaError) {
-        // Metadata insert failed — storage file exists but row missing; warn only
-        console.warn(`[PLOT_REG] photo ${i} metadata insert failed:`, metaError.message);
-        photoWarnings.push(`photo_${i} metadata: ${metaError.message}`);
-      }
-    }
-
-    return NextResponse.json(
-      {
-        ok:             true,
-        plot_id:        plotId as string,
-        photo_warnings: photoWarnings.length > 0 ? photoWarnings : undefined,
-      },
-      { status: 201 },
-    );
-  } catch (e) {
-    console.error('[PLOT_REG] POST exception:', e);
-    return NextResponse.json({ error: String(e) }, { status: 500 });
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// PATCH /api/member/plot-registration
-// Body JSON: { plot_id, name?, area_rai?, description?, province?,
-//              lat?, lng?, accuracy? }
-//
-// Allowed updates (approved scope only):
-//   name, area_rai, description, province, lat, lng, accuracy
-//
-// Protected (never updated here):
-//   status, member_id, created_by, role_used, deleted_at, land_doc_number
-//
-// Guards:
-//   - plot belongs to caller (member_id match)
-//   - plot status = pending_review
-//   - deleted_at is null
-// ─────────────────────────────────────────────────────────────────────────────
 export async function PATCH(request: Request) {
   try {
     const s = createServerSupabaseClient();
@@ -197,7 +218,6 @@ export async function PATCH(request: Request) {
     const caller = await resolveCaller(request, s);
     if (!caller.ok) return caller.response;
 
-    // ── Parse body ────────────────────────────────────────────────────────────
     let body: {
       plot_id?:     string;
       name?:        string;
@@ -219,7 +239,6 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'กรุณาระบุ plot_id' }, { status: 400 });
     }
 
-    // ── Load plot — verify ownership, draft status, not deleted ───────────────
     const { data: existing, error: fetchError } = await s
       .from('plots')
       .select('id, member_id, status, deleted_at')
@@ -245,9 +264,6 @@ export async function PATCH(request: Request) {
       );
     }
 
-    // ── Build patch — only whitelisted fields ─────────────────────────────────
-    // Protected fields (status, member_id, created_by, role_used,
-    // deleted_at, land_doc_number) are NOT in this object — ever.
     const patch: Record<string, unknown> = {
       updated_at: new Date().toISOString(),
     };
@@ -269,7 +285,6 @@ export async function PATCH(request: Request) {
     if (body.province !== undefined) {
       patch.province = body.province?.trim() || null;
     }
-    // GPS fields — UI only sends these when member explicitly recaptured
     if (body.lat !== undefined) {
       if (!Number.isFinite(body.lat)) {
         return NextResponse.json({ error: 'lat ไม่ถูกต้อง' }, { status: 400 });
@@ -286,8 +301,6 @@ export async function PATCH(request: Request) {
       patch.accuracy = body.accuracy;
     }
 
-    // ── Apply update ──────────────────────────────────────────────────────────
-    // Double-guard at DB level: re-assert ownership + pending_review + not deleted
     const { error: updateError } = await s
       .from('plots')
       .update(patch)
