@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
-import { NextResponse } from 'next/server';
 
 import { createAnonSupabaseClient, createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
+import { createDiagnosticRequestId, jsonWithDiagnostic } from '../_diagnostics';
 
 // Temporary diagnostic endpoint for LINE/mobile auth and plot ownership resolution.
 // Keep the production response masked: no raw tokens, auth_user_id, or line_user_id.
@@ -72,16 +72,29 @@ async function countPlotsByMember(
 }
 
 export async function GET(request: Request) {
+  const diagnosticRequestId = createDiagnosticRequestId();
   const token = getBearerToken(request);
   const url = new URL(request.url);
   const selectedMemberId = url.searchParams.get('member_id');
   const selectedLineUserId = url.searchParams.get('line_user_id');
 
   if (!token) {
-    return NextResponse.json({
+    console.info('[MEMBER_DEBUG_AUTH_DIAGNOSTIC]', {
+      diagnostic_request_id: diagnosticRequestId,
+      endpoint: '/api/member/debug-auth',
+      has_bearer_token: false,
+      selected_member_id_query: selectedMemberId,
+      selected_line_user_id_query: selectedLineUserId,
+    });
+
+    return jsonWithDiagnostic({
       error: 'authenticated bearer token required',
       authenticated: false,
-    }, { status: 401 });
+      has_bearer_token: false,
+      selected_member_matches_resolved: false,
+      plot_count_by_resolved_member: null,
+      plot_count_by_selected_member: null,
+    }, diagnosticRequestId, { status: 401 });
   }
 
   try {
@@ -136,8 +149,31 @@ export async function GET(request: Request) {
 
     const effectiveMember = memberByResolved ?? memberByAuthUid ?? null;
     const selectedKnownMemberId = selectedMember?.id ?? selectedMemberId;
+    const selectedMemberMatchesResolved = Boolean(
+      currentMemberId && selectedKnownMemberId && currentMemberId === selectedKnownMemberId,
+    );
 
-    return NextResponse.json({
+    console.info('[MEMBER_DEBUG_AUTH_DIAGNOSTIC]', {
+      diagnostic_request_id: diagnosticRequestId,
+      endpoint: '/api/member/debug-auth',
+      has_bearer_token: Boolean(token),
+      auth_uid: authUid,
+      auth_error: userError?.message ?? null,
+      current_member_id: currentMemberId,
+      current_member_id_error: currentMemberError?.message ?? null,
+      selected_member_id_query: selectedMemberId,
+      selected_line_user_id_query: selectedLineUserId,
+      selected_member_resolved_id: selectedMember?.id ?? null,
+      member_by_auth_uid_id: memberByAuthUid?.id ?? null,
+      member_by_resolved_id: memberByResolved?.id ?? null,
+      selected_member_matches_resolved: selectedMemberMatchesResolved,
+      plot_count_by_resolved_member: plotsByResolved?.count ?? null,
+      plot_count_by_selected_member: plotsBySelected?.count ?? null,
+      plot_count_visible_to_current_rls: visiblePlotsByRls.count ?? 0,
+    });
+
+    return jsonWithDiagnostic({
+      has_bearer_token: Boolean(token),
       authenticated: Boolean(authUid),
       auth_uid_present: Boolean(authUid),
       auth_uid_masked: maskId(authUid),
@@ -147,9 +183,9 @@ export async function GET(request: Request) {
       current_member_id_error: currentMemberError?.message ?? null,
       selected_member_supplied: Boolean(selectedMemberId || selectedLineUserId),
       selected_member_found: Boolean(selectedMember),
-      selected_member_matches_resolved: Boolean(
-        currentMemberId && selectedKnownMemberId && currentMemberId === selectedKnownMemberId,
-      ),
+      selected_member_matches_resolved: selectedMemberMatchesResolved,
+      plot_count_by_resolved_member: plotsByResolved?.count ?? null,
+      plot_count_by_selected_member: plotsBySelected?.count ?? null,
       mismatch_flags: {
         auth_uid_without_member: Boolean(authUid && !memberByAuthUid),
         resolved_member_differs_from_auth_member: Boolean(
@@ -177,8 +213,19 @@ export async function GET(request: Request) {
           error: visiblePlotsByRls.error?.message ?? null,
         },
       },
-    });
+    }, diagnosticRequestId);
   } catch (e) {
-    return NextResponse.json({ caught: String(e) }, { status: 500 });
+    console.error('[MEMBER_DEBUG_AUTH_DIAGNOSTIC_ERROR]', {
+      diagnostic_request_id: diagnosticRequestId,
+      endpoint: '/api/member/debug-auth',
+      error: String(e),
+    });
+    return jsonWithDiagnostic({
+      caught: String(e),
+      has_bearer_token: Boolean(token),
+      selected_member_matches_resolved: false,
+      plot_count_by_resolved_member: null,
+      plot_count_by_selected_member: null,
+    }, diagnosticRequestId, { status: 500 });
   }
 }
