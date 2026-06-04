@@ -7,12 +7,24 @@ alter table public.plots
   alter column member_id drop not null,
   alter column created_by drop not null,
   alter column lat drop default,
-  alter column lng drop default;
+  alter column lng drop default,
+  alter column status set default 'pending_review';
 
 alter table public.plots drop constraint if exists chk_plots_status;
+
+update public.plots
+set status = case
+  when status = 'active' then 'approved'
+  when status in ('pending', 'pending_approval', 'pending_review') then 'pending_review'
+  when status = 'verified' then 'verified'
+  when status = 'rejected' then 'rejected'
+  when status = 'inactive' then 'inactive'
+  else 'pending_review'
+end;
+
 alter table public.plots
   add constraint chk_plots_status
-  check (status in ('pending_review','verified','approved','rejected','active','inactive'));
+  check (status in ('pending_review','verified','approved','rejected','inactive'));
 
 create index if not exists idx_plots_member_id on public.plots(member_id);
 create index if not exists idx_plots_pending_review

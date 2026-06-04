@@ -34,13 +34,13 @@ const STATUS_OPTIONS = [
   { value: 'verified',       label: 'ตรวจสอบแล้ว' },
   { value: 'approved',       label: 'อนุมัติแล้ว' },
   { value: 'rejected',       label: 'ไม่อนุมัติ' },
+  { value: 'inactive',       label: 'ไม่ใช้งาน' },
 ];
 const STATUS_META: Record<string, { label: string; bg: string; color: string }> = {
   pending_review: { label: 'รออนุมัติ', bg: '#FEF3C7', color: '#92400E' },
   verified:       { label: 'ตรวจสอบแล้ว', bg: '#DBEAFE', color: '#1E40AF' },
   approved:       { label: 'อนุมัติแล้ว', bg: '#D1FAE5', color: '#065F46' },
   rejected:       { label: 'ไม่อนุมัติ', bg: '#FEE2E2', color: '#991B1B' },
-  active:         { label: 'อนุมัติแล้ว', bg: '#D1FAE5', color: '#065F46' },
   inactive:       { label: 'ไม่ใช้งาน', bg: '#F3F4F6', color: '#6B7280' },
 };
 

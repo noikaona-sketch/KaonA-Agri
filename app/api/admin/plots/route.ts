@@ -1,8 +1,71 @@
 import { NextResponse }               from 'next/server';
-import { createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
+import { createAnonSupabaseClient, createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
 import { requireAdmin }               from '../members/_admin-auth';
 
 export const dynamic = 'force-dynamic';
+
+const PLOT_ADMIN_STAFF_ROLES = ['admin', 'staff', 'service_account'] as const;
+
+type PlotAdminStaffActor =
+  | { kind: 'admin_web'; actorId: string }
+  | { kind: 'field_member'; actorId: string };
+
+async function resolveFieldStaffFromBearer(
+  request: Request,
+  s: ReturnType<typeof createServerSupabaseClient>,
+): Promise<PlotAdminStaffActor | null> {
+  const authHeader = request.headers.get('Authorization') ?? '';
+  if (!authHeader.startsWith('Bearer ')) return null;
+  const token = authHeader.slice(7).trim();
+  if (!token) return null;
+
+  const anon = createAnonSupabaseClient();
+  const { data: { user } } = await anon.auth.getUser(token);
+
+  let memberId: string | null = null;
+  if (user?.id) {
+    const { data: member } = await s
+      .from('members')
+      .select('id, status')
+      .eq('auth_user_id', user.id)
+      .maybeSingle();
+    memberId = member?.status === 'approved' ? (member.id as string) : null;
+  } else {
+    const { data: session } = await s
+      .from('sessions')
+      .select('member_id, members:member_id(status)')
+      .eq('token', token)
+      .maybeSingle();
+    const sessionRow = session as {
+      member_id?: string | null;
+      members?: { status?: string } | { status?: string }[] | null;
+    } | null;
+    const memberStatus = Array.isArray(sessionRow?.members)
+      ? sessionRow?.members[0]?.status
+      : sessionRow?.members?.status;
+    memberId = memberStatus === 'approved' ? sessionRow?.member_id ?? null : null;
+  }
+
+  if (!memberId) return null;
+
+  const { data: role } = await s
+    .from('member_roles')
+    .select('role')
+    .eq('member_id', memberId)
+    .in('role', [...PLOT_ADMIN_STAFF_ROLES])
+    .limit(1)
+    .maybeSingle();
+
+  return role ? { kind: 'field_member', actorId: memberId } : null;
+}
+
+async function requirePlotAdminOrFieldStaff(request: Request): Promise<PlotAdminStaffActor | null> {
+  const admin = await requireAdmin();
+  if (admin) return { kind: 'admin_web', actorId: admin.adminUserId };
+
+  const s = createServerSupabaseClient();
+  return resolveFieldStaffFromBearer(request, s);
+}
 
 const PLOT_SELECT = `
   id, member_id, name, area_rai, lat, lng, accuracy, status,
@@ -15,8 +78,8 @@ const PLOT_SELECT = `
 
 // ── GET /api/admin/plots ──────────────────────────────────────────────────────
 export async function GET(request: Request) {
-  const admin = await requireAdmin();
-  if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const actor = await requirePlotAdminOrFieldStaff(request);
+  if (!actor) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const s   = createServerSupabaseClient();
   const url = new URL(request.url);
@@ -35,10 +98,10 @@ export async function GET(request: Request) {
 }
 
 // ── POST /api/admin/plots ─────────────────────────────────────────────────────
-// Admin creates a plot for any approved member
+// Admin or authorized field staff creates a plot for any approved member, or leaves it unassigned.
 export async function POST(request: Request) {
-  const admin = await requireAdmin();
-  if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const actor = await requirePlotAdminOrFieldStaff(request);
+  if (!actor) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
     const body = (await request.json()) as {
@@ -58,7 +121,7 @@ export async function POST(request: Request) {
       status?:       string;
     };
 
-    const validStatuses = new Set(['pending_review', 'verified', 'approved', 'rejected', 'active', 'inactive']);
+    const validStatuses = new Set(['pending_review', 'verified', 'approved', 'rejected', 'inactive']);
 
     if (!body.name?.trim()) return NextResponse.json({ error: 'name required' }, { status: 400 });
     if (!body.area_rai || body.area_rai <= 0) return NextResponse.json({ error: 'area_rai must be > 0' }, { status: 400 });
@@ -112,8 +175,8 @@ export async function POST(request: Request) {
 // ── PATCH /api/admin/plots ────────────────────────────────────────────────────
 // Admin edits any field on any plot
 export async function PATCH(request: Request) {
-  const admin = await requireAdmin();
-  if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const actor = await requirePlotAdminOrFieldStaff(request);
+  if (!actor) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
     const body = (await request.json()) as {
@@ -138,7 +201,7 @@ export async function PATCH(request: Request) {
 
     if (!body.plot_id) return NextResponse.json({ error: 'plot_id required' }, { status: 400 });
 
-    const validStatuses = new Set(['pending_review', 'verified', 'approved', 'rejected', 'active', 'inactive']);
+    const validStatuses = new Set(['pending_review', 'verified', 'approved', 'rejected', 'inactive']);
     const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
 
     if (body.name !== undefined) {
