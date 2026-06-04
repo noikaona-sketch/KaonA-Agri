@@ -56,7 +56,7 @@ export default function AddPlotPage() {
     }
     setSubmitting(true); setError(null);
     const s = createSupabaseBrowserClient();
-    const { error: err } = await s.from('plots').insert({
+    const payload = {
       member_id:       member.member_id,
       name:            name.trim(),
       area_rai:        Number(areaRai),
@@ -68,9 +68,25 @@ export default function AddPlotPage() {
       created_by:      member.member_id,
       role_used:       'farmer',
       timestamp:       new Date().toISOString(),
+    };
+    const { data: { user } } = await s.auth.getUser();
+    console.log('[plot insert diagnostics] before insert', {
+      authUserId: user?.id,
+      currentMemberId: member.member_id,
+      payloadMemberId: payload.member_id,
+      payloadCreatedBy: payload.created_by,
     });
+    const { error: err } = await s.from('plots').insert(payload);
     setSubmitting(false);
-    if (err) { setError(err.message); return; }
+    if (err) {
+      console.log('[plot insert diagnostics] insert error', {
+        code: err.code,
+        message: err.message,
+        details: err.details,
+        hint: err.hint,
+      });
+      setError(err.message); return;
+    }
     router.replace('/plots');
   }
 
