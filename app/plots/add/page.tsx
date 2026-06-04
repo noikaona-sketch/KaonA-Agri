@@ -27,32 +27,13 @@ export default function AddPlotPage() {
   const [province,     setProvince]     = useState('');
   const [landDocType,  setLandDocType]  = useState('');
   const [landDocNum,   setLandDocNum]   = useState('');
-  const [lat,          setLat]          = useState<number | null>(null);
-  const [lng,          setLng]          = useState<number | null>(null);
-  const [accuracy,     setAccuracy]     = useState<number | null>(null);
-  const [gpsLoading,   setGpsLoading]   = useState(false);
   const [submitting,   setSubmitting]   = useState(false);
   const [error,        setError]        = useState<string | null>(null);
 
-  function captureGPS() {
-    if (!navigator.geolocation) { setError('อุปกรณ์ไม่รองรับ GPS'); return; }
-    setGpsLoading(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setLat(pos.coords.latitude);
-        setLng(pos.coords.longitude);
-        setAccuracy(pos.coords.accuracy);
-        setGpsLoading(false);
-      },
-      () => { setError('ไม่สามารถรับพิกัดได้ กรุณาเปิด GPS'); setGpsLoading(false); },
-      { enableHighAccuracy: true, timeout: 15000 }
-    );
-  }
-
   async function handleSubmit() {
     if (!member?.member_id) { setError('กรุณาเข้าสู่ระบบก่อน'); return; }
-    if (!name.trim() || !areaRai || !lat || !lng) {
-      setError('กรุณากรอกชื่อแปลง พื้นที่ และจับพิกัด GPS ให้ครบ'); return;
+    if (!name.trim() || !areaRai) {
+      setError('กรุณากรอกชื่อแปลงและพื้นที่ให้ครบ'); return;
     }
     setSubmitting(true); setError(null);
     const s = createSupabaseBrowserClient();
@@ -63,7 +44,10 @@ export default function AddPlotPage() {
       province:        province || null,
       land_doc_type:   landDocType || null,
       land_doc_number: landDocNum || null,
-      lat, lng, accuracy,
+      // TODO: Re-enable GPS after mobile LINE geolocation issue is fixed
+      lat:             null,
+      lng:             null,
+      accuracy:        null,
       status:          'pending_review',
       created_by:      member.member_id,
       role_used:       'farmer',
@@ -128,25 +112,13 @@ export default function AddPlotPage() {
           </label>
         )}
 
-        {/* GPS */}
-        <div>
-          <UIButton variant="secondary" fullWidth onClick={captureGPS} loading={gpsLoading}>
-            {lat ? `📍 ${lat.toFixed(5)}, ${lng!.toFixed(5)}` : '📍 จับพิกัด GPS ณ ตำแหน่งแปลง'}
-          </UIButton>
-          {accuracy && (
-            <p className="reg-hint" style={{ textAlign: 'center', marginTop: 6 }}>
-              ความแม่นยำ ±{Math.round(accuracy)} เมตร
-            </p>
-          )}
-          {!lat && (
-            <p style={{ fontSize: 12, color: 'var(--text-secondary)', textAlign: 'center', margin: '6px 0 0' }}>
-              ⚠️ ต้องยืนอยู่ที่แปลงจริงเพื่อจับพิกัด
-            </p>
-          )}
-        </div>
+        {/* GPS temporarily disabled for LINE mobile users. */}
+        <p style={{ fontSize: 12, color: 'var(--text-secondary)', textAlign: 'center', margin: '6px 0 0' }}>
+          ระบบจะบันทึกแปลงโดยยังไม่ต้องจับพิกัด GPS ชั่วคราว
+        </p>
 
         <UIButton fullWidth onClick={handleSubmit} loading={submitting}
-          disabled={submitting || !name.trim() || !areaRai || !lat}>
+          disabled={submitting || !name.trim() || !areaRai}>
           ✅ บันทึกแปลง
         </UIButton>
 
