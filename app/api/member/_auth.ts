@@ -70,14 +70,15 @@ function isNonProductionDevBypassEnabled() {
 }
 
 async function resolveMemberIdFromBearer(token: string, s: ReturnType<typeof createServerSupabaseClient>): Promise<MemberAuthResolution> {
-  const anon = createAnonSupabaseClient();
-  const { data: { user }, error: userError } = await anon.auth.getUser(token);
-  if (userError || !user) return { kind: 'invalid' };
+  const bearerClient = createBearerSupabaseClient(token);
+  const { data: resolvedMemberId, error: currentMemberError } = await bearerClient.rpc('current_member_id');
+  const memberId = typeof resolvedMemberId === 'string' ? resolvedMemberId : null;
+  if (currentMemberError || !memberId) return { kind: 'invalid' };
 
   const { data: member } = await s
     .from('members')
     .select('id, status')
-    .eq('auth_user_id', user.id)
+    .eq('id', memberId)
     .maybeSingle();
 
   return member?.status === 'approved'

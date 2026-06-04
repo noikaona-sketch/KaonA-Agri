@@ -19,7 +19,7 @@ export async function GET(request: Request) {
     const s = createServerSupabaseClient();
     const url = new URL(request.url);
     const authDiagnostics = await getMemberResolutionDiagnostics(request);
-    const caller = await resolveApprovedMember(request, s);
+    const caller = await resolveApprovedMember(request, s, undefined, { allowExplicitIdentity: false });
     if (!caller.ok) return caller.response;
 
     const { data, error } = await s
@@ -38,6 +38,7 @@ export async function GET(request: Request) {
       current_member_id: authDiagnostics.currentMemberId,
       current_member_id_error: authDiagnostics.currentMemberIdError,
       request_member_id_query: url.searchParams.get('member_id'),
+      cached_member_id: request.headers.get('X-Cached-Member-Id'),
       resolved_member_id_sql: caller.memberId,
       row_count_returned: data?.length ?? 0,
     });
