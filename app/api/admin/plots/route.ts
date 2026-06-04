@@ -121,7 +121,7 @@ export async function POST(request: Request) {
       status?:       string;
     };
 
-    const validStatuses = new Set(['pending_review', 'verified', 'approved', 'rejected', 'inactive']);
+    const validStatuses = new Set(['pending_review', 'verified', 'approved', 'rejected', 'cancelled', 'inactive']);
 
     if (!body.name?.trim()) return NextResponse.json({ error: 'name required' }, { status: 400 });
     if (!body.area_rai || body.area_rai <= 0) return NextResponse.json({ error: 'area_rai must be > 0' }, { status: 400 });
@@ -201,7 +201,7 @@ export async function PATCH(request: Request) {
 
     if (!body.plot_id) return NextResponse.json({ error: 'plot_id required' }, { status: 400 });
 
-    const validStatuses = new Set(['pending_review', 'verified', 'approved', 'rejected', 'inactive']);
+    const validStatuses = new Set(['pending_review', 'verified', 'approved', 'rejected', 'cancelled', 'inactive']);
     const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
 
     if (body.name !== undefined) {

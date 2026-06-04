@@ -18,13 +18,14 @@ set status = case
   when status in ('pending', 'pending_approval', 'pending_review') then 'pending_review'
   when status = 'verified' then 'verified'
   when status = 'rejected' then 'rejected'
+  when status in ('cancelled', 'hidden') then 'cancelled'
   when status = 'inactive' then 'inactive'
   else 'pending_review'
 end;
 
 alter table public.plots
   add constraint chk_plots_status
-  check (status in ('pending_review','verified','approved','rejected','inactive'));
+  check (status in ('pending_review','verified','approved','rejected','cancelled','inactive'));
 
 create index if not exists idx_plots_member_id on public.plots(member_id);
 create index if not exists idx_plots_pending_review

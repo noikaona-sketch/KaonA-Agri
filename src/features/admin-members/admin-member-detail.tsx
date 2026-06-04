@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter }     from 'next/navigation';
 import { ErrorState }    from '@/shared/components/error-state';
 import { LoadingState }  from '@/shared/components/loading-state';
@@ -33,16 +33,28 @@ type MemberDetail = {
   rejection_reason: string | null;
 };
 type PlotRow = {
-  id:string; name:string; area_rai:number;
+  id:string; member_id:string|null; name:string; area_rai:number;
   lat:number|null; lng:number|null; accuracy:number|null;
   status:string; province:string|null; district:string|null; sub_district:string|null;
-  land_doc_type:string|null; description:string|null;
+  land_doc_type:string|null; land_doc_number?:string|null; description:string|null;
   boundary_geojson:object|null; area_rai_calculated:number|null;
 };
+type MemberOption = { id: string; member_id?: string; full_name: string; phone: string | null; line_display_name?: string | null };
+
 type VehicleRow = { id: string; vehicle_type: string; plate_number: string; brand: string | null; model: string | null; year_be: number | null };
 type RoleRow    = { role: string; is_primary: boolean };
 type DocRow     = { doc_type: string; verified: boolean; file_url: string | null };
 type LogRow     = { id: string; action: string; reason: string | null; acted_by: string | null; created_at: string };
+
+
+const PLOT_STATUS_OPTIONS = [
+  { value: 'pending_review', label: 'รออนุมัติ' },
+  { value: 'verified',       label: 'ตรวจสอบแล้ว' },
+  { value: 'approved',       label: 'อนุมัติแล้ว' },
+  { value: 'rejected',       label: 'ไม่อนุมัติ' },
+  { value: 'cancelled',      label: 'ยกเลิก / ซ่อน' },
+  { value: 'inactive',       label: 'ไม่ใช้งาน' },
+];
 
 const STATUS_TH: Record<string, { label: string; color: string; bg: string }> = {
   approved:  { label: '✅ อนุมัติแล้ว', color: '#1b5e20', bg: '#e8f5e9' },
@@ -62,10 +74,14 @@ export function AdminMemberDetail({ memberId }: { memberId: string }) {
   const [logs,     setLogs]     = useState<LogRow[]>([]);
   const [loading,  setLoading]  = useState(true);
   const [selectedPlotId, setSelectedPlotId] = useState<string|null>(null);
+  const plotEditPanelRef = useRef<HTMLDivElement | null>(null);
   const [error,    setError]    = useState<string | null>(null);
   const [acting,   setActing]   = useState(false);
   const [editingPlot, setEditingPlot] = useState<PlotRow | null>(null);
-  const [plotForm, setPlotForm] = useState({ name:'', area_rai:'', province:'', district:'', sub_district:'', description:'', land_doc_type:'', land_doc_number:'' });
+  const [plotForm, setPlotForm] = useState({ name:'', area_rai:'', province:'', district:'', sub_district:'', description:'', land_doc_type:'', land_doc_number:'', status:'pending_review', member_id:'' });
+  const [plotMemberQuery, setPlotMemberQuery] = useState('');
+  const [plotBoundaryDrawing, setPlotBoundaryDrawing] = useState(false);
+  const [members, setMembers] = useState<MemberOption[]>([]);
   const [editingMember, setEditingMember] = useState(false);
   const [memberForm, setMemberForm] = useState({
     full_name:'', phone:'', citizen_id:'', address:'', house_no:'', moo:'', subdistrict:'', district:'', province:'',
@@ -98,6 +114,11 @@ export function AdminMemberDetail({ memberId }: { memberId: string }) {
       readyToApprove?: boolean; missingFields?: string[]; readinessReason?: string[];
     };
     if (!res.ok) { setError(payload.error ?? 'ไม่พบข้อมูลสมาชิก'); setLoading(false); return; }
+    const membersRes = await fetch('/api/admin/members/list?status=approved', { credentials: 'include' });
+    if (membersRes.ok) {
+      const md = (await membersRes.json()) as { members?: MemberOption[] };
+      setMembers(((md.members ?? []) as MemberOption[]).map(m => ({ ...m, id: m.id ?? m.member_id! })).filter(m => m.id));
+    }
     setMember(payload.member ?? null);
     setPlots(payload.plots ?? []);
     setVehicles(payload.vehicles ?? []);
@@ -165,25 +186,41 @@ export function AdminMemberDetail({ memberId }: { memberId: string }) {
   }
   function openEditPlot(p: PlotRow) {
     setEditingPlot(p);
+    setSelectedPlotId(p.id);
+    setPlotBoundaryDrawing(false);
     setPlotForm({
       name: p.name ?? '', area_rai: String(p.area_rai ?? ''), province: p.province ?? '', district: p.district ?? '', sub_district: p.sub_district ?? '',
-      description: p.description ?? '', land_doc_type: p.land_doc_type ?? '', land_doc_number: (p as PlotRow & { land_doc_number?: string | null }).land_doc_number ?? '',
+      description: p.description ?? '', land_doc_type: p.land_doc_type ?? '', land_doc_number: p.land_doc_number ?? '', status: p.status ?? 'pending_review', member_id: p.member_id ?? memberId,
     });
+    setTimeout(() => plotEditPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
   }
   async function saveEditPlot() {
     if (!editingPlot) return;
     const area = Number(plotForm.area_rai);
     if (!plotForm.name.trim() || !Number.isFinite(area) || area <= 0) { setError('กรอกชื่อแปลงและพื้นที่ให้ถูกต้อง'); return; }
-    const res = await fetch(`/api/admin/members/${memberId}`, {
+    const res = await fetch('/api/admin/plots', {
       method: 'PATCH', credentials: 'include', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ plot: { id: editingPlot.id, name: plotForm.name, area_rai: area, province: plotForm.province, district: plotForm.district, sub_district: plotForm.sub_district, description: plotForm.description, land_doc_type: plotForm.land_doc_type, land_doc_number: plotForm.land_doc_number } }),
+      body: JSON.stringify({ plot_id: editingPlot.id, name: plotForm.name, area_rai: area, province: plotForm.province, district: plotForm.district, subdistrict: plotForm.sub_district, description: plotForm.description, land_doc_type: plotForm.land_doc_type, land_doc_number: plotForm.land_doc_number, status: plotForm.status, member_id: plotForm.member_id || null }),
     });
     const payload = (await res.json()) as { ok?:boolean; error?:string };
     if (!res.ok) { setError(payload.error ?? 'บันทึกแปลงไม่สำเร็จ'); return; }
     setNotice('บันทึกข้อมูลแปลงแล้ว');
-    setEditingPlot(null);
+    setSelectedPlotId(editingPlot.id);
     await load();
+    setTimeout(() => plotEditPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
   }
+
+  async function savePlotBoundaryFromMemberPage(plotId: string, geojson: object, areaRai: number) {
+    const res = await fetch('/api/admin/plots', {
+      method: 'PATCH', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plot_id: plotId, boundary_geojson: geojson, area_rai_calculated: areaRai }),
+    });
+    const payload = (await res.json()) as { ok?: boolean; error?: string };
+    if (!res.ok) { setError(payload.error ?? 'บันทึกขอบเขตไม่สำเร็จ'); return; }
+    setNotice(`บันทึกขอบเขตแปลงแล้ว (${areaRai} ไร่)`);
+    setPlots(ps => ps.map(p => p.id === plotId ? { ...p, boundary_geojson: geojson, area_rai_calculated: areaRai } : p));
+  }
+
   async function saveMemberProfile() {
     const citizenDigits = memberForm.citizen_id.trim();
     if (citizenDigits.length > 0 && citizenDigits.length !== 13) {
@@ -219,6 +256,11 @@ export function AdminMemberDetail({ memberId }: { memberId: string }) {
 
   const st = STATUS_TH[member.status] ?? { label: member.status, color: '#374151', bg: '#F3F4F6' };
   const isLeader = roles.some(r => r.role === 'leader');
+  const plotMemberOptions = members.filter(m => {
+    const q = plotMemberQuery.trim().toLowerCase();
+    if (!q) return true;
+    return [m.full_name, m.phone, m.line_display_name].filter(Boolean).join(' ').toLowerCase().includes(q);
+  }).slice(0, 80);
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
@@ -340,25 +382,6 @@ export function AdminMemberDetail({ memberId }: { memberId: string }) {
         </div>
       )}
 
-      {/* ── แปลงเกษตร ── */}
-      {plots.length > 0 && (
-        <div style={{ background:'#fff', border:'1px solid #E5E7EB', borderRadius:12, overflow:'hidden', boxShadow:'0 1px 3px rgba(0,0,0,.04)' }}>
-          <div style={{ padding:'13px 18px', background:'#F9FAFB', borderBottom:'1px solid #E5E7EB', display:'flex', alignItems:'center', gap:8 }}>
-            <span style={{ fontSize:15 }}>🌾</span><span style={{ fontSize:13, fontWeight:700, color:'#374151' }}>แปลงเกษตร</span>
-          </div>
-          {editingPlot && <div style={{ padding:12, borderBottom:'1px solid #E5E7EB', background:'#FAFAFA', display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
-            {(['name','area_rai','province','district','sub_district','description','land_doc_type','land_doc_number'] as const).map((k) => (
-              <input key={k} value={plotForm[k]} onChange={(e)=>setPlotForm((p)=>({ ...p, [k]: e.target.value }))} placeholder={k} style={{ padding:'8px 10px', border:'1px solid #D1D5DB', borderRadius:8 }} />
-            ))}
-            <div style={{ gridColumn:'1/-1', display:'flex', gap:8, justifyContent:'flex-end' }}>
-              <button className="admin-btn admin-btn--secondary" onClick={()=>setEditingPlot(null)}>ยกเลิก</button>
-              <button className="admin-btn admin-btn--success" onClick={() => void saveEditPlot()}>บันทึกแปลง</button>
-            </div>
-          </div>}
-          
-        </div>
-      )}
-
       {/* ── 2-Column Grid ── */}
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
 
@@ -439,6 +462,55 @@ export function AdminMemberDetail({ memberId }: { memberId: string }) {
             </a>
           </div>
 
+          {editingPlot && (
+            <div ref={plotEditPanelRef} style={{ borderBottom:'1px solid #E5E7EB', background:'#FAFAFA' }}>
+              <div style={{ position:'sticky', top:0, zIndex:5, padding:'10px 16px', background:'#ECFDF5', borderBottom:'1px solid #BBF7D0', color:'#065F46', fontWeight:800, fontSize:13 }}>
+                กำลังแก้ไขแปลง: {editingPlot.name}
+              </div>
+              <div style={{ padding:14, display:'grid', gap:12 }}>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(2, minmax(0, 1fr))', gap:8 }}>
+                  {(['name','area_rai','province','district','sub_district','description','land_doc_type','land_doc_number'] as const).map((k) => (
+                    <input key={k} value={plotForm[k]} onChange={(e)=>setPlotForm((p)=>({ ...p, [k]: e.target.value }))} placeholder={k} style={{ padding:'8px 10px', border:'1px solid #D1D5DB', borderRadius:8 }} />
+                  ))}
+                </div>
+
+                <label style={{ display:'grid', gap:4, fontSize:12, fontWeight:700, color:'#374151' }}>สถานะแปลง
+                  <select value={plotForm.status} onChange={e => setPlotForm(p => ({ ...p, status:e.target.value }))}
+                    style={{ padding:'8px 10px', border:'1px solid #D1D5DB', borderRadius:8, background:'#fff' }}>
+                    {PLOT_STATUS_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                  </select>
+                </label>
+
+                <div style={{ display:'grid', gap:6 }}>
+                  <label style={{ display:'grid', gap:4, fontSize:12, fontWeight:700, color:'#374151' }}>เจ้าของ / สมาชิก
+                    <input value={plotMemberQuery} onChange={e => setPlotMemberQuery(e.target.value)} placeholder="ค้นหาชื่อ เบอร์โทร หรือ LINE…" style={{ padding:'8px 10px', border:'1px solid #D1D5DB', borderRadius:8 }} />
+                  </label>
+                  <select value={plotForm.member_id} onChange={e => setPlotForm(p => ({ ...p, member_id:e.target.value }))}
+                    style={{ padding:'8px 10px', border:'1px solid #D1D5DB', borderRadius:8, background:'#fff' }}>
+                    <option value="">— ยังไม่ระบุสมาชิก —</option>
+                    {plotMemberOptions.map(m => <option key={m.id} value={m.id}>{m.full_name}{m.phone ? ` · ${m.phone}` : ''}{m.line_display_name ? ` · LINE: ${m.line_display_name}` : ''}</option>)}
+                  </select>
+                </div>
+
+                <div style={{ display:'flex', gap:8, justifyContent:'flex-end', flexWrap:'wrap' }}>
+                  <button className="admin-btn admin-btn--secondary" onClick={()=>{ setEditingPlot(null); setPlotBoundaryDrawing(false); }}>ยกเลิก</button>
+                  <button className="admin-btn admin-btn--success" onClick={() => void saveEditPlot()}>บันทึกแปลง</button>
+                </div>
+
+                <div style={{ border:'1px solid #E5E7EB', borderRadius:10, padding:12, background:'#fff' }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
+                    <p style={{ margin:0, fontSize:12, fontWeight:800, color:'#374151' }}>🗺️ วาดขอบเขต</p>
+                    <button type="button" onClick={() => setPlotBoundaryDrawing(v => !v)}
+                      style={{ padding:'5px 10px', borderRadius:8, border:'1px solid #D1D5DB', background:plotBoundaryDrawing?'#FFFBEB':'#fff', color:plotBoundaryDrawing?'#92400E':'#374151', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+                      {plotBoundaryDrawing ? 'ปิดโหมดวาด' : 'วาดขอบเขต'}
+                    </button>
+                  </div>
+                  <PlotMap plots={[{ ...editingPlot, sub_district: editingPlot.sub_district, member:null }]} selectedId={editingPlot.id} onSelect={setSelectedPlotId} editMode={plotBoundaryDrawing} onSaveBoundary={savePlotBoundaryFromMemberPage} height={320} />
+                </div>
+              </div>
+            </div>
+          )}
+
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:0 }}>
             {/* Table */}
             <div style={{ borderRight:'1px solid #E5E7EB', overflowX:'auto' }}>
@@ -454,7 +526,7 @@ export function AdminMemberDetail({ memberId }: { memberId: string }) {
                   {plots.map((p, i) => (
                     <tr key={p.id}
                       onClick={() => setSelectedPlotId(p.id === selectedPlotId ? null : p.id)}
-                      style={{ borderBottom:i<plots.length-1?'1px solid #F3F4F6':'none', cursor:'pointer', background:selectedPlotId===p.id?'#F0FDF4':'#fff', transition:'background .1s' }}>
+                      style={{ borderBottom:i<plots.length-1?'1px solid #F3F4F6':'none', cursor:'pointer', background:editingPlot?.id===p.id?'#DCFCE7':selectedPlotId===p.id?'#F0FDF4':'#fff', transition:'background .1s' }}>
                       <td style={{ padding:'10px 14px', fontWeight:600, fontSize:13 }}>{p.name}</td>
                       <td style={{ padding:'10px 14px', fontSize:13, color:'#2D6A4F', fontWeight:700 }}>{p.area_rai}</td>
                       <td style={{ padding:'10px 14px', fontSize:12, color:'#6B7280' }}>{p.province ?? '—'}</td>

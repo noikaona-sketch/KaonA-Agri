@@ -34,6 +34,7 @@ const STATUS_OPTIONS = [
   { value: 'verified',       label: 'ตรวจสอบแล้ว' },
   { value: 'approved',       label: 'อนุมัติแล้ว' },
   { value: 'rejected',       label: 'ไม่อนุมัติ' },
+  { value: 'cancelled',      label: 'ยกเลิก / ซ่อน' },
   { value: 'inactive',       label: 'ไม่ใช้งาน' },
 ];
 const STATUS_META: Record<string, { label: string; bg: string; color: string }> = {
@@ -41,6 +42,7 @@ const STATUS_META: Record<string, { label: string; bg: string; color: string }> 
   verified:       { label: 'ตรวจสอบแล้ว', bg: '#DBEAFE', color: '#1E40AF' },
   approved:       { label: 'อนุมัติแล้ว', bg: '#D1FAE5', color: '#065F46' },
   rejected:       { label: 'ไม่อนุมัติ', bg: '#FEE2E2', color: '#991B1B' },
+  cancelled:      { label: 'ยกเลิก / ซ่อน', bg: '#F3F4F6', color: '#4B5563' },
   inactive:       { label: 'ไม่ใช้งาน', bg: '#F3F4F6', color: '#6B7280' },
 };
 
@@ -263,6 +265,8 @@ export function AdminPlotsList() {
   const [error,    setError]    = useState<string | null>(null);
   const [search,   setSearch]   = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [showCancelled, setShowCancelled] = useState(false);
+  const [statusSavingId, setStatusSavingId] = useState<string | null>(null);
 
   // Drawer state
   const [drawerMode,  setDrawerMode]  = useState<'create' | 'edit' | null>(null);
@@ -299,6 +303,28 @@ export function AdminPlotsList() {
   }
 
   function closeDrawer() { setDrawerMode(null); setEditTarget(null); }
+
+
+  async function updatePlotStatus(plotId: string, status: string) {
+    setStatusSavingId(plotId);
+    setFormError(null);
+    const previous = plots.find(p => p.id === plotId)?.status ?? '';
+    setPlots(ps => ps.map(p => p.id === plotId ? { ...p, status } : p));
+    const res = await fetch('/api/admin/plots', {
+      method: 'PATCH', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plot_id: plotId, status }),
+    });
+    const d = (await res.json()) as { ok?: boolean; error?: string };
+    setStatusSavingId(null);
+    if (!res.ok) {
+      setPlots(ps => ps.map(p => p.id === plotId ? { ...p, status: previous } : p));
+      setNotice(`❌ ${d.error ?? 'เปลี่ยนสถานะไม่สำเร็จ'}`);
+      return;
+    }
+    setNotice('✅ เปลี่ยนสถานะแปลงแล้ว');
+    setTimeout(() => setNotice(null), 2500);
+  }
 
   async function handleSave() {
     if (!form.name.trim()) { setFormError('กรุณาระบุชื่อแปลง'); return; }
@@ -363,6 +389,7 @@ export function AdminPlotsList() {
   if (error)   return <ErrorState title="โหลดไม่สำเร็จ" detail={error} />;
 
   const filtered = plots.filter(p => {
+    if (!showCancelled && statusFilter !== 'cancelled' && p.status === 'cancelled') return false;
     if (statusFilter && p.status !== statusFilter) return false;
     if (!search) return true;
     const q = search.toLowerCase();
@@ -397,6 +424,10 @@ export function AdminPlotsList() {
           <option value="">ทุกสถานะ</option>
           {STATUS_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
         </select>
+        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#4B5563', whiteSpace: 'nowrap' }}>
+          <input type="checkbox" checked={showCancelled} onChange={e => setShowCancelled(e.target.checked)} />
+          แสดงที่ยกเลิก/ซ่อน
+        </label>
         <span style={{ fontSize: 12, color: '#9CA3AF', whiteSpace: 'nowrap' }}>
           {filtered.length} แปลง · {totalRai.toLocaleString('th-TH', { maximumFractionDigits: 1 })} ไร่รวม · รออนุมัติ {pendingCount}
         </span>
@@ -448,13 +479,16 @@ export function AdminPlotsList() {
                       {(p.lat && p.lat !== 0) ? <span style={{ color: '#10B981' }}>✓</span> : <span style={{ color: '#D1D5DB' }}>—</span>}
                     </td>
                     <td style={{ padding: '11px 12px' }}>
-                      <span style={{
-                        fontSize: 11, padding: '2px 8px', borderRadius: 99, fontWeight: 600,
-                        background: STATUS_META[p.status]?.bg ?? '#F3F4F6',
-                        color: STATUS_META[p.status]?.color ?? '#6B7280',
-                      }}>
-                        {STATUS_META[p.status]?.label ?? p.status}
-                      </span>
+                      <select value={p.status} disabled={statusSavingId === p.id}
+                        onChange={e => void updatePlotStatus(p.id, e.target.value)}
+                        style={{
+                          fontSize: 11, padding: '5px 8px', borderRadius: 8, fontWeight: 700,
+                          border: '1px solid #E5E7EB', cursor: statusSavingId === p.id ? 'wait' : 'pointer',
+                          background: STATUS_META[p.status]?.bg ?? '#F3F4F6',
+                          color: STATUS_META[p.status]?.color ?? '#6B7280',
+                        }}>
+                        {STATUS_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                      </select>
                     </td>
                     <td style={{ padding: '11px 12px', fontSize: 11, color: '#9CA3AF', whiteSpace: 'nowrap' }}>
                       {new Date(p.created_at).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}
