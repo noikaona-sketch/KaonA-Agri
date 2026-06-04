@@ -435,3 +435,130 @@ ZT-5 Quality score + priority queue (ง่าย)
 | ประวัติงานชัดเจน | วางแผน dryer load ได้แม่นขึ้น |
 | score สูง → ได้งานก่อน | ลด no-show เพราะ commit ในระบบ |
 | เส้นทางจาก GPS แปลง | audit trail ครบ — รถ/วัน/น้ำหนัก |
+
+
+---
+
+## Pattern: Member Write API บน LINE Mobile
+
+> บันทึก: 2025-06-05 | ใช้อ้างอิงสำหรับทุกหน้าที่ต้อง write ข้อมูลผ่าน API บน LINE LIFF
+
+### ปัญหาหลัก 3 อย่าง
+
+**1. Direct browser insert ผ่าน RLS ไม่ผ่านบน LINE**
+
+CASE B members (สมาชิกเก่า signInAnonymously) ไม่มี browser session
+auth-provider ไม่ call setSession เพราะ payload.session เป็น null
+RLS ต้องการ auth.uid() แต่ได้ null จึง block
+
+อย่าทำ: await supabase.from('plots').insert(payload)
+
+**2. fetch API route โดยไม่มี auth context**
+
+resolveApprovedMember ต้องการ Bearer หรือ line_user_id ถ้าไม่มี 401
+
+อย่าทำ: await fetch('/api/member/profile', { method: 'PATCH', body })
+
+**3. ส่ง line_user_id แบบ conditional ทำให้หลุดได้**
+
+อย่าทำ: if (!accessToken && member.line_user_id) { ... }
+ถ้าทั้งสองเป็น falsy ไม่ส่งอะไรเลย จึงได้ 401
+
+---
+
+### วิธีแก้ — getAuthHeaders() helper
+
+ไฟล์: src/lib/auth/get-auth-headers.ts
+
+ใช้แบบนี้เสมอ:
+```ts
+import { getAuthHeaders } from '@/lib/auth/get-auth-headers'
+
+const { headers, url } = await getAuthHeaders(member, '/api/member/profile')
+const res = await fetch(url, {
+  method: 'PATCH',
+  headers: { ...headers, 'Content-Type': 'application/json' },
+  body: JSON.stringify(payload),
+})
+```
+
+helper ทำ 3 อย่าง:
+1. ดึง access_token จาก Supabase browser session
+2. ใส่ Authorization: Bearer ใน headers (ถ้ามี token)
+3. append ?line_user_id=xxx ใน URL เสมอ (fallback CASE B)
+
+---
+
+### Pattern ครบถ้วนสำหรับทุกหน้า
+
+```ts
+// 1. รอ auth โหลด
+const { status } = useAuth()
+if (status === 'loading') return <LoadingState />
+
+// 2. guard ปุ่ม
+// disabled={!member?.member_id || submitting}
+
+// 3. ใช้ getAuthHeaders ทุกครั้ง
+const { headers, url } = await getAuthHeaders(member, '/api/member/xxx')
+const res = await fetch(url, { method: 'POST', headers, body: form })
+```
+
+FormData: อย่าใส่ Content-Type เอง browser จะ set boundary ให้
+```ts
+const { headers, url } = await getAuthHeaders(member, '/api/member/plot-registration')
+const form = new FormData()
+form.append('name', name)
+const res = await fetch(url, { method: 'POST', headers, body: form })
+```
+
+---
+
+### resolveApprovedMember resolve order
+
+1. Bearer token → auth_user_id → member
+2. ?line_user_id → member
+3. ?member_id → member
+ไม่มีเลย → 401
+
+---
+
+### Error ที่พบบ่อย และวิธีแก้
+
+| Error | สาเหตุ | แก้ |
+|---|---|---|
+| กรุณาเข้าสู่ระบบก่อน 401 | ไม่ได้ส่ง Bearer/line_user_id | ใช้ getAuthHeaders() |
+| client: member ยังไม่พร้อม | กดก่อน auth โหลด | status === 'loading' return LoadingState |
+| null value in column lat | DB NOT NULL ส่ง null | COALESCE(p_lat, 0) ใน RPC |
+| member is not approved | status ไม่ใช่ approved | ตรวจ DB |
+| server 500 จาก RPC auth.uid() null | service_role call → uid() null | ลบ auth check ใช้ member_id verify แทน |
+
+---
+
+### RPC SECURITY DEFINER — อย่าใช้ auth.uid()
+
+```sql
+-- อย่าทำ: service_role call ทำให้ auth.uid() เป็น null
+-- IF auth.uid() <> p_member_id THEN RAISE EXCEPTION ...
+
+-- ทำแบบนี้แทน: verify member_id โดยตรง
+SELECT status INTO v_status FROM members WHERE id = p_member_id;
+IF v_status <> 'approved' THEN RAISE EXCEPTION 'not approved'; END IF;
+```
+
+---
+
+### หน้าที่แก้แล้ว
+
+- app/plots/add/page.tsx — เพิ่มแปลง
+- app/profile/edit/page.tsx — แก้ไขโปรไฟล์
+- app/plots/page.tsx — แก้ไข/ลบแปลง
+
+### TODO ตรวจหน้าอื่น
+
+search: fetch('/api/member/ แล้วดูว่ามี getAuthHeaders หรือยัง
+
+- app/planting-cycles/new/page.tsx
+- app/service/reservations/
+- app/no-burn/
+- app/harvest/book/
