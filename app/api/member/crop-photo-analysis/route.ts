@@ -76,11 +76,15 @@ export async function POST(request: Request) {
     }
   }
 
-  // ── Upload photo ───────────────────────────────────────────────────────────
-  const ext  = photo.name.split('.').pop()?.toLowerCase() ?? 'jpg';
+  // ── Convert to base64 (for Claude vision) + upload to storage ───────────────
+  const photoBuffer = await photo.arrayBuffer();
+  const photoBase64 = Buffer.from(photoBuffer).toString('base64');
+  const photoMediaType = 'image/jpeg';
+
+  const ext  = 'jpg'; // always save as jpg after compression
   const path = `crop-analysis/${caller.memberId}/${Date.now()}.${ext}`;
   const { error: upErr } = await s.storage
-    .from(PHOTO_BUCKET).upload(path, photo, { upsert: false });
+    .from(PHOTO_BUCKET).upload(path, photo, { upsert: false, contentType: 'image/jpeg' });
   if (upErr) return NextResponse.json({ error: `อัปโหลดรูปไม่สำเร็จ: ${upErr.message}` }, { status: 500 });
 
   const { data: urlData } = s.storage.from(PHOTO_BUCKET).getPublicUrl(path);
@@ -159,7 +163,7 @@ export async function POST(request: Request) {
         messages: [{
           role: 'user',
           content: [
-            { type: 'image', source: { type: 'url', url: publicUrl } },
+            { type: 'image', source: { type: 'base64', media_type: photoMediaType, data: photoBase64 } },
             { type: 'text', text: prompt },
           ],
         }],
@@ -279,6 +283,14 @@ export async function PATCH(request: Request) {
   const { data: urlData } = s.storage.from(PHOTO_BUCKET).getPublicUrl(existing.storage_path);
   const publicUrl = urlData.publicUrl;
 
+  // Download photo for base64 encoding (Claude needs direct bytes)
+  const { data: fileData, error: dlErr } = await s.storage
+    .from(PHOTO_BUCKET).download(existing.storage_path);
+  let patchBase64 = '';
+  if (!dlErr && fileData) {
+    patchBase64 = Buffer.from(await fileData.arrayBuffer()).toString('base64');
+  }
+
   // Re-compute cycle info
   let cropName = existing.crop_name ?? 'ข้าวโพด';
   let ageDays  = existing.age_days;
@@ -326,7 +338,7 @@ export async function PATCH(request: Request) {
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001', max_tokens: 300,
         messages: [{ role: 'user', content: [
-          { type: 'image', source: { type: 'url', url: publicUrl } },
+          { type: 'image', source: patchBase64 ? { type: 'base64', media_type: 'image/jpeg' as const, data: patchBase64 } : { type: 'url', url: publicUrl } },
           { type: 'text',  text: prompt },
         ]}],
       }),
@@ -355,3 +367,4 @@ export async function PATCH(request: Request) {
     ai_full_response: aiFullResponse, age_days: ageDays, expected_stage: expectedStage,
   });
 }
+
