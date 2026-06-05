@@ -1,6 +1,6 @@
 'use client';
 
-import { compressForUpload } from '@/shared/lib/image-processing';
+import { compressForUpload, processImageForEvidence } from '@/shared/lib/image-processing';
 import { useEffect, useMemo, useState } from 'react';
 
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
@@ -136,6 +136,7 @@ export function PhotoUploadPlaceholder({ label = 'Photo evidence upload' }: Phot
     </section>
   );
 }
+
 
 
 
