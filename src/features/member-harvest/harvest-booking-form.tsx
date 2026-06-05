@@ -173,7 +173,9 @@ export function MemberHarvestBookingForm({ cycleId, cropName, plotId, onSuccess 
             const isSelected = hasSelectedRange
               && day.date >= expectedDateFrom
               && day.date <= expectedDateTo;
-            const levelBadge = day.level === 'suitable' ? '🟢 suitable' : day.level === 'caution' ? '🟡 caution' : '🔴 rain_risk';
+            const levelBadge = day.level === 'suitable' ? '🟢 เหมาะสม' : day.level === 'caution' ? '🟡 ระวัง' : '🔴 มีฝน';
+            const levelColor = day.level === 'suitable' ? '#166534' : day.level === 'caution' ? '#854d0e' : '#991b1b';
+            const levelBg = day.level === 'suitable' ? '#f0fdf4' : day.level === 'caution' ? '#fefce8' : '#fef2f2';
             return (
               <div key={day.date} style={{
                 display: 'grid',
@@ -190,8 +192,8 @@ export function MemberHarvestBookingForm({ cycleId, cropName, plotId, onSuccess 
                   <p style={{ margin: 0, fontSize: 12, fontWeight: 700 }}>{levelBadge}</p>
                 </div>
                 <div style={{ fontSize: 12, color: '#1f2937' }}>
-                  <p style={{ margin: 0 }}>rainfall_mm: {day.rainfall_mm ?? '-'}</p>
-                  <p style={{ margin: 0 }}>rain_probability: {day.rain_probability ?? '-'}</p>
+                  {day.rainfall_mm != null && <p style={{ margin: 0, fontSize: 11, color: '#6b7280' }}>🌧 ฝน: {day.rainfall_mm} มม.</p>}
+                  {day.rain_probability != null && <p style={{ margin: 0, fontSize: 11, color: '#6b7280' }}>☔ โอกาสฝน: {day.rain_probability}%</p>}
                 </div>
                 <p style={{ margin: 0, fontSize: 12, color: '#374151' }}>
                   label: {day.label}
@@ -256,3 +258,4 @@ export function MemberHarvestBookingForm({ cycleId, cropName, plotId, onSuccess 
     </div>
   );
 }
+
