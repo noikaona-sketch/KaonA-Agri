@@ -1,11 +1,10 @@
 'use client';
 
 import { compressForUpload } from '@/shared/lib/image-processing';
-mport { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useAuth } from '@/providers/auth-provider';
-import { processImageForEvidence } from '@/shared/lib/image-processing';
 
 import type { GeoState, PhotoUploadPlaceholderProps, UploadState } from './photo-evidence-types';
 
@@ -137,5 +136,6 @@ export function PhotoUploadPlaceholder({ label = 'Photo evidence upload' }: Phot
     </section>
   );
 }
+
 
 
