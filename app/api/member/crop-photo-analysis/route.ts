@@ -138,8 +138,13 @@ export async function POST(request: Request) {
 3. **แนะนำ** สิ่งที่ควรระวัง หรือทำต่อไป (1-2 ประโยคพอ)
 4. **ถ้าเจอปัญหา** เช่น ใบเหลือง หนอน โรค ให้บอกตรงๆ แต่ไม่ต้องตกใจ
 
-ตอบเป็นภาษาไทยบ้านๆ 3-5 ประโยค ห้ามใช้ศัพท์วิชาการ
-สรุป 1 บรรทัดแรก (ไม่เกิน 20 คำ) ว่า "ดีมาก" / "ดี" / "ระวังหน่อย" / "ต้องแก้ด่วน"`;
+ตอบเป็นภาษาไทยบ้านๆ 3-5 ประโยค ห้ามใช้ศัพท์วิชาการ ห้ามใช้ markdown เช่น ** หรือ #
+บรรทัดแรกต้องเป็นหนึ่งในนี้เท่านั้น (ห้ามใส่คำอื่นในบรรทัดแรก):
+- ถ้าไม่ใช่รูปพืชหรือแปลงเกษตร: "ไม่ใช่แปลง"
+- ถ้าพืชสมบูรณ์มาก: "เจ๋งมาก"
+- ถ้าพืชดูดี: "ดูดีนะ"
+- ถ้ามีสัญญาณน่าเป็นห่วง: "ระวังหน่อย"
+- ถ้ามีปัญหาชัดเจน: "ต้องแก้ด่วน"`;
 
   let aiFullResponse = '';
   let aiGrade = 'good';
@@ -174,19 +179,22 @@ export async function POST(request: Request) {
     aiFullResponse = aiData.content?.find(b => b.type === 'text')?.text ?? '';
 
     // Parse grade from first line
-    const firstLine = aiFullResponse.split('\n')[0].toLowerCase();
-    if (firstLine.includes('ดีมาก') || firstLine.includes('สวยมาก') || firstLine.includes('เยี่ยม')) {
+    const firstLine = aiFullResponse.split('\n')[0].toLowerCase().trim();
+    if (firstLine.includes('ไม่ใช่แปลง') || firstLine.includes('ไม่ใช่รูปพืช')) {
+      aiGrade = 'alert';
+    } else if (firstLine.includes('เจ๋งมาก') || firstLine.includes('ดีมาก') || firstLine.includes('สวยมาก')) {
       aiGrade = 'great';
-    } else if (firstLine.includes('ระวัง') || firstLine.includes('เฝ้าดู')) {
+    } else if (firstLine.includes('ระวัง')) {
       aiGrade = 'warning';
-    } else if (firstLine.includes('ด่วน') || firstLine.includes('แก้') || firstLine.includes('เสีย') || firstLine.includes('โรค')) {
+    } else if (firstLine.includes('ต้องแก้') || firstLine.includes('ด่วน') || firstLine.includes('โรค')) {
       aiGrade = 'alert';
     } else {
       aiGrade = 'good';
     }
 
-    // Summary = first sentence
-    aiSummary = aiFullResponse.split(/[.!?\n]/)[0].trim().slice(0, 80);
+    // Summary = first line (strip markdown ** and #)
+    const rawSummary = aiFullResponse.split('\n')[0].trim();
+    aiSummary = rawSummary.replace(/[*#]+/g, '').trim().slice(0, 60);
 
   } catch (aiErr) {
     console.error('[CROP_ANALYSIS] AI error:', aiErr);
@@ -345,12 +353,13 @@ export async function PATCH(request: Request) {
     });
     const aiData = (await aiRes.json()) as { content?: { type: string; text: string }[] };
     aiFullResponse = aiData.content?.find(b => b.type === 'text')?.text ?? '';
-    const first = aiFullResponse.split('\n')[0].toLowerCase();
-    if (first.includes('ดีมาก') || first.includes('สวยมาก')) aiGrade = 'great';
-    else if (first.includes('ระวัง') || first.includes('เฝ้าดู')) aiGrade = 'warning';
-    else if (first.includes('ด่วน') || first.includes('โรค')) aiGrade = 'alert';
+    const first = aiFullResponse.split('\n')[0].toLowerCase().trim();
+    if (first.includes('ไม่ใช่แปลง') || first.includes('ไม่ใช่รูปพืช')) aiGrade = 'alert';
+    else if (first.includes('เจ๋งมาก') || first.includes('ดีมาก')) aiGrade = 'great';
+    else if (first.includes('ระวัง')) aiGrade = 'warning';
+    else if (first.includes('ต้องแก้') || first.includes('ด่วน') || first.includes('โรค')) aiGrade = 'alert';
     else aiGrade = 'good';
-    aiSummary = aiFullResponse.split(/[.!?\n]/)[0].trim().slice(0, 80);
+    aiSummary = aiFullResponse.split('\n')[0].trim().replace(/[*#]+/g, '').trim().slice(0, 60);
   } catch (err) {
     console.error('[CROP_ANALYSIS_PATCH] AI error:', err);
     aiFullResponse = 'วิเคราะห์ไม่สำเร็จในขณะนี้';
@@ -367,4 +376,5 @@ export async function PATCH(request: Request) {
     ai_full_response: aiFullResponse, age_days: ageDays, expected_stage: expectedStage,
   });
 }
+
 
