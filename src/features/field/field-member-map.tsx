@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { tryCreateSupabaseBrowserClient } from '@/lib/supabase/client';
+import { compressFieldPhoto }            from '@/shared/lib/image-processing';
 import { UIButton } from '@/shared/components/ui-button';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -403,3 +404,4 @@ export function FieldMemberMap() {
     </div>
   );
 }
+
