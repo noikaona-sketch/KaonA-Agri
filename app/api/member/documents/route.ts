@@ -1,6 +1,6 @@
 import { NextResponse }               from 'next/server';
-import { createServerSupabaseClient } from '../auth/line/line-auth-helpers';
-import { resolveApprovedMember }      from './_auth';
+import { createServerSupabaseClient } from '../../auth/line/line-auth-helpers';
+import { resolveApprovedMember }      from '../_auth';
 
 export const dynamic = 'force-dynamic';
 const DOC_BUCKET = 'member-docs';
@@ -104,3 +104,4 @@ export async function DELETE(request: Request) {
 
   return NextResponse.json({ ok: true });
 }
+
