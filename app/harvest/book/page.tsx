@@ -8,7 +8,7 @@ import { MemberHarvestBookingForm }     from '@/features/member-harvest/harvest-
 import { useCurrentMember }             from '@/providers/auth-provider';
 import { createSupabaseBrowserClient }  from '@/lib/supabase/client';
 
-type Cycle = { id: string; crop_name: string; season_year: number };
+type Cycle = { id: string; crop_name: string; season_year: number; plot_id: string | null; plots: { name: string; area_rai: number; province: string | null } | null };
 
 const BOOKABLE = ['planted','growing','flowering','maturing','fruiting','ready'];
 
@@ -22,7 +22,7 @@ function BookContent() {
     if (!member?.member_id) return;
     const s = createSupabaseBrowserClient();
     void s.from('planting_cycles')
-      .select('id,crop_name,season_year')
+      .select('id,crop_name,season_year,plot_id,plots:plot_id(name,area_rai,province)')
       .eq('member_id', member.member_id)
       .in('status', BOOKABLE)
       .order('season_year', { ascending: false })
@@ -49,7 +49,7 @@ function BookContent() {
         {cycles.length > 1 && (
           <label className="reg-label">เลือกรอบปลูก
             <select className="reg-input" value={cycleId} onChange={(e) => setCycleId(e.target.value)}>
-              {cycles.map((c) => <option key={c.id} value={c.id}>{c.crop_name} ปี {c.season_year}</option>)}
+              {cycles.map((c) => <option key={c.id} value={c.id}>{c.crop_name} ปี {c.season_year}{c.plots ? ` — แปลง${c.plots.name} (${c.plots.area_rai} ไร่${c.plots.province ? ` · ${c.plots.province}` : ''})` : ''}</option>)}
             </select>
           </label>
         )}
@@ -69,3 +69,4 @@ export default function HarvestBookPage() {
     </ProtectedRoute>
   );
 }
+
