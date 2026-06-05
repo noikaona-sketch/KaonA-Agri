@@ -308,9 +308,9 @@ export function SeedReservationFlow({ initialPlotId }: { initialPlotId?: string 
             {/* main row */}
             <div style={{ padding: '14px 16px', display: 'flex', gap: 12, alignItems: 'center' }}>
               <div style={{ width: 52, height: 52, borderRadius: 14, background: '#e8f5e9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, flexShrink: 0, overflow: 'hidden' }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 {v.image_url
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  ? <img src={v.image_url} alt={v.variety_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ? <img src={v.image_url} alt={v.variety_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> // eslint-disable-line @next/next/no-img-element
                   : '🌾'}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -435,4 +435,5 @@ export function SeedReservationFlow({ initialPlotId }: { initialPlotId?: string 
     </div>
   );
 }
+
 
