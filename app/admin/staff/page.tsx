@@ -4,8 +4,9 @@ import { useState } from 'react';
 import { AdminStaffList } from '@/features/admin-staff/admin-staff-list';
 import { AdminPermissionMatrix } from '@/features/admin-permissions/admin-permission-matrix';
 import { AdminWebShell } from '@/shared/components/admin-web-shell';
+import { AdminVisitLogPanel } from '@/features/admin-visit-log/admin-visit-log-panel';
 
-type Tab = 'staff' | 'permissions';
+type Tab = 'staff' | 'permissions' | 'visit';
 
 export default function AdminStaffPage() {
   const [tab, setTab] = useState<Tab>('staff');
@@ -24,7 +25,9 @@ export default function AdminStaffPage() {
         </button>
       </div>
       {tab === 'staff'       && <AdminStaffList />}
+      {tab === 'visit'       && <AdminVisitLogPanel />}
       {tab === 'permissions' && <AdminPermissionMatrix />}
     </AdminWebShell>
   );
 }
+
