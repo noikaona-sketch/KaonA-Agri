@@ -120,7 +120,7 @@ export function NearMeList() {
         .gte('lng', lng - pad * 1.5).lte('lng', lng + pad * 1.5)
         .limit(300);
 
-      for (const p of (plots as PlotRow[]) ?? []) {
+      for (const p of (plots as unknown as PlotRow[]) ?? []) {
         const d = haversineM(lat, lng, p.lat, p.lng);
         if (d > radius * 1000) continue;
         plotItems.push({
@@ -151,7 +151,7 @@ export function NearMeList() {
         .gte('lng', lng - pad * 1.5).lte('lng', lng + pad * 1.5)
         .limit(200);
 
-      for (const m of (members as MemberRow[]) ?? []) {
+      for (const m of (members as unknown as MemberRow[]) ?? []) {
         if (!m.lat || !m.lng) continue;
         const d = haversineM(lat, lng, m.lat, m.lng);
         if (d > radius * 1000) continue;
@@ -365,3 +365,4 @@ export function NearMeList() {
     </div>
   );
 }
+
