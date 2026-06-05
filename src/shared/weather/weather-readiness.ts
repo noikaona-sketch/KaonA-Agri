@@ -35,9 +35,9 @@ const MOCK_FORECAST_PATTERN: ReadonlyArray<Pick<WeatherDay, 'rainfall_mm' | 'rai
 ];
 
 const WEATHER_LABELS: Record<WeatherReadinessLevel, string> = {
-  suitable: 'Suitable for harvest',
-  caution: 'Harvest with caution',
-  rain_risk: 'Rain risk - consider rescheduling',
+  suitable: 'เหมาะสม — เก็บเกี่ยวได้เลย',
+  caution: 'ระวัง — อาจมีฝน ประเมินแปลงก่อน',
+  rain_risk: 'มีฝน — ควรเลื่อนวันเก็บเกี่ยว',
 };
 
 function toIsoDate(date: Date): string {
@@ -95,3 +95,5 @@ export function getWeatherReadinessForecast(
 ): WeatherReadiness[] {
   return getMockWeatherForecast(params).map(evaluateWeatherReadiness);
 }
+
+
