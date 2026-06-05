@@ -109,13 +109,20 @@ export function MasterpieceCard({
   useEffect(() => {
     const sb = tryCreateSupabaseBrowserClient();
     if (!sb || !plotId) return;
-    const q = cycle
-      ? sb.from('crop_photo_analyses')
-          .select('id,storage_path,activity_context,age_days,ai_grade,ai_summary,analyzed_at')
-          .eq('planting_cycle_id', cycle.id).order('analyzed_at', { ascending: false }).limit(8)
-      : sb.from('crop_photo_analyses')
-          .select('id,storage_path,activity_context,age_days,ai_grade,ai_summary,analyzed_at')
-          .eq('plot_id', plotId).order('analyzed_at', { ascending: false }).limit(8);
+    // Query by plot_id OR planting_cycle_id to catch all historical photos
+    // regardless of how they were saved
+    const cycleIds = cycle?.id ? [cycle.id] : [];
+    let q = sb.from('crop_photo_analyses')
+      .select('id,storage_path,activity_context,age_days,ai_grade,ai_summary,analyzed_at')
+      .order('analyzed_at', { ascending: false })
+      .limit(20);
+
+    if (cycleIds.length > 0) {
+      // match plot_id OR planting_cycle_id
+      q = q.or(`plot_id.eq.${plotId},planting_cycle_id.eq.${cycleIds[0]}`);
+    } else {
+      q = q.eq('plot_id', plotId);
+    }
     void q.then(({ data }) => setAnalyses((data as Analysis[]) ?? []));
   }, [plotId, cycle?.id]);
 
@@ -377,6 +384,7 @@ export function MasterpieceCard({
     </div>
   );
 }
+
 
 
 
