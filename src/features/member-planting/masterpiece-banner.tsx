@@ -38,15 +38,16 @@ export function MasterpieceBanner({
   useEffect(() => {
     const sb = tryCreateSupabaseBrowserClient();
     if (!sb) return;
-    const q = cycleId
-      ? sb.from('crop_photo_analyses')
-          .select('id,ai_grade,ai_summary,analyzed_at,storage_path')
-          .eq('planting_cycle_id', cycleId)
-          .order('analyzed_at', { ascending: false }).limit(1)
-      : sb.from('crop_photo_analyses')
-          .select('id,ai_grade,ai_summary,analyzed_at,storage_path')
-          .eq('plot_id', plotId)
-          .order('analyzed_at', { ascending: false }).limit(1);
+    // Query by plot_id OR cycle_id to catch all historical photos
+    let q = sb.from('crop_photo_analyses')
+      .select('id,ai_grade,ai_summary,analyzed_at,storage_path')
+      .order('analyzed_at', { ascending: false })
+      .limit(1);
+    if (cycleId) {
+      q = q.or(`plot_id.eq.${plotId},planting_cycle_id.eq.${cycleId}`);
+    } else {
+      q = q.eq('plot_id', plotId);
+    }
     void q.then(({ data }) => setLast((data as LastAnalysis[])?.[0] ?? null));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [plotId, cycleId]);
@@ -113,3 +114,4 @@ export function MasterpieceBanner({
     </Link>
   );
 }
+
