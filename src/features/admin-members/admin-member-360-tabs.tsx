@@ -301,15 +301,120 @@ function SeedPanel({ memberId }: { memberId: string }) {
   );
 }
 
+
+const EVIDENCE_BUCKET_VP = process.env.NEXT_PUBLIC_SUPABASE_EVIDENCE_BUCKET ?? 'mvp-evidence';
+
+const PURPOSE_EDIT_VALUES = Object.keys(PURPOSE_TH);
+
+type PhotoVP  = { id: string; storage_path: string };
+type VisitRow = {
+  id: string;
+  visit_purpose: string; visit_purpose_note: string | null;
+  note: string | null; follow_up: string | null;
+  visited_at: string; updated_at: string | null;
+  staff: { id: string; full_name: string } | null;
+  plots: { id: string; name: string } | null;
+  photos: PhotoVP[];
+};
+
+function fmtDateVP(iso: string | null) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' });
+}
+
+function PhotoStrip({ photos }: { photos: PhotoVP[] }) {
+  const sb = createSupabaseBrowserClient();
+  if (!photos.length) return null;
+  return (
+    <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+      {photos.map((p) => {
+        const { data } = sb.storage.from(EVIDENCE_BUCKET_VP).getPublicUrl(p.storage_path);
+        return (
+          <a key={p.id} href={data.publicUrl} target="_blank" rel="noreferrer"
+            style={{ width: 64, height: 64, borderRadius: 8, overflow: 'hidden', display: 'block', flexShrink: 0, border: '1px solid #e5e7eb' }}>
+            <img src={data.publicUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          </a>
+        );
+      })}
+    </div>
+  );
+}
+
+function EditVisitForm({ log, token, onSaved, onCancel }: {
+  log: VisitRow; token: string;
+  onSaved: (updated: Partial<VisitRow>) => void;
+  onCancel: () => void;
+}) {
+  const [purpose,     setPurpose]     = useState(log.visit_purpose);
+  const [purposeNote, setPurposeNote] = useState(log.visit_purpose_note ?? '');
+  const [note,        setNote]        = useState(log.note        ?? '');
+  const [followUp,    setFollowUp]    = useState(log.follow_up   ?? '');
+  const [visitedAt,   setVisitedAt]   = useState(log.visited_at.slice(0, 10));
+  const [saving,      setSaving]      = useState(false);
+  const [editErr,     setEditErr]     = useState<string | null>(null);
+
+  const INP2 = { padding: '8px 11px', border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: 13, width: '100%', boxSizing: 'border-box' as const, fontFamily: 'inherit' };
+
+  async function save() {
+    setSaving(true); setEditErr(null);
+    const res = await fetch('/api/field/visit-log', {
+      method: 'PATCH',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        log_id: log.id, visit_purpose: purpose,
+        visit_purpose_note: purposeNote || null,
+        note: note || null, follow_up: followUp || null,
+        visited_at: new Date(visitedAt).toISOString(),
+      }),
+    });
+    const d = (await res.json()) as { ok?: boolean; error?: string };
+    setSaving(false);
+    if (!res.ok) { setEditErr(d.error ?? 'บันทึกไม่สำเร็จ'); return; }
+    onSaved({ visit_purpose: purpose, visit_purpose_note: purposeNote || null, note: note || null, follow_up: followUp || null, visited_at: new Date(visitedAt).toISOString(), updated_at: new Date().toISOString() });
+  }
+
+  return (
+    <div style={{ marginTop: 10, padding: '12px 14px', background: '#f8fafc', borderRadius: 10, border: '1.5px solid #e0e7ef', display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {editErr && <div style={{ padding: '7px 11px', borderRadius: 7, background: '#fee2e2', color: '#991b1b', fontSize: 12 }}>{editErr}</div>}
+      <label style={{ display: 'grid', gap: 4, fontSize: 12, fontWeight: 600, color: '#374151' }}>วัตถุประสงค์
+        <select style={INP2} value={purpose} onChange={e => setPurpose(e.target.value)}>
+          {PURPOSE_EDIT_VALUES.map(k => <option key={k} value={k}>{PURPOSE_TH[k]}</option>)}
+        </select>
+      </label>
+      {purpose === 'other' && <input style={INP2} placeholder="ระบุวัตถุประสงค์" value={purposeNote} onChange={e => setPurposeNote(e.target.value)} />}
+      <label style={{ display: 'grid', gap: 4, fontSize: 12, fontWeight: 600, color: '#374151' }}>วันที่เยี่ยม
+        <input style={INP2} type="date" value={visitedAt} onChange={e => setVisitedAt(e.target.value)} />
+      </label>
+      <label style={{ display: 'grid', gap: 4, fontSize: 12, fontWeight: 600, color: '#374151' }}>บันทึก
+        <textarea style={{ ...INP2, resize: 'vertical' }} rows={3} value={note} onChange={e => setNote(e.target.value)} placeholder="สิ่งที่พูดคุย…" />
+      </label>
+      <label style={{ display: 'grid', gap: 4, fontSize: 12, fontWeight: 600, color: '#d97706' }}>⚡ สิ่งที่ต้องติดตาม
+        <textarea style={{ ...INP2, resize: 'vertical' }} rows={2} value={followUp} onChange={e => setFollowUp(e.target.value)} placeholder="งานค้าง…" />
+      </label>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 8 }}>
+        <button onClick={onCancel} disabled={saving} style={{ padding: '8px', borderRadius: 8, border: '1.5px solid #e5e7eb', background: '#fff', fontSize: 13, cursor: 'pointer' }}>ยกเลิก</button>
+        <button onClick={save} disabled={saving} style={{ padding: '8px', borderRadius: 8, border: 'none', background: saving ? '#d1fae5' : '#2e7d32', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>{saving ? 'กำลังบันทึก…' : '💾 บันทึก'}</button>
+      </div>
+    </div>
+  );
+}
+
 function VisitPanel({ memberId }: { memberId: string }) {
-  const [rows, setRows] = useState<VisitRow[]>([]);
+  const [rows,    setRows]    = useState<VisitRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editId,  setEditId]  = useState<string | null>(null);
+  const [token,   setToken]   = useState<string | null>(null);
 
   useEffect(() => {
-    const s = createSupabaseBrowserClient();
-    void s.from('field_visit_logs')
-      .select('id,visit_purpose,visit_purpose_note,note,follow_up,visited_at,staff:staff_member_id(full_name),plots(name)')
-      .eq('member_id', memberId).order('visited_at', { ascending: false }).limit(20)
+    const sb = createSupabaseBrowserClient();
+    void sb.auth.getSession().then(r => setToken(r.data.session?.access_token ?? null));
+  }, []);
+
+  useEffect(() => {
+    const sb = createSupabaseBrowserClient();
+    void sb.from('field_visit_logs')
+      .select('id,visit_purpose,visit_purpose_note,note,follow_up,visited_at,updated_at,staff:staff_member_id(id,full_name),plots(id,name),photos!field_visit_log_id(id,storage_path)')
+      .eq('member_id', memberId).order('visited_at', { ascending: false }).limit(30)
       .then(({ data }) => { setRows((data as unknown as VisitRow[]) ?? []); setLoading(false); });
   }, [memberId]);
 
@@ -319,21 +424,36 @@ function VisitPanel({ memberId }: { memberId: string }) {
   return (
     <div>
       {rows.map((r) => (
-        <div key={r.id} style={{ padding: '10px 14px', borderBottom: '1px solid #f3f4f6' }}>
+        <div key={r.id} style={{ padding: '12px 14px', borderBottom: '1px solid #f3f4f6' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
             <div style={{ flex: 1 }}>
-              <p style={{ margin: 0, fontWeight: 600, fontSize: 13 }}>
+              <p style={{ margin: 0, fontWeight: 700, fontSize: 13 }}>
                 {PURPOSE_TH[r.visit_purpose] ?? r.visit_purpose}
                 {r.visit_purpose_note ? ` — ${r.visit_purpose_note}` : ''}
               </p>
               <p style={{ margin: '2px 0 0', fontSize: 12, color: '#6b7280' }}>
-                📅 {fmtDate(r.visited_at)} · 👤 {r.staff?.full_name ?? '—'}
+                📅 {fmtDateVP(r.visited_at)} · 👤 {r.staff?.full_name ?? '—'}
                 {r.plots?.name ? ` · 🌱 ${r.plots.name}` : ''}
+                {r.updated_at ? <span style={{ color: '#9ca3af' }}> · แก้ไข {fmtDateVP(r.updated_at)}</span> : null}
               </p>
-              {r.note && <p style={{ margin: '4px 0 0', fontSize: 12, color: '#374151' }}>📝 {r.note}</p>}
-              {r.follow_up && <p style={{ margin: '3px 0 0', fontSize: 12, color: '#d97706', background: '#fffbeb', padding: '3px 8px', borderRadius: 6 }}>⚡ {r.follow_up}</p>}
             </div>
+            {token && editId !== r.id && (
+              <button onClick={() => setEditId(r.id)}
+                style={{ padding: '4px 10px', borderRadius: 7, border: '1.5px solid #d1d5db', background: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', color: '#374151', flexShrink: 0 }}>
+                ✏️ แก้ไข
+              </button>
+            )}
           </div>
+          {r.note && <p style={{ margin: '6px 0 0', fontSize: 13, color: '#374151', lineHeight: 1.5 }}>📝 {r.note}</p>}
+          {r.follow_up && <p style={{ margin: '4px 0 0', fontSize: 12, color: '#92400e', background: '#fffbeb', padding: '4px 10px', borderRadius: 7 }}>⚡ ติดตาม: {r.follow_up}</p>}
+          {r.photos?.length > 0 && <PhotoStrip photos={r.photos} />}
+          {editId === r.id && token && (
+            <EditVisitForm
+              log={r} token={token}
+              onSaved={(updated) => { setRows(prev => prev.map(x => x.id === r.id ? { ...x, ...updated } : x)); setEditId(null); }}
+              onCancel={() => setEditId(null)}
+            />
+          )}
         </div>
       ))}
     </div>
@@ -380,3 +500,4 @@ export function AdminMember360Tabs({ memberId }: { memberId: string }) {
     </div>
   );
 }
+
