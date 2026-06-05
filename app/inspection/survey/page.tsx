@@ -345,10 +345,11 @@ function SurveyForm() {
 
 export default function FieldSurveyPage() {
   return (
-    <ProtectedRoute allowedRoles={['staff', 'inspector', 'admin']}>
+    <ProtectedRoute allowedRoles={['inspector', 'admin']}>
       <MobileAppShell title="📋 สำรวจภาคสนาม" subtitle="บันทึกการสำรวจพืชในพื้นที่">
         <SurveyForm />
       </MobileAppShell>
     </ProtectedRoute>
   );
 }
+
