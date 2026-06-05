@@ -1,6 +1,7 @@
 'use client';
 
 import { type ChangeEvent, useEffect, useState } from 'react';
+import { compressForUpload }             from '@/shared/lib/image-processing';
 import { tryCreateSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useCurrentMember } from '@/providers/auth-provider';
 
@@ -418,3 +419,4 @@ export function FarmActivityChecklist({ cycleId, plotId, seedHint }: Props) {
     </div>
   );
 }
+
