@@ -85,6 +85,7 @@ export function OcrIdCardStep({ status, result, error, onScan, onReset }: OcrIdC
 
       {previewUrl && (
         <div style={{ marginBottom: 10, borderRadius: 12, overflow: 'hidden', background: '#f8fafc', border: '1px solid var(--border)' }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={previewUrl} alt="ตัวอย่างบัตร" style={{ width: '100%', maxHeight: 120, objectFit: 'contain', display: 'block' }} />
         </div>
       )}
@@ -108,3 +109,4 @@ export function OcrIdCardStep({ status, result, error, onScan, onReset }: OcrIdC
     </div>
   );
 }
+
