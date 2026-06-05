@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState }   from 'react';
-import { useRouter }             from 'next/navigation';
 import { useAuth, useCurrentMember } from '@/providers/auth-provider';
 import { MobileAppShell }        from '@/shared/components/mobile-app-shell';
 import { LoadingState }          from '@/shared/components/loading-state';
@@ -18,7 +17,6 @@ type PlotInfo = { id: string; name: string };
 function MasterpieceContent({ plotId }: { plotId: string }) {
   const { status } = useAuth();
   const member     = useCurrentMember();
-  const router     = useRouter();
 
   const [plot,    setPlot]    = useState<PlotInfo | null>(null);
   const [cycle,   setCycle]   = useState<CycleInfo | null>(null);
@@ -70,3 +68,4 @@ export function MasterpiecePageContent({ plotId }: { plotId: string }) {
     </ProtectedRoute>
   );
 }
+
