@@ -8,7 +8,7 @@ import { tryCreateSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useAuth, useCurrentMember }      from '@/providers/auth-provider';
 import type { AuthBootstrapResult }         from '@/shared/auth/auth-types';
 import { getAuthHeaders }                 from '@/lib/auth/get-auth-headers';
-import { MasterpieceCard }                from '@/features/member-planting/masterpiece-card';
+import { MasterpieceBanner }              from '@/features/member-planting/masterpiece-banner';
 import { MobileAppShell }                 from '@/shared/components/mobile-app-shell';
 import { LoadingState }                   from '@/shared/components/loading-state';
 import { ProtectedRoute }                 from '@/shared/components/protected-route';
@@ -275,8 +275,8 @@ function PlotCard({ plot, cycle, lastLog, noBurnStatus, memberId, onLogged, onDe
         </div>
 
         {/* Cycle */}
-        {/* MasterpieceCard — AI วิเคราะห์รูปแปลง */}
-        <MasterpieceCard plotId={plot.id} cycle={cycle} member={member!} />
+        {/* MasterpieceBanner — กดเข้าหน้า /plots/[id]/masterpiece */}
+        <MasterpieceBanner plotId={plot.id} cycleId={cycle?.id ?? null} />
 
         {/* Quick log ถ้ามี cycle */}
         {cycle && (
@@ -470,6 +470,7 @@ export default function PlotsPage() {
 function actionButtonStyle(background: string, color: string, borderColor?: string): CSSProperties {
   return { border: borderColor ? `1.5px solid ${borderColor}` : 'none', borderRadius: 12, background, color, padding: '10px 8px', fontSize: 12, fontWeight: 800, cursor: 'pointer', minHeight: 44, textAlign: 'center' };
 }
+
 
 
 
