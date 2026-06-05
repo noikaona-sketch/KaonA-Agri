@@ -8,6 +8,7 @@ import { LoadingState } from '@/shared/components/loading-state';
 import { FieldTeamMap } from '@/features/field-team-map/field-team-map';
 import { FieldMemberMap }        from '@/features/field/field-member-map';
 import { QuickVisitForm }        from '@/features/field/quick-visit-form';
+import { NearMeList }            from '@/features/field/near-me-list';
 import { FieldSeedReservation } from '@/features/field-seed-reservation/field-seed-reservation';
 import { ProtectedRoute } from '@/shared/components/protected-route';
 import { tryCreateSupabaseBrowserClient } from '@/lib/supabase/client';
@@ -37,7 +38,7 @@ export default function FieldPage() {
   const [tasks,   setTasks]   = useState<InspectionTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [today]               = useState(new Date().toISOString().slice(0, 10));
-  const [tab, setTab] = useState<'tasks' | 'reservation' | 'map' | 'register' | 'visit'>(() => {
+  const [tab, setTab] = useState<'tasks' | 'reservation' | 'map' | 'register' | 'visit' | 'nearby'>(() => {
     if (typeof window !== 'undefined' && window.location.hash === '#reservation') return 'reservation';
     return 'tasks';
   });
@@ -63,6 +64,7 @@ export default function FieldPage() {
     { key: 'register',    label: '➕ สมัครสมาชิก' },
     { key: 'map',         label: '🗺️ แผนที่' },
     { key: 'visit',       label: '🤝 บันทึกเยี่ยม' },
+    { key: 'nearby',      label: '📡 ใกล้ฉัน' },
   ] as const;
 
   return (
@@ -148,6 +150,7 @@ export default function FieldPage() {
         {tab === 'reservation' && <FieldSeedReservation />}
         {tab === 'map'         && <FieldTeamMap />}
         {tab === 'visit'       && <QuickVisitForm />}
+        {tab === 'nearby'      && <NearMeList />}
         {tab === 'register'    && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div style={{ ...S.card, padding: '14px 16px' }}>
@@ -168,4 +171,5 @@ export default function FieldPage() {
     </ProtectedRoute>
   );
 }
+
 
