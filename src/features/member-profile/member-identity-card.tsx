@@ -19,6 +19,7 @@ export function MemberIdentityCard({ lineDisplayName, lineAvatarUrl, identitySta
       subtitle={`สถานะยืนยันตัวตน: ${identityStatus ? (IDENTITY_STATUS_LABELS[identityStatus] ?? 'ไม่มีข้อมูล') : 'ไม่มีข้อมูล'}`}
       action={
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
           {lineAvatarUrl ? <img src={lineAvatarUrl} alt="LINE avatar" width={44} height={44} style={{ borderRadius: 999 }} /> : null}
           <div>
             <p style={{ margin: 0, fontWeight: 600 }}>ชื่อแสดงผล LINE</p>
@@ -29,3 +30,4 @@ export function MemberIdentityCard({ lineDisplayName, lineAvatarUrl, identitySta
     />
   );
 }
+
