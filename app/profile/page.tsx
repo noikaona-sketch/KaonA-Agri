@@ -357,7 +357,7 @@ export default function ProfilePage() {
             {docs.length === 0 ? (
               <div style={{ padding: '14px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: 13, color: 'var(--color-text-secondary,#888)' }}>ยังไม่มีเอกสาร</span>
-                <Link href="/profile/edit" style={{ fontSize: 13, color: '#185FA5', textDecoration: 'none', fontWeight: 500 }}>+ อัปโหลด</Link>
+                <Link href="/profile/documents" style={{ fontSize: 13, color: '#185FA5', textDecoration: 'none', fontWeight: 500 }}>+ อัปโหลด</Link>
               </div>
             ) : (
               docs.map((d, i) => (
@@ -427,3 +427,4 @@ export default function ProfilePage() {
     </ProtectedRoute>
   );
 }
+
