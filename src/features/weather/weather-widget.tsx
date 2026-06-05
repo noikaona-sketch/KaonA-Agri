@@ -271,3 +271,4 @@ function WeatherFarmingTip({ today, week }: { today: DayForecast; week: DayForec
 }
 
 
+
