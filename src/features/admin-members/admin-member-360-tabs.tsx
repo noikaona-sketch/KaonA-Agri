@@ -42,19 +42,6 @@ type SeedRow = {
   seed_varieties: { variety_name: string } | null;
 };
 
-type VisitRow = {
-  id: string; visit_purpose: string; visit_purpose_note: string | null;
-  note: string | null; follow_up: string | null; visited_at: string;
-  staff: { full_name: string } | null;
-  plots: { name: string } | null;
-};
-
-const PURPOSE_TH: Record<string, string> = {
-  follow_up: '🌱 ติดตามปลูก', no_burn_advice: '🌿 แนะนำไม่เผา',
-  soil_check: '🪱 ตรวจดิน', pest_advice: '🐛 ศัตรูพืช',
-  registration: '📋 ลงทะเบียน', problem_solve: '🔧 แก้ปัญหา', other: '💬 อื่นๆ',
-};
-
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const S = {
@@ -304,6 +291,16 @@ function SeedPanel({ memberId }: { memberId: string }) {
 
 const EVIDENCE_BUCKET_VP = process.env.NEXT_PUBLIC_SUPABASE_EVIDENCE_BUCKET ?? 'mvp-evidence';
 
+const PURPOSE_TH: Record<string, string> = {
+  follow_up:      '🌱 ติดตามปลูก',
+  no_burn_advice: '🌿 แนะนำไม่เผา',
+  soil_check:     '🪱 ตรวจดิน',
+  pest_advice:    '🐛 ศัตรูพืช',
+  registration:   '📋 ลงทะเบียน',
+  problem_solve:  '🔧 แก้ปัญหา',
+  other:          '💬 อื่นๆ',
+};
+
 const PURPOSE_EDIT_VALUES = Object.keys(PURPOSE_TH);
 
 type PhotoVP  = { id: string; storage_path: string };
@@ -500,4 +497,5 @@ export function AdminMember360Tabs({ memberId }: { memberId: string }) {
     </div>
   );
 }
+
 
