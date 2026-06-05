@@ -299,3 +299,4 @@ export function useRoles() {
 export function useEffectiveRole(): AppRole | null {
   return useAuth().member?.effective_role ?? null;
 }
+
