@@ -3,7 +3,7 @@ import { createServerSupabaseClient, createAnonSupabaseClient } from '../../auth
 
 export const dynamic = 'force-dynamic';
 
-const ALLOWED_ROLES = ['staff', 'admin', 'inspector'];
+const ALLOWED_ROLES = ['inspector', 'admin'];
 const SURVEY_BUCKET = process.env.NEXT_PUBLIC_SUPABASE_EVIDENCE_BUCKET ?? 'mvp-evidence';
 
 // Resolve staff/inspector member — Bearer token required
@@ -190,3 +190,4 @@ export async function PATCH(request: Request) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }
+
