@@ -446,3 +446,4 @@ export function FarmJournal({ cycleId, plotId, plantedAt, cropType, daysToHarves
     </div>
   );
 }
+
