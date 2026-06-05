@@ -1,9 +1,11 @@
 'use client';
 // MasterpieceBanner — compact entry point ใน PlotCard
-// แสดงผลล่าสุด + ปุ่มกดเข้าหน้าเต็ม
+// ดึงประวัติผ่าน API route (รองรับ CASE B members ที่ไม่มี browser session)
 
 import { useEffect, useState } from 'react';
 import Link                    from 'next/link';
+import { useCurrentMember }    from '@/providers/auth-provider';
+import { getAuthHeaders }      from '@/lib/auth/get-auth-headers';
 import { tryCreateSupabaseBrowserClient } from '@/lib/supabase/client';
 
 type LastAnalysis = {
@@ -14,10 +16,11 @@ type LastAnalysis = {
 const EVIDENCE_BUCKET = process.env.NEXT_PUBLIC_SUPABASE_EVIDENCE_BUCKET ?? 'mvp-evidence';
 
 const GRADE_CFG = {
-  great:   { emoji: '🌟', label: 'ดีมาก!',      color: '#1b5e20', bg: '#e8f5e9', border: '#a5d6a7' },
-  good:    { emoji: '✅', label: 'ดี',           color: '#166534', bg: '#f0fdf4', border: '#86efac' },
-  warning: { emoji: '⚠️', label: 'ระวังหน่อย',  color: '#92400e', bg: '#fffbeb', border: '#fcd34d' },
-  alert:   { emoji: '🚨', label: 'ต้องแก้ด่วน', color: '#9f1239', bg: '#fff1f2', border: '#fda4af' },
+  great:   { emoji: '🌟', label: 'เจ๋งมาก!',        color: '#1b5e20', bg: '#e8f5e9', border: '#a5d6a7' },
+  good:    { emoji: '✅', label: 'ดูดีนะ',           color: '#166534', bg: '#f0fdf4', border: '#86efac' },
+  warning: { emoji: '⚠️', label: 'ระวังหน่อย',       color: '#92400e', bg: '#fffbeb', border: '#fcd34d' },
+  alert:   { emoji: '🚨', label: 'อันนี้เลี้ยงไม่โตนะ', color: '#9f1239', bg: '#fff1f2', border: '#fda4af' },
+  pending: { emoji: '⏳', label: 'รอวิเคราะห์',      color: '#6b7280', bg: '#f8fafc', border: '#e5e7eb' },
 };
 
 function relDate(iso: string) {
@@ -33,31 +36,35 @@ export function MasterpieceBanner({
   plotId: string;
   cycleId: string | null;
 }) {
+  const member = useCurrentMember();
   const [last, setLast] = useState<LastAnalysis | null>(null);
+  const [tried, setTried] = useState(false);
 
   useEffect(() => {
-    const sb = tryCreateSupabaseBrowserClient();
-    if (!sb) return;
-    // Query by plot_id OR cycle_id to catch all historical photos
-    let q = sb.from('crop_photo_analyses')
-      .select('id,ai_grade,ai_summary,analyzed_at,storage_path')
-      .order('analyzed_at', { ascending: false })
-      .limit(1);
-    if (cycleId) {
-      q = q.or(`plot_id.eq.${plotId},planting_cycle_id.eq.${cycleId}`);
-    } else {
-      q = q.eq('plot_id', plotId);
-    }
-    void q.then(({ data }) => setLast((data as LastAnalysis[])?.[0] ?? null));
+    if (!member?.member_id || tried) return;
+    setTried(true);
+
+    void (async () => {
+      // ใช้ API route เพื่อรองรับ CASE B members (ไม่มี browser session)
+      const { headers, url } = await getAuthHeaders(
+        member,
+        `/api/member/crop-photo-analysis?plot_id=${plotId}${cycleId ? `&planting_cycle_id=${cycleId}` : ''}&limit=1`
+      );
+      try {
+        const res  = await fetch(url, { headers });
+        if (!res.ok) return;
+        const data = (await res.json()) as { analyses?: LastAnalysis[] };
+        setLast(data.analyses?.[0] ?? null);
+      } catch { /* silent */ }
+    })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [plotId, cycleId]);
+  }, [member?.member_id, plotId, cycleId]);
 
   const href = `/plots/${plotId}/masterpiece`;
 
-  // ── Has previous result ────────────────────────────────────────────────────
   if (last) {
-    const g = GRADE_CFG[last.ai_grade as keyof typeof GRADE_CFG] ?? GRADE_CFG.good;
-    const sb = tryCreateSupabaseBrowserClient();
+    const g   = GRADE_CFG[last.ai_grade as keyof typeof GRADE_CFG] ?? GRADE_CFG.good;
+    const sb  = tryCreateSupabaseBrowserClient();
     const thumbUrl = sb
       ? sb.storage.from(EVIDENCE_BUCKET).getPublicUrl(last.storage_path).data.publicUrl
       : '';
@@ -70,14 +77,12 @@ export function MasterpieceBanner({
           display: 'flex', alignItems: 'center', gap: 10,
           background: g.bg,
         }}>
-          {/* Thumbnail */}
           {thumbUrl && (
             <div style={{ width: 48, height: 48, borderRadius: 10, overflow: 'hidden', flexShrink: 0, border: `2px solid ${g.border}` }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={thumbUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </div>
           )}
-          {/* Text */}
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{ fontSize: 14 }}>{g.emoji}</span>
@@ -93,7 +98,6 @@ export function MasterpieceBanner({
     );
   }
 
-  // ── No result yet ──────────────────────────────────────────────────────────
   return (
     <Link href={href} style={{ textDecoration: 'none', display: 'block' }}>
       <div style={{
@@ -114,4 +118,3 @@ export function MasterpieceBanner({
     </Link>
   );
 }
-
