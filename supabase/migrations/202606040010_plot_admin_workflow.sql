@@ -40,6 +40,7 @@ drop policy if exists plots_read_auth on public.plots;
 
 -- Farmers can read and maintain only their assigned own plots.
 -- Admin/staff can review all plots, including unassigned plots.
+drop policy if exists plots_select_own_or_admin_staff on public.plots;
 create policy plots_select_own_or_admin_staff
   on public.plots for select
   to authenticated
@@ -48,6 +49,7 @@ create policy plots_select_own_or_admin_staff
     or public.current_member_is_admin_or_staff()
   );
 
+drop policy if exists plots_insert_own_member on public.plots;
 create policy plots_insert_own_member
   on public.plots for insert
   to authenticated
@@ -57,11 +59,13 @@ create policy plots_insert_own_member
     and status = 'pending_review'
   );
 
+drop policy if exists plots_insert_admin_staff on public.plots;
 create policy plots_insert_admin_staff
   on public.plots for insert
   to authenticated
   with check (public.current_member_is_admin_or_staff());
 
+drop policy if exists plots_update_own_non_approval on public.plots;
 create policy plots_update_own_non_approval
   on public.plots for update
   to authenticated
@@ -72,13 +76,16 @@ create policy plots_update_own_non_approval
     and status = 'pending_review'
   );
 
+drop policy if exists plots_update_admin_staff on public.plots;
 create policy plots_update_admin_staff
   on public.plots for update
   to authenticated
   using (public.current_member_is_admin_or_staff())
   with check (public.current_member_is_admin_or_staff());
 
+drop policy if exists plots_delete_admin_staff on public.plots;
 create policy plots_delete_admin_staff
   on public.plots for delete
   to authenticated
   using (public.current_member_is_admin_or_staff());
+
