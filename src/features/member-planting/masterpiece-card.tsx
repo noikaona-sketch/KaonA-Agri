@@ -4,6 +4,7 @@
 // สมาชิกถ่ายรูปแปลง → AI วิเคราะห์เป็นภาษาบ้านๆ + เก็บประวัติ
 
 import { useEffect, useRef, useState } from 'react';
+import { compressCropPhoto }             from '@/shared/lib/image-processing';
 import { tryCreateSupabaseBrowserClient } from '@/lib/supabase/client';
 import { getAuthHeaders }               from '@/lib/auth/get-auth-headers';
 import type { AuthBootstrapResult }     from '@/shared/auth/auth-types';
@@ -121,8 +122,12 @@ export function MasterpieceCard({
     setAnalyzing(true); setError(null); setResult(null);
 
     const { headers, url } = await getAuthHeaders(member, '/api/member/crop-photo-analysis');
+    // Compress before upload: 1024px / quality 80%
+    const { processedFile, fileSizeBytes, compressionRatio } = await compressCropPhoto(file);
+    console.log(`[CROP_PHOTO] compressed ${Math.round(file.size/1024)}KB → ${Math.round(fileSizeBytes/1024)}KB (${compressionRatio}% saved)`);
+
     const form = new FormData();
-    form.append('photo', file);
+    form.append('photo', processedFile);
     form.append('activity_context', context);
     if (cycle?.id)  form.append('planting_cycle_id', cycle.id);
     if (plotId)     form.append('plot_id', plotId);
@@ -245,3 +250,4 @@ export function MasterpieceCard({
     </div>
   );
 }
+
