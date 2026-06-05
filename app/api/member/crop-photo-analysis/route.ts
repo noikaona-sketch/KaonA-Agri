@@ -125,7 +125,7 @@ export async function POST(request: Request) {
     ? `อายุ ${ageDays} วัน (คาดว่าอยู่ในระยะ${expectedStage})`
     : '';
 
-  const prompt = `คุณเป็นเพื่อนบ้านที่ปลูกข้าวโพดมานาน พูดแบบคนบ้านๆ อ่านง่าย อบอุ่น ไม่เป็นทางการ
+  const prompt = `คุณเป็นนักส่งเสริมการเกษตรที่พูดภาษาบ้านๆ เป็นกันเอง ตรงไปตรงมา ไม่เป็นทางการ
 
 ข้อมูลรอบปลูก:
 - พืช: ${cropName}
@@ -250,8 +250,14 @@ export async function GET(request: Request) {
     .order('analyzed_at', { ascending: false })
     .limit(limit);
 
-  if (cycleId) q = q.eq('planting_cycle_id', cycleId);
-  else if (plotId) q = q.eq('plot_id', plotId);
+  // OR query: match plot_id OR planting_cycle_id
+  if (cycleId && plotId) {
+    q = q.or(`plot_id.eq.${plotId},planting_cycle_id.eq.${cycleId}`);
+  } else if (cycleId) {
+    q = q.or(`planting_cycle_id.eq.${cycleId}`);
+  } else if (plotId) {
+    q = q.eq('plot_id', plotId);
+  }
 
   const { data, error } = await q;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -321,7 +327,7 @@ export async function PATCH(request: Request) {
   // Call AI
   const contextLabel = CONTEXT_TH[context] ?? 'ดูทั่วไป';
   const ageText = ageDays !== null ? `อายุ ${ageDays} วัน (คาดว่าอยู่ในระยะ${expectedStage})` : '';
-  const prompt = `คุณเป็นเพื่อนบ้านที่ปลูกข้าวโพดมานาน พูดแบบคนบ้านๆ อ่านง่าย อบอุ่น ไม่เป็นทางการ
+  const prompt = `คุณเป็นนักส่งเสริมการเกษตรที่พูดภาษาบ้านๆ เป็นกันเอง ตรงไปตรงมา ไม่เป็นทางการ
 
 ข้อมูลรอบปลูก:
 - พืช: ${cropName}
@@ -359,7 +365,8 @@ export async function PATCH(request: Request) {
     else if (first.includes('ระวัง')) aiGrade = 'warning';
     else if (first.includes('ต้องแก้') || first.includes('ด่วน') || first.includes('โรค')) aiGrade = 'alert';
     else aiGrade = 'good';
-    aiSummary = aiFullResponse.split('\n')[0].trim().replace(/[*#]+/g, '').trim().slice(0, 60);
+    aiFullResponse = aiFullResponse.replace(/\*\*/g, '').replace(/^#+\s*/gm, '').trim();
+    aiSummary = aiFullResponse.split('\n')[0].trim().slice(0, 60);
   } catch (err) {
     console.error('[CROP_ANALYSIS_PATCH] AI error:', err);
     aiFullResponse = 'วิเคราะห์ไม่สำเร็จในขณะนี้';
@@ -376,6 +383,7 @@ export async function PATCH(request: Request) {
     ai_full_response: aiFullResponse, age_days: ageDays, expected_stage: expectedStage,
   });
 }
+
 
 
 
