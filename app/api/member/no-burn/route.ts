@@ -205,7 +205,7 @@ export async function GET(request: Request) {
     const urlParams     = new URL(request.url).searchParams;
     const qMemberId     = urlParams.get('member_id')     ?? undefined;
     const qLineUserId   = urlParams.get('line_user_id')  ?? undefined;
-    const caller = await resolveApprovedMember(request, s, qMemberId, qLineUserId);
+    const caller = await resolveApprovedMember(request, s, qMemberId);
     if (!caller.ok) return caller.response;
 
     const { data, error } = await s
@@ -232,4 +232,5 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }
 }
+
 
