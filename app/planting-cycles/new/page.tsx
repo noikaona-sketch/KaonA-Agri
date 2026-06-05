@@ -309,6 +309,11 @@ function NewPlantingCyclePageContent() {
             <p style={{ margin:'0 0 4px', fontSize:14, fontWeight:700, color:'#1B5E20' }}>
               🌾 คาดเก็บเกี่ยว: {new Date(harvestDate).toLocaleDateString('th-TH', { day:'numeric', month:'long', year:'numeric' })}
             </p>
+            {plantedDate && (
+              <p style={{ margin:'2px 0 0', fontSize:13, fontWeight:700, color:'#1b5e20' }}>
+                ⏱ อายุรวม: {Math.round((new Date(harvestDate).getTime() - new Date(plantedDate).getTime()) / 86400000)} วัน
+              </p>
+            )}
             <p style={{ margin:0, fontSize:12, color:'#388E3C' }}>
               ฤดูกาล พ.ศ. {seasonYear}
               {quotaKg ? ` · โควต้า ${quotaKg.toLocaleString('th-TH')} กก.` : ''}
@@ -339,3 +344,4 @@ export default function NewPlantingCyclePage() {
     </Suspense>
   );
 }
+
