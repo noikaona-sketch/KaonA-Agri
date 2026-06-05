@@ -5,6 +5,7 @@ import { useAuth, useCurrentMember } from '@/providers/auth-provider';
 import { MobileAppShell }            from '@/shared/components/mobile-app-shell';
 import { LoadingState }              from '@/shared/components/loading-state';
 import { ProtectedRoute }            from '@/shared/components/protected-route';
+import { compressFieldPhoto }            from '@/shared/lib/image-processing';
 import { tryCreateSupabaseBrowserClient } from '@/lib/supabase/client';
 
 const EVIDENCE_BUCKET = process.env.NEXT_PUBLIC_SUPABASE_EVIDENCE_BUCKET ?? 'mvp-evidence';
@@ -198,7 +199,9 @@ function SurveyForm() {
     if (condNote)   form.append('condition_note',       condNote);
     if (note)       form.append('note',                 note);
 
-    photos.forEach((photo, i) => {
+    // Compress all photos before upload
+    const compressedPhotos = await Promise.all(photos.map(p => compressFieldPhoto(p)));
+    compressedPhotos.forEach(({ processedFile: photo }, i) => {
       form.append(`photo_${i}`, photo);
       if (photoGps) {
         form.append(`photo_lat_${i}`, String(photoGps.lat));
@@ -352,4 +355,5 @@ export default function FieldSurveyPage() {
     </ProtectedRoute>
   );
 }
+
 
