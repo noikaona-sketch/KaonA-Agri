@@ -317,7 +317,7 @@ export function MasterpieceCard({
             )}
 
             {aiRest && (
-              <div style={{ background: grade.ai_grade === 'warning' || grade.ai_grade === 'alert' ? '#fffbeb' : '#f8fafc', borderRadius: 10, padding: '9px 12px' }}>
+              <div style={{ background: result?.ai_grade === 'warning' || result?.ai_grade === 'alert' ? '#fffbeb' : '#f8fafc', borderRadius: 10, padding: '9px 12px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                   <span>{grade.emoji === '⚠️' || grade.emoji === '🚨' ? '⚠️' : '💡'}</span>
                   <span style={{ fontSize: 12, fontWeight: 700, color: grade.color }}>แนะนำ</span>
@@ -334,3 +334,4 @@ export function MasterpieceCard({
     </div>
   );
 }
+
