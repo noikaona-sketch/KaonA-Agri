@@ -25,7 +25,8 @@ const CONTEXTS = [
   { value: 'pest_found',   icon: '🐛', label: 'เจอแมลง' },
 ];
 
-const GRADE_CFG = {
+const GRADE_CFG: Record<string, { emoji: string; label: string; bg: string; color: string; border: string; infoBg: string; infoColor: string }> = {
+  pending: { emoji: '⏳', label: 'กำลังวิเคราะห์', bg: '#f8fafc', color: '#6b7280', border: '#e5e7eb', infoBg: '#f8fafc', infoColor: '#6b7280' },
   great:   { emoji: '🌟', label: 'ดีมาก!',      bg: '#e8f5e9', color: '#1b5e20', border: '#a5d6a7', infoBg: '#f0fdf4', infoColor: '#166534' },
   good:    { emoji: '✅', label: 'ดี',           bg: '#f0fdf4', color: '#166534', border: '#86efac', infoBg: '#f0fdf4', infoColor: '#166534' },
   warning: { emoji: '⚠️', label: 'ระวังหน่อย',  bg: '#fffbeb', color: '#92400e', border: '#fcd34d', infoBg: '#fffbeb', infoColor: '#92400e' },
@@ -96,7 +97,7 @@ export function MasterpieceCard({
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [context,   setContext]   = useState('general');
-  const [analyzing, setAnalyzing] = useState(false);
+  const [analyzing, setAnalyzing] = useState<'uploading' | 'analyzing' | null>(null);
   const [result,    setResult]    = useState<{
     ai_grade: string; ai_full_response: string; ai_summary: string;
     public_url: string; age_days: number | null; expected_stage: string;
@@ -140,44 +141,88 @@ export function MasterpieceCard({
     const file = e.target.files?.[0];
     if (!file) return;
     if (fileRef.current) fileRef.current.value = '';
-    setAnalyzing(true); setError(null); setResult(null);
+    setError(null); setResult(null);
 
-    const { headers, url } = await getAuthHeaders(member, '/api/member/crop-photo-analysis');
+    // ── Step 1: compress + upload to storage immediately (fast ~1-2s) ─────────
+    setAnalyzing('uploading');
     const { processedFile } = await compressCropPhoto(file);
+
+    // Upload via API route (handles auth + storage)
+    const { headers, url } = await getAuthHeaders(member, '/api/member/crop-photo-analysis');
     const form = new FormData();
     form.append('photo', processedFile);
     form.append('activity_context', context);
+    form.append('analyze', 'false'); // upload only, skip AI for now
     if (cycle?.id) form.append('planting_cycle_id', cycle.id);
     if (plotId)    form.append('plot_id', plotId);
 
-    const res  = await fetch(url, { method: 'POST', headers, body: form });
-    const data = (await res.json()) as {
+    const uploadRes  = await fetch(url, { method: 'POST', headers, body: form });
+    const uploadData = (await uploadRes.json()) as {
       ok?: boolean; error?: string;
-      ai_grade?: string; ai_full_response?: string; ai_summary?: string;
-      public_url?: string; age_days?: number | null; expected_stage?: string;
-      analysis_id?: string; storage_path?: string;
+      public_url?: string; storage_path?: string; analysis_id?: string;
     };
 
-    setAnalyzing(false);
-    if (!res.ok) { setError(data.error ?? 'วิเคราะห์ไม่สำเร็จ'); return; }
+    if (!uploadRes.ok) {
+      setAnalyzing(null);
+      setError(uploadData.error ?? 'อัปโหลดไม่สำเร็จ');
+      return;
+    }
+
+    // ── Step 2: show photo immediately, start AI in background ────────────────
+    setAnalyzing('analyzing');
+    const tempId = uploadData.analysis_id ?? `temp-${Date.now()}`;
+    setAnalyses(prev => [{
+      id: tempId,
+      storage_path:     uploadData.storage_path ?? '',
+      activity_context: context,
+      age_days:         ageDays,
+      ai_grade:         'pending',
+      ai_summary:       'AI กำลังวิเคราะห์…',
+      analyzed_at:      new Date().toISOString(),
+    }, ...prev].slice(0, 8));
+
+    // ── Step 3: trigger AI analysis (non-blocking) ────────────────────────────
+    const aiForm = new FormData();
+    aiForm.append('analysis_id', tempId);
+    aiForm.append('analyze', 'true');
+    aiForm.append('activity_context', context);
+    if (cycle?.id) aiForm.append('planting_cycle_id', cycle.id);
+    if (plotId)    aiForm.append('plot_id', plotId);
+
+    const aiRes  = await fetch(url, { method: 'PATCH', headers, body: aiForm });
+    const aiData = (await aiRes.json()) as {
+      ok?: boolean; error?: string;
+      ai_grade?: string; ai_full_response?: string; ai_summary?: string;
+      age_days?: number | null; expected_stage?: string;
+    };
+
+    setAnalyzing(null);
+
+    if (!aiRes.ok) {
+      // AI failed but photo is saved — show partial result
+      setResult({
+        ai_grade: 'good', ai_full_response: 'วิเคราะห์ไม่สำเร็จในขณะนี้ แต่รูปเก็บไว้แล้ว',
+        ai_summary: 'รูปเก็บแล้ว', public_url: uploadData.public_url ?? '',
+        age_days: ageDays, expected_stage: '',
+      });
+      return;
+    }
 
     setResult({
-      ai_grade:         data.ai_grade         ?? 'good',
-      ai_full_response: data.ai_full_response ?? '',
-      ai_summary:       data.ai_summary       ?? '',
-      public_url:       data.public_url        ?? '',
-      age_days:         data.age_days          ?? null,
-      expected_stage:   data.expected_stage    ?? '',
+      ai_grade:         aiData.ai_grade         ?? 'good',
+      ai_full_response: aiData.ai_full_response ?? '',
+      ai_summary:       aiData.ai_summary       ?? '',
+      public_url:       uploadData.public_url    ?? '',
+      age_days:         aiData.age_days          ?? ageDays,
+      expected_stage:   aiData.expected_stage    ?? '',
     });
 
-    if (data.analysis_id && data.storage_path) {
-      setAnalyses(prev => [{
-        id: data.analysis_id!, storage_path: data.storage_path!,
-        activity_context: context, age_days: data.age_days ?? null,
-        ai_grade: data.ai_grade ?? 'good', ai_summary: data.ai_summary ?? '',
-        analyzed_at: new Date().toISOString(),
-      }, ...prev].slice(0, 8));
-    }
+    // Update history with real grade
+    setAnalyses(prev => prev.map(a => a.id === tempId ? {
+      ...a,
+      ai_grade:   aiData.ai_grade   ?? 'good',
+      ai_summary: aiData.ai_summary ?? '',
+    } : a));
   }
 
   const grade     = result      ? (GRADE_CFG[result.ai_grade        as keyof typeof GRADE_CFG] ?? GRADE_CFG.good) : null;
@@ -237,9 +282,9 @@ export function MasterpieceCard({
           </div>
           <div style={{ flex: 1 }}>
             <p style={{ margin: '0 0 4px', fontSize: 13, color: '#374151' }}>
-              {analyzing ? 'AI กำลังดูรูปอยู่นะ รอแป๊บนึง…' : 'ถ่ายรูปแปลงของคุณ แล้ว AI จะวิเคราะห์ให้ทันที'}
+              {analyzing === 'uploading' ? 'กำลังเก็บรูป รอแป๊บนึง…' : analyzing === 'analyzing' ? 'AI กำลังวิเคราะห์รูป…' : 'ถ่ายรูปแปลงของคุณ แล้ว AI จะวิเคราะห์ให้ทันที'}
             </p>
-            <button onClick={() => fileRef.current?.click()} disabled={analyzing}
+            <button onClick={() => fileRef.current?.click()} disabled={!!analyzing}
               style={{
                 padding: '9px 18px', borderRadius: 10,
                 border: '1.5px solid #d1d5db',
@@ -334,4 +379,5 @@ export function MasterpieceCard({
     </div>
   );
 }
+
 
