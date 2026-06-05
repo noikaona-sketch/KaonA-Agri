@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { compressCropPhoto }              from '@/shared/lib/image-processing';
+import { compressCropPhoto }             from '@/shared/lib/image-processing';
 import { tryCreateSupabaseBrowserClient } from '@/lib/supabase/client';
-import { getAuthHeaders }                 from '@/lib/auth/get-auth-headers';
-import type { AuthBootstrapResult }       from '@/shared/auth/auth-types';
+import { getAuthHeaders }                from '@/lib/auth/get-auth-headers';
+import type { AuthBootstrapResult }      from '@/shared/auth/auth-types';
 
 type ActiveCycle = {
   id: string; crop_name: string; season_year: number;
@@ -16,262 +16,321 @@ type Analysis = {
 };
 
 const EVIDENCE_BUCKET = process.env.NEXT_PUBLIC_SUPABASE_EVIDENCE_BUCKET ?? 'mvp-evidence';
-const SUPABASE_URL     = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
-
-function storagePubUrl(path: string) {
-  return `${SUPABASE_URL}/storage/v1/object/public/${EVIDENCE_BUCKET}/${path}`;
-}
 
 const CONTEXTS = [
   { value: 'general',      icon: '📸', label: 'ดูทั่วไป' },
-  { value: 'growth_check', icon: '📏', label: 'เช็กการโต' },
-  { value: 'watering',     icon: '💧', label: 'กำลังรดน้ำ' },
+  { value: 'growth_check', icon: '📏', label: 'เช็กโต' },
+  { value: 'watering',     icon: '💧', label: 'รดน้ำ' },
   { value: 'fertilizing',  icon: '🌿', label: 'ใส่ปุ๋ย' },
   { value: 'pest_found',   icon: '🐛', label: 'เจอแมลง' },
 ];
 
-const GRADE: Record<string, { emoji: string; label: string; bg: string; color: string; border: string }> = {
-  great:   { emoji: '🌟', label: 'ดีมาก!',      bg: '#dcfce7', color: '#14532d', border: '#4ade80' },
-  good:    { emoji: '✅', label: 'ดี',           bg: '#f0fdf4', color: '#166534', border: '#86efac' },
-  warning: { emoji: '⚠️', label: 'ระวังหน่อย',  bg: '#fef9c3', color: '#713f12', border: '#fde047' },
-  alert:   { emoji: '🚨', label: 'ต้องแก้ด่วน', bg: '#ffe4e6', color: '#881337', border: '#fb7185' },
+const GRADE_CFG = {
+  great:   { emoji: '🌟', label: 'ดีมาก!',      bg: '#e8f5e9', color: '#1b5e20', border: '#a5d6a7', infoBg: '#f0fdf4', infoColor: '#166534' },
+  good:    { emoji: '✅', label: 'ดี',           bg: '#f0fdf4', color: '#166534', border: '#86efac', infoBg: '#f0fdf4', infoColor: '#166534' },
+  warning: { emoji: '⚠️', label: 'ระวังหน่อย',  bg: '#fffbeb', color: '#92400e', border: '#fcd34d', infoBg: '#fffbeb', infoColor: '#92400e' },
+  alert:   { emoji: '🚨', label: 'ต้องแก้ด่วน', bg: '#fff1f2', color: '#9f1239', border: '#fda4af', infoBg: '#fff1f2', infoColor: '#9f1239' },
+};
+
+const GROWTH_STAGES: Record<string, string> = {
+  germination: 'งอก', seedling: 'ต้นกล้า', vegetative: 'เจริญเติบโต',
+  tasseling: 'ออกดอกตัวผู้', silking: 'ออกไหม / Silking',
+  grain_fill: 'เมล็ดพัฒนา', maturity: 'แก่สุก', harvest_ready: 'พร้อมเก็บเกี่ยว',
 };
 
 function relDate(iso: string) {
-  const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
-  if (m < 1) return 'เมื่อกี้';
-  if (m < 60) return `${m} นาทีที่แล้ว`;
-  if (m < 1440) return `${Math.floor(m/60)} ชม.ที่แล้ว`;
-  return `${Math.floor(m/1440)} วันที่แล้ว`;
+  const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+  if (diff < 1)    return 'เมื่อกี้';
+  if (diff < 60)   return `${diff} นาทีที่แล้ว`;
+  if (diff < 1440) return `${Math.floor(diff / 60)} ชม.ที่แล้ว`;
+  return `${Math.floor(diff / 1440)} วันที่แล้ว`;
 }
 
-export function MasterpieceCard({ plotId, cycle, member }: {
-  plotId: string; cycle: ActiveCycle | null; member: AuthBootstrapResult;
+// ── History strip ─────────────────────────────────────────────────────────────
+function HistoryStrip({ analyses }: { analyses: Analysis[] }) {
+  const sb = tryCreateSupabaseBrowserClient();
+  if (!analyses.length || !sb) return null;
+
+  const withPlus = [...analyses.slice(0, 5), null]; // max 5 + "ถ่ายต่อไป"
+
+  return (
+    <div style={{ padding: '14px 16px', borderTop: '1px solid #f3f4f6' }}>
+      <p style={{ margin: '0 0 10px', fontSize: 13, color: '#6b7280', fontWeight: 600 }}>ประวัติการถ่ายภาพ</p>
+      <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 2 }}>
+        {withPlus.map((a, i) => {
+          if (!a) return (
+            <div key="plus" style={{ flexShrink: 0, textAlign: 'center', width: 60, opacity: 0.4 }}>
+              <div style={{ width: 60, height: 60, borderRadius: 12, border: '2px dashed #d1d5db', background: '#f9fafb', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 4 }}>
+                <span style={{ fontSize: 22, color: '#9ca3af' }}>+</span>
+              </div>
+              <p style={{ margin: 0, fontSize: 10, color: '#9ca3af' }}>ถ่ายต่อไป</p>
+            </div>
+          );
+          const { data } = sb.storage.from(EVIDENCE_BUCKET).getPublicUrl(a.storage_path);
+          const g = GRADE_CFG[a.ai_grade as keyof typeof GRADE_CFG] ?? GRADE_CFG.good;
+          return (
+            <div key={a.id} style={{ flexShrink: 0, textAlign: 'center', width: 60 }}>
+              <div style={{ width: 60, height: 60, borderRadius: 12, overflow: 'hidden', border: `2px solid ${g.border}`, marginBottom: 4 }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={data.publicUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              </div>
+              <p style={{ margin: 0, fontSize: 10, color: '#6b7280' }}>
+                {i === 0 ? 'วันนี้' : i === 1 ? '7 วันก่อน' : `${relDate(a.analyzed_at)}`}
+              </p>
+              <p style={{ margin: '1px 0 0', fontSize: 11, color: g.color, fontWeight: 700 }}>{g.label}</p>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────────
+export function MasterpieceCard({
+  plotId, cycle, member,
+}: {
+  plotId: string;
+  cycle: ActiveCycle | null;
+  member: AuthBootstrapResult;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
-  const [ctx,       setCtx]       = useState('general');
-  const [busy,      setBusy]      = useState(false);
+  const [context,   setContext]   = useState('general');
+  const [analyzing, setAnalyzing] = useState(false);
   const [result,    setResult]    = useState<{
-    grade: string; summary: string; full: string; url: string;
-    ageDays: number|null; stage: string;
+    ai_grade: string; ai_full_response: string; ai_summary: string;
+    public_url: string; age_days: number | null; expected_stage: string;
   } | null>(null);
-  const [history,   setHistory]   = useState<Analysis[]>([]);
-  const [err,       setErr]       = useState<string|null>(null);
-  const [expanded,  setExpanded]  = useState(true);
+  const [analyses,  setAnalyses]  = useState<Analysis[]>([]);
+  const [error,     setError]     = useState<string | null>(null);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const sb = tryCreateSupabaseBrowserClient();
-    if (!sb) return;
+    if (!sb || !plotId) return;
     const q = cycle
-      ? sb.from('crop_photo_analyses').select('id,storage_path,activity_context,age_days,ai_grade,ai_summary,analyzed_at').eq('planting_cycle_id', cycle.id)
-      : sb.from('crop_photo_analyses').select('id,storage_path,activity_context,age_days,ai_grade,ai_summary,analyzed_at').eq('plot_id', plotId);
-    void q.order('analyzed_at', { ascending: false }).limit(8)
-      .then(({ data }) => setHistory((data as Analysis[]) ?? []));
+      ? sb.from('crop_photo_analyses')
+          .select('id,storage_path,activity_context,age_days,ai_grade,ai_summary,analyzed_at')
+          .eq('planting_cycle_id', cycle.id).order('analyzed_at', { ascending: false }).limit(8)
+      : sb.from('crop_photo_analyses')
+          .select('id,storage_path,activity_context,age_days,ai_grade,ai_summary,analyzed_at')
+          .eq('plot_id', plotId).order('analyzed_at', { ascending: false }).limit(8);
+    void q.then(({ data }) => setAnalyses((data as Analysis[]) ?? []));
   }, [plotId, cycle?.id]);
 
   const ageDays = cycle?.planted_at
     ? Math.floor((Date.now() - new Date(cycle.planted_at).getTime()) / 86400000)
     : null;
 
-  async function shoot(e: React.ChangeEvent<HTMLInputElement>) {
+  // Parse growth stage from expected_stage string
+  const stageKey = result?.expected_stage
+    ? Object.keys(GROWTH_STAGES).find(k => result.expected_stage.includes(k)) ?? ''
+    : '';
+  const stageTh = stageKey ? GROWTH_STAGES[stageKey] : result?.expected_stage ?? '';
+
+  // Days to harvest (rough estimate)
+  const harvestDays = ageDays !== null ? Math.max(0, 115 - ageDays) : null;
+
+  // Split AI response: first sentence = main msg, rest = advice
+  const aiLines = (result?.ai_full_response ?? '').trim().split(/\n+/).filter(Boolean);
+  const aiMain  = aiLines[0] ?? '';
+  const aiRest  = aiLines.slice(1).join('\n');
+
+  async function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     if (fileRef.current) fileRef.current.value = '';
-    setBusy(true); setErr(null); setResult(null);
+    setAnalyzing(true); setError(null); setResult(null);
 
-    try {
-      const { headers, url } = await getAuthHeaders(member, '/api/member/crop-photo-analysis');
-      const { processedFile } = await compressCropPhoto(file);
-      const form = new FormData();
-      form.append('photo', processedFile);
-      form.append('activity_context', ctx);
-      if (cycle?.id) form.append('planting_cycle_id', cycle.id);
-      form.append('plot_id', plotId);
+    const { headers, url } = await getAuthHeaders(member, '/api/member/crop-photo-analysis');
+    const { processedFile } = await compressCropPhoto(file);
+    const form = new FormData();
+    form.append('photo', processedFile);
+    form.append('activity_context', context);
+    if (cycle?.id) form.append('planting_cycle_id', cycle.id);
+    if (plotId)    form.append('plot_id', plotId);
 
-      const res  = await fetch(url, { method: 'POST', headers, body: form });
-      const data = await res.json() as {
-        ok?: boolean; error?: string;
-        ai_grade?: string; ai_summary?: string; ai_full_response?: string;
-        storage_path?: string; age_days?: number|null; expected_stage?: string;
-        analysis_id?: string;
-      };
+    const res  = await fetch(url, { method: 'POST', headers, body: form });
+    const data = (await res.json()) as {
+      ok?: boolean; error?: string;
+      ai_grade?: string; ai_full_response?: string; ai_summary?: string;
+      public_url?: string; age_days?: number | null; expected_stage?: string;
+      analysis_id?: string; storage_path?: string;
+    };
 
-      if (!res.ok) throw new Error(data.error ?? 'วิเคราะห์ไม่สำเร็จ');
+    setAnalyzing(false);
+    if (!res.ok) { setError(data.error ?? 'วิเคราะห์ไม่สำเร็จ'); return; }
 
-      const imgUrl = data.storage_path ? storagePubUrl(data.storage_path) : '';
-      setResult({ grade: data.ai_grade ?? 'good', summary: data.ai_summary ?? '', full: data.ai_full_response ?? '', url: imgUrl, ageDays: data.age_days ?? null, stage: data.expected_stage ?? '' });
-      setExpanded(true);
+    setResult({
+      ai_grade:         data.ai_grade         ?? 'good',
+      ai_full_response: data.ai_full_response ?? '',
+      ai_summary:       data.ai_summary       ?? '',
+      public_url:       data.public_url        ?? '',
+      age_days:         data.age_days          ?? null,
+      expected_stage:   data.expected_stage    ?? '',
+    });
 
-      if (data.analysis_id && data.storage_path) {
-        setHistory(prev => [{
-          id: data.analysis_id!, storage_path: data.storage_path!,
-          activity_context: ctx, age_days: data.age_days ?? null,
-          ai_grade: data.ai_grade ?? 'good', ai_summary: data.ai_summary ?? '',
-          analyzed_at: new Date().toISOString(),
-        }, ...prev].slice(0, 8));
-      }
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
+    if (data.analysis_id && data.storage_path) {
+      setAnalyses(prev => [{
+        id: data.analysis_id!, storage_path: data.storage_path!,
+        activity_context: context, age_days: data.age_days ?? null,
+        ai_grade: data.ai_grade ?? 'good', ai_summary: data.ai_summary ?? '',
+        analyzed_at: new Date().toISOString(),
+      }, ...prev].slice(0, 8));
     }
-    setBusy(false);
   }
 
-  const g       = result  ? (GRADE[result.grade]            ?? GRADE.good) : null;
-  const lastG   = history[0] ? (GRADE[history[0].ai_grade] ?? GRADE.good) : null;
+  const grade     = result      ? (GRADE_CFG[result.ai_grade        as keyof typeof GRADE_CFG] ?? GRADE_CFG.good) : null;
+  const lastGrade = analyses[0] ? (GRADE_CFG[analyses[0].ai_grade   as keyof typeof GRADE_CFG] ?? GRADE_CFG.good) : null;
+  const showLastGrade = lastGrade && !result;
 
   return (
-    <div style={{ background: '#fff', overflow: 'hidden' }}>
+    <div style={{ background: '#fff' }}>
 
-      {/* ══ HERO BANNER ══════════════════════════════════════════════════════ */}
-      <div style={{
-        background: 'linear-gradient(135deg, #14532d 0%, #166534 50%, #15803d 100%)',
-        padding: '18px 20px 20px',
-        position: 'relative', overflow: 'hidden',
-      }}>
-        {/* decorative circle */}
-        <div style={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.06)' }} />
-        <div style={{ position: 'absolute', bottom: -30, right: 30, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.04)' }} />
-
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative' }}>
-          <div>
-            <p style={{ margin: 0, fontSize: 22, fontWeight: 900, color: '#fff', letterSpacing: '-0.5px' }}>
-              🏆 ผลงานชิ้นเอก
-            </p>
-            <p style={{ margin: '4px 0 0', fontSize: 13, color: '#bbf7d0' }}>
-              {ageDays !== null
-                ? `${cycle?.crop_name ?? 'พืช'} · อายุ ${ageDays} วัน${result?.stage ? ` · ${result.stage}` : ''}`
-                : 'ถ่ายรูปส่งให้ AI ดูหน่อยนะ 📲'}
-            </p>
-          </div>
-          {!result && lastG && (
-            <span style={{ fontSize: 12, padding: '5px 12px', borderRadius: 99, background: 'rgba(255,255,255,0.18)', color: '#fff', fontWeight: 800, backdropFilter: 'blur(4px)' }}>
-              {lastG.emoji} {lastG.label}
-            </span>
-          )}
-          {result && g && (
-            <span style={{ fontSize: 12, padding: '5px 12px', borderRadius: 99, background: g.bg, color: g.color, fontWeight: 800 }}>
-              {g.emoji} {g.label}
-            </span>
-          )}
+      {/* ── Cycle header ──────────────────────────────────────────────────────── */}
+      {cycle && (
+        <div style={{ padding: '14px 16px 0' }}>
+          <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>
+            {cycle.crop_name} · ปลูก {cycle.planted_at
+              ? new Date(cycle.planted_at).toLocaleDateString('th-TH', { day:'numeric', month:'short', year:'2-digit' })
+              : `ปี ${cycle.season_year}`}
+          </p>
+          <p style={{ margin: '2px 0 0', fontWeight: 800, fontSize: 17, color: '#111' }}>
+            อายุ {ageDays ?? '—'} วัน
+            {stageTh ? <span style={{ color: '#2e7d32' }}> — ระยะ{stageTh}</span> : ''}
+          </p>
         </div>
-      </div>
+      )}
 
-      {/* ══ CONTEXT GRID ═════════════════════════════════════════════════════ */}
-      <div style={{ padding: '16px 16px 0' }}>
-        <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          กำลังทำอะไรอยู่?
-        </p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 6 }}>
+      {/* ── Context picker ───────────────────────────────────────────────────── */}
+      <div style={{ padding: '12px 16px 0' }}>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {CONTEXTS.map(c => (
-            <button key={c.value} onClick={() => setCtx(c.value)}
+            <button key={c.value} onClick={() => setContext(c.value)}
               style={{
-                padding: '10px 4px 8px', borderRadius: 12,
-                border: `2px solid ${ctx === c.value ? '#16a34a' : '#e5e7eb'}`,
-                background: ctx === c.value ? '#f0fdf4' : '#fafafa',
-                cursor: 'pointer', display: 'flex', flexDirection: 'column',
-                alignItems: 'center', gap: 4, transition: 'all 0.15s',
+                padding: '7px 13px', borderRadius: 99,
+                border: `1.5px solid ${context === c.value ? '#2e7d32' : '#e5e7eb'}`,
+                background: context === c.value ? '#e8f5e9' : '#fff',
+                color: context === c.value ? '#1b5e20' : '#4b5563',
+                fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 4,
               }}>
-              <span style={{ fontSize: 20 }}>{c.icon}</span>
-              <span style={{ fontSize: 10, fontWeight: 700, color: ctx === c.value ? '#15803d' : '#6b7280', textAlign: 'center', lineHeight: 1.2 }}>
-                {c.label}
-              </span>
+              {c.icon} {c.label}
             </button>
           ))}
         </div>
       </div>
 
-      {/* ══ SHOOT BUTTON ═════════════════════════════════════════════════════ */}
-      <div style={{ padding: '14px 16px' }}>
-        <button onClick={() => fileRef.current?.click()} disabled={busy}
-          style={{
-            width: '100%', padding: '17px 0', borderRadius: 18, border: 'none',
-            background: busy ? '#e5e7eb' : 'linear-gradient(135deg, #15803d, #16a34a)',
-            color: busy ? '#9ca3af' : '#fff',
-            fontSize: 16, fontWeight: 900, cursor: busy ? 'default' : 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-            boxShadow: busy ? 'none' : '0 6px 20px rgba(22,163,74,0.35)',
-            letterSpacing: '-0.2px',
-          }}>
-          {busy
-            ? <><span style={{ fontSize: 18 }}>⏳</span> AI กำลังดูรูปอยู่นะ…</>
-            : <><span style={{ fontSize: 22 }}>📸</span> ถ่ายรูปแปลง ให้ AI ดูหน่อย!</>
-          }
-        </button>
+      {/* ── Photo upload area ─────────────────────────────────────────────────── */}
+      <div style={{ padding: '12px 16px' }}>
+        <div style={{
+          border: '1.5px solid #e5e7eb', borderRadius: 14,
+          background: '#fafafa', padding: '14px',
+          display: 'flex', gap: 14, alignItems: 'center',
+        }}>
+          {/* Thumbnail placeholder */}
+          <div style={{ width: 72, height: 72, borderRadius: 12, background: '#f0fdf4', border: '1.5px solid #d1fae5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            {analyzing
+              ? <span style={{ fontSize: 28 }}>⏳</span>
+              : <span style={{ fontSize: 30 }}>🌾</span>
+            }
+          </div>
+          <div style={{ flex: 1 }}>
+            <p style={{ margin: '0 0 4px', fontSize: 13, color: '#374151' }}>
+              {analyzing ? 'AI กำลังดูรูปอยู่นะ รอแป๊บนึง…' : 'ถ่ายรูปแปลงของคุณ แล้ว AI จะวิเคราะห์ให้ทันที'}
+            </p>
+            <button onClick={() => fileRef.current?.click()} disabled={analyzing}
+              style={{
+                padding: '9px 18px', borderRadius: 10,
+                border: '1.5px solid #d1d5db',
+                background: analyzing ? '#f3f4f6' : '#fff',
+                color: analyzing ? '#9ca3af' : '#374151',
+                fontSize: 13, fontWeight: 700, cursor: analyzing ? 'not-allowed' : 'pointer',
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+              }}>
+              <span>📷</span> ถ่ายรูปแปลงตอนนี้
+            </button>
+          </div>
+          {showLastGrade && (
+            <span style={{ fontSize: 11, padding: '4px 10px', borderRadius: 99, background: lastGrade.bg, color: lastGrade.color, fontWeight: 700, flexShrink: 0 }}>
+              {lastGrade.emoji} {lastGrade.label}
+            </span>
+          )}
+        </div>
         <input ref={fileRef} type="file" accept="image/*" capture="environment"
-          style={{ display: 'none' }} onChange={shoot} />
+          style={{ display: 'none' }} onChange={handlePhoto} />
       </div>
 
-      {/* ══ ERROR ════════════════════════════════════════════════════════════ */}
-      {err && (
-        <div style={{ margin: '0 16px 14px', padding: '12px 16px', borderRadius: 14, background: '#ffe4e6', border: '1.5px solid #fb7185', color: '#881337', fontSize: 13, fontWeight: 600 }}>
-          😬 {err}
+      {/* ── Error ────────────────────────────────────────────────────────────── */}
+      {error && (
+        <div style={{ margin: '0 16px 12px', padding: '10px 14px', borderRadius: 10, background: '#fff1f2', border: '1px solid #fda4af', color: '#9f1239', fontSize: 13 }}>
+          {error}
         </div>
       )}
 
-      {/* ══ AI RESULT CARD ═══════════════════════════════════════════════════ */}
-      {result && g && (
-        <div style={{ margin: '0 16px 16px', borderRadius: 18, border: `2px solid ${g.border}`, background: g.bg, overflow: 'hidden', boxShadow: `0 4px 16px ${g.border}55` }}>
-
-          {/* photo + grade row */}
-          <div style={{ display: 'flex', gap: 14, padding: '16px 16px 12px' }}>
-            <div style={{ width: 96, height: 96, borderRadius: 14, overflow: 'hidden', flexShrink: 0, border: `2.5px solid ${g.border}`, background: '#e5e7eb' }}>
-              {result.url
-                ? <img src={result.url} alt="แปลง" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> // eslint-disable-line
-                : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32 }}>🌽</div>
-              }
+      {/* ── AI Result ────────────────────────────────────────────────────────── */}
+      {result && grade && (
+        <div style={{ margin: '0 16px 16px', borderRadius: 14, border: '1px solid #e5e7eb', overflow: 'hidden' }}>
+          {/* Header */}
+          <div style={{ padding: '12px 14px', borderBottom: '1px solid #f3f4f6', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 34, height: 34, borderRadius: '50%', background: '#e8f5e9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <span style={{ fontSize: 18 }}>🤖</span>
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                <span style={{ fontSize: 26 }}>{g.emoji}</span>
-                <span style={{ fontSize: 18, fontWeight: 900, color: g.color }}>{g.label}</span>
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#111' }}>ผลวิเคราะห์ AI</p>
+              <p style={{ margin: 0, fontSize: 11, color: '#9ca3af' }}>เมื่อกี้</p>
+            </div>
+            <span style={{ fontSize: 12, padding: '4px 12px', borderRadius: 99, background: grade.bg, color: grade.color, fontWeight: 700, border: `1px solid ${grade.border}` }}>
+              {grade.label}
+            </span>
+          </div>
+
+          {/* Main text */}
+          <div style={{ padding: '12px 14px' }}>
+            {result.public_url && (
+              <div style={{ float: 'right', marginLeft: 10, marginBottom: 4 }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={result.public_url} alt="แปลง"
+                  style={{ width: 64, height: 64, borderRadius: 10, objectFit: 'cover', border: `2px solid ${grade.border}` }} />
               </div>
-              <p style={{ margin: 0, fontSize: 14, color: '#1a1a1a', lineHeight: 1.6, fontWeight: 600 }}>
-                {result.summary}
-              </p>
-            </div>
-          </div>
+            )}
+            <p style={{ margin: '0 0 10px', fontSize: 14, color: '#111', lineHeight: 1.7 }}>
+              <strong style={{ color: grade.color }}>{aiMain.split('!')[0] + (aiMain.includes('!') ? '!' : '')}</strong>
+              {aiMain.includes('!') ? ' ' + aiMain.slice(aiMain.indexOf('!') + 1).trim() : ''}
+            </p>
+            <div style={{ clear: 'both' }} />
 
-          {/* full AI text */}
-          {expanded && result.full && (
-            <div style={{ padding: '0 16px 16px' }}>
-              <div style={{ height: 1, background: g.border, opacity: 0.5, marginBottom: 12 }} />
-              <p style={{ margin: 0, fontSize: 14, color: '#374151', lineHeight: 1.85, whiteSpace: 'pre-wrap' }}>
-                {result.full}
-              </p>
-            </div>
-          )}
-
-          <button onClick={() => setExpanded(v => !v)}
-            style={{ width: '100%', padding: '11px', border: 'none', borderTop: `1.5px solid ${g.border}`, background: 'transparent', fontSize: 13, color: g.color, cursor: 'pointer', fontWeight: 800 }}>
-            {expanded ? '▲ ย่อลง' : '▼ อ่านคำแนะนำเต็มๆ'}
-          </button>
-        </div>
-      )}
-
-      {/* ══ HISTORY STRIP ════════════════════════════════════════════════════ */}
-      {history.length > 0 && (
-        <div style={{ padding: '0 16px 18px' }}>
-          <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            ประวัติการถ่ายภาพ
-          </p>
-          <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4 }}>
-            {history.map(a => {
-              const hg = GRADE[a.ai_grade] ?? GRADE.good;
-              const imgUrl = storagePubUrl(a.storage_path);
-              return (
-                <div key={a.id} style={{ flexShrink: 0, textAlign: 'center', width: 68 }}>
-                  <div style={{ width: 68, height: 68, borderRadius: 14, overflow: 'hidden', border: `2.5px solid ${hg.border}`, background: '#e5e7eb' }}>
-                    <img src={imgUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> {/* eslint-disable-line */}
-                  </div>
-                  <p style={{ margin: '4px 0 1px', fontSize: 11, color: hg.color, fontWeight: 800 }}>{hg.emoji} {hg.label}</p>
-                  <p style={{ margin: 0, fontSize: 10, color: '#9ca3af' }}>{relDate(a.analyzed_at)}</p>
+            {/* Info boxes */}
+            {stageTh && (
+              <div style={{ background: '#f0fdf4', borderRadius: 10, padding: '9px 12px', marginBottom: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                  <span>🌱</span>
+                  <span style={{ fontSize: 13, color: '#166534' }}>ระยะปัจจุบัน: <strong>{stageTh}</strong></span>
                 </div>
-              );
-            })}
+                {harvestDays !== null && harvestDays > 0 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span>🕐</span>
+                    <span style={{ fontSize: 13, color: '#6b7280' }}>เก็บเกี่ยวได้ในอีกประมาณ <strong style={{ color: '#111' }}>{harvestDays}–{harvestDays + 10} วัน</strong></span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {aiRest && (
+              <div style={{ background: grade.ai_grade === 'warning' || grade.ai_grade === 'alert' ? '#fffbeb' : '#f8fafc', borderRadius: 10, padding: '9px 12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                  <span>{grade.emoji === '⚠️' || grade.emoji === '🚨' ? '⚠️' : '💡'}</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: grade.color }}>แนะนำ</span>
+                </div>
+                <p style={{ margin: 0, fontSize: 13, color: '#374151', lineHeight: 1.6 }}>{aiRest}</p>
+              </div>
+            )}
           </div>
         </div>
       )}
+
+      {/* ── History ───────────────────────────────────────────────────────────── */}
+      <HistoryStrip analyses={analyses} />
     </div>
   );
 }
