@@ -8,6 +8,7 @@ import { tryCreateSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useAuth, useCurrentMember }      from '@/providers/auth-provider';
 import type { AuthBootstrapResult }         from '@/shared/auth/auth-types';
 import { getAuthHeaders }                 from '@/lib/auth/get-auth-headers';
+import { MasterpieceCard }                from '@/features/member-planting/masterpiece-card';
 import { MobileAppShell }                 from '@/shared/components/mobile-app-shell';
 import { LoadingState }                   from '@/shared/components/loading-state';
 import { ProtectedRoute }                 from '@/shared/components/protected-route';
@@ -469,4 +470,5 @@ export default function PlotsPage() {
 function actionButtonStyle(background: string, color: string, borderColor?: string): CSSProperties {
   return { border: borderColor ? `1.5px solid ${borderColor}` : 'none', borderRadius: 12, background, color, padding: '10px 8px', fontSize: 12, fontWeight: 800, cursor: 'pointer', minHeight: 44, textAlign: 'center' };
 }
+
 
