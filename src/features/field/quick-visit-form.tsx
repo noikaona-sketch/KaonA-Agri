@@ -6,6 +6,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/providers/auth-provider';
+import { compressFieldPhoto }            from '@/shared/lib/image-processing';
 import { tryCreateSupabaseBrowserClient } from '@/lib/supabase/client';
 
 const EVIDENCE_BUCKET = process.env.NEXT_PUBLIC_SUPABASE_EVIDENCE_BUCKET ?? 'mvp-evidence';
@@ -144,7 +145,9 @@ export function QuickVisitForm() {
     if (note)        form.append('note',        note);
     if (followUp)    form.append('follow_up',   followUp);
     if (selectedMember) form.append('member_id', selectedMember.id);
-    photos.forEach((p, i) => form.append(`photo_${i}`, p));
+    // Compress all photos before upload
+    const compressed = await Promise.all(photos.map(p => compressFieldPhoto(p)));
+    compressed.forEach(({ processedFile }, i) => form.append(`photo_${i}`, processedFile));
 
     const res = await fetch('/api/field/visit-log', {
       method: 'POST',
@@ -299,3 +302,4 @@ export function QuickVisitForm() {
     </div>
   );
 }
+
