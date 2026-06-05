@@ -119,6 +119,7 @@ export function SeedReservationFlow({ initialPlotId }: { initialPlotId?: string 
     setLoading(false);
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { void load(); }, [member?.member_id, initialPlotId]);
 
   // ── cart ─────────────────────────────────────────────────────────
@@ -308,6 +309,7 @@ export function SeedReservationFlow({ initialPlotId }: { initialPlotId?: string 
             <div style={{ padding: '14px 16px', display: 'flex', gap: 12, alignItems: 'center' }}>
               <div style={{ width: 52, height: 52, borderRadius: 14, background: '#e8f5e9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, flexShrink: 0, overflow: 'hidden' }}>
                 {v.image_url
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   ? <img src={v.image_url} alt={v.variety_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   : '🌾'}
               </div>
@@ -433,3 +435,4 @@ export function SeedReservationFlow({ initialPlotId }: { initialPlotId?: string 
     </div>
   );
 }
+
