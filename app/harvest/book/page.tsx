@@ -27,7 +27,7 @@ function BookContent() {
       .in('status', BOOKABLE)
       .order('season_year', { ascending: false })
       .then(({ data }) => {
-        setCycles(data ?? []);
+        setCycles((data as unknown as Cycle[]) ?? []);
         if (data?.[0]) setCycleId(data[0].id);
       });
   }, [member?.member_id]);
@@ -76,5 +76,6 @@ export default function HarvestBookPage() {
     </ProtectedRoute>
   );
 }
+
 
 
