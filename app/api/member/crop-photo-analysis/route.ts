@@ -86,6 +86,35 @@ export async function POST(request: Request) {
   const { data: urlData } = s.storage.from(PHOTO_BUCKET).getPublicUrl(path);
   const publicUrl = urlData.publicUrl;
 
+  // ── Check if we should skip AI (upload-only mode) ───────────────────────────
+  const analyzeFlag = (form.get('analyze') as string | null) ?? 'true';
+  const skipAI = analyzeFlag === 'false';
+
+  if (skipAI) {
+    // Save record without AI result
+    const { data: saved, error: saveErr } = await s.from('crop_photo_analyses').insert({
+      member_id:         caller.memberId,
+      planting_cycle_id: cycleId,
+      plot_id:           plotId,
+      storage_path:      path,
+      activity_context:  context,
+      crop_name:         cropName,
+      age_days:          ageDays,
+      planted_at:        plantedAt,
+      ai_grade:          'pending',
+      ai_summary:        'รอการวิเคราะห์',
+      ai_full_response:  '',
+    }).select('id').single();
+
+    if (saveErr) console.error('[CROP_ANALYSIS] save error:', saveErr.message);
+    return NextResponse.json({
+      ok:           true,
+      analysis_id:  (saved as { id: string } | null)?.id ?? null,
+      storage_path: path,
+      public_url:   publicUrl,
+    }, { status: 201 });
+  }
+
   // ── Call Claude vision ────────────────────────────────────────────────────
   const contextLabel = CONTEXT_TH[context] ?? 'ดูทั่วไป';
   const ageText = ageDays !== null
@@ -219,3 +248,110 @@ export async function GET(request: Request) {
 
 
 
+
+
+
+// ── PATCH /api/member/crop-photo-analysis ────────────────────────────────────
+// Trigger AI analysis for existing record (analysis_id required)
+export async function PATCH(request: Request) {
+  const s      = createServerSupabaseClient();
+  const caller = await resolveApprovedMember(request, s);
+  if (!caller.ok) return caller.response;
+
+  let form: FormData;
+  try { form = await request.formData(); }
+  catch { return NextResponse.json({ error: 'ต้องส่งข้อมูลแบบ multipart/form-data' }, { status: 400 }); }
+
+  const analysisId = (form.get('analysis_id') as string | null) || null;
+  const context    = (form.get('activity_context') as string | null) || 'general';
+  const cycleId    = (form.get('planting_cycle_id') as string | null) || null;
+  const plotId     = (form.get('plot_id') as string | null) || null;
+
+  if (!analysisId) return NextResponse.json({ error: 'analysis_id required' }, { status: 400 });
+
+  // Get existing record
+  const { data: existing } = await s.from('crop_photo_analyses')
+    .select('storage_path, crop_name, age_days, planted_at')
+    .eq('id', analysisId).eq('member_id', caller.memberId).maybeSingle();
+
+  if (!existing) return NextResponse.json({ error: 'ไม่พบข้อมูล' }, { status: 404 });
+
+  const { data: urlData } = s.storage.from(PHOTO_BUCKET).getPublicUrl(existing.storage_path);
+  const publicUrl = urlData.publicUrl;
+
+  // Re-compute cycle info
+  let cropName = existing.crop_name ?? 'ข้าวโพด';
+  let ageDays  = existing.age_days;
+  let plantedAt = existing.planted_at;
+  let expectedStage = ageDays !== null ? getExpectedStage(ageDays) : '';
+
+  if (cycleId && !ageDays) {
+    const { data: cycle } = await s.from('planting_cycles')
+      .select('crop_name, planted_at').eq('id', cycleId).maybeSingle();
+    if (cycle) {
+      cropName  = cycle.crop_name;
+      plantedAt = cycle.planted_at;
+      if (cycle.planted_at) {
+        ageDays  = Math.floor((Date.now() - new Date(cycle.planted_at).getTime()) / 86400000);
+        expectedStage = getExpectedStage(ageDays);
+      }
+    }
+  }
+
+  // Call AI
+  const contextLabel = CONTEXT_TH[context] ?? 'ดูทั่วไป';
+  const ageText = ageDays !== null ? `อายุ ${ageDays} วัน (คาดว่าอยู่ในระยะ${expectedStage})` : '';
+  const prompt = `คุณเป็นเพื่อนบ้านที่ปลูกข้าวโพดมานาน พูดแบบคนบ้านๆ อ่านง่าย อบอุ่น ไม่เป็นทางการ
+
+ข้อมูลรอบปลูก:
+- พืช: ${cropName}
+- ${ageText}
+- กิจกรรมที่กำลังทำ: ${contextLabel}
+
+ดูรูปนี้แล้วบอกหน่อยนะ:
+1. ชมก่อนเลย (ถ้าต้นดูดีให้ชมจริงๆ)
+2. สังเกตเห็นอะไร บอกสั้นๆ ว่าต้นอยู่ในระยะไหน สมบูรณ์ไหม
+3. แนะนำสิ่งที่ควรระวัง หรือทำต่อไป (1-2 ประโยค)
+4. ถ้าเจอปัญหา เช่น ใบเหลือง หนอน โรค ให้บอกตรงๆ
+
+ตอบเป็นภาษาไทยบ้านๆ 3-5 ประโยค
+สรุป 1 บรรทัดแรก (ไม่เกิน 20 คำ) ว่า "ดีมาก" / "ดี" / "ระวังหน่อย" / "ต้องแก้ด่วน"`;
+
+  const anthropicKey = process.env.ANTHROPIC_API_KEY ?? '';
+  let aiGrade = 'good', aiSummary = '', aiFullResponse = '';
+  try {
+    const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': anthropicKey, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001', max_tokens: 300,
+        messages: [{ role: 'user', content: [
+          { type: 'image', source: { type: 'url', url: publicUrl } },
+          { type: 'text',  text: prompt },
+        ]}],
+      }),
+    });
+    const aiData = (await aiRes.json()) as { content?: { type: string; text: string }[] };
+    aiFullResponse = aiData.content?.find(b => b.type === 'text')?.text ?? '';
+    const first = aiFullResponse.split('\n')[0].toLowerCase();
+    if (first.includes('ดีมาก') || first.includes('สวยมาก')) aiGrade = 'great';
+    else if (first.includes('ระวัง') || first.includes('เฝ้าดู')) aiGrade = 'warning';
+    else if (first.includes('ด่วน') || first.includes('โรค')) aiGrade = 'alert';
+    else aiGrade = 'good';
+    aiSummary = aiFullResponse.split(/[.!?\n]/)[0].trim().slice(0, 80);
+  } catch (err) {
+    console.error('[CROP_ANALYSIS_PATCH] AI error:', err);
+    aiFullResponse = 'วิเคราะห์ไม่สำเร็จในขณะนี้';
+  }
+
+  // Update record
+  await s.from('crop_photo_analyses').update({
+    ai_grade: aiGrade, ai_summary: aiSummary, ai_full_response: aiFullResponse,
+    crop_name: cropName, age_days: ageDays, planted_at: plantedAt,
+  }).eq('id', analysisId);
+
+  return NextResponse.json({
+    ok: true, ai_grade: aiGrade, ai_summary: aiSummary,
+    ai_full_response: aiFullResponse, age_days: ageDays, expected_stage: expectedStage,
+  });
+}
