@@ -164,6 +164,7 @@ export function Weather7Day({ lat, lng, location }: { lat: number; lng: number; 
   const [wx,      setWx]      = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     void fetchWeatherCached(lat, lng, location).then((data) => {
       setWx(data);
@@ -268,4 +269,5 @@ function WeatherFarmingTip({ today, week }: { today: DayForecast; week: DayForec
     </div>
   );
 }
+
 
