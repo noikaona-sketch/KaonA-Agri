@@ -107,24 +107,20 @@ export function MasterpieceCard({
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    const sb = tryCreateSupabaseBrowserClient();
-    if (!sb || !plotId) return;
-    // Query by plot_id OR planting_cycle_id to catch all historical photos
-    // regardless of how they were saved
-    const cycleIds = cycle?.id ? [cycle.id] : [];
-    let q = sb.from('crop_photo_analyses')
-      .select('id,storage_path,activity_context,age_days,ai_grade,ai_summary,analyzed_at')
-      .order('analyzed_at', { ascending: false })
-      .limit(20);
-
-    if (cycleIds.length > 0) {
-      // match plot_id OR planting_cycle_id
-      q = q.or(`plot_id.eq.${plotId},planting_cycle_id.eq.${cycleIds[0]}`);
-    } else {
-      q = q.eq('plot_id', plotId);
-    }
-    void q.then(({ data }) => setAnalyses((data as Analysis[]) ?? []));
-  }, [plotId, cycle?.id]);
+    if (!member?.member_id || !plotId) return;
+    // Load via API route — works for CASE B members (no browser session)
+    void (async () => {
+      const params = new URLSearchParams({ plot_id: plotId, limit: '20' });
+      if (cycle?.id) params.set('planting_cycle_id', cycle.id);
+      const { headers, url } = await getAuthHeaders(member, `/api/member/crop-photo-analysis?${params}`);
+      try {
+        const res  = await fetch(url, { headers });
+        if (!res.ok) return;
+        const data = (await res.json()) as { analyses?: Analysis[] };
+        setAnalyses(data.analyses ?? []);
+      } catch { /* silent */ }
+    })();
+  }, [member?.member_id, plotId, cycle?.id]);
 
   const ageDays = cycle?.planted_at
     ? Math.floor((Date.now() - new Date(cycle.planted_at).getTime()) / 86400000)
@@ -384,6 +380,7 @@ export function MasterpieceCard({
     </div>
   );
 }
+
 
 
 
