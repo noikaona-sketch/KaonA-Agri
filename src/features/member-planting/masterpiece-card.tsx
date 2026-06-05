@@ -30,7 +30,7 @@ const GRADE_CFG: Record<string, { emoji: string; label: string; bg: string; colo
   great:   { emoji: '🌟', label: 'เจ๋งมาก!',      bg: '#e8f5e9', color: '#1b5e20', border: '#a5d6a7', infoBg: '#f0fdf4', infoColor: '#166534' },
   good:    { emoji: '✅', label: 'ดูดีนะ',           bg: '#f0fdf4', color: '#166534', border: '#86efac', infoBg: '#f0fdf4', infoColor: '#166534' },
   warning: { emoji: '⚠️', label: 'ระวังหน่อย',  bg: '#fffbeb', color: '#92400e', border: '#fcd34d', infoBg: '#fffbeb', infoColor: '#92400e' },
-  alert:   { emoji: '🚨', label: 'ต้องแก้ด่วน', bg: '#fff1f2', color: '#9f1239', border: '#fda4af', infoBg: '#fff1f2', infoColor: '#9f1239' },
+  alert:   { emoji: '🚨', label: 'อันนี้เลี้ยงไม่โตนะ', bg: '#fff1f2', color: '#9f1239', border: '#fda4af', infoBg: '#fff1f2', infoColor: '#9f1239' },
 };
 
 const GROWTH_STAGES: Record<string, string> = {
@@ -377,6 +377,7 @@ export function MasterpieceCard({
     </div>
   );
 }
+
 
 
 
