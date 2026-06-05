@@ -26,7 +26,7 @@ type NoBurnRequest = {
   bonus_amount:    number | null;
   bonus_locked_at: string | null;
   planting_seasons: { name: string }[] | null;
-  plots:           { name: string; province: string | null; area_rai: number | null }[] | null;
+  plots:           { name: string; province: string | null; area_rai: number | null } | { name: string; province: string | null; area_rai: number | null }[] | null;
   planting_cycles: { crop_name: string; season_year: number }[] | null;
 };
 
@@ -179,6 +179,7 @@ function NoBurnPageContent() {
     const token = await getBearerToken();
     const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
     const requestParams = new URLSearchParams(member?.member_id ? { member_id: member.member_id } : {});
+    if (member?.line_user_id) requestParams.set('line_user_id', member.line_user_id);
     const reqRes = await fetch(`/api/member/no-burn?${requestParams.toString()}`, { headers });
     if (reqRes.ok) {
       const j = (await reqRes.json()) as { requests?: NoBurnRequest[] };
@@ -686,9 +687,11 @@ function NoBurnPageContent() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {requests.map((req) => {
               const st       = STATUS_CFG[req.status] ?? STATUS_CFG.rejected;
-              const plotName = req.plots?.[0]?.name ?? '—';
-              const province = req.plots?.[0]?.province;
-              const crop     = req.planting_cycles?.[0];
+              // Supabase may return object or array depending on relation type
+              const plotObj  = Array.isArray(req.plots) ? req.plots[0] : req.plots;
+              const plotName = plotObj?.name ?? '—';
+              const province = plotObj?.province;
+              const crop     = Array.isArray(req.planting_cycles) ? req.planting_cycles[0] : req.planting_cycles;
               const timingCfg = req.timing ? TIMING_CFG[req.timing] : null;
 
               return (
@@ -712,7 +715,7 @@ function NoBurnPageContent() {
                   {/* body */}
                   <div style={{ padding: '12px 16px' }}>
                     <p style={{ margin: '0 0 4px', fontWeight: 800, fontSize: 15, color: '#111' }}>
-                      {plotName}{province ? <span style={{ fontWeight: 400, fontSize: 13, color: '#6b7280' }}> · {province}</span> : ''}
+                      {plotName}{(plotObj as { area_rai?: number | null } | null)?.area_rai ? <span style={{ fontWeight: 400, fontSize: 13, color: '#6b7280' }}> · {(plotObj as { area_rai?: number | null }).area_rai} ไร่</span> : ''}{province ? <span style={{ fontWeight: 400, fontSize: 13, color: '#6b7280' }}> · {province}</span> : ''}
                     </p>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
                       {timingCfg && (
@@ -764,3 +767,4 @@ export default function NoBurnPage() {
     </ProtectedRoute>
   );
 }
+
