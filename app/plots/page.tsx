@@ -6,6 +6,7 @@ import { useRouter }           from 'next/navigation';
 
 import { tryCreateSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useAuth, useCurrentMember }      from '@/providers/auth-provider';
+import type { AuthBootstrapResult }         from '@/shared/auth/auth-types';
 import { getAuthHeaders }                 from '@/lib/auth/get-auth-headers';
 import { MobileAppShell }                 from '@/shared/components/mobile-app-shell';
 import { LoadingState }                   from '@/shared/components/loading-state';
@@ -20,7 +21,7 @@ type Plot = {
   land_doc_number: string | null; description: string | null;
   lat: number | null; lng: number | null;
 };
-type ActiveCycle = { id: string; crop_name: string; season_year: number; status: string; plot_id: string | null };
+type ActiveCycle = { id: string; crop_name: string; season_year: number; status: string; plot_id: string | null; planted_at?: string | null };
 type LastLog = { activity_type: string; recorded_at: string };
 type NoBurnStatus = { plot_id: string; status: string };
 
@@ -198,6 +199,7 @@ function PlotCard({ plot, cycle, lastLog, noBurnStatus, memberId, onLogged, onDe
   onLogged: (plotId: string, type: string) => void;
   onDeleted: (plotId: string) => void;
   onEdited: (plotId: string, updated: Partial<Plot>) => void;
+  member: AuthBootstrapResult;
 }) {
   const router = useRouter();
   const member = useCurrentMember();
@@ -272,17 +274,18 @@ function PlotCard({ plot, cycle, lastLog, noBurnStatus, memberId, onLogged, onDe
         </div>
 
         {/* Cycle */}
-        {cycle ? (
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid #f5f5f5' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div>
-                <Link href={`/planting-cycles/${cycle.id}`} style={{ textDecoration: 'none' }}>
-                  <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: '#111' }}>🌱 {cycle.crop_name} {cycle.season_year}</p>
-                </Link>
-                {st && <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 99, background: st.bg, color: st.color, marginTop: 4, display: 'inline-block' }}>{st.label}</span>}
-              </div>
+        {/* MasterpieceCard — AI วิเคราะห์รูปแปลง */}
+        <MasterpieceCard plotId={plot.id} cycle={cycle} member={member} />
+
+        {/* Quick log ถ้ามี cycle */}
+        {cycle && (
+          <div style={{ padding: '6px 16px 10px', borderTop: '1px solid #f5f5f5' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <Link href={`/planting-cycles/${cycle.id}`} style={{ textDecoration: 'none', fontSize: 13, color: '#2e7d32', fontWeight: 700 }}>
+                🌱 {cycle.crop_name} {cycle.season_year} →
+              </Link>
               <Link href={`/planting-cycles/${cycle.id}/activity`}
-                style={{ fontSize: 11, fontWeight: 700, padding: '5px 10px', borderRadius: 8, background: '#e8f5e9', color: '#2e7d32', textDecoration: 'none', border: '1px solid #a5d6a7' }}>
+                style={{ fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 8, background: '#e8f5e9', color: '#2e7d32', textDecoration: 'none', border: '1px solid #a5d6a7' }}>
                 ดูบันทึก
               </Link>
             </div>
@@ -292,10 +295,6 @@ function PlotCard({ plot, cycle, lastLog, noBurnStatus, memberId, onLogged, onDe
                 ล่าสุด: {QUICK_LOG.find(q => q.type === lastLog.activity_type)?.icon ?? '📝'} {QUICK_LOG.find(q => q.type === lastLog.activity_type)?.label ?? lastLog.activity_type} · {relDate(lastLog.recorded_at)}
               </p>
             )}
-          </div>
-        ) : (
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid #f5f5f5' }}>
-            <p style={{ margin: 0, fontSize: 13, color: '#9ca3af' }}>⚪ ยังไม่มีรอบปลูก</p>
           </div>
         )}
 
@@ -443,6 +442,7 @@ function PlotsContent() {
           lastLog={lastLogs[plot.id] ?? null}
           noBurnStatus={noBurnMap[plot.id] ?? null}
           memberId={member!.member_id}
+          member={member!}
           onLogged={(plotId, type) => setLastLogs(prev => ({ ...prev, [plotId]: { activity_type: type, recorded_at: new Date().toISOString() } }))}
           onDeleted={handleDeleted}
           onEdited={handleEdited}
@@ -469,3 +469,4 @@ export default function PlotsPage() {
 function actionButtonStyle(background: string, color: string, borderColor?: string): CSSProperties {
   return { border: borderColor ? `1.5px solid ${borderColor}` : 'none', borderRadius: 12, background, color, padding: '10px 8px', fontSize: 12, fontWeight: 800, cursor: 'pointer', minHeight: 44, textAlign: 'center' };
 }
+
