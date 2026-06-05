@@ -27,8 +27,8 @@ const CONTEXTS = [
 
 const GRADE_CFG: Record<string, { emoji: string; label: string; bg: string; color: string; border: string; infoBg: string; infoColor: string }> = {
   pending: { emoji: '⏳', label: 'กำลังวิเคราะห์', bg: '#f8fafc', color: '#6b7280', border: '#e5e7eb', infoBg: '#f8fafc', infoColor: '#6b7280' },
-  great:   { emoji: '🌟', label: 'ดีมาก!',      bg: '#e8f5e9', color: '#1b5e20', border: '#a5d6a7', infoBg: '#f0fdf4', infoColor: '#166534' },
-  good:    { emoji: '✅', label: 'ดี',           bg: '#f0fdf4', color: '#166534', border: '#86efac', infoBg: '#f0fdf4', infoColor: '#166534' },
+  great:   { emoji: '🌟', label: 'เจ๋งมาก!',      bg: '#e8f5e9', color: '#1b5e20', border: '#a5d6a7', infoBg: '#f0fdf4', infoColor: '#166534' },
+  good:    { emoji: '✅', label: 'ดูดีนะ',           bg: '#f0fdf4', color: '#166534', border: '#86efac', infoBg: '#f0fdf4', infoColor: '#166534' },
   warning: { emoji: '⚠️', label: 'ระวังหน่อย',  bg: '#fffbeb', color: '#92400e', border: '#fcd34d', infoBg: '#fffbeb', infoColor: '#92400e' },
   alert:   { emoji: '🚨', label: 'ต้องแก้ด่วน', bg: '#fff1f2', color: '#9f1239', border: '#fda4af', infoBg: '#fff1f2', infoColor: '#9f1239' },
 };
@@ -273,18 +273,15 @@ export function MasterpieceCard({
           background: '#fafafa', padding: '14px',
           display: 'flex', gap: 14, alignItems: 'center',
         }}>
-          {/* Thumbnail placeholder */}
-          <div style={{ width: 72, height: 72, borderRadius: 12, background: '#f0fdf4', border: '1.5px solid #d1fae5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            {analyzing
-              ? <span style={{ fontSize: 28 }}>⏳</span>
-              : <span style={{ fontSize: 30 }}>🌾</span>
-            }
+          {/* Thumbnail */}
+          <div style={{ width: 72, height: 72, borderRadius: 12, background: '#f0fdf4', border: '1.5px solid #d1fae5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+            <span style={{ fontSize: 30 }}>🌾</span>
           </div>
           <div style={{ flex: 1 }}>
             <p style={{ margin: '0 0 4px', fontSize: 13, color: '#374151' }}>
-              {analyzing === 'uploading' ? 'กำลังเก็บรูป รอแป๊บนึง…' : analyzing === 'analyzing' ? 'AI กำลังวิเคราะห์รูป…' : 'ถ่ายรูปแปลงของคุณ แล้ว AI จะวิเคราะห์ให้ทันที'}
+              {analyzing === 'uploading' ? '📤 กำลังเก็บรูป…' : analyzing === 'analyzing' ? '🤖 AI กำลังวิเคราะห์รูป…' : 'ถ่ายรูปแปลงของคุณ แล้ว AI จะวิเคราะห์ให้ทันที'}
             </p>
-            <button onClick={() => fileRef.current?.click()} disabled={!!analyzing}
+            <button onClick={() => !analyzing && fileRef.current?.click()} disabled={!!analyzing}
               style={{
                 padding: '9px 18px', borderRadius: 10,
                 border: '1.5px solid #d1d5db',
@@ -292,8 +289,9 @@ export function MasterpieceCard({
                 color: analyzing ? '#9ca3af' : '#374151',
                 fontSize: 13, fontWeight: 700, cursor: analyzing ? 'not-allowed' : 'pointer',
                 display: 'inline-flex', alignItems: 'center', gap: 6,
+                whiteSpace: 'nowrap',
               }}>
-              <span>📷</span> ถ่ายรูปแปลงตอนนี้
+              <span>📷</span>{!analyzing && ' ถ่ายรูปแปลงตอนนี้'}
             </button>
           </div>
           {showLastGrade && (
@@ -379,5 +377,6 @@ export function MasterpieceCard({
     </div>
   );
 }
+
 
 
