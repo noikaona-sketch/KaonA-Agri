@@ -2,6 +2,7 @@
 
 import { type ChangeEvent, useEffect, useState } from 'react';
 import { compressForUpload }             from '@/shared/lib/image-processing';
+import { getAuthHeaders }                from '@/lib/auth/get-auth-headers';
 import { tryCreateSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useCurrentMember } from '@/providers/auth-provider';
 
@@ -140,26 +141,31 @@ export function FarmActivityChecklist({ cycleId, plotId, seedHint }: Props) {
       if (!upErr) storagePath = path;
     }
 
-    // 2) Insert log
-    const { data: inserted, error: logErr } = await sb.from('farm_activity_logs').insert({
-      planting_cycle_id: cycleId,
-      member_id:         member.member_id,
-      plot_id:           plotId ?? null,
-      activity_type:     actType,
-      note:              note.trim() || null,
-      plant_height_cm:   height ? Number(height) : null,
-      pest_name:         pestName.trim() || null,
-      severity:          severity || null,
-      gps_lat:           gps?.lat ?? null,
-      gps_lng:           gps?.lng ?? null,
-      recorded_at:       now,
-    }).select('id').single();
-
-    if (logErr || !inserted) {
+    // 2) Insert log via API route (fixes CASE B RLS issue)
+    const { headers: authHeaders, url: apiUrl } = await getAuthHeaders(member, '/api/member/farm-activity');
+    const logRes = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { ...authHeaders, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        planting_cycle_id: cycleId,
+        plot_id:           plotId ?? null,
+        activity_type:     actType,
+        note:              note.trim() || null,
+        plant_height_cm:   height ? Number(height) : null,
+        pest_name:         pestName.trim() || null,
+        severity:          severity || null,
+        gps_lat:           gps?.lat ?? null,
+        gps_lng:           gps?.lng ?? null,
+        recorded_at:       now,
+      }),
+    });
+    const logData = (await logRes.json()) as { ok?: boolean; id?: string; error?: string };
+    if (!logRes.ok || !logData.id) {
       setSaving(false);
-      setNotice('❌ บันทึกไม่สำเร็จ กรุณาลองใหม่');
+      setNotice(`❌ บันทึกไม่สำเร็จ: ${logData.error ?? 'กรุณาลองใหม่'}`);
       return;
     }
+    const inserted = { id: logData.id };
 
     // 3) If photo, insert photos metadata
     if (storagePath) {
@@ -419,4 +425,5 @@ export function FarmActivityChecklist({ cycleId, plotId, seedHint }: Props) {
     </div>
   );
 }
+
 
