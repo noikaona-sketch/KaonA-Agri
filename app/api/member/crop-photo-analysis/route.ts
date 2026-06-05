@@ -113,9 +113,17 @@ export async function POST(request: Request) {
   let aiSummary = '';
 
   try {
+    const anthropicKey = process.env.ANTHROPIC_API_KEY ?? '';
+    if (!anthropicKey) {
+      console.error('[CROP_ANALYSIS] ANTHROPIC_API_KEY not set');
+    }
     const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type':      'application/json',
+        'x-api-key':         anthropicKey,
+        'anthropic-version': '2023-06-01',
+      },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 400,
@@ -208,4 +216,5 @@ export async function GET(request: Request) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ analyses: data ?? [] });
 }
+
 
