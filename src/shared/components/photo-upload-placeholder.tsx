@@ -122,6 +122,7 @@ export function PhotoUploadPlaceholder({ label = 'Photo evidence upload' }: Phot
         <input type="file" accept="image/*" capture="environment" onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
       </label>
       {file ? <div className="photo-evidence-foundation__meta"><p><strong>File:</strong> {file.name}</p><p><strong>Size:</strong> {formatBytes(file.size)}</p><p><strong>Type:</strong> {file.type || 'unknown'}</p></div> : <p className="photo-evidence-foundation__hint">No photo selected yet.</p>}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
       {previewUrl ? <img src={previewUrl} alt="Selected evidence preview" className="photo-evidence-foundation__preview" /> : null}
 
       <button type="button" onClick={captureLocation} className="photo-evidence-foundation__gps-btn" disabled={capturingGeo}>{capturingGeo ? 'Capturing GPS…' : 'Capture GPS evidence'}</button>
@@ -135,3 +136,4 @@ export function PhotoUploadPlaceholder({ label = 'Photo evidence upload' }: Phot
     </section>
   );
 }
+
