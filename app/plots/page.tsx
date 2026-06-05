@@ -276,7 +276,7 @@ function PlotCard({ plot, cycle, lastLog, noBurnStatus, memberId, onLogged, onDe
 
         {/* Cycle */}
         {/* MasterpieceCard — AI วิเคราะห์รูปแปลง */}
-        <MasterpieceCard plotId={plot.id} cycle={cycle} member={member} />
+        <MasterpieceCard plotId={plot.id} cycle={cycle} member={member!} />
 
         {/* Quick log ถ้ามี cycle */}
         {cycle && (
@@ -470,5 +470,6 @@ export default function PlotsPage() {
 function actionButtonStyle(background: string, color: string, borderColor?: string): CSSProperties {
   return { border: borderColor ? `1.5px solid ${borderColor}` : 'none', borderRadius: 12, background, color, padding: '10px 8px', fontSize: 12, fontWeight: 800, cursor: 'pointer', minHeight: 44, textAlign: 'center' };
 }
+
 
 
