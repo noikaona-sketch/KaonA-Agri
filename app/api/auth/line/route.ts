@@ -261,42 +261,14 @@ export async function POST(request: Request) {
         }, { status: 200 });
       }
 
-      // New member — status stays 'pending', no auto-approve
-      let insertResult = await supabase
-        .from('members')
-        .insert({
-          line_user_id:      verifyData.sub,
-          full_name:         verifyData.name ?? 'LINE Member',
-          line_display_name: verifyData.name    ?? null,
-          line_picture_url:  verifyData.picture ?? null,
-          citizen_id_masked: 'PENDING',
-          status:            'pending',
-        })
-        .select('id, auth_user_id, line_user_id, status, full_name, line_picture_url')
-        .single();
-
-      // Fallback: retry without optional LINE columns if they don't exist yet
-      if (insertResult.error) {
-        console.error('[LINE_AUTH] insert with LINE fields failed:', insertResult.error.message, '— retrying minimal');
-        insertResult = await supabase
-          .from('members')
-          .insert({
-            line_user_id:      verifyData.sub,
-            full_name:         verifyData.name ?? 'LINE Member',
-            citizen_id_masked: 'PENDING',
-            status:            'pending',
-          })
-          .select('id, auth_user_id, line_user_id, status, full_name, line_picture_url')
-          .single();
-      }
-
-      if (insertResult.error || !insertResult.data) {
-        console.error('[LINE_AUTH] insert failed:', insertResult.error?.message);
-        return NextResponse.json({
-          error: `Failed to create member profile: ${insertResult.error?.message ?? 'unknown'}`,
-        }, { status: 500 });
-      }
-      member = insertResult.data;
+      // ── ไม่ auto-create member — ให้ไปกรอกข้อมูลสมัครก่อน ──────────────────
+      // ส่งกลับ needs_register พร้อม line info เพื่อใช้ในหน้าสมัคร
+      return NextResponse.json({
+        status:           'needs_register',
+        line_user_id:     verifyData.sub,
+        line_display_name: verifyData.name    ?? null,
+        line_picture_url:  verifyData.picture ?? null,
+      }, { status: 200 });
 
       await supabase.from('member_roles').upsert(
         { member_id: member.id, role: 'farmer', is_primary: true },
@@ -367,4 +339,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'LINE authentication failed' }, { status: 500 });
   }
 }
+
 
