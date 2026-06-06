@@ -99,8 +99,9 @@ export function useMemberHarvestBooking(
 
       // Existing active booking
       const token = await getBearerToken();
-      const res = await fetch('/api/member/harvest-bookings', {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      const { headers: authH, url: authUrl } = await getAuthHeaders(member!, '/api/member/harvest-bookings');
+      const res = await fetch(authUrl, {
+        headers: authH,
       });
       if (res.ok) {
         const json = (await res.json()) as { bookings?: BookingStatusRow[] };
@@ -130,12 +131,10 @@ export function useMemberHarvestBooking(
 
   async function update(payload: Record<string, unknown>): Promise<string | null> {
     const token = await getBearerToken();
-    const res = await fetch('/api/member/harvest-bookings', {
+    const { headers: authH2, url: authUrl2 } = await getAuthHeaders(member!, '/api/member/harvest-bookings');
+    const res = await fetch(authUrl2, {
       method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
+      headers: { ...authH2, 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
     const json = (await res.json()) as { ok?: boolean; error?: string };
@@ -145,3 +144,4 @@ export function useMemberHarvestBooking(
 
   return { existing, marketPrice, queueSnapshot, loading, submit, update };
 }
+
