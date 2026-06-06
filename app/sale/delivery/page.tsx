@@ -11,7 +11,7 @@ import { getAuthHeaders }         from '@/lib/auth/get-auth-headers';
 
 type Appointment = {
   id: string; appointment_number: string; status: string;
-  scheduled_date: string; estimated_qty_kg: number;
+  appointment_date: string; estimated_qty_kg: number;
   truck_plate: string | null; estimated_trucks: number | null;
   estimated_arrival: string | null; price_per_kg: number | null;
   departure_at: string | null; arrived_at: string | null;
@@ -136,7 +136,7 @@ function ApptCard({ appt, onUpdate }: { appt: Appointment; onUpdate: (id: string
         <div>
           <p style={{ margin:0, fontWeight:800, fontSize:14 }}>{appt.appointment_number}</p>
           <p style={{ margin:'2px 0 0', fontSize:12, color:'#6b7280' }}>
-            📅 {fmtDate(appt.scheduled_date)} · {crop}{plot ? ` · แปลง${plot}` : ''}
+            📅 {fmtDate(appt.appointment_date)} · {crop}{plot ? ` · แปลง${plot}` : ''}
           </p>
           {appt.truck_plate && <p style={{ margin:'2px 0 0', fontSize:12, color:'#374151', fontWeight:600 }}>🚛 {appt.truck_plate}{appt.estimated_arrival ? ` · คาดถึง ${appt.estimated_arrival.slice(0,5)} น.` : ''}</p>}
         </div>
@@ -216,7 +216,7 @@ function NewApptForm({ member, onSaved, onCancel }: {
       method:'POST', headers:{ ...headers, 'Content-Type':'application/json' },
       body: JSON.stringify({
         planting_cycle_id:  cycleId,
-        scheduled_date:     date,
+        appointment_date:     date,
         estimated_qty_kg:   Number(qtyKg),
         estimated_trucks:   Number(trucks) || 1,
         truck_plate:        plate || null,
@@ -380,3 +380,4 @@ export default function SaleDeliveryPage() {
     </ProtectedRoute>
   );
 }
+
