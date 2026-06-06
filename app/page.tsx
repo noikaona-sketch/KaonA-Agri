@@ -301,7 +301,7 @@ function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: stri
       items: [
         { href: '/harvest/book',       icon: '🚜', label: 'แจ้งวันเกี่ยว',   desc: 'จองคิวรับซื้อผลผลิต', badge: saleBadge, tone: FARMER_CARD_TONES.sale },
         { href: '/harvest/history',    icon: '📜', label: 'ประวัติการเกี่ยว', desc: 'รายการ+ให้คะแนน', tone: FARMER_CARD_TONES.sale },
-        { href: '/plots',              icon: '📅', label: 'นัดวันขาย',        desc: 'ดูรอบนัดหมายขาย', tone: FARMER_CARD_TONES.sale },
+        { href: '/sale/delivery',       icon: '📅', label: 'นัดวันขาย',        desc: 'ดูรอบนัดหมายขาย', tone: FARMER_CARD_TONES.sale },
         { href: '/harvest/calculator', icon: '💧', label: 'คำนวณชื้น/บาท',   desc: 'อ่านง่ายกลางแจ้ง', tone: FARMER_CARD_TONES.sale },
         { href: '/planting-cycles',    icon: '📊', label: 'ประวัติยอดขาย',   desc: 'สรุปรายได้จากฤดูปลูก', tone: FARMER_CARD_TONES.sale },
       ],
@@ -615,3 +615,4 @@ export default function HomePage() {
   if (primaryRole === 'staff') return <StaffHome name={name} memberId={memberId} primaryRole={primaryRole} allRoles={allRoles} />;
   return <FarmerHome name={name} memberId={memberId} allRoles={allRoles} />;
 }
+
