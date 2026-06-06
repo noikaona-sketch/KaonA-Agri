@@ -81,23 +81,29 @@ alter table public.field_survey_observations enable row level security;
 alter table public.field_survey_photos       enable row level security;
 
 -- Staff/inspector can insert/select their own observations
+drop policy if exists "staff can insert observations" on public.field_survey_observations;
 create policy "staff can insert observations"
   on public.field_survey_observations for insert
   with check (observer_id = current_member_id());
 
+drop policy if exists "staff can read observations" on public.field_survey_observations;
 create policy "staff can read observations"
   on public.field_survey_observations for select
   using (true);  -- all approved members can read (for map display)
 
+drop policy if exists "observer can update own" on public.field_survey_observations;
 create policy "observer can update own"
   on public.field_survey_observations for update
   using (observer_id = current_member_id());
 
 -- Photos
+drop policy if exists "staff can insert photos" on public.field_survey_photos;
 create policy "staff can insert photos"
   on public.field_survey_photos for insert
   with check (uploaded_by = current_member_id());
 
+drop policy if exists "anyone can read photos" on public.field_survey_photos;
 create policy "anyone can read photos"
   on public.field_survey_photos for select
   using (true);
+
