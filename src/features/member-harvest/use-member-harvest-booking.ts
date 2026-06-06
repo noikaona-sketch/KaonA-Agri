@@ -1,4 +1,3 @@
-import { getAuthHeaders } from '@/lib/auth/get-auth-headers';
 import { useEffect, useState } from 'react';
 
 import { tryCreateSupabaseBrowserClient } from '@/lib/supabase/client';
@@ -100,9 +99,12 @@ export function useMemberHarvestBooking(
 
       // Existing active booking
       const token = await getBearerToken();
-      const { headers: authH, url: authUrl } = await getAuthHeaders(member!, '/api/member/harvest-bookings');
-      const res = await fetch(authUrl, {
-        headers: authH,
+      const lineUid = typeof window !== 'undefined' ? (new URLSearchParams(window.location.search).get('liff.state') ?? '') : '';
+      const apiUrl = token ? '/api/member/harvest-bookings' : `/api/member/harvest-bookings`;
+      const res = await fetch(apiUrl, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
       });
       if (res.ok) {
         const json = (await res.json()) as { bookings?: BookingStatusRow[] };
@@ -132,10 +134,12 @@ export function useMemberHarvestBooking(
 
   async function update(payload: Record<string, unknown>): Promise<string | null> {
     const token = await getBearerToken();
-    const { headers: authH2, url: authUrl2 } = await getAuthHeaders(member!, '/api/member/harvest-bookings');
-    const res = await fetch(authUrl2, {
+    const res = await fetch('/api/member/harvest-bookings', {
       method: 'PATCH',
-      headers: { ...authH2, 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
       body: JSON.stringify(payload),
     });
     const json = (await res.json()) as { ok?: boolean; error?: string };
@@ -145,5 +149,6 @@ export function useMemberHarvestBooking(
 
   return { existing, marketPrice, queueSnapshot, loading, submit, update };
 }
+
 
 
