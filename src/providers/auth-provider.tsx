@@ -180,6 +180,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
           return;
         }
 
+        // needs_register — LINE ใหม่ ยังไม่มี member → redirect หน้าสมัคร
+        if ((payload as { status?: string }).status === 'needs_register') {
+          const p = payload as { status: string; line_user_id?: string; line_display_name?: string; line_picture_url?: string };
+          setStatus('unauthenticated');
+          setMember(null);
+          if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/register') && !window.location.pathname.startsWith('/service/register')) {
+            const params = new URLSearchParams();
+            if (p.line_user_id)      params.set('line_user_id',      p.line_user_id);
+            if (p.line_display_name) params.set('line_display_name', p.line_display_name);
+            window.location.replace(`/service/register?${params.toString()}`);
+          }
+          return;
+        }
+
         if (!response.ok || !payload.member) {
           if (isPublicRegistrationPath && payload.error === 'LINE token verification failed') {
             setMember(null);
@@ -309,6 +323,7 @@ export function useRoles() {
 export function useEffectiveRole(): AppRole | null {
   return useAuth().member?.effective_role ?? null;
 }
+
 
 
 
