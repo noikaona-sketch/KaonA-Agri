@@ -31,11 +31,15 @@ create index if not exists idx_cpa_cycle    on public.crop_photo_analyses(planti
 
 alter table public.crop_photo_analyses enable row level security;
 
+drop policy if exists "member can insert own" on public.crop_photo_analyses;
 create policy "member can insert own" on public.crop_photo_analyses
   for insert with check (member_id = current_member_id());
 
+drop policy if exists "member can read own" on public.crop_photo_analyses;
 create policy "member can read own" on public.crop_photo_analyses
   for select using (member_id = current_member_id());
 
+drop policy if exists "admin can read all" on public.crop_photo_analyses;
 create policy "admin can read all" on public.crop_photo_analyses
   for select using (public.current_member_is_admin_or_staff());
+
