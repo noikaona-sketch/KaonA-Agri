@@ -6,29 +6,42 @@ export const dynamic = 'force-dynamic';
 const ALLOWED_ROLES = ['inspector', 'admin'];
 const SURVEY_BUCKET = process.env.NEXT_PUBLIC_SUPABASE_EVIDENCE_BUCKET ?? 'mvp-evidence';
 
-// Resolve staff/inspector member — Bearer token required
 async function resolveFieldMember(
   request: Request,
   s: ReturnType<typeof createServerSupabaseClient>,
 ): Promise<{ memberId: string } | null> {
-  const token = request.headers.get('Authorization')?.slice(7)?.trim();
-  if (!token) return null;
-
-  const anon = createAnonSupabaseClient();
-  const { data: { user } } = await anon.auth.getUser(token);
+  const url        = new URL(request.url);
+  const token      = request.headers.get('Authorization')?.slice(7)?.trim();
+  const lineUserId = url.searchParams.get('line_user_id') ?? undefined;
+  const explicitId = url.searchParams.get('member_id')   ?? undefined;
 
   let memberId: string | null = null;
-  if (user?.id) {
-    const { data: m } = await s.from('members').select('id').eq('auth_user_id', user.id).maybeSingle();
-    memberId = m?.id ?? null;
-  } else {
-    const { data: sess } = await s.from('sessions').select('member_id').eq('token', token).maybeSingle();
-    memberId = sess?.member_id ?? null;
+
+  // 1. Bearer token
+  if (token) {
+    const anon = createAnonSupabaseClient();
+    const { data: { user } } = await anon.auth.getUser(token);
+    if (user?.id) {
+      const { data: m } = await s.from('members').select('id').eq('auth_user_id', user.id).maybeSingle();
+      memberId = m?.id ?? null;
+    }
+    if (!memberId) {
+      const { data: sess } = await s.from('sessions').select('member_id').eq('token', token).maybeSingle();
+      memberId = sess?.member_id ?? null;
+    }
   }
+
+  // 2. line_user_id fallback (CASE B)
+  if (!memberId && lineUserId) {
+    const { data: m } = await s.from('members').select('id').eq('line_user_id', lineUserId).maybeSingle();
+    memberId = m?.id ?? null;
+  }
+
+  // 3. explicit member_id
+  if (!memberId && explicitId) memberId = explicitId;
 
   if (!memberId) return null;
 
-  // Check role
   const { data: role } = await s.from('member_roles')
     .select('role').eq('member_id', memberId)
     .in('role', ALLOWED_ROLES).limit(1).maybeSingle();
@@ -190,4 +203,5 @@ export async function PATCH(request: Request) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }
+
 
