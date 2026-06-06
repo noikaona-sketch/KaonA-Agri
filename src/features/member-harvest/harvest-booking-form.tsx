@@ -76,8 +76,10 @@ export function MemberHarvestBookingForm({ cycleId, cropName, plotId, onSuccess 
     );
   }
 
-  const yieldNum = Number(estimatedTonnage);
-  const moistureNum = Number(moisturePct);
+  const yieldNum     = Number(estimatedTonnage);
+  const moistureNum  = Number(moisturePct);
+  // Moisture hint — placeholder 28% for corn (can be improved with cycle age later)
+  const estimatedMoistureHint: number | null = cropName === 'ข้าวโพด' ? 28 : null;
   const hasSelectedRange = Boolean(expectedDateFrom && expectedDateTo);
 
   async function handleSubmit() {
@@ -179,7 +181,7 @@ export function MemberHarvestBookingForm({ cycleId, cropName, plotId, onSuccess 
             return (
               <div key={day.date} style={{
                 display: 'grid',
-                gridTemplateColumns: '1.1fr 1fr 1fr',
+                gridTemplateColumns: '1fr 1fr',
                 gap: 8,
                 alignItems: 'center',
                 borderRadius: 8,
@@ -188,28 +190,44 @@ export function MemberHarvestBookingForm({ cycleId, cropName, plotId, onSuccess 
                 border: isSelected ? '1px solid #93c5fd' : '1px solid #e5e7eb',
               }}>
                 <div>
-                  <p style={{ margin: 0, fontSize: 12, color: '#374151' }}>{day.date}</p>
+                  <p style={{ margin: 0, fontSize: 12, color: '#374151' }}>{new Date(day.date).toLocaleDateString('th-TH',{day:'numeric',month:'short'})}</p>
                   <p style={{ margin: 0, fontSize: 12, fontWeight: 700 }}>{levelBadge}</p>
                 </div>
                 <div style={{ fontSize: 12, color: '#1f2937' }}>
                   {day.rainfall_mm != null && <p style={{ margin: 0, fontSize: 11, color: '#6b7280' }}>🌧 ฝน: {day.rainfall_mm} มม.</p>}
                   {day.rain_probability != null && <p style={{ margin: 0, fontSize: 11, color: '#6b7280' }}>☔ โอกาสฝน: {day.rain_probability}%</p>}
                 </div>
-                <p style={{ margin: 0, fontSize: 12, color: '#374151' }}>
-                  label: {day.label}
-                </p>
+
               </div>
             );
           })}
         </div>
       </div>
 
-      <label className="reg-label">
-        น้ำหนักผลผลิตที่คาดไว้ (ตัน) <span style={{ color: '#e53e3e' }}>*</span>
-        <input className="reg-input" type="number" inputMode="decimal" min="0" step="100"
-          value={estimatedTonnage} disabled={submitting} placeholder="เช่น 12"
-          onChange={(e) => setEstimatedTonnage(e.target.value)} />
-      </label>
+      {/* น้ำหนัก + ความชื้น grid เดียวกัน */}
+      <div style={{ display: 'grid', gridTemplateColumns: cropName === 'ข้าวโพด' ? '1fr 1fr' : '1fr', gap: 12 }}>
+        <label className="reg-label">
+          น้ำหนักผลผลิตที่คาดไว้ (ตัน) <span style={{ color: '#e53e3e' }}>*</span>
+          <input className="reg-input" type="number" inputMode="decimal" min="0" step="100"
+            value={estimatedTonnage} disabled={submitting} placeholder="เช่น 12"
+            onChange={(e) => setEstimatedTonnage(e.target.value)} />
+        </label>
+        {cropName === 'ข้าวโพด' && (
+          <label className="reg-label">
+            ความชื้น (%) <span style={{ fontSize: 11, color: '#9ca3af' }}>ไม่บังคับ</span>
+            <input className="reg-input" type="number" inputMode="decimal" min="0" max="100" step="0.5"
+              value={moisturePct} disabled={submitting} placeholder={estimatedMoistureHint ? `~${estimatedMoistureHint}%` : "เช่น 28.5"}
+              onChange={(e) => setMoisturePct(e.target.value)} />
+          </label>
+        )}
+      </div>
+
+      {cropName === 'ข้าวโพด' && (
+        <label className="reg-label" style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 4 }}>
+          <input type="checkbox" checked={requiresDryer} onChange={(e) => setRequiresDryer(e.target.checked)} />
+          ต้องการอบลดความชื้น
+        </label>
+      )}
 
       {marketPrice !== null && yieldNum > 0 && (
         <HarvestValuePreview
@@ -218,25 +236,11 @@ export function MemberHarvestBookingForm({ cycleId, cropName, plotId, onSuccess 
           estimatedMoisturePct={moisturePct ? moistureNum : undefined}
         />
       )}
-      <label className="reg-label" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-        <input type="checkbox" checked={requiresDryer} onChange={(e) => setRequiresDryer(e.target.checked)} />
-        ต้องการอบลดความชื้น
-      </label>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
-        <label className="reg-label">
-          ความชื้นโดยประมาณ (%) <span style={{ fontSize: 11, color: '#9ca3af' }}>ไม่บังคับ</span>
-          <input className="reg-input" type="number" inputMode="decimal" min="0" max="100" step="0.5"
-            value={moisturePct} disabled={submitting} placeholder="เช่น 28.5"
-            onChange={(e) => setMoisturePct(e.target.value)} />
-        </label>
-        <div />
-      </div>
 
       <label className="reg-label">
         หมายเหตุ <span style={{ fontSize: 11, color: '#9ca3af' }}>ไม่บังคับ</span>
-        <textarea className="reg-input reg-textarea" rows={3} value={note} disabled={submitting}
-          placeholder="เช่น สภาพแปลง ปัญหาที่พบ จุดนัดหมาย"
+        <textarea className="reg-input reg-textarea" rows={2} value={note} disabled={submitting}
+          placeholder="สภาพแปลง ปัญหาที่พบ จุดนัดหมาย"
           onChange={(e) => setNote(e.target.value)} />
       </label>
 
@@ -258,4 +262,5 @@ export function MemberHarvestBookingForm({ cycleId, cropName, plotId, onSuccess 
     </div>
   );
 }
+
 
