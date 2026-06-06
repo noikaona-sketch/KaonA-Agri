@@ -27,16 +27,22 @@ export async function POST(request: Request) {
 
     const hours = body.hours ?? 72;
 
-    // กรณีที่ 1: มี memberId แล้ว — สร้าง PIN ให้ member เดิม
+    // กรณีที่ 1: มี memberId แล้ว — สร้าง PIN ให้ member เดิม (direct update, bypass RPC auth check)
     if (body.memberId) {
-      const { data, error } = await supabase.rpc('create_member_invite_pin', {
-        p_member_id: body.memberId,
-        p_role: body.role,
-        p_hours: hours,
-      });
+      // Generate 6-digit PIN
+      const pin = String(Math.floor(100000 + Math.random() * 900000));
+      const expiresAt = new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
+
+      const { error } = await supabase.from('members').update({
+        invite_pin:         pin,
+        invite_pin_expires: expiresAt,
+        invite_pin_used_at: null,
+        invite_role:        body.role,
+        updated_at:         new Date().toISOString(),
+      }).eq('id', body.memberId);
 
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-      return NextResponse.json({ ok: true, pin: data, type: 'existing_member' });
+      return NextResponse.json({ ok: true, pin, type: 'existing_member' });
     }
 
     // กรณีที่ 2: admin สร้าง member ใหม่พร้อม PIN (เส้น 3)
@@ -61,3 +67,4 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'เกิดข้อผิดพลาด กรุณาลองใหม่' }, { status: 500 });
   }
 }
+
