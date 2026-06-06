@@ -158,16 +158,6 @@ export function MemberHarvestBookingForm({ cycleId, cropName, plotId, onSuccess 
             onChange={(e) => setExpectedDateTo(e.target.value)} />
         </label>
       </div>
-                <div style={{ fontSize: 12, color: '#1f2937' }}>
-                  {day.rainfall_mm != null && <p style={{ margin: 0, fontSize: 11, color: '#6b7280' }}>🌧 ฝน: {day.rainfall_mm} มม.</p>}
-                  {day.rain_probability != null && <p style={{ margin: 0, fontSize: 11, color: '#6b7280' }}>☔ โอกาสฝน: {day.rain_probability}%</p>}
-                </div>
-
-              </div>
-            );
-          })}
-        </div>
-      </div>
 
       {/* น้ำหนัก + ความชื้น grid เดียวกัน */}
       <div style={{ display: 'grid', gridTemplateColumns: cropName === 'ข้าวโพด' ? '1fr 1fr' : '1fr', gap: 12 }}>
@@ -264,6 +254,7 @@ export function MemberHarvestBookingForm({ cycleId, cropName, plotId, onSuccess 
     </div>
   );
 }
+
 
 
 
