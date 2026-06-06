@@ -8,6 +8,9 @@ export async function POST(request: Request) {
       planting_cycle_id: string;
       scheduled_date: string;
       estimated_qty_kg: number;
+      estimated_trucks?: number;
+      truck_plate?: string | null;
+      estimated_arrival?: string | null;
       note?: string;
     };
 
@@ -48,6 +51,9 @@ export async function POST(request: Request) {
       price_per_kg:      pricePerKg,
       note: body.note ?? null,
       status: 'pending',
+      estimated_trucks:  body.estimated_trucks  ?? 1,
+      truck_plate:       body.truck_plate       ?? null,
+      estimated_arrival: body.estimated_arrival ?? null,
     }).select('id, appointment_number, price_per_kg, total_amount').single();
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -72,4 +78,28 @@ export async function GET(request: Request) {
   ]);
 
   return NextResponse.json({ appointments: appts.data ?? [], latest_prices: price.data ?? [] });
+}
+
+
+export async function PATCH(request: Request) {
+  const s = createServerSupabaseClient();
+  const caller = await resolveApprovedMember(request, s);
+  if (!caller.ok) return caller.response;
+
+  const body = (await request.json()) as Record<string, unknown>;
+  const { id, ...updates } = body;
+  if (!id) return NextResponse.json({ error: 'id จำเป็น' }, { status: 400 });
+
+  // verify ownership
+  const { data: appt } = await s.from('sale_appointments')
+    .select('member_id').eq('id', id as string).maybeSingle();
+  if (!appt || appt.member_id !== caller.memberId)
+    return NextResponse.json({ error: 'ไม่พบข้อมูล' }, { status: 404 });
+
+  const { error } = await s.from('sale_appointments')
+    .update({ ...updates, updated_at: new Date().toISOString() } as Record<string, unknown>)
+    .eq('id', id as string);
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ ok: true });
 }
