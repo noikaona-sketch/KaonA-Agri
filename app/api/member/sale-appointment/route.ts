@@ -6,7 +6,7 @@ export async function POST(request: Request) {
   try {
     const body = (await request.json()) as {
       planting_cycle_id: string;
-      scheduled_date: string;
+      appointment_date: string;
       estimated_qty_kg: number;
       estimated_trucks?: number;
       truck_plate?: string | null;
@@ -14,7 +14,7 @@ export async function POST(request: Request) {
       note?: string;
     };
 
-    if (!body.planting_cycle_id || !body.scheduled_date || !body.estimated_qty_kg) {
+    if (!body.planting_cycle_id || !body.appointment_date || !body.estimated_qty_kg) {
       return NextResponse.json({ error: 'ข้อมูลไม่ครบ' }, { status: 400 });
     }
 
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
       appointment_number: apptNo,
       planting_cycle_id: body.planting_cycle_id,
       member_id:         caller.memberId,
-      scheduled_date:    body.scheduled_date,
+      appointment_date:    body.appointment_date,
       estimated_qty_kg:  body.estimated_qty_kg,
       quota_remaining_kg: cycle?.quota_kg ?? null,
       price_per_kg:      pricePerKg,
@@ -71,8 +71,8 @@ export async function GET(request: Request) {
   // ดึงราคาล่าสุดพร้อมกัน
   const [appts, price] = await Promise.all([
     cycleId
-      ? s.from('sale_appointments').select('*').eq('planting_cycle_id', cycleId).eq('member_id', caller.memberId).order('scheduled_date')
-      : s.from('sale_appointments').select('*').eq('member_id', caller.memberId).order('scheduled_date', { ascending: false }).limit(20),
+      ? s.from('sale_appointments').select('*').eq('planting_cycle_id', cycleId).eq('member_id', caller.memberId).order('appointment_date')
+      : s.from('sale_appointments').select('*').eq('member_id', caller.memberId).order('appointment_date', { ascending: false }).limit(20),
     s.from('market_prices').select('crop_type, price_per_kg, effective_date')
       .eq('is_active', true).order('effective_date', { ascending: false }).limit(5),
   ]);
@@ -103,3 +103,4 @@ export async function PATCH(request: Request) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }
+
