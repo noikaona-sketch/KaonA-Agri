@@ -170,6 +170,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
           session?: { access_token: string; refresh_token: string } | null;
         };
 
+        // needs_pin — admin_created member รอผูก LINE → redirect หน้า PIN
+        if ((payload as { status?: string }).status === 'needs_pin') {
+          setStatus('unauthenticated');
+          setMember(null);
+          if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/register')) {
+            window.location.replace('/register?mode=pin');
+          }
+          return;
+        }
+
         if (!response.ok || !payload.member) {
           if (isPublicRegistrationPath && payload.error === 'LINE token verification failed') {
             setMember(null);
@@ -299,5 +309,6 @@ export function useRoles() {
 export function useEffectiveRole(): AppRole | null {
   return useAuth().member?.effective_role ?? null;
 }
+
 
 
