@@ -242,6 +242,25 @@ export async function POST(request: Request) {
         }).eq('id', existing.data.id);
       } catch { /* column not yet migrated — skip */ }
     } else {
+      // ── Check for admin_created member awaiting PIN link ─────────────────
+      // ถ้ามี member ที่ admin สร้างไว้แต่ยังไม่มี LINE → ให้ไปกรอก PIN แทน
+      const adminCreated = await supabase
+        .from('members')
+        .select('id')
+        .eq('registration_type', 'admin_created')
+        .is('line_user_id', null)
+        .limit(1)
+        .maybeSingle();
+
+      // ไม่ได้ match กับ member ใดเลย — return status ให้ frontend redirect ไปหน้า PIN
+      if (adminCreated.data) {
+        return NextResponse.json({
+          status: 'needs_pin',
+          message: 'กรุณากรอก PIN ที่ได้รับจากเจ้าหน้าที่เพื่อเชื่อมบัญชี',
+          line_user_id: verifyData.sub,
+        }, { status: 200 });
+      }
+
       // New member — status stays 'pending', no auto-approve
       let insertResult = await supabase
         .from('members')
@@ -348,3 +367,4 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'LINE authentication failed' }, { status: 500 });
   }
 }
+
