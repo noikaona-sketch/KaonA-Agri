@@ -107,8 +107,30 @@ export function AdminApprovalQueue() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ memberId, approvalId, decision, reason }),
     });
-    const payload = (await res.json()) as { ok?: boolean; error?: string };
+    const payload = (await res.json()) as { ok?: boolean; error?: string; missing_fields?: string; incomplete?: boolean };
     setActingId(null);
+
+    // 422 = ข้อมูลไม่ครบ — admin override ได้โดยใส่ reason
+    if (res.status === 422 && payload.incomplete) {
+      const missing = payload.missing_fields ?? payload.error ?? 'ข้อมูลไม่ครบ';
+      const overrideReason = window.prompt(
+        `⚠️ ข้อมูลสมาชิกยังไม่ครบ:\n${missing}\n\nยังต้องการอนุมัติไหม? กรอกเหตุผล:`
+      );
+      if (!overrideReason?.trim()) return;
+      setActingId(approvalId);
+      const res2 = await fetch('/api/admin/members/approvals', { credentials: 'include',
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ memberId, approvalId, decision, reason: overrideReason.trim() }),
+      });
+      setActingId(null);
+      const p2 = (await res2.json()) as { ok?: boolean; error?: string };
+      if (!res2.ok) { setError(p2.error ?? 'อนุมัติไม่สำเร็จ'); return; }
+      setNotice('✅ อนุมัติแล้ว (override)');
+      await loadQueue();
+      return;
+    }
+
     if (!res.ok) { setError(payload.error ?? 'ดำเนินการไม่สำเร็จ'); return; }
     setNotice(decision === 'approved' ? '✅ อนุมัติแล้ว' : '❌ ไม่อนุมัติแล้ว');
     await loadQueue();
