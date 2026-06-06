@@ -1,3 +1,4 @@
+import { getAuthHeaders } from '@/lib/auth/get-auth-headers';
 import { useEffect, useState } from 'react';
 
 import { tryCreateSupabaseBrowserClient } from '@/lib/supabase/client';
@@ -144,4 +145,5 @@ export function useMemberHarvestBooking(
 
   return { existing, marketPrice, queueSnapshot, loading, submit, update };
 }
+
 
