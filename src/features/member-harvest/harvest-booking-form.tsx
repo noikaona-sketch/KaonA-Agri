@@ -158,41 +158,6 @@ export function MemberHarvestBookingForm({ cycleId, cropName, plotId, onSuccess 
             onChange={(e) => setExpectedDateTo(e.target.value)} />
         </label>
       </div>
-      <div style={{
-        border: '1px solid #e5e7eb',
-        borderRadius: 10,
-        padding: '10px 12px',
-        marginTop: 12,
-        marginBottom: 14,
-        background: '#f9fafb',
-      }}>
-        <p style={{ margin: '0 0 8px', fontWeight: 700, fontSize: 13 }}>พยากรณ์ความพร้อมเก็บเกี่ยว (7 วัน)</p>
-        <p style={{ margin: '0 0 10px', fontSize: 12, color: '#6b7280' }}>
-          {hasSelectedRange ? 'ไฮไลต์ช่วงวันที่เลือกไว้เพื่อช่วยตัดสินใจ' : 'แสดงความพร้อมของ 7 วันถัดไป'}
-        </p>
-        <div style={{ display: 'grid', gap: 6 }}>
-          {weatherReadiness.map((day) => {
-            const isSelected = hasSelectedRange
-              && day.date >= expectedDateFrom
-              && day.date <= expectedDateTo;
-            const levelBadge = day.level === 'suitable' ? '🟢 เหมาะสม' : day.level === 'caution' ? '🟡 ระวัง' : '🔴 มีฝน';
-            const levelColor = day.level === 'suitable' ? '#166534' : day.level === 'caution' ? '#854d0e' : '#991b1b';
-            const levelBg = day.level === 'suitable' ? '#f0fdf4' : day.level === 'caution' ? '#fefce8' : '#fef2f2';
-            return (
-              <div key={day.date} style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: 8,
-                alignItems: 'center',
-                borderRadius: 8,
-                padding: '8px 10px',
-                background: isSelected ? '#eff6ff' : '#fff',
-                border: isSelected ? '1px solid #93c5fd' : '1px solid #e5e7eb',
-              }}>
-                <div>
-                  <p style={{ margin: 0, fontSize: 12, color: '#374151' }}>{new Date(day.date).toLocaleDateString('th-TH',{day:'numeric',month:'short'})}</p>
-                  <p style={{ margin: 0, fontSize: 12, fontWeight: 700 }}>{levelBadge}</p>
-                </div>
                 <div style={{ fontSize: 12, color: '#1f2937' }}>
                   {day.rainfall_mm != null && <p style={{ margin: 0, fontSize: 11, color: '#6b7280' }}>🌧 ฝน: {day.rainfall_mm} มม.</p>}
                   {day.rain_probability != null && <p style={{ margin: 0, fontSize: 11, color: '#6b7280' }}>☔ โอกาสฝน: {day.rain_probability}%</p>}
@@ -259,8 +224,46 @@ export function MemberHarvestBookingForm({ cycleId, cropName, plotId, onSuccess 
         onClick={() => void handleSubmit()}>
         {submitting ? 'กำลังบันทึก…' : existing ? 'บันทึกการแก้ไข' : 'บันทึกแผนเก็บเกี่ยว'}
       </UIButton>
+
+      {/* 📊 พยากรณ์ความพร้อมเก็บเกี่ยว — ดูประกอบ */}
+      <div style={{
+        border: '1px solid #e5e7eb',
+        borderRadius: 10,
+        padding: '10px 12px',
+        marginTop: 12,
+        marginBottom: 14,
+        background: '#f9fafb',
+      }}>
+        <p style={{ margin: '0 0 8px', fontWeight: 700, fontSize: 13 }}>พยากรณ์ความพร้อมเก็บเกี่ยว (7 วัน)</p>
+        <p style={{ margin: '0 0 10px', fontSize: 12, color: '#6b7280' }}>
+          {hasSelectedRange ? 'ไฮไลต์ช่วงวันที่เลือกไว้เพื่อช่วยตัดสินใจ' : 'แสดงความพร้อมของ 7 วันถัดไป'}
+        </p>
+        <div style={{ display: 'grid', gap: 6 }}>
+          {weatherReadiness.map((day) => {
+            const isSelected = hasSelectedRange
+              && day.date >= expectedDateFrom
+              && day.date <= expectedDateTo;
+            const levelBadge = day.level === 'suitable' ? '🟢 เหมาะสม' : day.level === 'caution' ? '🟡 ระวัง' : '🔴 มีฝน';
+            const levelColor = day.level === 'suitable' ? '#166534' : day.level === 'caution' ? '#854d0e' : '#991b1b';
+            const levelBg = day.level === 'suitable' ? '#f0fdf4' : day.level === 'caution' ? '#fefce8' : '#fef2f2';
+            return (
+              <div key={day.date} style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: 8,
+                alignItems: 'center',
+                borderRadius: 8,
+                padding: '8px 10px',
+                background: isSelected ? '#eff6ff' : '#fff',
+                border: isSelected ? '1px solid #93c5fd' : '1px solid #e5e7eb',
+              }}>
+                <div>
+                  <p style={{ margin: 0, fontSize: 12, color: '#374151' }}>{new Date(day.date).toLocaleDateString('th-TH',{day:'numeric',month:'short'})}</p>
+                  <p style={{ margin: 0, fontSize: 12, fontWeight: 700 }}>{levelBadge}</p>
+                </div>
     </div>
   );
 }
+
 
 
