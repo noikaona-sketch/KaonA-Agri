@@ -18,6 +18,7 @@ type Props = {
 };
 
 export function MemberHarvestBookingForm({ cycleId, cropName, plotId, onSuccess }: Props) {
+  const currentMember = useCurrentMember();
   const today = new Date().toISOString().slice(0, 10);
   const weatherReadiness = getWeatherReadinessForecast({ startDate: today, days: 7 });
 
@@ -256,6 +257,7 @@ export function MemberHarvestBookingForm({ cycleId, cropName, plotId, onSuccess 
     </div>
   );
 }
+
 
 
 
