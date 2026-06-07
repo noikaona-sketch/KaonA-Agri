@@ -99,9 +99,7 @@ export function useMemberHarvestBooking(
 
       // Existing active booking
       const token = await getBearerToken();
-      const lineUid = typeof window !== 'undefined' ? (new URLSearchParams(window.location.search).get('liff.state') ?? '') : '';
-      const lineId  = currentMember?.line_user_id;
-      const apiUrl  = lineId ? `/api/member/harvest-bookings?line_user_id=${lineId}` : '/api/member/harvest-bookings';
+      const apiUrl = '/api/member/harvest-bookings';
       const res = await fetch(apiUrl, {
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -135,9 +133,7 @@ export function useMemberHarvestBooking(
 
   async function update(payload: Record<string, unknown>): Promise<string | null> {
     const token = await getBearerToken();
-    const lineIdPatch = currentMember?.line_user_id;
-    const patchUrl = lineIdPatch ? `/api/member/harvest-bookings?line_user_id=${lineIdPatch}` : '/api/member/harvest-bookings';
-    const res = await fetch(patchUrl, {
+    const res = await fetch('/api/member/harvest-bookings', {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
@@ -152,6 +148,7 @@ export function useMemberHarvestBooking(
 
   return { existing, marketPrice, queueSnapshot, loading, submit, update };
 }
+
 
 
 
