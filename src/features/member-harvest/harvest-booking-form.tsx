@@ -169,7 +169,7 @@ export function MemberHarvestBookingForm({ cycleId, cropName, plotId, onSuccess 
 
 
       {/* น้ำหนัก + ความชื้น grid เดียวกัน */}
-      <div style={{ display: 'grid', display: 'flex', gap: 8 }}>
+      <div style={{ display: 'flex', gap: 8 }}>
         <label className="reg-label">
           น้ำหนักผลผลิตที่คาดไว้ (ตัน) <span style={{ color: '#e53e3e' }}>*</span>
           <input className="reg-input" type="number" inputMode="decimal" min="0" step="100"
@@ -262,6 +262,7 @@ export function MemberHarvestBookingForm({ cycleId, cropName, plotId, onSuccess 
     </div>
   );
 }
+
 
 
 
