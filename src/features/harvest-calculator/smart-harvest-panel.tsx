@@ -142,6 +142,7 @@ export function SmartHarvestPanel() {
   // ─────────────────────────────────────────────────────────────────────────
   const today          = new Date();
   const plantedAt      = selCycle?.planted_at ? new Date(selCycle.planted_at) : null;
+  const isCorn         = selCycle?.crop_name?.toLowerCase().includes('ข้าวโพด') || selCycle?.crop_name?.toLowerCase().includes('corn') || !selCycle;
   const daysOld        = plantedAt ? Math.floor((today.getTime() - plantedAt.getTime()) / 86400000) : null;
   const stage          = daysOld !== null ? growthStageLabel(daysOld) : null;
   const estimatedMoist = daysOld !== null ? estimateMoistureByAge(daysOld) : null;
@@ -159,7 +160,12 @@ export function SmartHarvestPanel() {
             <select value={selCycle?.id ?? ''} onChange={e => setSelCycle(cycles.find(c => c.id === e.target.value) ?? null)}
               style={{ width: '100%', padding: '11px 36px 11px 14px', borderRadius: 12, border: '1.5px solid #d1d5db', appearance: 'none', WebkitAppearance: 'none', fontSize: 14, fontFamily: 'inherit', outline: 'none' }}>
               <option value="">-- เลือกรอบปลูก --</option>
-              {cycles.map(c => <option key={c.id} value={c.id}>{c.crop_name} {c.season_year}</option>)}
+              {cycles.map(c => {
+                const plantedStr  = c.planted_at          ? new Date(c.planted_at).toLocaleDateString('th-TH',{day:'numeric',month:'short'})          : null;
+                const harvestStr  = c.expected_harvest_at ? new Date(c.expected_harvest_at).toLocaleDateString('th-TH',{day:'numeric',month:'short'}) : null;
+                const dateStr     = plantedStr && harvestStr ? ` · ปลูก ${plantedStr} → เกี่ยว ${harvestStr}` : plantedStr ? ` · ปลูก ${plantedStr}` : '';
+                return <option key={c.id} value={c.id}>{c.crop_name} ปี {c.season_year}{dateStr}</option>;
+              })}
             </select>
             <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#6b7280' }}>▾</span>
           </div>
@@ -269,3 +275,4 @@ export function SmartHarvestPanel() {
     </div>
   );
 }
+
