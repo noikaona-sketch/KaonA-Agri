@@ -112,14 +112,20 @@ function buildTabs(primaryRole: AppRole, allRoles: AppRole[]): readonly NavTab[]
     }
   }
 
-  // เพิ่ม leader tab (ก่อน โปรไฟล์ และ inspector)
+  // เพิ่ม leader tab — แทนที่ "ไม่เผา" เพื่อไม่ให้เกิน 5 tabs
   if (hasSub('leader')) {
-    const profileIdx = base.findIndex((t) => t.href === '/profile');
-    const insertAt   = profileIdx >= 0 ? profileIdx : base.length;
-    // inspector แทรกก่อน → leader แทรกก่อน inspector
-    const inspectorIdx = base.findIndex((t) => t.href === '/inspection/tasks');
-    const finalIdx     = inspectorIdx >= 0 ? inspectorIdx : insertAt;
-    base.splice(finalIdx, 0, LEADER_TAB);
+    const noBurnIdx = base.findIndex((t) => t.href === '/no-burn');
+    if (noBurnIdx >= 0) {
+      // แทนที่ ไม่เผา ด้วย กลุ่มของฉัน
+      base.splice(noBurnIdx, 1, LEADER_TAB);
+    } else {
+      // ถ้าไม่มี ไม่เผา ให้แทรกก่อน โปรไฟล์
+      const profileIdx = base.findIndex((t) => t.href === '/profile');
+      const insertAt   = profileIdx >= 0 ? profileIdx : base.length;
+      const inspectorIdx = base.findIndex((t) => t.href === '/inspection/tasks');
+      const finalIdx     = inspectorIdx >= 0 ? inspectorIdx : insertAt;
+      base.splice(finalIdx, 0, LEADER_TAB);
+    }
   }
 
   // จำกัด max 5 tabs บน mobile
@@ -198,3 +204,4 @@ export function canAddRole(existingRoles: AppRole[], newRole: AppRole): { ok: bo
 }
 
 export { PRIMARY_ROLES, SUB_ROLES };
+
