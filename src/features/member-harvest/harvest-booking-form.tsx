@@ -156,12 +156,12 @@ export function MemberHarvestBookingForm({ cycleId, cropName, plotId, onSuccess 
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, overflow: 'hidden' }}>
-        <label className="reg-label">วันที่เริ่มต้น <span style={{ color: '#e53e3e' }}>*</span>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <label className="reg-label" style={{ flex: 1, minWidth: 0 }}>วันที่เริ่มต้น <span style={{ color: '#e53e3e' }}>*</span>
           <input className="reg-input" type="date" value={expectedDateFrom} style={{ width: '100%', minWidth: 0 }} min={today} disabled={submitting}
             onChange={(e) => setExpectedDateFrom(e.target.value)} />
         </label>
-        <label className="reg-label">วันที่สิ้นสุด <span style={{ color: '#e53e3e' }}>*</span>
+        <label className="reg-label" style={{ flex: 1, minWidth: 0 }}>วันที่สิ้นสุด <span style={{ color: '#e53e3e' }}>*</span>
           <input className="reg-input" type="date" value={expectedDateTo} style={{ width: '100%', minWidth: 0 }} min={expectedDateFrom || today} disabled={submitting}
             onChange={(e) => setExpectedDateTo(e.target.value)} />
         </label>
@@ -169,7 +169,7 @@ export function MemberHarvestBookingForm({ cycleId, cropName, plotId, onSuccess 
 
 
       {/* น้ำหนัก + ความชื้น grid เดียวกัน */}
-      <div style={{ display: 'grid', gridTemplateColumns: cropName === 'ข้าวโพด' ? '1fr 1fr' : '1fr', gap: 8, overflow: 'hidden' }}>
+      <div style={{ display: 'grid', display: 'flex', gap: 8 }}>
         <label className="reg-label">
           น้ำหนักผลผลิตที่คาดไว้ (ตัน) <span style={{ color: '#e53e3e' }}>*</span>
           <input className="reg-input" type="number" inputMode="decimal" min="0" step="100"
@@ -257,6 +257,7 @@ export function MemberHarvestBookingForm({ cycleId, cropName, plotId, onSuccess 
     </div>
   );
 }
+
 
 
 
