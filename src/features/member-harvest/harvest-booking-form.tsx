@@ -223,32 +223,37 @@ export function MemberHarvestBookingForm({ cycleId, cropName, plotId, onSuccess 
         onClick={() => void handleSubmit()}>
         {submitting ? 'กำลังบันทึก…' : existing ? 'บันทึกการแก้ไข' : 'บันทึกแผนเก็บเกี่ยว'}
       </UIButton>
-      <div style={{ marginTop: 14, marginBottom: 6 }}>
-        <p style={{ margin: '0 0 6px', fontWeight: 700, fontSize: 12, color: '#6b7280' }}>
-          📊 พยากรณ์เก็บเกี่ยว 7 วัน {hasSelectedRange ? '— ช่วงที่เลือกไฮไลต์สีน้ำเงิน' : ''}
+      <div style={{ marginTop: 14, padding: '14px 16px', borderTop: '1px solid #f3f4f6' }}>
+        <p style={{ margin: '0 0 10px', fontSize: 13, color: '#6b7280', fontWeight: 600 }}>
+          📊 พยากรณ์เก็บเกี่ยว 7 วัน{hasSelectedRange ? ' — ช่วงที่เลือกมีกรอบสีน้ำเงิน' : ''}
         </p>
-        <div style={{ display: 'flex', gap: 5, overflowX: 'auto', paddingBottom: 4 }}>
+        <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 2 }}>
           {weatherReadiness.map((day) => {
             const isSelected = hasSelectedRange && day.date >= expectedDateFrom && day.date <= expectedDateTo;
-            const levelBadge = day.level === 'suitable' ? '🟢' : day.level === 'caution' ? '🟡' : '🔴';
+            const levelEmoji = day.level === 'suitable' ? '✅' : day.level === 'caution' ? '⚠️' : '🌧';
             const levelLabel = day.level === 'suitable' ? 'เหมาะ' : day.level === 'caution' ? 'ระวัง' : 'มีฝน';
-            const levelColor = day.level === 'suitable' ? '#166534' : day.level === 'caution' ? '#854d0e' : '#991b1b';
-            const levelBg    = day.level === 'suitable' ? '#f0fdf4' : day.level === 'caution' ? '#fefce8' : '#fef2f2';
+            const levelColor = day.level === 'suitable' ? '#166534' : day.level === 'caution' ? '#92400e' : '#991b1b';
+            const levelBg   = day.level === 'suitable' ? '#f0fdf4' : day.level === 'caution' ? '#fffbeb' : '#fef2f2';
+            const borderCol = day.level === 'suitable' ? '#86efac' : day.level === 'caution' ? '#fcd34d' : '#fda4af';
             return (
-              <div key={day.date} style={{
-                flexShrink: 0, minWidth: 58, textAlign: 'center',
-                borderRadius: 10, padding: '7px 6px',
-                background: isSelected ? '#eff6ff' : levelBg,
-                border: `1.5px solid ${isSelected ? '#93c5fd' : 'transparent'}`,
-              }}>
-                <p style={{ margin: '0 0 2px', fontSize: 10, color: '#6b7280' }}>
+              <div key={day.date} style={{ flexShrink: 0, textAlign: 'center', width: 60 }}>
+                <div style={{
+                  width: 60, height: 60, borderRadius: 12,
+                  background: isSelected ? '#eff6ff' : levelBg,
+                  border: `2px solid ${isSelected ? '#93c5fd' : borderCol}`,
+                  display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', justifyContent: 'center',
+                  gap: 2, marginBottom: 4,
+                }}>
+                  <span style={{ fontSize: 20 }}>{levelEmoji}</span>
+                  {day.rain_probability != null && (
+                    <span style={{ fontSize: 9, color: '#6b7280' }}>☔{day.rain_probability}%</span>
+                  )}
+                </div>
+                <p style={{ margin: '0 0 1px', fontSize: 10, color: '#6b7280' }}>
                   {new Date(day.date).toLocaleDateString('th-TH',{day:'numeric',month:'short'})}
                 </p>
-                <p style={{ margin: '0 0 2px', fontSize: 16 }}>{levelBadge}</p>
-                <p style={{ margin: '0 0 2px', fontSize: 10, fontWeight: 700, color: levelColor }}>{levelLabel}</p>
-                {day.rain_probability != null && (
-                  <p style={{ margin: 0, fontSize: 9, color: '#9ca3af' }}>☔{day.rain_probability}%</p>
-                )}
+                <p style={{ margin: 0, fontSize: 11, color: levelColor, fontWeight: 700 }}>{levelLabel}</p>
               </div>
             );
           })}
@@ -257,6 +262,7 @@ export function MemberHarvestBookingForm({ cycleId, cropName, plotId, onSuccess 
     </div>
   );
 }
+
 
 
 
