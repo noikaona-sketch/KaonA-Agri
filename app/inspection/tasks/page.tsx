@@ -46,6 +46,17 @@ function TaskList() {
   return (
     <MobileAppShell title="งานตรวจแปลง" subtitle="รายการตรวจที่ได้รับมอบหมาย">
       <div className="mobile-stack">
+        {/* ปุ่มไปหน้าสำรวจแปลง */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <Link href="/inspection/survey"
+            style={{ textDecoration: 'none', padding: '14px 12px', borderRadius: 14, background: '#185FA5', color: '#fff', textAlign: 'center', display: 'block', fontWeight: 700, fontSize: 14 }}>
+            📋 สำรวจแปลง
+          </Link>
+          <Link href="/inspection/survey"
+            style={{ textDecoration: 'none', padding: '14px 12px', borderRadius: 14, background: '#2e7d32', color: '#fff', textAlign: 'center', display: 'block', fontWeight: 700, fontSize: 14 }}>
+            🌿 ยืนยันไม่เผา
+          </Link>
+        </div>
         <div style={{ display: 'flex', gap: 8 }}>
           {(['active', 'all'] as const).map((f) => (
             <button key={f} onClick={() => setFilter(f)}
@@ -103,3 +114,4 @@ function TaskList() {
 export default function InspectionTasksPage() {
   return <ProtectedRoute allowedRoles={['inspector','staff','leader','admin']}><TaskList /></ProtectedRoute>;
 }
+
