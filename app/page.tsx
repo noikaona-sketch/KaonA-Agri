@@ -195,8 +195,6 @@ function SecondaryRoleCards({ primaryRole, allRoles }: { primaryRole: AppRole; a
 // FARMER HOME
 // ─────────────────────────────────────────────────────────────────────
 function SubRoleHome({ name, memberId, primaryRole, allRoles }: { name: string; memberId: string; primaryRole: AppRole; allRoles: AppRole[] }) {
-  const roleLabel  = ROLE_LABEL[primaryRole]  ?? primaryRole;
-  const roleColor  = ROLE_COLOR[primaryRole]  ?? { bg: '#f3f4f6', text: '#374151' };
 
   return (
     <div className="mobile-stack" style={{ paddingBottom: 90 }}>
@@ -628,5 +626,6 @@ export default function HomePage() {
   if (primaryRole === 'leader' || primaryRole === 'inspector') return <SubRoleHome name={name} memberId={memberId} primaryRole={primaryRole} allRoles={allRoles} />;
   return <FarmerHome name={name} memberId={memberId} allRoles={allRoles} />;
 }
+
 
 
