@@ -194,6 +194,18 @@ function SecondaryRoleCards({ primaryRole, allRoles }: { primaryRole: AppRole; a
 // ─────────────────────────────────────────────────────────────────────
 // FARMER HOME
 // ─────────────────────────────────────────────────────────────────────
+function SubRoleHome({ name, memberId, primaryRole, allRoles }: { name: string; memberId: string; primaryRole: AppRole; allRoles: AppRole[] }) {
+  const roleLabel  = ROLE_LABEL[primaryRole]  ?? primaryRole;
+  const roleColor  = ROLE_COLOR[primaryRole]  ?? { bg: '#f3f4f6', text: '#374151' };
+
+  return (
+    <div className="mobile-stack" style={{ paddingBottom: 90 }}>
+      <HeroCard name={name} memberId={memberId} primaryRole={primaryRole} allRoles={allRoles} plots={0} price={null} />
+      <SecondaryRoleCards primaryRole={primaryRole} allRoles={allRoles} />
+    </div>
+  );
+}
+
 function FarmerHome({ name, memberId, allRoles }: { name: string; memberId: string; allRoles: AppRole[] }) {
   const member = useCurrentMember();
   const [plots,         setPlots]         = useState(0);
@@ -613,6 +625,8 @@ export default function HomePage() {
 
   if (primaryRole === 'truck_owner') return <TruckHome name={name} memberId={memberId} allRoles={allRoles} />;
   if (primaryRole === 'staff') return <StaffHome name={name} memberId={memberId} primaryRole={primaryRole} allRoles={allRoles} />;
+  if (primaryRole === 'leader' || primaryRole === 'inspector') return <SubRoleHome name={name} memberId={memberId} primaryRole={primaryRole} allRoles={allRoles} />;
   return <FarmerHome name={name} memberId={memberId} allRoles={allRoles} />;
 }
+
 
